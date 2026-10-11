@@ -146,6 +146,28 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Disclosure:** Apple and Google collect OS-level crash reports (stack traces, device info, no journal data) when the user has opted in to share diagnostics with developers in device settings. The app cannot disable this; the privacy policy says so.
 - **Opt-in diagnostics mode** (Privacy Center): records a local, encrypted, redacted log; auto-off after 24 hours. Sharing requires the user to review the full text, then send it via the share sheet. Nothing is sent automatically. Off-action deletes all diagnostic logs.
 
+## Sharing and export (decided)
+
+### Share an entry (session, product, or insight)
+- User picks fields; private-leaning defaults:
+  - Included: product, strain, ratings, effects.
+  - Excluded by default: stream text, spot, targeted symptoms, exact times (date only or none), photos.
+- Preview shows exactly what will be shared (rendered card or plain text).
+- The card is a temporary in-app file handed to the share sheet and deleted afterward; it **never touches the photo gallery**. Included photos are already EXIF-stripped.
+- Copy to clipboard marks content sensitive and sets it to expire.
+- **Small, tasteful "made with Terpoir" mark included by default**, with a one-tap toggle in the share preview to remove it. Rationale: the user is already sharing cannabis content, and word of mouth is how a no-ads, no-tracking app gets discovered.
+- Notice: "Once shared, this is outside Terpoir's protection."
+
+### Full export
+- **Encrypted export (default):** whole journal as an archive encrypted under the recovery key; same format as export/import sync.
+- **Plaintext export (opt-in):** JSON + CSV + photos for portability, with a strong warning; saved only through the system file picker, noting that cloud-synced folders will upload it.
+
+### Import
+- From Terpoir encrypted exports. CSV import from other apps later.
+
+### Future idea
+- Terpoir-to-Terpoir sharing: a product or strain record travels as a small file or QR code that a friend imports into their own journal. No server.
+
 ## Data model
 
 ### Core idea: an entry is a session
@@ -295,13 +317,13 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Screen capture: protection on by default (FLAG_SECURE / capture blur); Android accessibility-sensitive marking always on; screen readers unaffected.
 - Storage: per-record encryption inside SQLCipher; minimal indexes; no on-disk free-text index; secure delete; separate notification cache for Named/Rich tiers.
 - Logs: none in release; redacted types in debug; no crash SDKs or analytics; opt-in reviewed diagnostics.
+- Sharing: field-picked share cards with preview, never via the gallery, discreet brand mark on by default; encrypted export by default, opt-in plaintext export.
 
 ## Open decisions
-1. Sharing and export (metadata stripping, "leaves our protection" warning).
-2. Memory hygiene (key zeroing, purge on background, re-auth timeout).
-3. Age gating (self-attestation vs. app store requirements).
-4. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
-5. Builds and releases (reproducible builds, signing-key protection, binary transparency).
-6. Monetization (earning without touching user data).
-7. App store policy (verify current Google Play and Apple cannabis-app rules).
-8. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
+1. Memory hygiene (key zeroing, purge on background, re-auth timeout).
+2. Age gating (self-attestation vs. app store requirements).
+3. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
+4. Builds and releases (reproducible builds, signing-key protection, binary transparency).
+5. Monetization (earning without touching user data).
+6. App store policy (verify current Google Play and Apple cannabis-app rules).
+7. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
