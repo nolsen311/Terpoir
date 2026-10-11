@@ -237,6 +237,20 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Merch later:** stickers and print-on-demand apparel.
 - **Ruled out:** dispensary partnerships, affiliate links, sponsored strains, ads, and data sales.
 
+## App store policy (decided)
+
+### Apple
+- **Guideline 5.1.1(ix):** apps providing services in highly regulated fields, explicitly including legal cannabis use, should be submitted by a legal entity, not an individual. Apple organization enrollment excludes sole proprietorships and DBAs; it requires a legal entity, D-U-N-S number, work email on the organization's domain, and a functional public website.
+- **Plan:** submit iOS as an individual with review notes (private personal journal; sells, delivers, and promotes nothing; stores no user data). If rejected under 5.1.1(ix), decide then between forming an LLC (assign trademark and copyright to it; replace the terpoir.app null MX with mail forwarding for the organization email) or remaining Android-only. **iOS is a stretch goal, not a commitment;** Android-only is an acceptable outcome.
+- **1.4.3:** no encouraging consumption. The app records and reflects; playful copy may joke about sharing the app, never "consume more."
+- **2.3.8:** store metadata (icon, screenshots, previews) must be all-ages appropriate even though the app is 18+. No explicit drug imagery; consistent with discreet branding.
+- **2.3.6:** honest age-rating answers (see Age gating).
+
+### Google Play
+- Prohibits apps that facilitate the sale of marijuana regardless of legality (in-app ordering, arranging delivery or pickup, selling THC products).
+- **Rule for Terpoir: no ordering, no delivery, no dispensary menus or purchase links**, including via catalog providers. Re-up Spots and price fields are the user's own records.
+- No entity requirement; Android ships under a personal developer account. Check current closed-testing requirements for new personal accounts at signup.
+
 ## Data model
 
 ### Core idea: an entry is a session
@@ -392,7 +406,7 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Device security: passcode-only and app-passphrase options; quick-lock; two-level panic wipe; no duress passcode; neutral discreet icon/name.
 - Builds: Play, F-Droid (FOSS flavor), GitHub Releases, App Store; maintainer key on two YubiKeys; reproducible, pinned, signed pipeline.
 - Monetization: free core; one-time Connoisseur unlock; tip jar; donations; never paywall privacy or security.
+- Store policy: Android ships as an individual; iOS attempted as an individual, Android-only acceptable if Apple requires an entity; no sale facilitation; all-ages store metadata.
 
 ## Open decisions
-1. App store policy (verify current Google Play and Apple cannabis-app rules).
-2. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
+1. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
