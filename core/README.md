@@ -31,6 +31,15 @@ The toolchain is pinned in `rust-toolchain.toml`. Building `terpoir-store`
 compiles SQLCipher and OpenSSL from source, which needs a C compiler, `perl`
 and `make`.
 
+## Reproducible build
+
+```sh
+scripts/reproducible-build.sh   # prints the SHA-256 of libterpoir_ffi.so
+```
+
+Same commit, same hash, wherever it is run (CI checks this on every pull
+request). See the script for what it pins and why.
+
 ## Kotlin bindings
 
 ```sh
