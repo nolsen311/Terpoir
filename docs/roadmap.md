@@ -90,6 +90,13 @@ without it.
 - [ ] Rapid product entry: receipt scan (multi-product, image discarded by
       default), label scan, on-device barcode / QR decoding, duplicate
       detection. Online code lookups and COA links opt-in.
+- [x] OCR native libraries built from pinned source for F-Droid
+      (`android/ocr-native/`, asynchronous `OCR native libraries`
+      workflow, reproducible on two runners).
+- [ ] When the scanner adds Tesseract4Android: the `terpoir.ocr.aar`
+      Gradle property that switches the `foss` flavor to the from-source
+      AAR (JitPack repository declared only without it); check the foss
+      build with it in the OCR workflow.
 - [ ] Voice-first FAB with on-device speech recognition (never cloud).
 - [ ] Stream snippets; keyword tag suggestions with human confirmation.
 - [ ] Spots with purpose types; "Show me" mode first, then "Notify me"
