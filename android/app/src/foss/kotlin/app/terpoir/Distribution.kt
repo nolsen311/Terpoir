@@ -4,6 +4,8 @@
 
 package app.terpoir
 
+import app.terpoir.onboarding.AgeSignals
+
 /**
  * The FOSS distribution (F-Droid, GitHub Releases): no Google Play services,
  * no proprietary libraries, and every feature available under the GPL.
@@ -14,4 +16,7 @@ object Distribution {
 
     /** No Google-dependent features. */
     val capabilities: Set<Capability> = emptySet()
+
+    /** No platform age signal: self-attestation is the gate. */
+    val ageSignals: AgeSignals = AgeSignals.NONE
 }

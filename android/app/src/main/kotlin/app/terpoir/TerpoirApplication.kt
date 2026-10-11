@@ -6,6 +6,7 @@ package app.terpoir
 
 import android.app.Application
 import app.terpoir.core.init as initCore
+import app.terpoir.onboarding.Onboarding
 import app.terpoir.privacy.PrivacyCenter
 import app.terpoir.privacy.PrivacySettings
 import app.terpoir.privacy.buildPrivacyCenter
@@ -32,6 +33,10 @@ class TerpoirApplication : Application() {
     lateinit var privacyCenter: PrivacyCenter
         private set
 
+    /** First-run progress. */
+    lateinit var onboarding: Onboarding
+        private set
+
     override fun onCreate() {
         super.onCreate()
         // Installs the core's panic hook (never reports panic messages).
@@ -40,6 +45,16 @@ class TerpoirApplication : Application() {
         privacySettings = PrivacySettings(this)
         privacyCenter = buildPrivacyCenter(privacySettings)
         session = JournalSession(JournalFiles(noBackupFilesDir))
+        onboarding = Onboarding(this)
+        // The process died after the journal was created but before its
+        // recovery key was backed up or skipped. The key lived only in that
+        // process, and setup blocks the journal until the backup is
+        // resolved, so the journal is still empty: discard it and start
+        // setup again rather than keep a journal with no usable recovery key.
+        if (onboarding.backupPending) {
+            if (session.state != JournalSession.State.NoJournal) session.reset()
+            onboarding.discarded()
+        }
         AutoLock(this, session, lockSettings).install()
     }
 }

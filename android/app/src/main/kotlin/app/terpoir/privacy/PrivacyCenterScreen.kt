@@ -40,9 +40,16 @@ import kotlinx.coroutines.launch
  *
  * @param onChanged called after any action ran, so the caller can apply
  *   window-level settings at once.
+ * @param tour the onboarding tour: an introduction, and closing finishes
+ *   setup.
  */
 @Composable
-fun PrivacyCenterScreen(center: PrivacyCenter, onChanged: () -> Unit, onClose: () -> Unit) {
+fun PrivacyCenterScreen(
+    center: PrivacyCenter,
+    onChanged: () -> Unit,
+    onClose: () -> Unit,
+    tour: Boolean = false,
+) {
     val scope = rememberCoroutineScope()
     // Toggle state lives in settings, not Compose; bumped after each action.
     var revision by remember { mutableIntStateOf(0) }
@@ -54,13 +61,15 @@ fun PrivacyCenterScreen(center: PrivacyCenter, onChanged: () -> Unit, onClose: (
             onChanged()
         }
     }
-    BackHandler(onBack = onClose)
+    // During the tour, Back leaves the app as usual instead of skipping it.
+    BackHandler(enabled = !tour, onBack = onClose)
 
     Column(
         modifier = Modifier.verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(stringResource(R.string.privacy_center), style = MaterialTheme.typography.headlineMedium)
+        if (tour) Text(stringResource(R.string.privacy_tour_intro))
         val relaxed = revision.let { center.relaxedCount() }
         Text(
             if (relaxed == 0) {
@@ -96,7 +105,11 @@ fun PrivacyCenterScreen(center: PrivacyCenter, onChanged: () -> Unit, onClose: (
                 Card(toggle.card)
             }
         }
-        TextButton(onClick = onClose) { Text(stringResource(R.string.privacy_close)) }
+        if (tour) {
+            Button(onClick = onClose) { Text(stringResource(R.string.privacy_tour_finish)) }
+        } else {
+            TextButton(onClick = onClose) { Text(stringResource(R.string.privacy_close)) }
+        }
     }
 
     confirming?.let { toggle ->

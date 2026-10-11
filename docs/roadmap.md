@@ -76,6 +76,8 @@ without it.
       on-action and off-action for every entry.
 - [ ] Onboarding: age signals + self-attestation, recovery key creation and
       backup confirmation, Privacy Center tour with everything off.
+      (Done except the Play age signal, which waits on the licensing
+      decision in "Open decisions".)
 - [ ] R8 log stripping; release builds log nothing.
 
 ## Phase 3: Journaling features

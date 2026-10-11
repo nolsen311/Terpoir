@@ -27,6 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.terpoir.core.coreVersion
+import app.terpoir.onboarding.AgeGate
+import app.terpoir.onboarding.OnboardingStep
+import app.terpoir.onboarding.RecoveryKeyBackup
 import app.terpoir.privacy.PrivacyCenterScreen
 import app.terpoir.privacy.PrivateTextInput
 import app.terpoir.privacy.ScreenPrivacy
@@ -67,16 +70,41 @@ class MainActivity : ComponentActivity() {
     private fun Screen(session: JournalSession, core: String) {
         var message by remember { mutableStateOf<Int?>(null) }
         var privacyCenter by remember { mutableStateOf(false) }
+        val onboarding = app.onboarding
         val unlocked = session.state is JournalSession.State.Unlocked
         // Locking closes the Privacy Center; it is open only while unlocked.
         LaunchedEffect(unlocked) { if (!unlocked) privacyCenter = false }
-        if (privacyCenter && unlocked && session.contentVisible) {
-            PrivacyCenterScreen(
-                center = app.privacyCenter,
-                onChanged = { ScreenPrivacy.onResume(this, app.privacySettings.screenProtection) },
-                onClose = { privacyCenter = false },
-            )
-            return
+        // Journal content, the recovery key included, is drawn only while
+        // unlocked and in the foreground.
+        val showContent = unlocked && session.contentVisible
+        val step = onboarding.step(hasJournal = session.state != JournalSession.State.NoJournal)
+        val recoveryKey = onboarding.recoveryKey
+        when {
+            step == OnboardingStep.AGE -> {
+                AgeGate(Distribution.ageSignals, onAdult = onboarding::passAgeGate)
+                return
+            }
+            showContent && step == OnboardingStep.BACKUP && recoveryKey != null -> {
+                RecoveryKeyBackup(recoveryKey, session::checkRecoveryKey, onboarding::backupResolved)
+                return
+            }
+            showContent && step == OnboardingStep.PRIVACY_TOUR -> {
+                PrivacyCenterScreen(
+                    center = app.privacyCenter,
+                    onChanged = { ScreenPrivacy.onResume(this, app.privacySettings.screenProtection) },
+                    onClose = onboarding::finish,
+                    tour = true,
+                )
+                return
+            }
+            showContent && privacyCenter -> {
+                PrivacyCenterScreen(
+                    center = app.privacyCenter,
+                    onChanged = { ScreenPrivacy.onResume(this, app.privacySettings.screenProtection) },
+                    onClose = { privacyCenter = false },
+                )
+                return
+            }
         }
         Column(
             modifier = Modifier.padding(24.dp),
@@ -86,7 +114,9 @@ class MainActivity : ComponentActivity() {
             when (val state = session.state) {
                 JournalSession.State.NoJournal -> {
                     Text(stringResource(R.string.setup_explainer))
-                    Button(onClick = { message = createJournal() }) { Text(stringResource(R.string.setup)) }
+                    Button(onClick = { message = createJournal { message = it } }) {
+                        Text(stringResource(R.string.setup))
+                    }
                 }
                 JournalSession.State.Locked -> {
                     Text(stringResource(R.string.locked))
@@ -106,8 +136,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Starts journal creation; returns an error message to show, if any. */
-    private fun createJournal(): Int? {
+    /**
+     * Starts journal creation; returns an error message to show, if any.
+     * [onError] gets one if creation fails after authentication.
+     */
+    private fun createJournal(onError: (Int) -> Unit): Int? {
         val strict = app.lockSettings.strictBiometrics
         if (!UserAuthentication.isAvailable(this, strict)) return R.string.error_no_lock_screen
         val cipher = try {
@@ -116,7 +149,16 @@ class MainActivity : ComponentActivity() {
         } catch (_: Exception) {
             return R.string.error_keystore
         }
-        authenticate(cipher, getString(R.string.setup_prompt)) { app.session.create(it) }
+        authenticate(cipher, getString(R.string.setup_prompt)) { authorized ->
+            app.onboarding.creating()
+            try {
+                app.onboarding.created(app.session.create(authorized))
+            } catch (_: Exception) {
+                app.session.reset()
+                app.onboarding.discarded()
+                onError(R.string.error_keystore)
+            }
+        }
         return null
     }
 

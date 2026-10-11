@@ -39,4 +39,36 @@
     <string name="screen_protection_leaves">When off, screenshots and recordings of Terpoir are saved to your photo gallery, and from there to any cloud backup it syncs with.</string>
     <string name="screen_protection_who">When off, anyone you cast or share your screen with sees your journal, and so does any app allowed to capture your screen.</string>
     <string name="screen_protection_undo">Turn it back on here. Screenshots already taken stay in your gallery until you delete them.</string>
+
+    <!-- Onboarding -->
+    <string name="age_title">Before we roll</string>
+    <string name="age_question">Are you of legal age to use cannabis where you live?</string>
+    <string name="age_yes">Yes, I am</string>
+    <string name="age_no">No</string>
+    <string name="age_adults_only">Terpoir is for adults</string>
+    <string name="age_adults_only_body">Come back when you\'re of legal age where you live.</string>
+    <string name="recovery_title">Your recovery key</string>
+    <string name="recovery_explainer">This key is the only way back into your journal if you lose or reset this phone. There\'s no reset link and no backdoor, and nobody, not even us, can recover your journal without it.</string>
+    <string name="recovery_paper">Write it down and keep the paper somewhere safe, or keep it in a password manager. Not next to wherever you sync your journal: a key kept with the data it locks is no protection.</string>
+    <string name="recovery_copy">Copy for a password manager</string>
+    <string name="recovery_copy_disclosure">Your password manager, and its sync, become part of what protects your journal. Terpoir clears the clipboard after a minute.</string>
+    <string name="recovery_never_ask">We will never ask for your recovery key.</string>
+    <string name="recovery_saved">I\'ve saved it</string>
+    <string name="recovery_skip">Skip for now</string>
+    <string name="recovery_skip_title">Skip saving your key?</string>
+    <string name="recovery_skip_body">Without your recovery key, losing, resetting or replacing this phone means losing your journal for good. This key won\'t be shown again.</string>
+    <string name="recovery_skip_confirm">Skip, I accept data loss</string>
+    <string name="recovery_skip_back">Go back</string>
+    <string name="confirm_title">Check your copy</string>
+    <string name="confirm_explainer">Type your recovery key from your saved copy. Capitals and dashes don\'t matter.</string>
+    <string name="confirm_label">Recovery key</string>
+    <string name="confirm_check">Check</string>
+    <string name="confirm_show_again">Show my key again</string>
+    <string name="confirm_matches">That\'s the one.</string>
+    <string name="confirm_incomplete">That\'s not the whole key yet: it has 56 characters.</string>
+    <string name="confirm_invalid_character">There\'s a character that never appears in a recovery key.</string>
+    <string name="confirm_typo">That doesn\'t match. Check your copy for a typo.</string>
+    <string name="confirm_wrong_key">That\'s a recovery key, but not this journal\'s.</string>
+    <string name="privacy_tour_intro">This is your Privacy Center. Everything starts at its most private, and nothing changes unless you change it, here, whenever you like.</string>
+    <string name="privacy_tour_finish">Finish setup</string>
 </resources>
