@@ -4,11 +4,14 @@
 
 package app.terpoir.privacy
 
+import android.content.Context
+import app.terpoir.Capability
+import app.terpoir.Distribution
 import app.terpoir.R
 
-/** Builds the Privacy Center with every toggle the app has. */
-fun buildPrivacyCenter(settings: PrivacySettings): PrivacyCenter = PrivacyCenter(
-    listOf(
+/** Builds the Privacy Center with every toggle this build has. */
+fun buildPrivacyCenter(context: Context, settings: PrivacySettings): PrivacyCenter = PrivacyCenter(
+    listOfNotNull(
         // Applied to the window on the next resume, and at once by the
         // Privacy Center screen. Off only clears FLAG_SECURE.
         PrivacyToggle(
@@ -61,6 +64,32 @@ fun buildPrivacyCenter(settings: PrivacySettings): PrivacyCenter = PrivacyCenter
             onAction = { settings.coaLinks = true },
             offAction = { settings.coaLinks = false },
         ),
+        // Play build only. On only switches the scanner's engine; Play
+        // services downloads the model when a scan first needs it, after
+        // the scanner asks. Off switches back and lets Play services remove
+        // the model.
+        if (Capability.GOOGLE_TEXT_RECOGNITION in Distribution.capabilities) {
+            PrivacyToggle(
+                id = "google_text_recognition",
+                group = PrivacyGroup.SCANNING,
+                card = PrivacyCard(
+                    title = R.string.google_text,
+                    whatItDoes = R.string.google_text_does,
+                    whatLeaves = R.string.google_text_leaves,
+                    whoCanSee = R.string.google_text_who,
+                    howToUndo = R.string.google_text_undo,
+                ),
+                privateState = false,
+                isOn = { settings.googleTextRecognition },
+                onAction = { settings.googleTextRecognition = true },
+                offAction = {
+                    settings.googleTextRecognition = false
+                    Distribution.releaseGoogleTextRecognition(context)
+                },
+            )
+        } else {
+            null
+        },
         // Which input the new-note button opens. Voice is on-device only,
         // so neither side creates anything to clean up.
         PrivacyToggle(

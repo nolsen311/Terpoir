@@ -45,3 +45,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "Terpoir"
 include(":app")
+// Text recognition (docs/design-decisions.md, "Rapid product entry"): the
+// Tesseract wrapper, the on-demand Play module that carries it, and the
+// asset pack with its model. The foss app bundles the wrapper and model.
+include(":ocr-tesseract")
+include(":ocr")
+include(":ocr-model")

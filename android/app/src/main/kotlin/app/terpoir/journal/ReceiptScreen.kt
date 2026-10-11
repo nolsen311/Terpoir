@@ -114,36 +114,38 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
     var invalid by remember { mutableStateOf(false) }
 
     when (phase) {
-        Phase.CAMERA -> CameraScreen(
-            mode = CaptureMode.PHOTO,
-            title = stringResource(R.string.scan_receipt),
-            hint = stringResource(R.string.scan_receipt_hint),
-            onClose = onDone,
-            onPhoto = { photo ->
-                phase = Phase.READING
-                scope.launch {
-                    val text = scan.scanner.read(photo).text
-                    products = repo.products()
-                    spots = repo.spots()
-                    if (text == null) {
-                        noText = true
-                    } else {
-                        val receipt = parseReceipt(text)
-                        receipt.dateDay?.let { day = it }
-                        shopText = receipt.shop.orEmpty()
-                        shop = when {
-                            shopText.isBlank() -> ShopChoice.None
-                            else -> repo.matchSpot(shopText)?.let { ShopChoice.Existing(it) } ?: ShopChoice.New
+        Phase.CAMERA -> TextEngineGate(scan.scanner, stringResource(R.string.scan_receipt), onDone) {
+            CameraScreen(
+                mode = CaptureMode.PHOTO,
+                title = stringResource(R.string.scan_receipt),
+                hint = stringResource(R.string.scan_receipt_hint),
+                onClose = onDone,
+                onPhoto = { photo ->
+                    phase = Phase.READING
+                    scope.launch {
+                        val text = scan.scanner.read(photo).text
+                        products = repo.products()
+                        spots = repo.spots()
+                        if (text == null) {
+                            noText = true
+                        } else {
+                            val receipt = parseReceipt(text)
+                            receipt.dateDay?.let { day = it }
+                            shopText = receipt.shop.orEmpty()
+                            shop = when {
+                                shopText.isBlank() -> ShopChoice.None
+                                else -> repo.matchSpot(shopText)?.let { ShopChoice.Existing(it) } ?: ShopChoice.New
+                            }
+                            for (item in receipt.items) {
+                                val match = repo.findProducts(item.name, null, emptyList()).firstOrNull()?.id
+                                items += ItemDraft(item.name, formatMilli(item.priceMinor * 10), match)
+                            }
                         }
-                        for (item in receipt.items) {
-                            val match = repo.findProducts(item.name, null, emptyList()).firstOrNull()?.id
-                            items += ItemDraft(item.name, formatMilli(item.priceMinor * 10), match)
-                        }
+                        phase = Phase.REVIEW
                     }
-                    phase = Phase.REVIEW
-                }
-            },
-        )
+                },
+            )
+        }
         Phase.READING -> EditorScaffold(stringResource(R.string.scan_receipt), onDone, {}, saveEnabled = false) {
             Text(stringResource(R.string.scan_reading))
         }

@@ -69,23 +69,24 @@ the new tarball), push, and copy the hashes the workflow prints into
 
 ## Using it from the app
 
-The scanner depends on Tesseract4Android, with a Gradle property switch for
-the `foss` flavor (`app/build.gradle.kts`):
+Tesseract4Android comes from JitPack, or from the AAR built here when the
+build is given `-Pterpoir.ocr.aar=<path>` (a relative path is taken from
+`android/app/`). The root `build.gradle.kts` reads the property; the foss
+app, the Play on-demand module `:ocr` and the wrapper `:ocr-tesseract` each
+use it (`app/build.gradle.kts`):
 
 ```kotlin
-val ocrAar = providers.gradleProperty("terpoir.ocr.aar").orNull
+val ocrAar = rootProject.extra["ocrAar"] as String?
 if (ocrAar != null) {
     "fossImplementation"(files(ocrAar))  // built here, from source
 } else {
     "fossImplementation"(libs.tesseract4android)  // JitPack
 }
-"playImplementation"(libs.tesseract4android)
 ```
 
-On Play, Tesseract is meant to leave the base app: it will come as an
-on-demand feature module (with the language data as an asset pack) that
-depends on the JitPack AAR (`docs/design-decisions.md`, Rapid product
-entry). Until that roadmap item lands, the scanner bundles it on Play too.
+On Play, Tesseract is not in the base app: it is the on-demand feature
+module `:ocr`, with the language data as an asset pack
+(`docs/design-decisions.md`, Rapid product entry; `android/ocr/README.md`).
 
 `settings.gradle.kts` declares the JitPack repository only when the property
 is unset, so a from-source build never contacts JitPack. App CI builds

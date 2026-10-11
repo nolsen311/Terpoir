@@ -83,10 +83,16 @@ android {
     }
 
     androidResources {
-        // The OCR model is read through a file descriptor (and copied once),
-        // which needs it stored uncompressed.
+        // The foss app's OCR model is read through a file descriptor (and
+        // copied once), which needs it stored uncompressed.
         noCompress += "traineddata"
     }
+
+    // Play only (APKs, as the foss build makes, contain neither): the
+    // on-demand text recognition module and its model's asset pack
+    // (docs/design-decisions.md, "Rapid product entry").
+    dynamicFeatures += ":ocr"
+    assetPacks += ":ocr-model"
 
     dependenciesInfo {
         // No signing-block blob of dependency metadata (Google-encrypted,
@@ -113,16 +119,21 @@ dependencies {
 
     "playImplementation"(libs.play.age.signals)
 
-    // Text recognition. The foss flavor can use the AAR built from pinned
-    // source by android/ocr-native/build.sh (F-Droid sets the property);
-    // otherwise both flavors use the JitPack AAR.
-    val ocrAar = providers.gradleProperty("terpoir.ocr.aar").orNull
+    // Text recognition. The foss app bundles Tesseract, from the AAR built
+    // from pinned source by android/ocr-native/build.sh when given one
+    // (F-Droid's build), otherwise from JitPack. The Play base app has no
+    // Tesseract: the on-demand `:ocr` module carries it, and ML Kit (through
+    // Play services) is the opt-in alternative.
+    "fossImplementation"(project(":ocr-tesseract"))
+    val ocrAar = rootProject.extra["ocrAar"] as String?
     if (ocrAar != null) {
         "fossImplementation"(files(ocrAar))
     } else {
         "fossImplementation"(libs.tesseract4android)
     }
-    "playImplementation"(libs.tesseract4android)
+    "playImplementation"(libs.play.feature.delivery)
+    "playImplementation"(libs.play.asset.delivery)
+    "playImplementation"(libs.play.mlkit.text.recognition)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.runner)
@@ -242,11 +253,13 @@ val generateCoreBindings by tasks.registering(UniffiBindgen::class) {
 
 /**
  * Groups that must never reach the FOSS build: Play services, Firebase,
- * Play Billing, Play Core / age signals, ML Kit and on-device Gemini.
+ * Google Data Transport (ML Kit's usage metrics), Play Billing, Play Core /
+ * age signals, ML Kit and on-device Gemini.
  */
 val proprietaryGroups = listOf(
     "com.google.android.gms",
     "com.google.firebase",
+    "com.google.android.datatransport",
     "com.android.billingclient",
     "com.google.android.play",
     "com.google.mlkit",
@@ -258,7 +271,8 @@ val verifyFossDependencies by tasks.registering {
     group = "verification"
     val classpath = configurations.named("fossReleaseRuntimeClasspath")
     val forbidden = proprietaryGroups
-    inputs.files(classpath)
+    // Reads only the resolved graph (no outputs, so it always runs): the
+    // classpath's files are ambiguous with project modules in it.
     doLast {
         val offenders = classpath.get().incoming.resolutionResult.allComponents
             .mapNotNull { (it.id as? ModuleComponentIdentifier) }
@@ -347,6 +361,54 @@ val allowedPermissions = setOf(
     "android.permission.ACCESS_FINE_LOCATION",
 )
 
+/**
+ * Permissions only the play flavor may add, each from a Google Play library
+ * and none with a prompt. The foss flavor gets none of them.
+ */
+val playOnlyPermissions = setOf(
+    // Play Asset Delivery: the Play Store has the app copy a downloaded
+    // asset pack (the OCR model) into its own storage, shown as a
+    // foreground service with a notification while it runs.
+    "android.permission.FOREGROUND_SERVICE",
+    "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+    // ML Kit's Google Data Transport schedules its metrics uploads as jobs
+    // that wait for a network, which needs this to read connectivity. The
+    // uploads themselves fail: the play manifest removes INTERNET.
+    "android.permission.ACCESS_NETWORK_STATE",
+)
+
+/**
+ * The logging calls ([forbidden]) that dexdump finds in the dex files of
+ * [archive] (an APK or a bundle) whose paths match [dexPath], counted, one
+ * per line; empty if none. Extracts into [workDir].
+ */
+fun loggingCalls(archive: File, dexPath: Regex, workDir: File, dexdump: File, forbidden: Regex): String {
+    val dexDir = workDir.resolve("dex").apply { deleteRecursively(); mkdirs() }
+    val dexFiles = ZipFile(archive).use { zip ->
+        zip.entries().asSequence()
+            .filter { it.name.matches(dexPath) }
+            .map { entry ->
+                val out = dexDir.resolve(entry.name.replace('/', '_'))
+                zip.getInputStream(entry).use { input -> out.outputStream().use(input::copyTo) }
+                out
+            }
+            .toList()
+    }
+    val calls = dexFiles.sorted().flatMap { dex ->
+        val process = ProcessBuilder(dexdump.path, "-d", dex.path)
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
+            .start()
+        val found = process.inputStream.bufferedReader().useLines { lines ->
+            lines.filter { "invoke-" in it }
+                .mapNotNull { forbidden.find(it)?.value }
+                .toList()
+        }
+        if (process.waitFor() != 0) throw GradleException("dexdump failed on ${dex.name}")
+        found
+    }
+    return calls.groupingBy { it }.eachCount().entries.joinToString("\n") { "${it.value}x ${it.key}" }
+}
+
 androidComponents {
     onVariants { variant ->
         variant.sources.jniLibs?.addGeneratedSourceDirectory(buildRustCore, CargoNdkBuild::outputDir)
@@ -354,7 +416,7 @@ androidComponents {
 
         val name = variant.name.replaceFirstChar { it.uppercase() }
         val manifest = variant.artifacts.get(SingleArtifact.MERGED_MANIFEST)
-        val allowed = allowedPermissions
+        val allowed = allowedPermissions + if (variant.flavorName == "play") playOnlyPermissions else emptySet()
         val task = tasks.register("verify${name}Permissions") {
             description = "Fails if the ${variant.name} manifest requests a permission not on the allowlist."
             group = "verification"
@@ -372,6 +434,14 @@ androidComponents {
         }
         tasks.named("check") { dependsOn(task) }
 
+        if (variant.flavorName == "foss") {
+            // The foss app bundles the model the Play build gets as an
+            // asset pack: one copy of the file, in :ocr-model.
+            variant.sources.assets?.addStaticSourceDirectory(
+                rootProject.layout.projectDirectory.dir("ocr-model/src/main/assets").asFile.path,
+            )
+        }
+
         if (variant.buildType == "release") {
             val apkDir = variant.artifacts.get(SingleArtifact.APK)
             val loader = variant.artifacts.getBuiltArtifactsLoader()
@@ -386,33 +456,42 @@ androidComponents {
                 doLast {
                     val apk = loader.load(apkDir.get())?.elements?.single()?.outputFile
                         ?: throw GradleException("No APK for ${variant.name}")
-                    val dexDir = temporaryDir.apply { deleteRecursively(); mkdirs() }
-                    ZipFile(apk).use { zip ->
-                        zip.entries().asSequence()
-                            .filter { it.name.matches(Regex("classes\\d*\\.dex")) }
-                            .forEach { entry -> zip.getInputStream(entry).use { dexDir.resolve(entry.name).outputStream().use(it::copyTo) } }
-                    }
-                    val calls = dexDir.listFiles().orEmpty().sorted().flatMap { dex ->
-                        val process = ProcessBuilder(dexdump.get().asFile.path, "-d", dex.path)
-                            .redirectError(ProcessBuilder.Redirect.DISCARD)
-                            .start()
-                        val found = process.inputStream.bufferedReader().useLines { lines ->
-                            lines.filter { "invoke-" in it }
-                                .mapNotNull { forbidden.find(it)?.value }
-                                .toList()
-                        }
-                        if (process.waitFor() != 0) throw GradleException("dexdump failed on ${dex.name}")
-                        found
-                    }
+                    val calls = loggingCalls(File(apk), Regex("classes\\d*\\.dex"), temporaryDir, dexdump.get().asFile, forbidden)
                     if (calls.isNotEmpty()) {
-                        throw GradleException(
-                            "Logging survives R8 in ${variant.name}:\n" +
-                                calls.groupingBy { it }.eachCount().entries.joinToString("\n") { "${it.value}x ${it.key}" },
-                        )
+                        throw GradleException("Logging survives R8 in ${variant.name}:\n" + calls)
                     }
                 }
             }
             tasks.named("check") { dependsOn(noLogging) }
+
+            if (variant.flavorName == "play") {
+                // The Play bundle is the only build with the on-demand text
+                // recognition module and model, so check its layout and the
+                // module's code too.
+                val bundle = variant.artifacts.get(SingleArtifact.BUNDLE)
+                val bundleCheck = tasks.register("verify${name}Bundle") {
+                    description = "Checks the ${variant.name} bundle: Tesseract only in its on-demand module, no logging after R8."
+                    group = "verification"
+                    inputs.file(bundle)
+                    doLast {
+                        val file = bundle.get().asFile
+                        val entries = ZipFile(file).use { zip -> zip.entries().asSequence().map { it.name }.toList() }
+                        val problems = buildList {
+                            for (abi in listOf("arm64-v8a", "x86_64")) {
+                                if ("ocr/lib/$abi/libtesseract.so" !in entries) add("ocr module lacks libtesseract.so for $abi")
+                            }
+                            if ("ocr_model/assets/tessdata/eng.traineddata" !in entries) add("ocr_model asset pack lacks the model")
+                            addAll(entries.filter { it.startsWith("base/") && ("tesseract" in it || it.endsWith(".traineddata")) }.map { "base module carries $it" })
+                        }
+                        if (problems.isNotEmpty()) throw GradleException("Bad ${variant.name} bundle:\n" + problems.joinToString("\n"))
+                        val calls = loggingCalls(file, Regex("[^/]+/dex/classes\\d*\\.dex"), temporaryDir, dexdump.get().asFile, forbidden)
+                        if (calls.isNotEmpty()) {
+                            throw GradleException("Logging survives R8 in the ${variant.name} bundle:\n" + calls)
+                        }
+                    }
+                }
+                tasks.named("check") { dependsOn(bundleCheck) }
+            }
         }
     }
 }

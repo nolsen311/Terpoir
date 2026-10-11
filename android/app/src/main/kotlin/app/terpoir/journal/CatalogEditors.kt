@@ -137,38 +137,40 @@ fun ProductEditor(
                     scope.launch { addCode(code) }
                 },
             )
-            ProductScan.LABEL -> CameraScreen(
-                mode = CaptureMode.PHOTO,
-                title = stringResource(R.string.scan_label),
-                hint = stringResource(R.string.scan_label_hint),
-                onClose = close,
-                onPhoto = { photo ->
-                    camera = null
-                    reading = true
-                    scope.launch {
-                        val result = scan.scanner.read(photo)
-                        result.code?.let { addCode(it) }
-                        val text = result.text
-                        scanNote = if (text == null) {
-                            R.string.scan_no_text_engine
-                        } else {
-                            val label = parseLabel(text)
-                            label.thcMilli?.let { thc = formatMilli(it) }
-                            label.thcUnit?.let { thcUnit = it }
-                            label.cbdMilli?.let { cbd = formatMilli(it) }
-                            label.cbdUnit?.let { cbdUnit = it }
-                            label.batch?.let { batch = it }
-                            label.packageDateDay?.let { packageDay = it }
-                            if (label.terpenes.isNotEmpty()) terpenes = label.terpenes
-                            for (tag in label.packageTags) {
-                                if (identifiers.none { it.code == tag }) identifiers = identifiers + IdentifierData(tag, "package_tag")
+            ProductScan.LABEL -> TextEngineGate(scan.scanner, stringResource(R.string.scan_label), close) {
+                CameraScreen(
+                    mode = CaptureMode.PHOTO,
+                    title = stringResource(R.string.scan_label),
+                    hint = stringResource(R.string.scan_label_hint),
+                    onClose = close,
+                    onPhoto = { photo ->
+                        camera = null
+                        reading = true
+                        scope.launch {
+                            val result = scan.scanner.read(photo)
+                            result.code?.let { addCode(it) }
+                            val text = result.text
+                            scanNote = if (text == null) {
+                                R.string.scan_no_text_engine
+                            } else {
+                                val label = parseLabel(text)
+                                label.thcMilli?.let { thc = formatMilli(it) }
+                                label.thcUnit?.let { thcUnit = it }
+                                label.cbdMilli?.let { cbd = formatMilli(it) }
+                                label.cbdUnit?.let { cbdUnit = it }
+                                label.batch?.let { batch = it }
+                                label.packageDateDay?.let { packageDay = it }
+                                if (label.terpenes.isNotEmpty()) terpenes = label.terpenes
+                                for (tag in label.packageTags) {
+                                    if (identifiers.none { it.code == tag }) identifiers = identifiers + IdentifierData(tag, "package_tag")
+                                }
+                                R.string.scan_label_filled
                             }
-                            R.string.scan_label_filled
+                            reading = false
                         }
-                        reading = false
-                    }
-                },
-            )
+                    },
+                )
+            }
         }
         return
     }

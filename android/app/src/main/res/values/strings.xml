@@ -29,6 +29,7 @@
     <string name="privacy_group_location">Location</string>
     <string name="privacy_group_notifications">Notifications</string>
     <string name="privacy_group_catalogs">Catalogs</string>
+    <string name="privacy_group_scanning">Scanning</string>
     <string name="privacy_group_keyboard_and_voice">Keyboard and voice</string>
     <string name="privacy_group_os_integration">OS integration</string>
     <string name="privacy_group_photos">Photos</string>
@@ -42,6 +43,11 @@
     <string name="coa_links_does">Lets you open the lab-results (COA) link from a label\'s QR code in your browser. Scanned links are saved with the product either way.</string>
     <string name="coa_links_leaves">When on, opening a link sends a request to the lab\'s or brand\'s website.</string>
     <string name="coa_links_who">That website and its host learn your IP address, when you looked, and which batch you bought, since the link usually names it. Your network provider can see which site you visited.</string>
+    <string name="google_text">Google text recognition</string>
+    <string name="google_text_does">Reads receipts and labels with Google\'s ML Kit, through Google Play services, instead of the open engine. It\'s usually more accurate on photographed receipts, and it still runs on this phone.</string>
+    <string name="google_text_leaves">Your photos and the text in them never leave the phone. Google Play services downloads and updates the recognition model, and Google\'s terms let it collect usage data, such as how often text recognition runs, never what you scanned. Terpoir itself has no internet access.</string>
+    <string name="google_text_who">Google, through Play services, learns that you use text recognition. ML Kit is closed source, so what it does can\'t be checked the way the open engine can be.</string>
+    <string name="google_text_undo">Turn it off here. Scans go back to the open engine, and Terpoir tells Play services it no longer needs the model, so Play services can remove it.</string>
     <string name="coa_links_undo">Turn it off here. Pages you already opened stay in your browser\'s history until you clear it.</string>
     <string name="show_nearby">Show nearby saved spots</string>
     <string name="show_nearby_does">When you open your journal, Terpoir checks your location once and shows a saved spot you\'re near, so you can log a session there.</string>
@@ -172,6 +178,13 @@
     <string name="scan_receipt_hint">Fit the whole receipt in the frame. It is read on your phone and discarded right away; only the lines you confirm are saved.</string>
     <string name="scan_take_photo">Take photo</string>
     <string name="scan_reading">Reading…</string>
+    <string name="ocr_module_title">Text recognition</string>
+    <string name="ocr_download_tesseract">Reading text needs Terpoir\'s open text recognition engine, a one-time download of a few megabytes from Google Play. It runs entirely on this phone: nothing you scan is sent anywhere.</string>
+    <string name="ocr_download">Download</string>
+    <string name="ocr_not_now">Not now</string>
+    <string name="ocr_retry">Try again</string>
+    <string name="ocr_downloading">Downloading…</string>
+    <string name="ocr_download_failed">The download didn\'t finish. Check that Google Play is available, then try again, or close this and enter the details by hand.</string>
     <string name="scan_no_text_engine">Text recognition couldn\'t start. Any codes were still read; enter the rest by hand.</string>
     <string name="scan_camera_denied">Scanning needs the camera. Terpoir uses it only while this screen is open and never saves photos to your gallery.</string>
     <string name="scan_camera_allow">Allow camera</string>

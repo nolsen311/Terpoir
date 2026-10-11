@@ -149,6 +149,7 @@ private val PrivacyGroup.title: Int
         PrivacyGroup.LOCATION -> R.string.privacy_group_location
         PrivacyGroup.NOTIFICATIONS -> R.string.privacy_group_notifications
         PrivacyGroup.CATALOGS -> R.string.privacy_group_catalogs
+        PrivacyGroup.SCANNING -> R.string.privacy_group_scanning
         PrivacyGroup.OS_INTEGRATION -> R.string.privacy_group_os_integration
         PrivacyGroup.KEYBOARD_AND_VOICE -> R.string.privacy_group_keyboard_and_voice
         PrivacyGroup.PHOTOS -> R.string.privacy_group_photos

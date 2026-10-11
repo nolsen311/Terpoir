@@ -49,6 +49,15 @@ class PrivacySettings(context: Context) {
         get() = prefs.getBoolean(KEY_SHOW_NEARBY, false)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_NEARBY, value).apply()
 
+    /**
+     * Google text recognition: scans are read by ML Kit through Google Play
+     * services instead of the open engine (Play build only). Off by default:
+     * a closed Google component, and Play services may send usage metrics.
+     */
+    var googleTextRecognition: Boolean
+        get() = prefs.getBoolean(KEY_GOOGLE_TEXT, false)
+        set(value) = prefs.edit().putBoolean(KEY_GOOGLE_TEXT, value).apply()
+
     /** Whether the voice first-use card has been shown and answered. */
     var voiceIntroSeen: Boolean
         get() = prefs.getBoolean(KEY_VOICE_INTRO_SEEN, false)
@@ -60,5 +69,6 @@ class PrivacySettings(context: Context) {
         const val KEY_VOICE_FIRST = "voice_first"
         const val KEY_SHOW_NEARBY = "show_nearby_spots"
         const val KEY_VOICE_INTRO_SEEN = "voice_intro_seen"
+        const val KEY_GOOGLE_TEXT = "google_text_recognition"
     }
 }
