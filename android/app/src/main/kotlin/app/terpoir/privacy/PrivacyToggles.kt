@@ -8,9 +8,16 @@ import android.content.Context
 import app.terpoir.Capability
 import app.terpoir.Distribution
 import app.terpoir.R
+import app.terpoir.alerts.SpotAlerts
+import app.terpoir.core.Journal
 
 /** Builds the Privacy Center with every toggle this build has. */
-fun buildPrivacyCenter(context: Context, settings: PrivacySettings): PrivacyCenter = PrivacyCenter(
+fun buildPrivacyCenter(
+    context: Context,
+    settings: PrivacySettings,
+    alerts: SpotAlerts,
+    journal: () -> Journal?,
+): PrivacyCenter = PrivacyCenter(
     listOfNotNull(
         // Applied to the window on the next resume, and at once by the
         // Privacy Center screen. Off only clears FLAG_SECURE.
@@ -46,6 +53,77 @@ fun buildPrivacyCenter(context: Context, settings: PrivacySettings): PrivacyCent
             isOn = { settings.showNearbySpots },
             onAction = { settings.showNearbySpots = true },
             offAction = { settings.showNearbySpots = false },
+        ),
+        // On registers geofences now if the journal is open (else at the
+        // next unlock) and once the permissions are granted, which the
+        // journal asks for. Off removes every geofence, the notification
+        // cache and any alert showing.
+        PrivacyToggle(
+            id = "notify_near_spots",
+            group = PrivacyGroup.LOCATION,
+            card = PrivacyCard(
+                title = R.string.notify_near,
+                whatItDoes = R.string.notify_near_does,
+                whatLeaves = R.string.notify_near_leaves,
+                whoCanSee = R.string.notify_near_who,
+                howToUndo = R.string.notify_near_undo,
+            ),
+            privateState = false,
+            isOn = { settings.notifyNearSpots },
+            onAction = {
+                settings.notifyNearSpots = true
+                alerts.refresh(journal())
+            },
+            offAction = {
+                settings.notifyNearSpots = false
+                alerts.clear()
+            },
+        ),
+        // The Named tier. On writes spot names to the notification cache
+        // (now if the journal is open, else at the next unlock); off drops
+        // them, unless the Rich tier still shows them.
+        PrivacyToggle(
+            id = "alert_names",
+            group = PrivacyGroup.NOTIFICATIONS,
+            card = PrivacyCard(
+                title = R.string.alert_names,
+                whatItDoes = R.string.alert_names_does,
+                whatLeaves = R.string.alert_names_leaves,
+                whoCanSee = R.string.alert_names_who,
+                howToUndo = R.string.alert_names_undo,
+            ),
+            privateState = false,
+            isOn = { settings.alertNames },
+            onAction = {
+                settings.alertNames = true
+                alerts.refresh(journal())
+            },
+            offAction = {
+                settings.alertNames = false
+                alerts.narrowCache()
+            },
+        ),
+        // The Rich tier: as above, with session details in the cache.
+        PrivacyToggle(
+            id = "alert_details",
+            group = PrivacyGroup.NOTIFICATIONS,
+            card = PrivacyCard(
+                title = R.string.alert_details,
+                whatItDoes = R.string.alert_details_does,
+                whatLeaves = R.string.alert_details_leaves,
+                whoCanSee = R.string.alert_details_who,
+                howToUndo = R.string.alert_details_undo,
+            ),
+            privateState = false,
+            isOn = { settings.alertDetails },
+            onAction = {
+                settings.alertDetails = true
+                alerts.refresh(journal())
+            },
+            offAction = {
+                settings.alertDetails = false
+                alerts.narrowCache()
+            },
         ),
         // Scanned links are always stored as identifiers; this only allows
         // handing one to the browser. Nothing to clean up when turned off.

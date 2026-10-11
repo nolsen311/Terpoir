@@ -7,6 +7,7 @@ package app.terpoir
 import android.app.Application
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import app.terpoir.alerts.SpotAlerts
 import app.terpoir.core.init as initCore
 import app.terpoir.onboarding.Onboarding
 import app.terpoir.privacy.PrivacyCenter
@@ -33,6 +34,10 @@ class TerpoirApplication : Application() {
     lateinit var privacySettings: PrivacySettings
         private set
 
+    /** "Notify me" geofences and alerts. */
+    lateinit var spotAlerts: SpotAlerts
+        private set
+
     /** Every privacy toggle, each with its on- and off-action. */
     lateinit var privacyCenter: PrivacyCenter
         private set
@@ -53,7 +58,10 @@ class TerpoirApplication : Application() {
         initCore()
         lockSettings = LockSettings(this)
         privacySettings = PrivacySettings(this)
-        privacyCenter = buildPrivacyCenter(this, privacySettings)
+        spotAlerts = SpotAlerts(this, privacySettings, Distribution.geofencer(this))
+        privacyCenter = buildPrivacyCenter(this, privacySettings, spotAlerts) {
+            (session.state as? JournalSession.State.Unlocked)?.journal
+        }
         session = JournalSession(JournalFiles(noBackupFilesDir))
         onboarding = Onboarding(this)
         // The process died after the journal was created but before its

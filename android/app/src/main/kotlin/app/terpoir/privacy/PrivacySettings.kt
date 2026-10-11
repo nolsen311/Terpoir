@@ -58,6 +58,31 @@ class PrivacySettings(context: Context) {
         get() = prefs.getBoolean(KEY_GOOGLE_TEXT, false)
         set(value) = prefs.edit().putBoolean(KEY_GOOGLE_TEXT, value).apply()
 
+    /**
+     * "Notify me": geofences around saved spots, with an alert when the
+     * phone stops at one. Off by default: it needs location "all the time",
+     * and the OS location service holds the spots' coordinates.
+     */
+    var notifyNearSpots: Boolean
+        get() = prefs.getBoolean(KEY_NOTIFY_NEAR, false)
+        set(value) = prefs.edit().putBoolean(KEY_NOTIFY_NEAR, value).apply()
+
+    /**
+     * Alerts name the spot (Named tier). Off by default: names are then kept
+     * in a small notification cache outside the encrypted journal.
+     */
+    var alertNames: Boolean
+        get() = prefs.getBoolean(KEY_ALERT_NAMES, false)
+        set(value) = prefs.edit().putBoolean(KEY_ALERT_NAMES, value).apply()
+
+    /**
+     * Alerts also show ratings, session count and last product (Rich tier).
+     * Off by default, for the same reason, with more in the cache.
+     */
+    var alertDetails: Boolean
+        get() = prefs.getBoolean(KEY_ALERT_DETAILS, false)
+        set(value) = prefs.edit().putBoolean(KEY_ALERT_DETAILS, value).apply()
+
     /** Whether the voice first-use card has been shown and answered. */
     var voiceIntroSeen: Boolean
         get() = prefs.getBoolean(KEY_VOICE_INTRO_SEEN, false)
@@ -70,5 +95,8 @@ class PrivacySettings(context: Context) {
         const val KEY_SHOW_NEARBY = "show_nearby_spots"
         const val KEY_VOICE_INTRO_SEEN = "voice_intro_seen"
         const val KEY_GOOGLE_TEXT = "google_text_recognition"
+        const val KEY_NOTIFY_NEAR = "notify_near_spots"
+        const val KEY_ALERT_NAMES = "alert_names"
+        const val KEY_ALERT_DETAILS = "alert_details"
     }
 }

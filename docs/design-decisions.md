@@ -102,7 +102,16 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - **"Show me"** is a Privacy Center toggle, off by default. With it on, opening the journal takes one fix and shows a banner for the nearest saved spot, with "Log a session here", which pre-attaches the spot. Without location permission it offers to ask. The fix is not kept. Off has nothing to clean up.
   - **Sessions** can be attached to a spot in the session editor.
   - Address lookup stays out (it would send coordinates to the OS geocoder); it remains a future opt-in.
-- **Geofence alerts while the journal is locked (decided 2026-10-11, for part 2):** every tier stays discreet until the journal is unlocked. Spot names live only in the encrypted journal, and no plaintext copy is kept for alerts. The alert text is cheeky but vague, along the lines of "Did you hit a spot?". It never names a spot, purpose or product. After the user taps and unlocks, the app shows which spot. The Named and Rich tiers apply only to content shown once the journal is open.
+- **Geofence alerts and notification tiers (decided 2026-10-11, revised the same day):** alerts are discreet by default ("Did you hit a spot?", never a spot, purpose or product). The maintainer chose full tiers: Named shows the spot's name, Rich adds the average rating, session count and last product. Both are opt-in, and both read a small **notification cache** outside the encrypted journal, as "Lock-state tradeoff" below describes. This replaces the earlier decision that every tier stays discreet until unlock. The lock screen always gets the discreet version (Android private visibility with a redacted public version).
+- **Android implementation, part 2 (decided): "Notify me".**
+  - **Toggle:** "Notify me at my spots" (Location, off by default). It needs precise location, location "all the time" and, on Android 13+, notifications. The journal asks for them one at a time, only after the toggle is on. Its off-action removes every geofence, deletes the notification cache and the quiet period, and clears a showing alert.
+  - **Geofences:** registered only while the journal is unlocked, because they need the spots' coordinates. That happens on every unlock and after edits, so after a reboot alerts resume when the journal is next opened. No boot receiver and no plaintext copy of coordinates outside the journal and the OS location service. The 90 spots with the most sessions are watched, with each spot's radius (at least 100 m). Geofence IDs are opaque ("s0", "s1", ...), never record IDs or names.
+    - **Play build:** `GeofencingClient`, alerting after a 3-minute stop (dwell), so driving past doesn't alert.
+    - **foss build, and Play without Play services:** `LocationManager` proximity alerts, which alert on entering.
+  - **What an alert shows** comes from the core (`Journal::spot_alerts`) at registration and is cached only as far as the tier allows. With no cache entry, the alert stays discreet. Tapping it opens the app; after unlock, the journal shows which saved spot is near, from a fresh fix, as "Show me" does.
+  - **Cooldown:** at most one alert every 4 hours, whichever spot. Only the end of the quiet period is stored, not which spot fired. Dismissed alerts leave nothing behind.
+  - **Tier toggles** (Notifications): "Spot names in alerts" (Named) and "Details in alerts" (Rich), both off by default. On rebuilds the cache now if the journal is open, else at the next unlock. Off narrows or deletes the cache, which works while locked.
+  - **Play Console:** location "all the time" on Google Play needs the background-location declaration and a demonstration video before release (maintainer task).
 
 ### Spots: purpose types, never relationships
 - Every saved location is a **Spot** with one or more purpose types describing what it is *for*, not whose it is:
@@ -127,7 +136,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 ## Notifications
 - Local notifications only; nothing via APNs or FCM.
 - Privacy tiers, default Discreet:
-  - **Discreet:** "You're near a saved spot."
+  - **Discreet:** "Did you hit a spot?"
   - **Named:** includes spot name.
   - **Rich:** ratings, last product, notes.
 - Rich opt-in discloses where content lands: lock screen, notification history, notification-listener apps, wearables, OS summarization.
@@ -523,6 +532,8 @@ Each journal entry records one consumption session, not a product review. Produc
 - **Follow-up check-ins.** Off-action: cancel pending check-ins.
 - **Purchase prompts.** Off-action: remove purchase-prompt geofences; clear pending state.
 - **Open lab-results (COA) links.** Off-action: stop opening them; nothing stored to clean up.
+- **Notify me at my spots.** Off-action: remove every geofence; delete the notification cache and the quiet period; clear a showing alert.
+- **Spot names in alerts / Details in alerts** (notification tiers). Off-action: narrow the notification cache to what the remaining tier shows, or delete it.
 - **Google text recognition** (Play only). Off-action: scans go back to the open engine; release ML Kit's model so Play services can remove it.
 
 ## Photos

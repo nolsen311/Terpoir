@@ -355,6 +355,16 @@ fn full_lifecycle() {
         journal.spots_near(900_000_001, 0, 1).err(),
         Some(CoreError::InvalidInput)
     );
+    // "Notify me": the spot with what an alert may show, from the one
+    // session attached to it.
+    let alerts = journal.spot_alerts().unwrap();
+    assert_eq!(alerts.len(), 1);
+    let alert = &alerts[0];
+    assert!(alert.lat_e7 == 377_000_000 && alert.lon_e7 == -1_224_000_000 && alert.radius_m == 150);
+    assert_eq!(alert.name, "Spot 1");
+    assert_eq!(alert.sessions, 1);
+    assert_eq!(alert.average_rating_tenths, Some(40));
+    assert_eq!(alert.last_product.as_deref(), Some("Gummies"));
 
     // Type mismatch and bad input.
     assert_eq!(

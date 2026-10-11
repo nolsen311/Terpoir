@@ -62,6 +62,27 @@ pub struct NearbySpot {
     pub distance_m: u32,
 }
 
+/// A spot with coordinates, to watch for "Notify me", and what an alert
+/// about it may show at the user's notification tier.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct SpotAlert {
+    /// Latitude in units of 1e-7 degrees.
+    pub lat_e7: i32,
+    /// Longitude in units of 1e-7 degrees.
+    pub lon_e7: i32,
+    /// Geofence radius in metres (the spot's own, at least the minimum).
+    pub radius_m: u32,
+    /// The spot's name (Named and Rich tiers).
+    pub name: String,
+    /// Sessions logged here (Rich tier).
+    pub sessions: u32,
+    /// Average rating of those sessions, in tenths of a star, if any were
+    /// rated (Rich tier).
+    pub average_rating_tenths: Option<u32>,
+    /// The product of the latest session here, if recorded (Rich tier).
+    pub last_product: Option<String>,
+}
+
 /// Record types, for listing.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, uniffi::Enum)]
 pub enum RecordType {
@@ -522,6 +543,80 @@ impl Journal {
                     distance_m: d.round() as u32,
                 })
                 .collect())
+        })
+    }
+
+    /// Every spot with coordinates, for "Notify me" geofences, with what
+    /// an alert about it may show. Computed inside the core over the
+    /// encrypted journal; the caller keeps only what its tier allows.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn spot_alerts(&self) -> Result<Vec<SpotAlert>> {
+        self.with(|u| {
+            let sessions: std::collections::HashSet<RecordId> = u
+                .store
+                .ids_of_kind(RecordKind::Session)?
+                .into_iter()
+                .collect();
+            let mut alerts = Vec::new();
+            for id in u.store.ids_of_kind(RecordKind::Spot)? {
+                let Some(spot) = u.store.get_record::<Spot>(&u.master, &id)? else {
+                    continue;
+                };
+                let Some(at) = spot.location else {
+                    continue;
+                };
+                let mut count = 0u32;
+                let mut ratings = Vec::new();
+                let mut latest: Option<Session> = None;
+                for rid in u.store.referencing(&id)? {
+                    if !sessions.contains(&rid) {
+                        continue;
+                    }
+                    let Some(session) = u.store.get_record::<Session>(&u.master, &rid)? else {
+                        continue;
+                    };
+                    if session.spot != Some(id) {
+                        continue;
+                    }
+                    count += 1;
+                    ratings.extend(session.rating.map(u32::from));
+                    if latest
+                        .as_ref()
+                        .is_none_or(|l| session.when.unix_ms > l.when.unix_ms)
+                    {
+                        latest = Some(session);
+                    }
+                }
+                let last_product = match latest
+                    .as_ref()
+                    .and_then(|s| s.lines.values().find_map(|line| line.product))
+                {
+                    Some(product) => u
+                        .store
+                        .get_record::<Product>(&u.master, &product)?
+                        .map(|p| p.name),
+                    None => None,
+                };
+                // At most a few thousand sessions per spot, far below u32::MAX.
+                #[allow(clippy::cast_possible_truncation)]
+                let average_rating_tenths = (!ratings.is_empty()).then(|| {
+                    let n = ratings.len() as u32;
+                    (ratings.iter().sum::<u32>() * 10 + n / 2) / n
+                });
+                alerts.push(SpotAlert {
+                    lat_e7: at.lat_e7,
+                    lon_e7: at.lon_e7,
+                    radius_m: spot.effective_radius_m(),
+                    name: spot.name,
+                    sessions: count,
+                    average_rating_tenths,
+                    last_product,
+                });
+            }
+            Ok(alerts)
         })
     }
 
