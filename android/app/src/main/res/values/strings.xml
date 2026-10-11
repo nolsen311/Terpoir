@@ -4,4 +4,5 @@
 <resources>
     <string name="app_name" translatable="false">Terpoir</string>
     <string name="placeholder">Your journal will live here.</string>
+    <string name="core_version">Core %1$s</string>
 </resources>

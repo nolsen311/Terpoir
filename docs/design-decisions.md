@@ -253,6 +253,8 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Backups:** `allowBackup=false`, plus full-backup and data-extraction rules that exclude every domain from cloud backup and device-to-device transfer.
 - **Dependency verification:** `gradle/verification-metadata.xml` pins a SHA-256 for every artifact; regenerate it with `./gradlew --write-verification-metadata sha256 assemble check` when dependencies change (Dependabot does not).
 - **Release builds** are minified with R8 and never signed in the build; the dependency-info blob that AGP normally embeds for Google is disabled.
+- **Rust core in the app (decided):** Gradle cross-compiles `core/` (`terpoir-ffi`) with cargo-ndk for `arm64-v8a` and `x86_64` only (64-bit; no 32-bit devices), and generates the Kotlin bindings from an unstripped host build with the core's own `uniffi-bindgen` (release libraries are stripped, which removes UniFFI's interface metadata). Nothing generated is committed. The bindings call the library through JNA (Apache-2.0). The native libraries are 16 KB page-aligned and link only `libc`, `libm` and `libdl`: no `liblog`, so the core cannot write to logcat.
+- **On-device tests:** CI runs the instrumented tests on an Android 11 (minSdk) emulator image without Google services, through plain `adb`/`am instrument` so no extra test-runner artifacts are fetched at run time.
 
 ### Signing keys
 - **Play App Signing:** Google holds the key that signs Play builds. Disclosed; F-Droid and GitHub builds are signed with the maintainer's own key, and both certificate fingerprints are published on terpoir.app and in the README.

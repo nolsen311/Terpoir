@@ -11,6 +11,9 @@ kotlin = "2.4.20"
 activity-compose = "1.13.0"
 compose-bom = "2026.09.00"
 junit = "4.13.2"
+jna = "5.19.1"
+androidx-test-runner = "1.7.0"
+androidx-test-ext-junit = "1.3.0"
 
 [libraries]
 # Hosts the Compose UI in an Activity. Apache-2.0; no network, no telemetry.
@@ -19,6 +22,12 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
 # Material 3 components. Apache-2.0; no network, no telemetry.
 androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
+# Lets the generated UniFFI bindings call the Rust core (libterpoir_ffi.so).
+# Apache-2.0 (dual-licensed with LGPL-2.1); no network, no telemetry.
+jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+# Instrumented tests only, never shipped. Apache-2.0.
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidx-test-runner" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-test-ext-junit" }
 # Unit tests only. EPL-1.0, never shipped.
 junit = { module = "junit:junit", version.ref = "junit" }
 

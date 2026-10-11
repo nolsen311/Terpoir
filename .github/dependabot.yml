@@ -7,7 +7,7 @@
 # Gradle updates also change android/gradle/verification-metadata.xml, which
 # Dependabot does not regenerate: run
 #   GRADLE_USER_HOME=$(mktemp -d) ./gradlew --write-verification-metadata sha256 \
-#     assemble check lintFossRelease lintPlayRelease
+#     assemble check lintFossRelease lintPlayRelease assembleFossDebugAndroidTest
 # on its branch before merging (the Android check fails until then).
 
 version: 2
