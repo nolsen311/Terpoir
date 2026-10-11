@@ -82,6 +82,12 @@ android {
         disable += "UseKtx"
     }
 
+    androidResources {
+        // The OCR model is read through a file descriptor (and copied once),
+        // which needs it stored uncompressed.
+        noCompress += "traineddata"
+    }
+
     dependenciesInfo {
         // No signing-block blob of dependency metadata (Google-encrypted,
         // unverifiable by F-Droid); the SBOM covers this openly.
@@ -95,6 +101,12 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.lifecycle.process)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.compose)
+    implementation(libs.zxing.core)
+    implementation(libs.tesseract4android)
 
     implementation(libs.jna) {
         artifact { type = "aar" }
@@ -310,6 +322,9 @@ val allowedPermissions = setOf(
     // AndroidX core: a signature permission private to this app that
     // protects its own non-exported dynamic receivers.
     "app.terpoir.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
+    // In-app camera for label, receipt and code scans. Runtime permission,
+    // asked only when the user first opens a scanner.
+    "android.permission.CAMERA",
 )
 
 androidComponents {

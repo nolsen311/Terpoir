@@ -67,6 +67,15 @@ the SIL Open Font License 1.1, not the GPL. Their license texts ship in the
 app (`android/app/src/main/assets/licenses/`), and their sources are in
 [android/fonts/README.md](android/fonts/README.md).
 
+## Bundled text recognition
+
+The Android app bundles Tesseract4Android, with Tesseract (Apache-2.0),
+Leptonica, libpng and libjpeg (the Independent JPEG Group's software), plus
+Tesseract's English model (Apache-2.0). None is under the GPL. Their
+license texts ship in the app (`android/app/src/main/assets/licenses/`),
+and their sources are in [android/ocr/README.md](android/ocr/README.md).
+This software is based in part on the work of the Independent JPEG Group.
+
 ## Trademarks
 
 The GPL grants rights to the code, not to the Terpoir name or logo. GPLv3

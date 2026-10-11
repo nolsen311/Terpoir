@@ -64,6 +64,8 @@ private sealed interface Screen {
     data class Strain(val id: String?) : Screen
 
     data class Brand(val id: String?) : Screen
+
+    data object Receipt : Screen
 }
 
 private enum class Tab { JOURNAL, PRODUCTS, PRIVACY }
@@ -78,6 +80,7 @@ private enum class Catalog { PRODUCTS, STRAINS, BRANDS }
 fun JournalHome(
     repo: JournalRepository,
     vocab: Vocabulary,
+    scan: ScanServices,
     onLock: () -> Unit,
     privacyCenter: @Composable (onClose: () -> Unit) -> Unit,
 ) {
@@ -92,7 +95,15 @@ fun JournalHome(
 
     when (val screen = stack.last()) {
         is Screen.Session -> SessionEditor(repo, vocab, screen.id, pop)
-        is Screen.Product -> ProductEditor(repo, vocab, screen.id, pop)
+        is Screen.Product -> ProductEditor(
+            repo,
+            vocab,
+            scan,
+            screen.id,
+            onOpenProduct = { other -> stack[stack.lastIndex] = Screen.Product(other) },
+            onDone = pop,
+        )
+        Screen.Receipt -> ReceiptScreen(repo, scan, pop)
         is Screen.Strain -> StrainEditor(repo, vocab, screen.id, pop)
         is Screen.Brand -> BrandEditor(repo, screen.id, pop)
         Screen.Home -> Scaffold(
@@ -268,6 +279,7 @@ private fun CatalogLists(
             }
         }
         item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             androidx.compose.material3.OutlinedButton(onClick = {
                 onOpen(
                     when (catalog) {
@@ -286,6 +298,12 @@ private fun CatalogLists(
                         },
                     ),
                 )
+            }
+            if (catalog == Catalog.PRODUCTS) {
+                androidx.compose.material3.OutlinedButton(onClick = { onOpen(Screen.Receipt) }) {
+                    Text(stringResource(R.string.scan_receipt))
+                }
+            }
             }
         }
         when (catalog) {

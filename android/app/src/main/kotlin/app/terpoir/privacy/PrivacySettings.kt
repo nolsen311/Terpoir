@@ -22,7 +22,17 @@ class PrivacySettings(context: Context) {
         get() = prefs.getBoolean(KEY_SCREEN_PROTECTION, true)
         set(value) = prefs.edit().putBoolean(KEY_SCREEN_PROTECTION, value).apply()
 
+    /**
+     * Opening a scanned lab-results (COA) link in the browser. Off by
+     * default: the lab's site learns the user's IP address and which batch
+     * they bought.
+     */
+    var coaLinks: Boolean
+        get() = prefs.getBoolean(KEY_COA_LINKS, false)
+        set(value) = prefs.edit().putBoolean(KEY_COA_LINKS, value).apply()
+
     private companion object {
         const val KEY_SCREEN_PROTECTION = "screen_protection"
+        const val KEY_COA_LINKS = "coa_links"
     }
 }

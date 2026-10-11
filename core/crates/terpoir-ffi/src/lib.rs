@@ -31,10 +31,11 @@ mod error;
 mod journal;
 mod keys;
 mod records;
+mod scan;
 mod vocabulary;
 
 pub use error::{CoreError, Result};
-pub use journal::{ImportResult, Journal, RecordType, SyncBlob};
+pub use journal::{ImportResult, Journal, ProductMatch, RecordType, SyncBlob};
 pub use keys::{
     NewKeys, PassphraseWrapped, RotatedKeys, check_recovery_key, create_keys,
     master_key_from_passphrase, master_key_from_recovery, wrap_master_key_with_passphrase,
@@ -43,6 +44,10 @@ pub use records::{
     BrandData, IdentifierData, LocalTimeData, ProductData, ProductLineData, PurchaseData,
     PurchaseLineData, SessionData, SnippetData, SpotData, StrainData, SymptomData, TagData,
     TagIntensity, TagProvenance, TagRefData,
+};
+pub use scan::{
+    LabelScanData, ReceiptItemData, ReceiptScan, ScannedCodeData, classify_code, parse_label,
+    parse_receipt,
 };
 pub use vocabulary::{Vocabulary, default_method_for_form, dose_units_for_method, vocabulary};
 

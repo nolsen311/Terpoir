@@ -26,5 +26,22 @@ fun buildPrivacyCenter(settings: PrivacySettings): PrivacyCenter = PrivacyCenter
             onAction = { settings.screenProtection = true },
             offAction = { settings.screenProtection = false },
         ),
+        // Scanned links are always stored as identifiers; this only allows
+        // handing one to the browser. Nothing to clean up when turned off.
+        PrivacyToggle(
+            id = "coa_links",
+            group = PrivacyGroup.CATALOGS,
+            card = PrivacyCard(
+                title = R.string.coa_links,
+                whatItDoes = R.string.coa_links_does,
+                whatLeaves = R.string.coa_links_leaves,
+                whoCanSee = R.string.coa_links_who,
+                howToUndo = R.string.coa_links_undo,
+            ),
+            privateState = false,
+            isOn = { settings.coaLinks },
+            onAction = { settings.coaLinks = true },
+            offAction = { settings.coaLinks = false },
+        ),
     ),
 )
