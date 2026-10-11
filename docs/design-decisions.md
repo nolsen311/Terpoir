@@ -135,6 +135,17 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Primitives (vetted Rust crates only):** XChaCha20-Poly1305 for records, files, and key wrapping; Argon2id for passphrase-derived keys; HKDF for subkeys.
 - **Lock-state tradeoff:** strongest OS file protection makes data unreadable while locked. Discreet notifications and check-ins need no journal data. **Named and Rich notifications use a small separate notification cache** (spot names, summary lines) readable after first unlock. The Rich/Named disclosure cards mention it; their off-action deletes it.
 
+## Logs and crash reports (decided)
+- **Release builds log nothing.** Logging is compiled out, not silenced:
+  - Rust: release max level off; custom panic handler reports only the code location, never panic message contents.
+  - Android: R8 strips logging calls.
+  - iOS: logging compiled out of release builds.
+  - CI lints fail the build on stray debug prints (e.g. `dbg!`, `println!`).
+- **Debug builds follow the no-content rule:** sensitive values use wrapper types that print as `<redacted>`.
+- **No crash-reporting SDKs and no analytics, ever.**
+- **Disclosure:** Apple and Google collect OS-level crash reports (stack traces, device info, no journal data) when the user has opted in to share diagnostics with developers in device settings. The app cannot disable this; the privacy policy says so.
+- **Opt-in diagnostics mode** (Privacy Center): records a local, encrypted, redacted log; auto-off after 24 hours. Sharing requires the user to review the full text, then send it via the share sheet. Nothing is sent automatically. Off-action deletes all diagnostic logs.
+
 ## Data model
 
 ### Core idea: an entry is a session
@@ -283,14 +294,14 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Keyboards: user's keyboard by default with zero-cost Android protections; opt-in iOS protections; voice-first FAB with on-device recognition only.
 - Screen capture: protection on by default (FLAG_SECURE / capture blur); Android accessibility-sensitive marking always on; screen readers unaffected.
 - Storage: per-record encryption inside SQLCipher; minimal indexes; no on-disk free-text index; secure delete; separate notification cache for Named/Rich tiers.
+- Logs: none in release; redacted types in debug; no crash SDKs or analytics; opt-in reviewed diagnostics.
 
 ## Open decisions
-1. Logs and crash reports (none in release, or opt-in with review before sending).
-2. Sharing and export (metadata stripping, "leaves our protection" warning).
-3. Memory hygiene (key zeroing, purge on background, re-auth timeout).
-4. Age gating (self-attestation vs. app store requirements).
-5. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
-6. Builds and releases (reproducible builds, signing-key protection, binary transparency).
-7. Monetization (earning without touching user data).
-8. App store policy (verify current Google Play and Apple cannabis-app rules).
-9. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
+1. Sharing and export (metadata stripping, "leaves our protection" warning).
+2. Memory hygiene (key zeroing, purge on background, re-auth timeout).
+3. Age gating (self-attestation vs. app store requirements).
+4. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
+5. Builds and releases (reproducible builds, signing-key protection, binary transparency).
+6. Monetization (earning without touching user data).
+7. App store policy (verify current Google Play and Apple cannabis-app rules).
+8. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
