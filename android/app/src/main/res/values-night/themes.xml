@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception -->
+<!-- Copyright (C) 2026 The Terpoir Authors -->
+<!-- Dark-mode window behind the Compose UI (see values/themes.xml). -->
+<resources>
+    <style name="Theme.Terpoir" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/terroir_surface</item>
+        <item name="android:colorBackground">@color/terroir_surface</item>
+    </style>
+
+    <color name="terroir_surface">#141A15</color>
+</resources>
