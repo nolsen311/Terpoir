@@ -9,6 +9,7 @@ do and `docs/roadmap.md` for build order.
 |---|---|
 | `terpoir-crypto` | AEAD, key wrapping, Argon2id, HKDF, record IDs, recovery key, streaming file encryption |
 | `terpoir-model` | Record types, stamped field documents, serialization, schema migrations |
+| `terpoir-store` | SQLCipher store with per-record encryption, minimal index, encrypted files, crypto-erasure |
 
 ## Checks
 
@@ -23,7 +24,9 @@ cargo deny --locked check
 cargo vet --locked
 ```
 
-The toolchain is pinned in `rust-toolchain.toml`.
+The toolchain is pinned in `rust-toolchain.toml`. Building `terpoir-store`
+compiles SQLCipher and OpenSSL from source, which needs a C compiler, `perl`
+and `make`.
 
 ## Adding or updating a dependency
 

@@ -142,6 +142,13 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Minimal on-disk indexes** (inside SQLCipher only): record IDs, record type, references between records, dates, confirmed tag IDs. **Free text is never indexed on disk**; search and insights build working indexes in memory after unlock.
 - **Deletion hygiene:** `PRAGMA secure_delete=ON`; write-ahead log checkpointed and truncated regularly; periodic VACUUM.
 - **Photos and voice clips:** separate encrypted files using streaming encryption under the owning session's key; erased when that key is destroyed.
+- **Implementation (decided, `core/crates/terpoir-store`):**
+  - SQLCipher via `rusqlite` with SQLCipher and OpenSSL built from source (no system crypto library needed on Android or iOS). Raw 256-bit database key (no SQLCipher KDF); `cipher_memory_security` on so SQLCipher wipes freed memory; WAL mode, `secure_delete`, in-memory temp store.
+  - SQLCipher's own logging is compiled out (`SQLCIPHER_OMIT_LOG`, set in `core/.cargo/config.toml`); it would otherwise write to logcat or the Apple console.
+  - Tables: records (ID, kind, wrapped record key, ciphertext), and index tables for references, local day, confirmed tag keys and file ownership. The sealed record is bound to its ID and kind, so rows cannot be swapped.
+  - A record's key is created on first save and kept for its lifetime (its files' keys derive from it). Sync imports sealed records unchanged after verifying they decrypt and match their ID and kind.
+  - Deleting a record removes its wrapped key, ciphertext, index rows and files, then checkpoints and truncates the WAL. Master-key rotation re-wraps every record key in one transaction.
+  - The store never holds the master key; it is passed per call, so locking is dropping the master key and closing the store.
 - **Primitives (vetted Rust crates only):** XChaCha20-Poly1305 for records, files, and key wrapping; Argon2id for passphrase-derived keys; HKDF for subkeys.
 - **Lock-state tradeoff:** strongest OS file protection makes data unreadable while locked. Discreet notifications and check-ins need no journal data. **Named and Rich notifications use a small separate notification cache** (spot names, summary lines) readable after first unlock. The Rich/Named disclosure cards mention it; their off-action deletes it.
 
