@@ -11,6 +11,8 @@ do and `docs/roadmap.md` for build order.
 | `terpoir-model` | Record types, stamped field documents, serialization, schema migrations |
 | `terpoir-store` | SQLCipher store with per-record encryption, minimal index, encrypted files, crypto-erasure |
 | `terpoir-sync` | Hybrid logical clock, per-field merge, deletion markers, padded encrypted sync blobs |
+| `terpoir-ffi` | The API the apps call, exported with UniFFI (Kotlin first) |
+| `tools/uniffi-bindgen` | Build-time binding generator (never shipped) |
 
 ## Checks
 
@@ -28,6 +30,17 @@ cargo vet --locked
 The toolchain is pinned in `rust-toolchain.toml`. Building `terpoir-store`
 compiles SQLCipher and OpenSSL from source, which needs a C compiler, `perl`
 and `make`.
+
+## Kotlin bindings
+
+```sh
+cargo build -p terpoir-ffi
+cargo run -p uniffi-bindgen -- generate --library target/debug/libterpoir_ffi.so \
+    --language kotlin --out-dir target/bindings/kotlin
+```
+
+Bindings are generated at build time, never committed. CI compiles them with
+`crates/terpoir-ffi/tests/kotlin/Smoke.kt` and runs it on the JVM.
 
 ## Adding or updating a dependency
 
