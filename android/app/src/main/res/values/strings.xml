@@ -4,4 +4,15 @@
 <resources>
     <string name="app_name" translatable="false">Terpoir</string>
     <string name="placeholder">Your journal will live here.</string>
+    <string name="core_version">Core %1$s</string>
+    <string name="setup_explainer">Your journal is encrypted on this device and unlocks with your fingerprint, face or screen lock.</string>
+    <string name="setup">Create journal</string>
+    <string name="setup_prompt">Protect your journal</string>
+    <string name="locked">Your journal is locked.</string>
+    <string name="unlock">Unlock</string>
+    <string name="unlock_prompt">Unlock your journal</string>
+    <string name="lock_now">Lock now</string>
+    <string name="error_no_lock_screen">Set up a screen lock on this device first. Terpoir uses it to protect your journal.</string>
+    <string name="error_keystore">The device\'s secure key storage did not respond. Try again.</string>
+    <string name="error_key_invalidated">Your fingerprints or face changed, so this device\'s key no longer works. Unlock with your recovery key.</string>
 </resources>

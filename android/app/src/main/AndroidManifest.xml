@@ -3,15 +3,20 @@
 <!-- Copyright (C) 2026 The Terpoir Authors -->
 <!-- See LICENSING.md for the additional permission under GPLv3 section 7. -->
 <!--
-  No permissions, including INTERNET: the app does not touch the network
-  until a feature that needs it is added behind its own toggle. Every
-  requested permission must be on the allowlist in app/build.gradle.kts.
+  No INTERNET permission: the app does not touch the network until a
+  feature that needs it is added behind its own toggle. Every requested
+  permission must be on the allowlist in app/build.gradle.kts.
   Backups and device-to-device transfers carry nothing (allowBackup for
   Android 11 and below, dataExtractionRules for 12 and up).
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Normal (install-time) permission for the system BiometricPrompt,
+         which also covers the device-credential fallback. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
     <application
+        android:name=".TerpoirApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"

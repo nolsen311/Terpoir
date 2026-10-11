@@ -66,7 +66,7 @@ without it.
 - [x] Kotlin + Jetpack Compose app; `play` and `foss` build flavors (FOSS:
       no Play services, AOSP location, no Gemini Nano, no Play age signals,
       no Play Billing).
-- [ ] Keystore (StrongBox where available) wrapping key; crypto-bound
+- [x] Keystore (StrongBox where available) wrapping key; crypto-bound
       BiometricPrompt unlock (biometric or device passcode); auto-lock with
       1-minute default; lock on device lock.
 - [ ] Backup exclusion; FLAG_SECURE screen protection (default on);

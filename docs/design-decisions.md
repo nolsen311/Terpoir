@@ -212,6 +212,12 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Biometric unlock (crypto-bound):** the master-key wrapping key lives in Android Keystore / iOS Keychain and is usable only after OS-verified authentication, so a patched app cannot skip the prompt.
   - Default: **biometric or device passcode** (strong biometrics on Android; Face ID / Touch ID on iOS), which survives new biometric enrollments.
   - Optional strict mode: key bound to the currently enrolled biometric set; enrolling a new face or fingerprint invalidates it (re-unlock with passcode or recovery key).
+- **Android implementation (decided):**
+  - The wrapping key is an AES-256-GCM Android Keystore key, StrongBox-backed where the device has StrongBox (falls back to the TEE otherwise). It requires user authentication **on every use** (`setUserAuthenticationParameters(0, AUTH_BIOMETRIC_STRONG | AUTH_DEVICE_CREDENTIAL)`; strict mode: `AUTH_BIOMETRIC_STRONG` only and invalidated by new enrollments) and works only while the device is unlocked (`setUnlockedDeviceRequired`). Unwrapping happens through the system BiometricPrompt with a `CryptoObject`, so the OS, not the app, gates the key.
+  - The platform BiometricPrompt is used directly (Android 11+ has everything needed), so there is no androidx.biometric dependency; the app holds the normal `USE_BIOMETRIC` permission.
+  - The unwrapped master key goes straight into the core (`Journal.open`) and the Kotlin array is wiped; Kotlin never keeps it. Wrapped keys live in no-backup app storage.
+  - Auto-lock: leaving the app hides journal content at once; the master key is wiped after the timeout (default 1 minute) by a timer, and the elapsed time is checked again on return because Android may freeze or kill a backgrounded app before the timer fires. Screen-off locks immediately, and returning to a locked device locks too.
+  - Known limit: while a backgrounded process is frozen, the master key stays in its memory until the process resumes or is killed; device lock and screen-off are the reliable triggers.
 
 ## Age gating (decided)
 - **Store rating at the top tier:** 18+ on the App Store, Mature on Google Play. Parental controls block installs on supervised devices.
@@ -253,6 +259,8 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Backups:** `allowBackup=false`, plus full-backup and data-extraction rules that exclude every domain from cloud backup and device-to-device transfer.
 - **Dependency verification:** `gradle/verification-metadata.xml` pins a SHA-256 for every artifact; regenerate it with `./gradlew --write-verification-metadata sha256 assemble check` when dependencies change (Dependabot does not).
 - **Release builds** are minified with R8 and never signed in the build; the dependency-info blob that AGP normally embeds for Google is disabled.
+- **Rust core in the app (decided):** Gradle cross-compiles `core/` (`terpoir-ffi`) with cargo-ndk for `arm64-v8a` and `x86_64` only (64-bit; no 32-bit devices), and generates the Kotlin bindings from an unstripped host build with the core's own `uniffi-bindgen` (release libraries are stripped, which removes UniFFI's interface metadata). Nothing generated is committed. The bindings call the library through JNA (Apache-2.0). The native libraries are 16 KB page-aligned and link only `libc`, `libm` and `libdl`: no `liblog`, so the core cannot write to logcat.
+- **On-device tests:** CI runs the instrumented tests on an Android 11 (minSdk) emulator image without Google services, through plain `adb`/`am instrument` so no extra test-runner artifacts are fetched at run time.
 
 ### Signing keys
 - **Play App Signing:** Google holds the key that signs Play builds. Disclosed; F-Droid and GitHub builds are signed with the maintainer's own key, and both certificate fingerprints are published on terpoir.app and in the README.

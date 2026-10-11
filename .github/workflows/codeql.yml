@@ -70,6 +70,10 @@ jobs:
           build-mode: ${{ matrix.build-mode }}
           queries: security-extended
 
+      - name: Set up Rust core toolchain
+        if: matrix.build-mode == 'manual'
+        run: .github/scripts/setup-android-core.sh
+
       - name: Build Android app
         if: matrix.build-mode == 'manual'
         working-directory: android

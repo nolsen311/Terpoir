@@ -5,29 +5,113 @@
 package app.terpoir
 
 import android.os.Bundle
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import app.terpoir.core.coreVersion
+import app.terpoir.security.UserAuthentication
+import app.terpoir.session.JournalSession
+import javax.crypto.Cipher
 
 /** The app's only activity. UI only: data, crypto and sync live in the Rust core. */
 class MainActivity : ComponentActivity() {
+    private val app get() = application as TerpoirApplication
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val core = coreVersion()
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(stringResource(R.string.placeholder))
-                    }
+                    Screen(app.session, core)
                 }
             }
         }
+    }
+
+    @Composable
+    private fun Screen(session: JournalSession, core: String) {
+        var message by remember { mutableStateOf<Int?>(null) }
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            when (val state = session.state) {
+                JournalSession.State.NoJournal -> {
+                    Text(stringResource(R.string.setup_explainer))
+                    Button(onClick = { message = createJournal() }) { Text(stringResource(R.string.setup)) }
+                }
+                JournalSession.State.Locked -> {
+                    Text(stringResource(R.string.locked))
+                    Button(onClick = { message = unlock() }) { Text(stringResource(R.string.unlock)) }
+                }
+                is JournalSession.State.Unlocked -> {
+                    // Journal content is drawn only while the app is in the foreground.
+                    if (session.contentVisible) {
+                        Text(stringResource(R.string.placeholder))
+                        Button(onClick = { session.lock() }) { Text(stringResource(R.string.lock_now)) }
+                    }
+                }
+            }
+            message?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
+            Text(stringResource(R.string.core_version, core), style = MaterialTheme.typography.bodySmall)
+        }
+    }
+
+    /** Starts journal creation; returns an error message to show, if any. */
+    private fun createJournal(): Int? {
+        val strict = app.lockSettings.strictBiometrics
+        if (!UserAuthentication.isAvailable(this, strict)) return R.string.error_no_lock_screen
+        val cipher = try {
+            app.session.vault.createWrappingKey(strict)
+            app.session.vault.encryptCipher()
+        } catch (_: Exception) {
+            return R.string.error_keystore
+        }
+        authenticate(cipher, getString(R.string.setup_prompt)) { app.session.create(it) }
+        return null
+    }
+
+    /** Starts unlocking; returns an error message to show, if any. */
+    private fun unlock(): Int? {
+        val cipher = try {
+            app.session.vault.decryptCipher()
+        } catch (_: KeyPermanentlyInvalidatedException) {
+            return R.string.error_key_invalidated
+        } catch (_: Exception) {
+            return R.string.error_keystore
+        }
+        authenticate(cipher, getString(R.string.unlock_prompt)) { app.session.unlock(it) }
+        return null
+    }
+
+    private fun authenticate(cipher: Cipher, title: String, then: (Cipher) -> Unit) {
+        UserAuthentication.authenticate(
+            activity = this,
+            cipher = cipher,
+            title = title,
+            cancel = getString(android.R.string.cancel),
+            strict = app.lockSettings.strictBiometrics,
+            onSuccess = then,
+            onFailure = {},
+        )
     }
 }

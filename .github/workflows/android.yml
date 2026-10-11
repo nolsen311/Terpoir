@@ -7,7 +7,11 @@
 #   - verifyFossDependencies: no proprietary Google libraries in FOSS.
 #   - verify<Variant>Permissions: no permission outside the allowlist.
 # Every downloaded artifact is checked against
-# android/gradle/verification-metadata.xml.
+# android/gradle/verification-metadata.xml. The build compiles the Rust core
+# (cargo-ndk) and generates its Kotlin bindings.
+#
+# The instrumented job runs the on-device tests on an Android 11 (minSdk)
+# emulator, with no Google services.
 
 name: Android
 
@@ -41,7 +45,79 @@ jobs:
             | grep -qx "$actual"
           echo "gradle-wrapper.jar matches a published Gradle release ($actual)"
 
+      - name: Set up Rust core toolchain
+        working-directory: .
+        run: .github/scripts/setup-android-core.sh
+
       - name: Build, test, lint and verify
         run: |
           export JAVA_HOME="$JAVA_HOME_21_X64"
           ./gradlew --no-daemon --no-build-cache assemble check lintFossRelease lintPlayRelease
+
+  instrumented:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SYSTEM_IMAGE: "system-images;android-30;default;x86_64"
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Enable KVM
+        working-directory: .
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Set up Rust core toolchain
+        working-directory: .
+        run: .github/scripts/setup-android-core.sh
+
+      - name: Build app and test APKs
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          ./gradlew --no-daemon --no-build-cache assembleFossDebug assembleFossDebugAndroidTest
+
+      - name: Start emulator
+        run: |
+          set -euo pipefail
+          sdk="$ANDROID_HOME/cmdline-tools/latest/bin"
+          # avdmanager and the emulator disagree on the default AVD
+          # directory, so pin it for both.
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          { yes || true; } | "$sdk/sdkmanager" --licenses >/dev/null
+          "$sdk/sdkmanager" emulator platform-tools "$SYSTEM_IMAGE" >/dev/null
+          echo no | "$sdk/avdmanager" create avd -n ci -k "$SYSTEM_IMAGE"
+          nohup "$ANDROID_HOME/emulator/emulator" -avd ci -no-window -no-audio \
+            -no-boot-anim -no-snapshot -gpu swiftshader_indirect >"$RUNNER_TEMP/emulator.log" 2>&1 &
+          adb="$ANDROID_HOME/platform-tools/adb"
+          timeout 300 "$adb" wait-for-device
+          timeout 600 sh -c "until [ \"\$($adb shell getprop sys.boot_completed | tr -d '\r')\" = 1 ]; do sleep 5; done"
+
+      # Plain adb + am instrument, so no extra test-runner artifacts are
+      # downloaded at run time. The Keystore tests need a secure lock screen,
+      # so the emulator gets a PIN first.
+      - name: Run instrumented tests
+        run: |
+          set -euo pipefail
+          adb="$ANDROID_HOME/platform-tools/adb"
+          "$adb" shell locksettings set-pin 1234
+          "$adb" install -r app/build/outputs/apk/foss/debug/app-foss-debug.apk
+          "$adb" install -r app/build/outputs/apk/androidTest/foss/debug/app-foss-debug-androidTest.apk
+          timeout 900 "$adb" shell am instrument -w app.terpoir.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/instrument.txt"
+          grep -q "^OK (" "$RUNNER_TEMP/instrument.txt"
+
+      # Test data is synthetic, so the emulator log and logcat are safe to
+      # print.
+      - name: Emulator diagnostics
+        if: failure()
+        run: |
+          tail -n 100 "$RUNNER_TEMP/emulator.log" || true
+          timeout 30 "$ANDROID_HOME/platform-tools/adb" logcat -d -t 300 || true
