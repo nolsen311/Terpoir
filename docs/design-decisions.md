@@ -169,6 +169,16 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 ### Future enhancement (approved, post-launch)
 - Terpoir-to-Terpoir sharing: a product or strain record travels as a small file or QR code that a friend imports into their own journal. No server.
 
+## Memory hygiene and app unlock (decided)
+- **Key material (Rust core):** held in self-zeroing types (`zeroize`, `secrecy`); avoid copies; lock key pages against swap/compression where the platform allows (best effort).
+- **Decrypted content:** decrypt on demand, hold only what is on screen, drop promptly. Known limit: Kotlin and Swift strings cannot be reliably wiped, so the UI briefly holds plaintext; view state is cleared whenever the app goes to the background.
+- **Auto-lock:** journal content cleared from view immediately on background; after the timeout, the master key is wiped from memory and reopening requires authentication.
+  - Timeout options: immediately, 1, 5, or 15 minutes. **Default: 1 minute.**
+  - Locking the device locks the app immediately, regardless of timeout.
+- **Biometric unlock (crypto-bound):** the master-key wrapping key lives in Android Keystore / iOS Keychain and is usable only after OS-verified authentication, so a patched app cannot skip the prompt.
+  - Default: **biometric or device passcode** (strong biometrics on Android; Face ID / Touch ID on iOS), which survives new biometric enrollments.
+  - Optional strict mode: key bound to the currently enrolled biometric set; enrolling a new face or fingerprint invalidates it (re-unlock with passcode or recovery key).
+
 ## Data model
 
 ### Core idea: an entry is a session
@@ -319,12 +329,12 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Storage: per-record encryption inside SQLCipher; minimal indexes; no on-disk free-text index; secure delete; separate notification cache for Named/Rich tiers.
 - Logs: none in release; redacted types in debug; no crash SDKs or analytics; opt-in reviewed diagnostics.
 - Sharing: field-picked share cards with preview, never via the gallery, discreet brand mark on by default; encrypted export by default, opt-in plaintext export.
+- Memory and unlock: zeroizing key types; clear view state on background; 1-minute default auto-lock; crypto-bound biometric-or-passcode unlock.
 
 ## Open decisions
-1. Memory hygiene (key zeroing, purge on background, re-auth timeout).
-2. Age gating (self-attestation vs. app store requirements).
-3. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
-4. Builds and releases (reproducible builds, signing-key protection, binary transparency).
-5. Monetization (earning without touching user data).
-6. App store policy (verify current Google Play and Apple cannabis-app rules).
-7. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
+1. Age gating (self-attestation vs. app store requirements).
+2. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
+3. Builds and releases (reproducible builds, signing-key protection, binary transparency).
+4. Monetization (earning without touching user data).
+5. App store policy (verify current Google Play and Apple cannabis-app rules).
+6. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
