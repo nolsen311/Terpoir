@@ -15,4 +15,28 @@
     <string name="error_no_lock_screen">Set up a screen lock on this device first. Terpoir uses it to protect your journal.</string>
     <string name="error_keystore">The device\'s secure key storage did not respond. Try again.</string>
     <string name="error_key_invalidated">Your fingerprints or face changed, so this device\'s key no longer works. Unlock with your recovery key.</string>
+
+    <!-- Privacy Center -->
+    <string name="privacy_center">Privacy Center</string>
+    <string name="privacy_all_on">All protections on</string>
+    <plurals name="privacy_relaxed">
+        <item quantity="one">%d protection relaxed</item>
+        <item quantity="other">%d protections relaxed</item>
+    </plurals>
+    <string name="privacy_restore">Restore maximum privacy</string>
+    <string name="privacy_close">Done</string>
+    <string name="privacy_relax">Continue</string>
+    <string name="privacy_keep">Keep it private</string>
+    <string name="privacy_group_location">Location</string>
+    <string name="privacy_group_notifications">Notifications</string>
+    <string name="privacy_group_catalogs">Catalogs</string>
+    <string name="privacy_group_os_integration">OS integration</string>
+    <string name="privacy_group_photos">Photos</string>
+    <string name="privacy_group_sync_and_keys">Sync and keys</string>
+    <string name="privacy_group_device_security">Device security</string>
+    <string name="screen_protection">Screen protection</string>
+    <string name="screen_protection_does">Blocks screenshots, screen recording and casting of Terpoir, and hides it in your recent apps. Screen readers and other accessibility tools keep working.</string>
+    <string name="screen_protection_leaves">When off, screenshots and recordings of Terpoir are saved to your photo gallery, and from there to any cloud backup it syncs with.</string>
+    <string name="screen_protection_who">When off, anyone you cast or share your screen with sees your journal, and so does any app allowed to capture your screen.</string>
+    <string name="screen_protection_undo">Turn it back on here. Screenshots already taken stay in your gallery until you delete them.</string>
 </resources>

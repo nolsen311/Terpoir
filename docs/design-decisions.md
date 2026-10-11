@@ -156,7 +156,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Android implementation (`app.terpoir.privacy.ScreenPrivacy`):** applied to the whole window. The app is a single activity and every screen shows or leads to journal content.
   - App-switcher blur: Android 13+ disables the Recents snapshot (`setRecentsScreenshotEnabled(false)`). Android 11 and 12 have no such API, so FLAG_SECURE is set whenever the app is not in front (`onPause`), even with screen protection off.
   - Accessibility-data-sensitive (14+): set on the window's root view, which covers the Compose UI's virtual accessibility nodes.
-  - Screen protection is stored in `PrivacySettings` (default on) and applied on every resume, so a change takes effect at once. It registers with the Privacy Center, as an on/off pair, when the Privacy Center lands. Turning it off only clears FLAG_SECURE; nothing else needs cleaning up.
+  - Screen protection is stored in `PrivacySettings` (default on) and applied on every resume, so a change takes effect at once. It is the first Privacy Center toggle (Device Security). Turning it off only clears FLAG_SECURE; nothing else needs cleaning up.
 
 ## Local storage format (decided)
 - **Two layers:**
@@ -440,6 +440,16 @@ Each journal entry records one consumption session, not a product review. Produc
 - Shown once during onboarding with everything off.
 - Optional encrypted local history of setting changes.
 - **Rule:** every privacy toggle is designed as a paired on-action and off-action (cleanup) from the start.
+- **Android implementation (`app.terpoir.privacy`):**
+  - **The pairing is enforced by type.** A `PrivacyToggle` cannot be built without both actions. It also needs:
+    - its section;
+    - its card (what it does, what leaves the app, who can see it, how to undo);
+    - its most private state. That is usually off, but on for protections such as screen protection.
+  - **Checks at runtime:** every action is checked to have taken effect, and toggle IDs must be unique.
+  - **Idempotent actions:** "Restore maximum privacy" runs each toggle's action for its private state, including toggles already there, so a cleanup interrupted earlier still finishes.
+  - **Disclosure first:** relaxing a protection shows its card in a confirmation dialog first. Returning to the private state is immediate.
+  - **Only while unlocked:** the Privacy Center opens only when the journal is unlocked, and locking closes it. Someone holding the phone cannot relax protections without unlocking the journal.
+  - **Device test:** an instrumented test runs every registered toggle both ways on the device.
 
 ## Website and domain (terpoir.app)
 - The app does not contact terpoir.app in normal use. The domain hosts the website, docs, release notes, and published build hashes / reproducible-build verification.

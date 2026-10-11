@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.terpoir.core.coreVersion
+import app.terpoir.privacy.PrivacyCenterScreen
 import app.terpoir.privacy.PrivateTextInput
 import app.terpoir.privacy.ScreenPrivacy
 import app.terpoir.security.UserAuthentication
@@ -64,6 +66,18 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun Screen(session: JournalSession, core: String) {
         var message by remember { mutableStateOf<Int?>(null) }
+        var privacyCenter by remember { mutableStateOf(false) }
+        val unlocked = session.state is JournalSession.State.Unlocked
+        // Locking closes the Privacy Center; it is open only while unlocked.
+        LaunchedEffect(unlocked) { if (!unlocked) privacyCenter = false }
+        if (privacyCenter && unlocked && session.contentVisible) {
+            PrivacyCenterScreen(
+                center = app.privacyCenter,
+                onChanged = { ScreenPrivacy.onResume(this, app.privacySettings.screenProtection) },
+                onClose = { privacyCenter = false },
+            )
+            return
+        }
         Column(
             modifier = Modifier.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
@@ -82,6 +96,7 @@ class MainActivity : ComponentActivity() {
                     // Journal content is drawn only while the app is in the foreground.
                     if (session.contentVisible) {
                         Text(stringResource(R.string.placeholder))
+                        Button(onClick = { privacyCenter = true }) { Text(stringResource(R.string.privacy_center)) }
                         Button(onClick = { session.lock() }) { Text(stringResource(R.string.lock_now)) }
                     }
                 }
