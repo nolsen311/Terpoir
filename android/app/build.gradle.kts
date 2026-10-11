@@ -15,7 +15,10 @@ android {
 
     defaultConfig {
         applicationId = "app.terpoir"
-        minSdk = 29
+        // Android 11: the oldest release where a Keystore key can require a
+        // strong biometric or the device credential on every use, which the
+        // crypto-bound unlock depends on (docs/design-decisions.md).
+        minSdk = 30
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
