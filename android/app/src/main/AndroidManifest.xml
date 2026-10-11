@@ -68,6 +68,12 @@
         <receiver
             android:name=".alerts.GeofenceReceiver"
             android:exported="false" />
+
+        <!-- The follow-up check-in alarm, from this app's own pending
+             intent only. -->
+        <receiver
+            android:name=".alerts.CheckInReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

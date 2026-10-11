@@ -8,6 +8,7 @@ import android.content.Context
 import app.terpoir.Capability
 import app.terpoir.Distribution
 import app.terpoir.R
+import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.SpotAlerts
 import app.terpoir.core.Journal
 
@@ -16,6 +17,7 @@ fun buildPrivacyCenter(
     context: Context,
     settings: PrivacySettings,
     alerts: SpotAlerts,
+    checkIns: CheckIns,
     journal: () -> Journal?,
 ): PrivacyCenter = PrivacyCenter(
     listOfNotNull(
@@ -123,6 +125,26 @@ fun buildPrivacyCenter(
             offAction = {
                 settings.alertDetails = false
                 alerts.narrowCache()
+            },
+        ),
+        // On only lets the session editor offer a check-in. Off cancels the
+        // pending one and clears a showing reminder.
+        PrivacyToggle(
+            id = "follow_up_check_ins",
+            group = PrivacyGroup.NOTIFICATIONS,
+            card = PrivacyCard(
+                title = R.string.check_ins,
+                whatItDoes = R.string.check_ins_does,
+                whatLeaves = R.string.check_ins_leaves,
+                whoCanSee = R.string.check_ins_who,
+                howToUndo = R.string.check_ins_undo,
+            ),
+            privateState = false,
+            isOn = { settings.followUpCheckIns },
+            onAction = { settings.followUpCheckIns = true },
+            offAction = {
+                settings.followUpCheckIns = false
+                checkIns.cancel()
             },
         ),
         // Scanned links are always stored as identifiers; this only allows

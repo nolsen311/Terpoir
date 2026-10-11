@@ -83,6 +83,14 @@ class PrivacySettings(context: Context) {
         get() = prefs.getBoolean(KEY_ALERT_DETAILS, false)
         set(value) = prefs.edit().putBoolean(KEY_ALERT_DETAILS, value).apply()
 
+    /**
+     * Follow-up check-ins: the session editor offers a reminder some time
+     * after a session. Off by default: the OS scheduler holds the time.
+     */
+    var followUpCheckIns: Boolean
+        get() = prefs.getBoolean(KEY_CHECK_INS, false)
+        set(value) = prefs.edit().putBoolean(KEY_CHECK_INS, value).apply()
+
     /** Whether the voice first-use card has been shown and answered. */
     var voiceIntroSeen: Boolean
         get() = prefs.getBoolean(KEY_VOICE_INTRO_SEEN, false)
@@ -98,5 +106,6 @@ class PrivacySettings(context: Context) {
         const val KEY_NOTIFY_NEAR = "notify_near_spots"
         const val KEY_ALERT_NAMES = "alert_names"
         const val KEY_ALERT_DETAILS = "alert_details"
+        const val KEY_CHECK_INS = "follow_up_check_ins"
     }
 }

@@ -48,6 +48,11 @@
     <string name="notify_near_leaves">Nothing leaves the phone. To watch for your spots, Android\'s location service holds their coordinates (never their names), and Terpoir needs precise location \"all the time\" and permission to notify you.</string>
     <string name="notify_near_who">Android\'s location service knows where your spots are and when you\'re near one, and so does Google Play services on phones that use it. Alerts say only \"Did you hit a spot?\" unless you turn on names or details below.</string>
     <string name="notify_near_undo">Turn it off here. Terpoir removes every spot from Android\'s location service and clears any alert still showing. You can also take back the location permission in Android\'s settings.</string>
+    <string name="check_ins">Follow-up check-ins</string>
+    <string name="check_ins_does">When you log a session, Terpoir can remind you later to note how it went: about 90 minutes after an edible or drink, 45 after a tincture. You choose per session, and can change the time.</string>
+    <string name="check_ins_leaves">Nothing leaves the phone. The reminder waits in Android\'s scheduler, which knows when it will go off but nothing about the session.</string>
+    <string name="check_ins_who">The reminder says only \"Quick check-in?\", at every alert setting. Anyone who sees your screen sees that, and when.</string>
+    <string name="check_ins_undo">Turn it off here. Terpoir cancels the waiting reminder and clears it if it\'s showing.</string>
     <string name="alert_names">Spot names in alerts</string>
     <string name="alert_names_does">Alerts say which spot you\'re at, like \"You\'re at Spot 3\", instead of \"Did you hit a spot?\".</string>
     <string name="alert_names_leaves">Nothing leaves the phone. To show a name while the journal is locked, Terpoir keeps a small list of your spots\' names outside the encrypted journal, on this phone only and never in backups.</string>
@@ -204,6 +209,17 @@
         <item quantity="other">%d sessions</item>
     </plurals>
     <string name="alert_last_product">last: %1$s</string>
+    <string name="check_in_channel">Check-ins</string>
+    <string name="check_in_channel_description">Reminders to note how a session went.</string>
+    <string name="check_in_title">Quick check-in?</string>
+    <string name="check_in_text">Tap to note how it\'s going.</string>
+    <string name="check_in_section">Check-in</string>
+    <string name="check_in_later">Check in later</string>
+    <string name="check_in_after">Minutes after</string>
+    <string name="check_in_needs_notifications">The reminder needs permission to show notifications.</string>
+    <string name="check_in_screen">Check-in</string>
+    <string name="check_in_prompt">How\'s it going? Update what you feel now.</string>
+    <string name="check_in_note">A note for later (optional)</string>
     <string name="notify_setup_title">\"Notify me\" needs a few permissions</string>
     <string name="notify_setup_precise">Precise location, so an alert means the right spot.</string>
     <string name="notify_setup_background">Location \"all the time\", so alerts work while Terpoir is closed. Android opens its settings for this: choose \"Allow all the time\".</string>

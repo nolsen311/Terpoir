@@ -4,6 +4,11 @@
 
 package app.terpoir.journal
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -37,11 +42,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import app.terpoir.R
+import app.terpoir.alerts.CheckIns
 import app.terpoir.core.ProductData
 import app.terpoir.core.SnippetData
 import app.terpoir.core.SpotData
@@ -65,6 +73,7 @@ fun SessionEditor(
     repo: JournalRepository,
     vocab: Vocabulary,
     settings: PrivacySettings,
+    checkIns: CheckIns,
     id: String?,
     onDone: () -> Unit,
     spotForNew: String? = null,
@@ -80,6 +89,9 @@ fun SessionEditor(
     // A note open over the editor (null id: a new one), so the session's
     // unsaved edits survive it.
     var openNote by remember { mutableStateOf<NoteTarget?>(null) }
+    // Follow-up check-in: null follows the default for the session's methods.
+    var checkInChoice by remember { mutableStateOf<Boolean?>(null) }
+    var checkInMinutes by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(id) {
         products = repo.products()
@@ -98,6 +110,10 @@ fun SessionEditor(
         return
     }
 
+    val checkInDefault = CheckIns.defaultMinutes(current.lines.map { it.method })
+    val checkIn = settings.followUpCheckIns && (checkInChoice ?: (checkInDefault != null))
+    val checkInAfter = checkInMinutes ?: (checkInDefault ?: DEFAULT_CHECK_IN_MIN).toString()
+
     EditorScaffold(
         title = stringResource(if (id == null) R.string.session_new else R.string.session_edit),
         onClose = onDone,
@@ -105,7 +121,9 @@ fun SessionEditor(
             when (val result = current.toData()) {
                 is SessionDraft.Result.Invalid -> error = result.error
                 is SessionDraft.Result.Valid -> scope.launch {
-                    repo.saveSession(id, result.data)
+                    val saved = repo.saveSession(id, result.data)
+                    val minutes = checkInAfter.trim().toIntOrNull()?.takeIf { it > 0 }
+                    if (checkIn && minutes != null) checkIns.schedule(saved, current.whenMs + minutes * 60_000L)
                     onDone()
                 }
             }
@@ -182,6 +200,21 @@ fun SessionEditor(
             selected = current.spot,
             onSelect = { draft = current.copy(spot = it) },
         )
+
+        if (settings.followUpCheckIns) {
+            SectionTitle(stringResource(R.string.check_in_section))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                FilterChip(
+                    selected = checkIn,
+                    onClick = { checkInChoice = !checkIn },
+                    label = { Text(stringResource(R.string.check_in_later)) },
+                )
+                if (checkIn) {
+                    MinutesField(stringResource(R.string.check_in_after), checkInAfter, Modifier.weight(1f)) { checkInMinutes = it }
+                }
+            }
+            if (checkIn) NotificationPermission()
+        }
 
         SectionTitle(stringResource(R.string.session_notes))
         if (id == null) {
@@ -295,8 +328,23 @@ private fun unitFor(method: String, current: String?): String? {
 }
 
 @OptIn(ExperimentalLayoutApi::class)
+/** Asks for the notification permission (Android 13+) when it is missing. */
 @Composable
-private fun EffectsEditor(
+private fun NotificationPermission() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val context = LocalContext.current
+    fun granted() = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    var allowed by remember { mutableStateOf(granted()) }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed = granted() }
+    if (allowed) return
+    Text(stringResource(R.string.check_in_needs_notifications), style = MaterialTheme.typography.bodySmall)
+    OutlinedButton(onClick = { ask.launch(Manifest.permission.POST_NOTIFICATIONS) }) {
+        Text(stringResource(R.string.notify_setup_allow))
+    }
+}
+
+@Composable
+internal fun EffectsEditor(
     vocab: Vocabulary,
     custom: List<Entry<TagData>>,
     effects: Map<TagRefData, Int>,
@@ -415,8 +463,11 @@ private fun currentOffsetMin(nowMs: Long): Short =
 /** Category of custom effect tags. */
 const val EFFECT_CATEGORY = "effect"
 
-private const val DEFAULT_INTENSITY = 3
+internal const val DEFAULT_INTENSITY = 3
 private const val MAX_INTENSITY = 5
 
 /** A note to open over the session editor; `id` null for a new one. */
 private data class NoteTarget(val id: String?)
+
+/** The check-in delay offered when the session's methods suggest none. */
+private const val DEFAULT_CHECK_IN_MIN = 60

@@ -114,7 +114,7 @@ without it.
       loads the libraries and recognizes text in a bundled test image.
 - [x] Voice-first FAB with on-device speech recognition (never cloud).
 - [x] Stream snippets; keyword tag suggestions with human confirmation.
-- [ ] Spots with purpose types; "Show me" mode first, then "Notify me"
+- [x] Spots with purpose types; "Show me" mode first, then "Notify me"
       geofencing; notification tiers and check-ins.
 - [ ] Targeted symptoms (opt-in).
 - [ ] Sharing cards and encrypted / plaintext export; import.

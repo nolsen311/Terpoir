@@ -7,6 +7,7 @@ package app.terpoir
 import android.app.Application
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.SpotAlerts
 import app.terpoir.core.init as initCore
 import app.terpoir.onboarding.Onboarding
@@ -38,6 +39,10 @@ class TerpoirApplication : Application() {
     lateinit var spotAlerts: SpotAlerts
         private set
 
+    /** Follow-up check-in reminders. */
+    lateinit var checkIns: CheckIns
+        private set
+
     /** Every privacy toggle, each with its on- and off-action. */
     lateinit var privacyCenter: PrivacyCenter
         private set
@@ -59,7 +64,8 @@ class TerpoirApplication : Application() {
         lockSettings = LockSettings(this)
         privacySettings = PrivacySettings(this)
         spotAlerts = SpotAlerts(this, privacySettings, Distribution.geofencer(this))
-        privacyCenter = buildPrivacyCenter(this, privacySettings, spotAlerts) {
+        checkIns = CheckIns(this, privacySettings)
+        privacyCenter = buildPrivacyCenter(this, privacySettings, spotAlerts, checkIns) {
             (session.state as? JournalSession.State.Unlocked)?.journal
         }
         session = JournalSession(JournalFiles(noBackupFilesDir))
