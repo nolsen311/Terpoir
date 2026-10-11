@@ -24,7 +24,7 @@ per item or small group of items. Keep this file updated as items land.
 
 - [x] DCO enforcement workflow (`.github/workflows/dco.yml`).
 - [x] Dependabot version updates for GitHub Actions.
-- [ ] Add `cargo` and `gradle` ecosystems to `.github/dependabot.yml`
+- [x] Add `cargo` and `gradle` ecosystems to `.github/dependabot.yml`
       (grouped, 7-day cooldown) once `core/` and `android/` exist.
 - [x] CodeQL code scanning (Rust, Kotlin; Swift later), actions pinned by SHA.
 - [x] OpenSSF Scorecard workflow.
@@ -63,7 +63,7 @@ without it.
 
 ## Phase 2: Android shell (`android/`)
 
-- [ ] Kotlin + Jetpack Compose app; `play` and `foss` build flavors (FOSS:
+- [x] Kotlin + Jetpack Compose app; `play` and `foss` build flavors (FOSS:
       no Play services, AOSP location, no Gemini Nano, no Play age signals,
       no Play Billing).
 - [ ] Keystore (StrongBox where available) wrapping key; crypto-bound

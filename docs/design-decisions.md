@@ -234,6 +234,15 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **GitHub Releases:** maintainer-signed APKs (works with update tools such as Obtainium).
 - **App Store** (iOS).
 
+### Android project (decided, `android/`)
+- **Toolchain:** Android Gradle Plugin 9 with built-in Kotlin and the Compose compiler plugin; Gradle wrapper pinned by SHA-256 (CI also checks the wrapper JAR against Gradle's published checksums); versions in `gradle/libs.versions.toml`, each with its reason.
+- **SDK levels:** `minSdk 29` (Android 10), `targetSdk`/`compileSdk 37`. Android 10 is the oldest release with the platform features the plan relies on (scoped storage, biometric APIs, modern Keystore behavior) still in wide use.
+- **Flavors:** `play` and `foss` (dimension `distribution`), same application ID `app.terpoir`. Google-dependent features are listed as `Capability` values; only `play` may offer them. `verifyFossDependencies` fails the build if the FOSS release classpath contains Play services, Firebase, Play Billing, Play Core/age signals, ML Kit or on-device Gemini libraries.
+- **Permissions:** none (not even INTERNET). Every variant's merged manifest is checked against an allowlist in `app/build.gradle.kts`, so a library cannot add one silently.
+- **Backups:** `allowBackup=false`, plus full-backup and data-extraction rules that exclude every domain from cloud backup and device-to-device transfer.
+- **Dependency verification:** `gradle/verification-metadata.xml` pins a SHA-256 for every artifact; regenerate it with `./gradlew --write-verification-metadata sha256 assemble check` when dependencies change (Dependabot does not).
+- **Release builds** are minified with R8 and never signed in the build; the dependency-info blob that AGP normally embeds for Google is disabled.
+
 ### Signing keys
 - **Play App Signing:** Google holds the key that signs Play builds. Disclosed; F-Droid and GitHub builds are signed with the maintainer's own key, and both certificate fingerprints are published on terpoir.app and in the README.
 - **Maintainer Android signing key on YubiKey:** generated once on an offline machine, imported into **two YubiKeys** (primary and backup, stored separately) via PIV, one encrypted offline backup kept, machine copy wiped. Signing through `apksigner` with Yubico's PKCS#11 library; PIN and touch required. APK signature scheme v3 key rotation available if ever needed.

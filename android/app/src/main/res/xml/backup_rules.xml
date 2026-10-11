@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception -->
+<!-- Copyright (C) 2026 The Terpoir Authors -->
+<!-- Android 11 and below: exclude everything (allowBackup is also false). -->
+<full-backup-content>
+    <exclude domain="root" path="." />
+    <exclude domain="file" path="." />
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="external" path="." />
+    <exclude domain="device_root" path="." />
+    <exclude domain="device_file" path="." />
+    <exclude domain="device_database" path="." />
+    <exclude domain="device_sharedpref" path="." />
+</full-backup-content>

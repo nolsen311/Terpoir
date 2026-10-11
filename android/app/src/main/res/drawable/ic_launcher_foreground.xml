@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception -->
+<!-- Copyright (C) 2026 The Terpoir Authors -->
+<!-- Placeholder: a neutral abstract leaf-like shape; no drug imagery. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFE8E2D0"
+        android:pathData="M54,30 C66,40 70,56 54,78 C38,56 42,40 54,30 Z" />
+</vector>

@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# Android app CI: builds every variant (play/foss x debug/release), runs unit
+# tests and lint (warnings are errors), and the privacy checks:
+#   - verifyFossDependencies: no proprietary Google libraries in FOSS.
+#   - verify<Variant>Permissions: no permission outside the allowlist.
+# Every downloaded artifact is checked against
+# android/gradle/verification-metadata.xml.
+
+name: Android
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The wrapper JAR is a binary in the repo: check it is one Gradle
+      # published, against Gradle's own list of wrapper checksums.
+      - name: Validate Gradle wrapper
+        run: |
+          set -euo pipefail
+          actual=$(sha256sum gradle/wrapper/gradle-wrapper.jar | cut -d' ' -f1)
+          curl -sSfL --proto '=https' --tlsv1.2 https://services.gradle.org/versions/all \
+            | python3 -c "import json,sys; print('\n'.join(v['wrapperChecksum'] for v in json.load(sys.stdin) if v.get('wrapperChecksum')))" \
+            | grep -qx "$actual"
+          echo "gradle-wrapper.jar matches a published Gradle release ($actual)"
+
+      - name: Build, test, lint and verify
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          ./gradlew --no-daemon --no-build-cache assemble check lintFossRelease lintPlayRelease
