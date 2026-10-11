@@ -23,3 +23,13 @@ before the pull-request workflow existed.
 | `923ed51d36cd222ed5245a2715b50347b934c7da` | ci: add cargo-deny and cargo-vet supply-chain checks (#6) |
 | `06b4e05dcea3578d2b7cf716426022ad12e27284` | ci: add Rust CI for the core workspace (#5) |
 | `36a40413e1eb4cd3896a6adba5da3b6affeb481f` | ci: add OpenSSF Scorecard workflow (#4) |
+
+## 2026-10-10 (second entry)
+
+The squash merge of the first remediation also omitted the sign-off. The
+repository's "require sign-off on web-based commits" setting does not add a
+sign-off to squash merges, so the line must still be added by hand.
+
+| Commit | Subject |
+| --- | --- |
+| `dd590235e170fd456f95ff298aff3c3969e61fd2` | docs: record retroactive DCO sign-off for five commits on main (#7) |
