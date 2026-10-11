@@ -81,6 +81,15 @@ without it.
 ## Phase 3: Journaling features
 
 - [ ] Sessions, products, strains, brands; effects map and core vocabulary.
+- [ ] `terpoir-model`: add the **Purchase** record kind (date, optional
+      Re-up Spot, line items with product, batch, price); remove
+      `bought_at` and `price` from Product (pre-release, so no migration
+      needed); add package date and scanned identifiers to Product; add the
+      per-spot purchase-prompt flag to Spot; let session product lines
+      reference a purchase line. Update the FFI records and tests.
+- [ ] Rapid product entry: receipt scan (multi-product, image discarded by
+      default), label scan, on-device barcode / QR decoding, duplicate
+      detection. Online code lookups and COA links opt-in.
 - [ ] Voice-first FAB with on-device speech recognition (never cloud).
 - [ ] Stream snippets; keyword tag suggestions with human confirmation.
 - [ ] Spots with purpose types; "Show me" mode first, then "Notify me"
@@ -88,6 +97,10 @@ without it.
 - [ ] Targeted symptoms (opt-in).
 - [ ] Sharing cards and encrypted / plaintext export; import.
 - [ ] Insights engine (opt-in, evidence thresholds, confounder flags).
+- [ ] Shop insights: per-shop rating and hit rate, selection vs. shop
+      effect, freshness by package date.
+- [ ] Purchase prompts on Re-up Spots: dwell-then-exit geofence, discreet
+      "Quick log?", no visit log; "Show me" banner alternative.
 - [ ] Bring-your-own-storage sync backends and direct device pairing.
 
 ## Phase 4: Release
