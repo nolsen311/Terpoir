@@ -87,7 +87,7 @@ without it.
       needed); add package date and scanned identifiers to Product; add the
       per-spot purchase-prompt flag to Spot; let session product lines
       reference a purchase line. Update the FFI records and tests.
-- [ ] Rapid product entry: receipt scan (multi-product, image discarded by
+- [x] Rapid product entry: receipt scan (multi-product, image discarded by
       default), label scan, on-device barcode / QR decoding, duplicate
       detection. Online code lookups and COA links opt-in.
 - [x] OCR native libraries built from pinned source for F-Droid

@@ -214,6 +214,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
     - printing to any `PrintStream`, because Compose and JNA keep debug paths that print to `System.out`/`err` and Android sends those to logcat. The app never writes files through `PrintStream`; the core owns storage.
   - **The shipped bytecode is checked:** `verify<Variant>NoLogging` (release variants, part of `check`) runs `dexdump` on the release APK and fails if any of those calls survived R8. `printStackTrace(PrintWriter)` is allowed: the UniFFI bindings use it to build an error string.
   - **Backstop:** a non-debuggable build points `System.out` and `System.err` at a stream that discards everything, for anything that reaches them some other way.
+- **Recorded exception (accepted 2026-10-11): Tesseract's native libraries.** The prebuilt Tesseract4Android libraries (text recognition, see "Rapid product entry") call Android's native logger directly, which R8 and the dexdump check cannot reach. They log fixed status lines only: "Initialized Tesseract API with language=eng" on each engine start, and a few error and assertion messages. Never image content, recognized text, keys, coordinates or identifiers. The exception closes when the libraries are built from source with logging compiled out (tracked in `docs/follow-ups.md`). No other native logging is allowed.
 - **No crash-reporting SDKs and no analytics, ever.**
 - **Disclosure:** Apple and Google collect OS-level crash reports (stack traces, device info, no journal data) when the user has opted in to share diagnostics with developers in device settings. The app cannot disable this; the privacy policy says so.
 - **Opt-in diagnostics mode** (Privacy Center): records a local, encrypted, redacted log; auto-off after 24 hours. Sharing requires the user to review the full text, then send it via the share sheet. Nothing is sent automatically. Off-action deletes all diagnostic logs.
@@ -418,7 +419,10 @@ Each journal entry records one consumption session, not a product review. Produc
 
 ## Rapid product entry (decided)
 - **Receipt scan:** one photo fills in several products with prices, the date, and the shop.
-  - On-device text recognition only: ML Kit's bundled model on the Play build, a fully open alternative on the FOSS build, Apple's Vision framework on iOS.
+  - On-device text recognition only: Tesseract on Android (both builds), Apple's Vision framework on iOS.
+    - **Android engine (decided 2026-10-11):** Tesseract 5 through Tesseract4Android 4.9.0, with the English `tessdata_fast` model bundled. Its only published build is on JitPack, which `settings.gradle.kts` restricts to that one group. Its native logging is a recorded exception (see "Logs and crash reports"). Sources and hashes: `android/ocr/README.md`.
+    - **ML Kit is not used.** Google's terms say ML Kit sends Google usage metrics, so it could only ever be an opt-in. Also, the "Google Play libraries" licensing permission does not clearly cover `com.google.mlkit`. Revisiting it needs both a licensing change and an opt-in toggle.
+    - **`ocrs` (pure-Rust OCR) was considered** and not used: the license of its model weights could not be confirmed.
   - Extracted lines appear as a checklist to confirm, fix, or drop.
   - Header text suggests the shop name, matched on-device against existing spots.
   - **The receipt image is discarded after parsing by default** (receipts can carry the user's name, loyalty numbers, or medical card numbers). Only confirmed fields are kept.
@@ -427,6 +431,14 @@ Each journal entry records one consumption session, not a product review. Produc
   - **Online lookups of a scanned code are opt-in** via the catalog toggles; a package tag is a precise identifier.
   - **Opening a label's lab-results (COA) link is opt-in** with the same disclosure: the lab's website learns the user's IP address and which batch they bought.
 - **Duplicate detection:** "Same product, new batch?" keeps history unified.
+- **Implementation (decided):**
+  - **Parsing lives in the core** (`terpoir-scan`): receipt lines, shop, date and total; label THC/CBD, terpenes, batch, package date and package tags; code classification (barcode, QR, package tag, link). Platforms only capture and recognize.
+  - **Duplicate detection and shop matching run in the core** over decrypted records (`Journal::find_products`, `Journal::match_spot`). Matching is by scanned code first, then by normalized name and brand. Codes are never put in the plaintext index.
+  - **Android capture:** a CameraX viewfinder in the app. Photos are taken into memory, read, and recycled at once; nothing is written to storage or the gallery. Code scanning decodes live frames with ZXing, so nothing is photographed. The camera permission is asked on first use.
+  - **Receipts never offer personal or payment lines** (cardholder, loyalty, patient or member numbers, totals, tax). The checklist is saved as one Purchase. The shop becomes an existing spot, a new Re-up Spot with no location, or nothing, as the user chooses.
+  - **Built-in terpene vocabulary** (myrcene, limonene, …) in the core, so label terpenes are tags like any other.
+  - **Lab-results links** are saved with the product either way. Opening one is behind the Privacy Center toggle "Open lab-results links" (Catalogs, off by default).
+  - **Online code lookups are not built yet:** they need a catalog provider (see "Open decisions").
 - On-device model tiers can improve parsing (messy receipts) but are not required; pattern parsing works without them.
 
 ## Stream journaling, tagging, and insights
@@ -584,4 +596,4 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - IP: trademark is the priority (file intent-to-use soon); copyright registration not planned given AI authorship; monetization paths unchanged.
 
 ## Open decisions
-None at the design level. New questions go here as they arise.
+- **Catalog provider for online code lookups.** Rapid product entry stores scanned codes locally, and online lookups are opt-in by design. No provider has been chosen, and the app has no network access. Choosing one means deciding on the provider, its terms (caching, redistribution), and the network permission behind its toggle.
