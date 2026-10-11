@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# Expected outputs of build.sh (its SHA256SUMS, without these comment
+# lines). The OCR native libraries workflow fails if a build differs.
+f76a76b0c50c45cc7bd51ac3255be599fbafaa1f0a90380c397d7d50166b6fcb  jniLibs/arm64-v8a/libjpeg.so
+585043a422d4a6573c504a706b5eb76ebcc8164ecf06775ece9a67c52d133b8b  jniLibs/arm64-v8a/libleptonica.so
+5afa314f7da69c0e7d1b57a3e1dcc6d52f7f45017eb5459c54c7d4585e79488a  jniLibs/arm64-v8a/libpngx.so
+c2963d8a67589d2ce9c1ccdf14827c105408f99d4a3393ec89fa3cfea94b60a8  jniLibs/arm64-v8a/libtesseract.so
+e7bc20beb70a82a7aa821fa3ae42cf15f6c0d4a1b04ccead6415a3680b551f3b  jniLibs/x86_64/libjpeg.so
+f1ea289fe1ca8f1194c3493f2277c97f9bbc658d3e2878ef3846938630b4390b  jniLibs/x86_64/libleptonica.so
+a05f000e53b9331e5b2960b4d471341fa10adf9ed8e61491915962fe4fc42f42  jniLibs/x86_64/libpngx.so
+cc893c86938e96b6d0139a6858947fd8e5a13c16c14a9d4e6a6c6eda8b1c0a4d  jniLibs/x86_64/libtesseract.so
+d31ad64c51abab4cf1f5ae940f76b4f3dea26b145eb94d33bc1fa58bd76509c4  tesseract4android-4.9.0.aar

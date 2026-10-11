@@ -1,0 +1,141 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# Builds the OCR native libraries (Tesseract, Leptonica, libpng, libjpeg and
+# the Tesseract4Android JNI wrapper) from pinned, hash-checked source
+# tarballs with android/ocr-native/build.sh: the build F-Droid uses for the
+# foss flavor instead of the prebuilt JitPack AAR (android/ocr-native/
+# README.md).
+#
+# Asynchronous on purpose: it takes several minutes and is not a required
+# check. It runs weekly (catching drift in the runner or a download), on
+# demand, and when the pins or the recipe change. The app's own CI keeps
+# using the JitPack artifact and does not wait for this.
+#
+# Reproducibility: two runners build from checkouts at different paths,
+# the second with the SDK reached through a different path too;
+# both results must be byte-identical, and must match the hashes committed
+# in android/ocr-native/SHA256SUMS. After an intended change (a version
+# bump), update that file from the hashes this workflow prints.
+
+name: OCR native libraries
+
+on:
+  schedule:
+    - cron: "37 5 * * 2"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "android/ocr-native/**"
+      - ".github/workflows/ocr-native.yml"
+      # The NDK version and minSdk are read from here.
+      - "android/app/build.gradle.kts"
+  pull_request:
+    paths:
+      - "android/ocr-native/**"
+      - ".github/workflows/ocr-native.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ocr-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        include:
+          - copy: first
+            checkout: first
+            sdk: ""
+          - copy: second
+            checkout: elsewhere/second-checkout
+            sdk: elsewhere/android-sdk
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: ${{ matrix.checkout }}
+          persist-credentials: false
+
+      - name: Install NDK, CMake and platform
+        working-directory: ${{ matrix.checkout }}
+        run: |
+          set -euo pipefail
+          sdk="$ANDROID_HOME/cmdline-tools/latest/bin"
+          { yes || true; } | "$sdk/sdkmanager" --licenses >/dev/null
+          read -ra packages <<< "$(android/ocr-native/build.sh --sdk-packages)"
+          "$sdk/sdkmanager" "${packages[@]}" >/dev/null
+          echo "Installed: ${packages[*]}"
+
+      - name: Build
+        working-directory: ${{ matrix.checkout }}
+        env:
+          OCR_WORK: ${{ runner.temp }}/${{ matrix.copy }}/work
+          SDK_ALIAS: ${{ matrix.sdk }}
+        run: |
+          set -euo pipefail
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          if [ -n "$SDK_ALIAS" ]; then
+            mkdir -p "$(dirname "$RUNNER_TEMP/$SDK_ALIAS")"
+            ln -s "$ANDROID_HOME" "$RUNNER_TEMP/$SDK_ALIAS"
+            export ANDROID_HOME="$RUNNER_TEMP/$SDK_ALIAS"
+          fi
+          "$JAVA_HOME/bin/javac" -version
+          android/ocr-native/build.sh "$RUNNER_TEMP/ocr-native"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ocr-native-${{ matrix.copy }}
+          path: ${{ runner.temp }}/ocr-native
+          if-no-files-found: error
+          retention-days: 90
+
+  compare:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: android/ocr-native
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ocr-native-first
+          path: ${{ runner.temp }}/first
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ocr-native-second
+          path: ${{ runner.temp }}/second
+
+      - name: Compare
+        run: |
+          set -euo pipefail
+          first="$RUNNER_TEMP/first"
+          second="$RUNNER_TEMP/second"
+          # The recorded hashes must cover the files actually there.
+          (cd "$first" && sha256sum -c --quiet SHA256SUMS)
+          (cd "$second" && sha256sum -c --quiet SHA256SUMS)
+          {
+            echo "### OCR native libraries"
+            echo '```'
+            cat "$first/SHA256SUMS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "$first/SHA256SUMS"
+          if ! diff -u "$first/SHA256SUMS" "$second/SHA256SUMS"; then
+            echo "::error::Not reproducible: the two builds differ."
+            exit 1
+          fi
+          if ! grep -v '^#' android/ocr-native/SHA256SUMS | diff -u - "$first/SHA256SUMS"; then
+            echo "::error::Reproducible, but different from android/ocr-native/SHA256SUMS. If the change is intended (a version bump), commit the hashes above to that file."
+            exit 1
+          fi
+          echo "Both builds are identical and match android/ocr-native/SHA256SUMS."
