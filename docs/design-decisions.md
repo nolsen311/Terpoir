@@ -201,6 +201,42 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - Neutral alternatives only; never impersonate a real app.
   - Disclosure: the app still appears as Terpoir in system settings, the app store, and storage listings.
 
+## Builds and releases (decided)
+
+### Distribution channels
+- **Google Play** (mainstream Android).
+- **F-Droid** (de-Googled users; builds from source and can publish the maintainer-signed APK when builds match byte for byte). Requires a **FOSS build flavor** without Play services: AOSP location fallback, no Gemini Nano tier, no Play age signals, no Play Billing.
+- **GitHub Releases:** maintainer-signed APKs (works with update tools such as Obtainium).
+- **App Store** (iOS).
+
+### Signing keys
+- **Play App Signing:** Google holds the key that signs Play builds. Disclosed; F-Droid and GitHub builds are signed with the maintainer's own key, and both certificate fingerprints are published on terpoir.app and in the README.
+- **Maintainer Android signing key on YubiKey:** generated once on an offline machine, imported into **two YubiKeys** (primary and backup, stored separately) via PIV, one encrypted offline backup kept, machine copy wiped. Signing through `apksigner` with Yubico's PKCS#11 library; PIN and touch required. APK signature scheme v3 key rotation available if ever needed.
+- **Play upload key:** may also live on a YubiKey (lower stakes; Google can reset it).
+- **Apple distribution certificate:** dedicated Mac keychain (Apple re-signs App Store builds; certificates are quickly revocable).
+- **Git tags and release manifests:** signed with an SSH `ed25519-sk` key on the YubiKey.
+- Signing material never in CI or the repo.
+- **iOS caveat (disclosed):** App Store binaries cannot be matched byte for byte to the source because Apple encrypts and re-signs them.
+
+### Build pipeline (GitHub Actions)
+- Reproducible Rust and Android builds, with a CI job that rebuilds and compares hashes.
+- Lockfiles committed; Gradle dependency verification; `cargo-deny` (licenses, advisories); `cargo-vet` (audits).
+- Actions pinned by commit hash; release builds only from protected `main` and signed tags.
+- SBOM published with each release.
+
+### Transparency and updates
+- Release hashes published on terpoir.app and signed; later, logged to Sigstore's public transparency log.
+- No in-app updater; stores and F-Droid handle updates (preserves "the app never contacts terpoir.app").
+
+## Monetization (decided)
+- **Principle: never paywall privacy or security.** Paying unlocks fun, never safety.
+- **Free core forever:** journaling, sync, insights, and every privacy feature.
+- **One-time "Connoisseur" unlock** on store builds (roughly $4.99–$9.99): alternate icons and themes, extra share-card styles, fun extras. Purchases via Apple/Google billing, so the maintainer learns of a sale, not a person.
+- **Tip jar** in-app purchases on store builds (unlock nothing).
+- **Donations** for FOSS builds (GitHub Sponsors or Liberapay links); F-Droid and GitHub builds include all features under the GPL.
+- **Merch later:** stickers and print-on-demand apparel.
+- **Ruled out:** dispensary partnerships, affiliate links, sponsored strains, ads, and data sales.
+
 ## Data model
 
 ### Core idea: an entry is a session
@@ -354,9 +390,9 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Memory and unlock: zeroizing key types; clear view state on background; 1-minute default auto-lock; crypto-bound biometric-or-passcode unlock.
 - Age gating: top-tier store rating; on-device platform age signals; self-attestation without date of birth.
 - Device security: passcode-only and app-passphrase options; quick-lock; two-level panic wipe; no duress passcode; neutral discreet icon/name.
+- Builds: Play, F-Droid (FOSS flavor), GitHub Releases, App Store; maintainer key on two YubiKeys; reproducible, pinned, signed pipeline.
+- Monetization: free core; one-time Connoisseur unlock; tip jar; donations; never paywall privacy or security.
 
 ## Open decisions
-1. Builds and releases (reproducible builds, signing-key protection, binary transparency).
-2. Monetization (earning without touching user data).
-3. App store policy (verify current Google Play and Apple cannabis-app rules).
-4. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
+1. App store policy (verify current Google Play and Apple cannabis-app rules).
+2. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
