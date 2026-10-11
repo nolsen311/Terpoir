@@ -114,6 +114,17 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Voice engine:** OS on-device or bundled. Off-action deletes the bundled model.
 - **Keep voice clips.** Off-action: delete stored clips (with confirmation) or keep existing ones.
 
+## Accessibility and screen capture (decided)
+- **Always on (zero cost):**
+  - Android 14+: journal content marked accessibility-data-sensitive, so it is exposed only to services declared as genuine accessibility tools (e.g. TalkBack), not to other apps holding accessibility permission.
+  - Both platforms: app-switcher blur.
+- **"Screen protection" toggle, default on:**
+  - Android: FLAG_SECURE on journal screens (blocks screenshots, recording, casting; blanks Recents). Screen readers, Switch Access, and Voice Access keep working.
+  - iOS: blur content while the screen is recorded, mirrored, or AirPlayed. (iOS cannot block screenshots.)
+  - Off-action allows screenshots and screen sharing; disclosure: captures land in the photo gallery and possibly cloud backups, and casting shows content on other screens.
+- Rationale: unlike keyboards, this default protects against other software rather than overriding the user's own tool.
+- Sharing has a deliberate path via share/export (see open decisions), so screenshots aren't the only option.
+
 ## Data model
 
 ### Core idea: an entry is a session
@@ -260,16 +271,16 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Effects vocabulary: fixed core list plus custom tags.
 - Ownership: personal (no LLC for now); trademark and copyright registration plans recorded above.
 - Keyboards: user's keyboard by default with zero-cost Android protections; opt-in iOS protections; voice-first FAB with on-device recognition only.
+- Screen capture: protection on by default (FLAG_SECURE / capture blur); Android accessibility-sensitive marking always on; screen readers unaffected.
 
 ## Open decisions
-1. Accessibility vs. screen capture (FLAG_SECURE, recording blur, users who rely on accessibility services).
-2. Local storage format (SQLCipher or equivalent, secure-delete settings, encrypted timestamps and identifiers).
-3. Logs and crash reports (none in release, or opt-in with review before sending).
-4. Sharing and export (metadata stripping, "leaves our protection" warning).
-5. Memory hygiene (key zeroing, purge on background, re-auth timeout).
-6. Age gating (self-attestation vs. app store requirements).
-7. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
-8. Builds and releases (reproducible builds, signing-key protection, binary transparency).
-9. Monetization (earning without touching user data).
-10. App store policy (verify current Google Play and Apple cannabis-app rules).
-11. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
+1. Local storage format (SQLCipher or equivalent, secure-delete settings, encrypted timestamps and identifiers).
+2. Logs and crash reports (none in release, or opt-in with review before sending).
+3. Sharing and export (metadata stripping, "leaves our protection" warning).
+4. Memory hygiene (key zeroing, purge on background, re-auth timeout).
+5. Age gating (self-attestation vs. app store requirements).
+6. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
+7. Builds and releases (reproducible builds, signing-key protection, binary transparency).
+8. Monetization (earning without touching user data).
+9. App store policy (verify current Google Play and Apple cannabis-app rules).
+10. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
