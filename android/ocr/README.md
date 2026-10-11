@@ -17,11 +17,14 @@ and the photo is discarded once it has been read
 - **Source:** published only on JitPack, which builds it from the tagged
   source. `settings.gradle.kts` restricts JitPack to this one group, and
   `gradle/verification-metadata.xml` pins its checksum.
-- **Native libraries:** 16 KB page aligned. They call Android's logger
-  for a few fixed status lines (for example "Initialized Tesseract API with
-  language=eng"), never image or text content. R8 cannot strip native calls;
-  building the libraries from source with logging compiled out is a
-  planned follow-up, which F-Droid may require anyway.
+- **Native libraries:** 16 KB page aligned. The JitPack build calls
+  Android's logger for a few fixed status lines (for example "Initialized
+  Tesseract API with language=eng"), never image or text content; R8
+  cannot strip native calls.
+- **Built from source:** `android/ocr-native/` rebuilds the same AAR from
+  pinned upstream source with logging compiled out. The `foss` flavor uses
+  it when given `-Pterpoir.ocr.aar=<path>`, as F-Droid's build does; app CI
+  and the Play flavor use the JitPack AAR.
 
 ### Model
 

@@ -106,13 +106,23 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.compose)
     implementation(libs.zxing.core)
-    implementation(libs.tesseract4android)
 
     implementation(libs.jna) {
         artifact { type = "aar" }
     }
 
     "playImplementation"(libs.play.age.signals)
+
+    // Text recognition. The foss flavor can use the AAR built from pinned
+    // source by android/ocr-native/build.sh (F-Droid sets the property);
+    // otherwise both flavors use the JitPack AAR.
+    val ocrAar = providers.gradleProperty("terpoir.ocr.aar").orNull
+    if (ocrAar != null) {
+        "fossImplementation"(files(ocrAar))
+    } else {
+        "fossImplementation"(libs.tesseract4android)
+    }
+    "playImplementation"(libs.tesseract4android)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.runner)

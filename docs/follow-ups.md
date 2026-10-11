@@ -9,7 +9,7 @@ Items waiting on the maintainer. See CLAUDE.md, "Workflow".
 
 | Exception | Closes when | Recorded |
 |---|---|---|
-| Tesseract4Android's prebuilt native libraries log fixed status lines (no content) in release builds, which R8 cannot strip. See `docs/design-decisions.md`, "Logs and crash reports". | Tesseract and Leptonica are built from source with logging compiled out, and the FOSS and Play builds use those libraries. | 2026-10-11, accepted by the maintainer |
+| Tesseract4Android's JitPack native libraries log fixed status lines (no content) in release builds, which R8 cannot strip. See `docs/design-decisions.md`, "Logs and crash reports". | Every release build uses the from-source libraries (`android/ocr-native/`, logging compiled out). Done for the `foss` flavor with `-Pterpoir.ocr.aar` (F-Droid); still open for Play and GitHub Releases builds, which use JitPack. | 2026-10-11, accepted by the maintainer |
 
 ## Blocked network sources
 
@@ -19,7 +19,9 @@ an item by moving it to "Resolved" with the decision and date.
 
 ### Open
 
-None.
+| Host | Needed for | Done instead | Decision needed |
+|---|---|---|---|
+| GitHub source archives (`github.com/<repo>/archive/…`, served from `codeload.github.com`) of `tesseract-ocr/tesseract` and `adaptech-cz/Tesseract4Android`. The session proxy serves `git clone` of public repositories but refuses their archive downloads. | The two pinned tarballs in `android/ocr-native/sources.txt`, to build the from-source OCR AAR locally and test the `terpoir.ocr.aar` switch | Cloned each pinned tag and recreated the tarball with `git archive` + `gzip -n`. Both are byte-identical to the SHA-256 pinned in `sources.txt` (`build.sh` checks again), and the AAR built from them matches `android/ocr-native/SHA256SUMS`. CI's OCR workflow downloads the real archives. | Accept the recreated, hash-verified tarballs for local builds, or widen this session's GitHub access so the archives download directly. |
 
 ### Resolved
 
