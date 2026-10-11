@@ -24,12 +24,41 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels that pull request's older run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
 
 jobs:
+  # Skips the jobs below on pull requests that change nothing they check
+  # (a skipped job still reports, so it can be a required check).
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.files.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Check the changed files
+        id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: .github/scripts/changes.sh '^(core/|\.github/)' >> "$GITHUB_OUTPUT"
+
   rust:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,6 +67,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # Downloaded dependencies only: Gradle's modules and wrapper, the
+      # Cargo registry, and cargo-ndk. Saved only by the Android job on
+      # main (android.yml), so a pull request can never seed it; Gradle still
+      # checks every artifact against verification-metadata.xml, and Cargo
+      # every crate against Cargo.lock.
+      - name: Restore dependency cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/bin/cargo-ndk
+          key: deps-${{ runner.os }}-${{ hashFiles('android/gradle/verification-metadata.xml', 'android/gradle/wrapper/gradle-wrapper.properties', 'core/Cargo.lock', '.github/scripts/setup-android-core.sh') }}
+          restore-keys: deps-${{ runner.os }}-
 
       - name: Check for the core workspace
         id: core
@@ -95,6 +141,8 @@ jobs:
   # Generates the Kotlin bindings, compiles them with a small smoke test,
   # and runs it on the JVM against the host build of the core library.
   kotlin-bindings:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     env:
       KOTLIN_VERSION: "2.2.20"
@@ -108,6 +156,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # Downloaded dependencies only: Gradle's modules and wrapper, the
+      # Cargo registry, and cargo-ndk. Saved only by the Android job on
+      # main (android.yml), so a pull request can never seed it; Gradle still
+      # checks every artifact against verification-metadata.xml, and Cargo
+      # every crate against Cargo.lock.
+      - name: Restore dependency cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/bin/cargo-ndk
+          key: deps-${{ runner.os }}-${{ hashFiles('android/gradle/verification-metadata.xml', 'android/gradle/wrapper/gradle-wrapper.properties', 'core/Cargo.lock', '.github/scripts/setup-android-core.sh') }}
+          restore-keys: deps-${{ runner.os }}-
 
       - name: Check for the FFI crate
         id: ffi

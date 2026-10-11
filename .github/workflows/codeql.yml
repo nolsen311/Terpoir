@@ -25,15 +25,32 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels that pull request's older run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   languages:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
+      run: ${{ steps.files.outputs.run }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # Pull requests that change no code or workflows skip the analysis.
+      - name: Check the changed files
+        id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: .github/scripts/changes.sh '^(android/|core/|\.github/)' >> "$GITHUB_OUTPUT"
 
       - name: Detect languages present in the tree
         id: detect
@@ -51,6 +68,7 @@ jobs:
   analyze:
     name: analyze (${{ matrix.language }})
     needs: languages
+    if: needs.languages.outputs.run == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -69,6 +87,20 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           queries: security-extended
+
+      # Downloaded dependencies only; see android.yml, which saves it.
+      - name: Restore dependency cache
+        if: matrix.build-mode == 'manual'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/bin/cargo-ndk
+          key: deps-${{ runner.os }}-${{ hashFiles('android/gradle/verification-metadata.xml', 'android/gradle/wrapper/gradle-wrapper.properties', 'core/Cargo.lock', '.github/scripts/setup-android-core.sh') }}
+          restore-keys: deps-${{ runner.os }}-
 
       - name: Set up Rust core toolchain
         if: matrix.build-mode == 'manual'

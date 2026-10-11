@@ -14,7 +14,10 @@ set -eu
 CARGO_NDK_VERSION=4.1.2
 
 (cd core && rustup toolchain install && rustup target add aarch64-linux-android x86_64-linux-android)
-cargo install --locked "cargo-ndk@${CARGO_NDK_VERSION}"
+# Restored from the dependency cache on most runs (see android.yml).
+if ! cargo ndk --version 2>/dev/null | grep -qx "cargo-ndk ${CARGO_NDK_VERSION}"; then
+    cargo install --locked "cargo-ndk@${CARGO_NDK_VERSION}"
+fi
 
 ndk=$(sed -n 's/^ *ndkVersion = "\(.*\)"$/\1/p' android/app/build.gradle.kts)
 [ -n "$ndk" ] || { echo "ndkVersion not found" >&2; exit 1; }
