@@ -69,7 +69,7 @@ without it.
 - [x] Keystore (StrongBox where available) wrapping key; crypto-bound
       BiometricPrompt unlock (biometric or device passcode); auto-lock with
       1-minute default; lock on device lock.
-- [ ] Backup exclusion; FLAG_SECURE screen protection (default on);
+- [x] Backup exclusion; FLAG_SECURE screen protection (default on);
       accessibility-data-sensitive marking; app-switcher blur; no-learning
       and autofill opt-out on text fields.
 - [ ] Privacy Center skeleton with a toggle registry that requires a paired

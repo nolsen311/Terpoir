@@ -123,6 +123,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Default: the user's normal keyboard experience.** The user knows their own input preferences; the app trusts that choice.
 - **Zero-cost protections stay on by default** because they don't change typing: on Android, the no-personalized-learning flag on all fields and opting fields out of autofill. iOS has no equivalent free protection.
 - **Opt-in protections (Privacy Center), iOS:** block third-party keyboards app-wide; disable autocorrect and predictions on journal fields. Each with a disclosure card.
+- **Android implementation:** all app content is wrapped in `PrivateTextInput`, a text-input interceptor that adds `IME_FLAG_NO_PERSONALIZED_LEARNING` to every text field, so a new field cannot forget it. Autofill is off app-wide: the window's root view is `IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS`.
 - **Info card:** keyboards see everything typed before encryption; third-party keyboards can log and transmit keystrokes (on iOS when granted Full Access); system keyboards learn new words, and the iOS keyboard dictionary can sync via iCloud. On Android the app cannot control which keyboard is used, and third-party keyboards may ignore the no-learning request. Words already learned stay until the user resets the keyboard dictionary in system settings (link provided).
 
 ### Voice-first new notes
@@ -152,6 +153,10 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - Off-action allows screenshots and screen sharing; disclosure: captures land in the photo gallery and possibly cloud backups, and casting shows content on other screens.
 - Rationale: unlike keyboards, this default protects against other software rather than overriding the user's own tool.
 - Sharing has a deliberate path via share/export (see open decisions), so screenshots aren't the only option.
+- **Android implementation (`app.terpoir.privacy.ScreenPrivacy`):** applied to the whole window. The app is a single activity and every screen shows or leads to journal content.
+  - App-switcher blur: Android 13+ disables the Recents snapshot (`setRecentsScreenshotEnabled(false)`). Android 11 and 12 have no such API, so FLAG_SECURE is set whenever the app is not in front (`onPause`), even with screen protection off.
+  - Accessibility-data-sensitive (14+): set on the window's root view, which covers the Compose UI's virtual accessibility nodes.
+  - Screen protection is stored in `PrivacySettings` (default on) and applied on every resume, so a change takes effect at once. It registers with the Privacy Center, as an on/off pair, when the Privacy Center lands. Turning it off only clears FLAG_SECURE; nothing else needs cleaning up.
 
 ## Local storage format (decided)
 - **Two layers:**
