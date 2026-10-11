@@ -6,6 +6,7 @@ package app.terpoir
 
 import android.app.Application
 import app.terpoir.core.init as initCore
+import app.terpoir.privacy.PrivacySettings
 import app.terpoir.session.AutoLock
 import app.terpoir.session.JournalFiles
 import app.terpoir.session.JournalSession
@@ -21,11 +22,16 @@ class TerpoirApplication : Application() {
     lateinit var lockSettings: LockSettings
         private set
 
+    /** Privacy toggles readable before unlock. */
+    lateinit var privacySettings: PrivacySettings
+        private set
+
     override fun onCreate() {
         super.onCreate()
         // Installs the core's panic hook (never reports panic messages).
         initCore()
         lockSettings = LockSettings(this)
+        privacySettings = PrivacySettings(this)
         session = JournalSession(JournalFiles(noBackupFilesDir))
         AutoLock(this, session, lockSettings).install()
     }

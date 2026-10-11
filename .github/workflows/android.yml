@@ -103,11 +103,16 @@ jobs:
 
       # Plain adb + am instrument, so no extra test-runner artifacts are
       # downloaded at run time. The Keystore tests need a secure lock screen,
-      # so the emulator gets a PIN first.
+      # so the emulator gets a PIN first. The activity tests need the app in
+      # front, so the screen is woken, unlocked and kept on before the PIN is
+      # set (it never turns off, so the PIN never locks it).
       - name: Run instrumented tests
         run: |
           set -euo pipefail
           adb="$ANDROID_HOME/platform-tools/adb"
+          "$adb" shell svc power stayon true
+          "$adb" shell input keyevent KEYCODE_WAKEUP
+          "$adb" shell wm dismiss-keyguard
           "$adb" shell locksettings set-pin 1234
           "$adb" install -r app/build/outputs/apk/foss/debug/app-foss-debug.apk
           "$adb" install -r app/build/outputs/apk/androidTest/foss/debug/app-foss-debug-androidTest.apk

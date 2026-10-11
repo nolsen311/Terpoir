@@ -26,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.terpoir.core.coreVersion
+import app.terpoir.privacy.PrivateTextInput
+import app.terpoir.privacy.ScreenPrivacy
 import app.terpoir.security.UserAuthentication
 import app.terpoir.session.JournalSession
 import javax.crypto.Cipher
@@ -36,14 +38,27 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ScreenPrivacy.install(this)
         val core = coreVersion()
         setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    Screen(app.session, core)
+            PrivateTextInput {
+                MaterialTheme {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        Screen(app.session, core)
+                    }
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        ScreenPrivacy.onResume(this, app.privacySettings.screenProtection)
+    }
+
+    override fun onPause() {
+        ScreenPrivacy.onPause(this)
+        super.onPause()
     }
 
     @Composable
