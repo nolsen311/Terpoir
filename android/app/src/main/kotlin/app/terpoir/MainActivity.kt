@@ -4,6 +4,7 @@
 
 package app.terpoir
 
+import android.content.Intent
 import android.os.Bundle
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import androidx.activity.ComponentActivity
@@ -19,14 +20,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.terpoir.alerts.SpotAlerts
 import app.terpoir.core.coreVersion
 import app.terpoir.core.vocabulary
 import app.terpoir.journal.JournalHome
@@ -43,13 +47,27 @@ import app.terpoir.security.UserAuthentication
 import app.terpoir.session.JournalSession
 import app.terpoir.ui.theme.TerpoirTheme
 import javax.crypto.Cipher
+import kotlinx.coroutines.launch
 
 /** The app's only activity. UI only: data, crypto and sync live in the Rust core. */
 class MainActivity : ComponentActivity() {
     private val app get() = application as TerpoirApplication
 
+    /** Opened from a "Notify me" alert: after unlock, show which spot is near. */
+    private var nearbyRequested by mutableStateOf(false)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        fromAlert(intent)
+    }
+
+    private fun fromAlert(intent: Intent?) {
+        if (intent?.action == SpotAlerts.ACTION_NEAR_SPOT) nearbyRequested = true
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        fromAlert(intent)
         ScreenPrivacy.install(this)
         val core = coreVersion()
         // System bars follow the theme: light icons in dark mode and back.
@@ -110,7 +128,20 @@ class MainActivity : ComponentActivity() {
                 val repo = remember(state.journal) { JournalRepository(state.journal) }
                 val vocab = remember { vocabulary() }
                 val scan = remember { ScanServices(Scanner { Distribution.textEngine(app, app.privacySettings) }) { app.privacySettings.coaLinks } }
-                JournalHome(repo, vocab, scan, app.privacySettings, onLock = session::lock) { onClose ->
+                val scope = rememberCoroutineScope()
+                // Each unlock re-registers "Notify me" geofences: they need the
+                // spots' coordinates, which only the open journal has.
+                LaunchedEffect(state.journal) { app.spotAlerts.refresh(state.journal) }
+                JournalHome(
+                    repo,
+                    vocab,
+                    scan,
+                    app.privacySettings,
+                    app.spotAlerts,
+                    checkNearby = nearbyRequested,
+                    onEdited = { scope.launch { app.spotAlerts.refresh(state.journal) } },
+                    onLock = session::lock,
+                ) { onClose ->
                     PrivacyCenterScreen(
                         center = app.privacyCenter,
                         onChanged = { ScreenPrivacy.onResume(this, app.privacySettings.screenProtection) },

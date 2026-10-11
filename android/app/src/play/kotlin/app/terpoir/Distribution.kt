@@ -5,6 +5,8 @@
 package app.terpoir
 
 import android.content.Context
+import app.terpoir.alerts.Geofencer
+import app.terpoir.alerts.PlayGeofencer
 import app.terpoir.onboarding.AgeSignals
 import app.terpoir.onboarding.PlayAgeSignals
 import app.terpoir.privacy.PrivacySettings
@@ -39,6 +41,9 @@ object Distribution {
      */
     fun textEngine(context: Context, settings: PrivacySettings): TextEngine =
         if (settings.googleTextRecognition) GoogleTextEngine(context) else PlayTesseractEngine(context)
+
+    /** "Notify me" geofencing: Play services, or the platform without them. */
+    fun geofencer(context: Context): Geofencer = PlayGeofencer(context)
 
     /** Lets Play services remove ML Kit's model (the toggle's off-action). */
     suspend fun releaseGoogleTextRecognition(context: Context) = GoogleTextEngine.release(context)

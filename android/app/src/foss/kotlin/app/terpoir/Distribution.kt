@@ -5,6 +5,8 @@
 package app.terpoir
 
 import android.content.Context
+import app.terpoir.alerts.AospGeofencer
+import app.terpoir.alerts.Geofencer
 import app.terpoir.onboarding.AgeSignals
 import app.terpoir.privacy.PrivacySettings
 import app.terpoir.scan.BundledTextEngine
@@ -31,6 +33,9 @@ object Distribution {
     /** Text recognition: the bundled Tesseract. */
     @Suppress("UNUSED_PARAMETER")
     fun textEngine(context: Context, settings: PrivacySettings): TextEngine = BundledTextEngine(context)
+
+    /** "Notify me" geofencing through the platform's LocationManager. */
+    fun geofencer(context: Context): Geofencer = AospGeofencer(context)
 
     /** No Google text recognition here, so nothing to release. */
     @Suppress("UNUSED_PARAMETER", "RedundantSuspendModifier")

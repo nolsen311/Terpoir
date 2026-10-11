@@ -19,6 +19,9 @@ per item or small group of items. Keep this file updated as items land.
       offline encrypted backup.
 - [ ] Create the Google Play developer account (personal); check current
       closed-testing requirements.
+- [ ] Play Console: declare background location for "Notify me" (the
+      permissions declaration form and a short demonstration video) before
+      the first release that includes it.
 
 ## Phase 0: Repository and CI foundations
 

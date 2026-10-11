@@ -5,6 +5,7 @@
 package app.terpoir.journal
 
 import android.Manifest
+import android.annotation.SuppressLint
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -53,6 +54,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
+import app.terpoir.alerts.AlertNeed
+import app.terpoir.alerts.SpotAlerts
 import app.terpoir.core.BrandData
 import app.terpoir.core.NearbySpot
 import app.terpoir.core.ProductData
@@ -100,6 +103,9 @@ fun JournalHome(
     vocab: Vocabulary,
     scan: ScanServices,
     settings: PrivacySettings,
+    alerts: SpotAlerts,
+    checkNearby: Boolean,
+    onEdited: () -> Unit,
     onLock: () -> Unit,
     privacyCenter: @Composable (onClose: () -> Unit) -> Unit,
 ) {
@@ -111,6 +117,8 @@ fun JournalHome(
         if (stack.size > 1) stack.removeAt(stack.lastIndex)
         revision++
     }
+    // Spots may have changed: "Notify me" re-registers its geofences.
+    LaunchedEffect(revision) { if (revision > 0) onEdited() }
 
     when (val screen = stack.last()) {
         is Screen.Session -> SessionEditor(repo, vocab, settings, screen.id, pop, spotForNew = screen.spot)
@@ -155,6 +163,9 @@ fun JournalHome(
                 Tab.JOURNAL -> JournalList(
                     repo,
                     settings,
+                    alerts,
+                    checkNearby,
+                    onEdited,
                     revision,
                     padding,
                     onLock,
@@ -184,6 +195,9 @@ private fun androidx.compose.foundation.layout.RowScope.NavItem(selected: Boolea
 private fun JournalList(
     repo: JournalRepository,
     settings: PrivacySettings,
+    alerts: SpotAlerts,
+    checkNearby: Boolean,
+    onPermissions: () -> Unit,
     revision: Int,
     padding: PaddingValues,
     onLock: () -> Unit,
@@ -217,7 +231,9 @@ private fun JournalList(
                 }
             }
         }
-        if (settings.showNearbySpots) item { NearbyBanner(repo, onSessionAt) }
+        if (settings.notifyNearSpots) item { NotifySetupCard(alerts, onPermissions) }
+        // "Show me", or the tap on a "Notify me" alert: which spot is near.
+        if (settings.showNearbySpots || checkNearby) item { NearbyBanner(repo, onSessionAt) }
         val list = sessions
         // One timeline: sessions and standalone notes, newest first.
         val timeline: List<Pair<Long, Entry<*>>> = (
@@ -444,6 +460,50 @@ private fun NearbyBanner(repo: JournalRepository, onSessionAt: (String) -> Unit)
             Text(stringResource(R.string.show_nearby_at, spot.name), style = MaterialTheme.typography.titleMedium)
             androidx.compose.material3.OutlinedButton(onClick = { onSessionAt(spot.id) }) {
                 Text(stringResource(R.string.show_nearby_log_here))
+            }
+        }
+    }
+}
+
+/**
+ * What "Notify me" still needs, one permission at a time: precise location,
+ * then location "all the time" (Android opens its settings for that), then
+ * notifications. Nothing shows once all are granted.
+ */
+// POST_NOTIFICATIONS is asked only on Android 13+, where needs() lists it.
+@SuppressLint("InlinedApi")
+@Composable
+private fun NotifySetupCard(alerts: SpotAlerts, onGranted: () -> Unit) {
+    var needs by remember { mutableStateOf(alerts.needs()) }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        needs = alerts.needs()
+        onGranted()
+    }
+    val next = needs.firstOrNull() ?: return
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.notify_setup_title), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(
+                    when (next) {
+                        AlertNeed.PRECISE_LOCATION -> R.string.notify_setup_precise
+                        AlertNeed.BACKGROUND_LOCATION -> R.string.notify_setup_background
+                        AlertNeed.NOTIFICATIONS -> R.string.notify_setup_notifications
+                    },
+                ),
+            )
+            androidx.compose.material3.OutlinedButton(
+                onClick = {
+                    ask.launch(
+                        when (next) {
+                            AlertNeed.PRECISE_LOCATION -> arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                            AlertNeed.BACKGROUND_LOCATION -> arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                            AlertNeed.NOTIFICATIONS -> arrayOf(Manifest.permission.POST_NOTIFICATIONS)
+                        },
+                    )
+                },
+            ) {
+                Text(stringResource(R.string.notify_setup_allow))
             }
         }
     }

@@ -31,6 +31,12 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-feature android:name="android.hardware.location" android:required="false" />
 
+    <!-- "Notify me" (off by default): geofences need location "all the
+         time", and the alert needs permission to notify (Android 13+).
+         Asked only after the user turns it on. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Lets the app see whether the system speech recognizer exists
          (package visibility); it never binds to any other recognizer. -->
     <queries>
@@ -56,6 +62,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Geofence events for "Notify me", from this app's own pending
+             intents only. -->
+        <receiver
+            android:name=".alerts.GeofenceReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

@@ -134,6 +134,7 @@ dependencies {
     "playImplementation"(libs.play.feature.delivery)
     "playImplementation"(libs.play.asset.delivery)
     "playImplementation"(libs.play.mlkit.text.recognition)
+    "playImplementation"(libs.play.services.location)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.runner)
@@ -359,6 +360,13 @@ val allowedPermissions = setOf(
     // on first use. Never background location here.
     "android.permission.ACCESS_COARSE_LOCATION",
     "android.permission.ACCESS_FINE_LOCATION",
+    // "Notify me" (off by default): geofences around saved spots need
+    // location "all the time"; asked only after the user turns it on, after
+    // its disclosure. Runtime permission.
+    "android.permission.ACCESS_BACKGROUND_LOCATION",
+    // The "Notify me" alert (Android 13+). Runtime permission, asked with
+    // the location permissions above.
+    "android.permission.POST_NOTIFICATIONS",
 )
 
 /**
