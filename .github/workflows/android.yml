@@ -56,6 +56,7 @@ jobs:
 
   instrumented:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     env:
       SYSTEM_IMAGE: "system-images;android-30;default;x86_64"
     defaults:
@@ -91,9 +92,9 @@ jobs:
           "$sdk/sdkmanager" emulator platform-tools "$SYSTEM_IMAGE" >/dev/null
           echo no | "$sdk/avdmanager" create avd -n ci -k "$SYSTEM_IMAGE"
           nohup "$ANDROID_HOME/emulator/emulator" -avd ci -no-window -no-audio \
-            -no-boot-anim -no-snapshot -gpu swiftshader_indirect >/dev/null 2>&1 &
+            -no-boot-anim -no-snapshot -gpu swiftshader_indirect >"$RUNNER_TEMP/emulator.log" 2>&1 &
           adb="$ANDROID_HOME/platform-tools/adb"
-          "$adb" wait-for-device
+          timeout 300 "$adb" wait-for-device
           timeout 600 sh -c "until [ \"\$($adb shell getprop sys.boot_completed | tr -d '\r')\" = 1 ]; do sleep 5; done"
 
       # Plain adb + am instrument, so no extra test-runner artifacts are
@@ -104,5 +105,13 @@ jobs:
           adb="$ANDROID_HOME/platform-tools/adb"
           "$adb" install -r app/build/outputs/apk/foss/debug/app-foss-debug.apk
           "$adb" install -r app/build/outputs/apk/androidTest/foss/debug/app-foss-debug-androidTest.apk
-          "$adb" shell am instrument -w app.terpoir.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/instrument.txt"
+          timeout 900 "$adb" shell am instrument -w app.terpoir.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/instrument.txt"
           grep -q "^OK (" "$RUNNER_TEMP/instrument.txt"
+
+      # Test data is synthetic, so the emulator log and logcat are safe to
+      # print.
+      - name: Emulator diagnostics
+        if: failure()
+        run: |
+          tail -n 100 "$RUNNER_TEMP/emulator.log" || true
+          timeout 30 "$ANDROID_HOME/platform-tools/adb" logcat -d -t 300 || true
