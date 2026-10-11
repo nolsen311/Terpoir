@@ -47,7 +47,7 @@ without it.
       HKDF, random 128-bit IDs; key types using `zeroize` and `secrecy`.
       Recovery key encoding (word list or grouped Base32 with checksum).
       Key hierarchy: recovery → master → per-record keys; rotation re-wraps.
-- [ ] `terpoir-model`: record types (Session, Product, Strain, Brand, Spot,
+- [x] `terpoir-model`: record types (Session, Product, Strain, Brand, Spot,
       stream snippets, tags), schema version on every record, serialization,
       migrations.
 - [ ] `terpoir-store`: SQLCipher database with per-record encrypted blobs,
