@@ -93,7 +93,7 @@ without it.
 - [x] OCR native libraries built from pinned source for F-Droid
       (`android/ocr-native/`, asynchronous `OCR native libraries`
       workflow, reproducible on two runners).
-- [ ] When the scanner adds Tesseract4Android: the `terpoir.ocr.aar`
+- [x] When the scanner adds Tesseract4Android: the `terpoir.ocr.aar`
       Gradle property that switches the `foss` flavor to the from-source
       AAR (JitPack repository declared only without it); check the foss
       build with it in the OCR workflow.

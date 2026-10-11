@@ -67,27 +67,26 @@ To bump a version: edit its line in `sources.txt` (version, URL, SHA-256 of
 the new tarball), push, and copy the hashes the workflow prints into
 `SHA256SUMS`.
 
-## Using it from the app (lands with the scanner)
+## Using it from the app
 
-The app does not depend on Tesseract4Android yet. When the scanner adds it,
-the dependency gets a Gradle property switch for the `foss` flavor:
+The scanner depends on Tesseract4Android, with a Gradle property switch for
+the `foss` flavor (`app/build.gradle.kts`):
 
 ```kotlin
-// app/build.gradle.kts (planned)
 val ocrAar = providers.gradleProperty("terpoir.ocr.aar").orNull
-dependencies {
-    if (ocrAar != null) {
-        "fossImplementation"(files(ocrAar))  // built here, from source
-    } else {
-        "fossImplementation"(libs.tesseract4android)  // JitPack
-    }
-    "playImplementation"(libs.tesseract4android)
+if (ocrAar != null) {
+    "fossImplementation"(files(ocrAar))  // built here, from source
+} else {
+    "fossImplementation"(libs.tesseract4android)  // JitPack
 }
+"playImplementation"(libs.tesseract4android)
 ```
 
-The JitPack repository is declared only when the property is unset, so a
-from-source build never contacts JitPack. CI keeps building without the
-property.
+`settings.gradle.kts` declares the JitPack repository only when the property
+is unset, so a from-source build never contacts JitPack. App CI builds
+without the property. The workflow's `foss-app` job builds the `foss`
+release with it and checks that the APK ships these libraries, none of which
+calls Android's logger.
 
 ### F-Droid recipe (outline)
 

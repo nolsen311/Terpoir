@@ -30,12 +30,15 @@ on:
     paths:
       - "android/ocr-native/**"
       - ".github/workflows/ocr-native.yml"
-      # The NDK version and minSdk are read from here.
+      # The NDK version and minSdk are read from here, and the
+      # terpoir.ocr.aar switch lives here and in settings.gradle.kts.
       - "android/app/build.gradle.kts"
+      - "android/settings.gradle.kts"
   pull_request:
     paths:
       - "android/ocr-native/**"
       - ".github/workflows/ocr-native.yml"
+      - "android/settings.gradle.kts"
 
 permissions:
   contents: read
@@ -139,3 +142,59 @@ jobs:
             exit 1
           fi
           echo "Both builds are identical and match android/ocr-native/SHA256SUMS."
+
+  # The foss flavor built the way F-Droid builds it: with the from-source
+  # AAR (-Pterpoir.ocr.aar), so JitPack is never declared. Checks that the
+  # release passes its own verification and that the shipped Tesseract
+  # libraries are the ones built here (no Android logging; the JitPack
+  # build logs status lines).
+  foss-app:
+    needs: compare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ocr-native-first
+          path: ${{ runner.temp }}/ocr-native
+
+      - name: Set up Rust core toolchain
+        run: .github/scripts/setup-android-core.sh
+
+      - name: Build the foss release with the from-source libraries
+        working-directory: android
+        run: |
+          set -euo pipefail
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          ./gradlew --no-daemon --no-build-cache \
+            -Pterpoir.ocr.aar="$RUNNER_TEMP/ocr-native/tesseract4android-4.9.0.aar" \
+            assembleFossRelease verifyFossReleaseNoLogging verifyFossDependencies
+
+      - name: Check the shipped OCR libraries
+        run: |
+          set -euo pipefail
+          ndk=$(sed -n 's/^ *ndkVersion = "\(.*\)"$/\1/p' android/app/build.gradle.kts)
+          nm="$ANDROID_HOME/ndk/$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
+          readelf="$ANDROID_HOME/ndk/$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+          apk=$(ls android/app/build/outputs/apk/foss/release/*.apk)
+          libs="$RUNNER_TEMP/apk-libs"
+          mkdir -p "$libs"
+          (cd "$libs" && unzip -q -o "$GITHUB_WORKSPACE/$apk" 'lib/*')
+          found=0
+          for lib in "$libs"/lib/*/libtesseract.so "$libs"/lib/*/libleptonica.so "$libs"/lib/*/libjpeg.so "$libs"/lib/*/libpngx.so; do
+            found=$((found + 1))
+            if "$nm" -D --undefined-only "$lib" | grep -q '__android_log'; then
+              echo "::error::$lib calls Android's logger: not the from-source build."
+              exit 1
+            fi
+            if "$readelf" -d "$lib" | grep -q 'liblog.so'; then
+              echo "::error::$lib links liblog: not the from-source build."
+              exit 1
+            fi
+          done
+          [ "$found" -eq 8 ] || { echo "::error::expected 8 OCR libraries in the APK, found $found"; exit 1; }
+          echo "The foss release ships the from-source OCR libraries, none of which logs."
