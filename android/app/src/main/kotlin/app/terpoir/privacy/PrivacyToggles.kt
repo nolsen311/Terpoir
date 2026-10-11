@@ -26,5 +26,39 @@ fun buildPrivacyCenter(settings: PrivacySettings): PrivacyCenter = PrivacyCenter
             onAction = { settings.screenProtection = true },
             offAction = { settings.screenProtection = false },
         ),
+        // Scanned links are always stored as identifiers; this only allows
+        // handing one to the browser. Nothing to clean up when turned off.
+        PrivacyToggle(
+            id = "coa_links",
+            group = PrivacyGroup.CATALOGS,
+            card = PrivacyCard(
+                title = R.string.coa_links,
+                whatItDoes = R.string.coa_links_does,
+                whatLeaves = R.string.coa_links_leaves,
+                whoCanSee = R.string.coa_links_who,
+                howToUndo = R.string.coa_links_undo,
+            ),
+            privateState = false,
+            isOn = { settings.coaLinks },
+            onAction = { settings.coaLinks = true },
+            offAction = { settings.coaLinks = false },
+        ),
+        // Which input the new-note button opens. Voice is on-device only,
+        // so neither side creates anything to clean up.
+        PrivacyToggle(
+            id = "voice_first",
+            group = PrivacyGroup.KEYBOARD_AND_VOICE,
+            card = PrivacyCard(
+                title = R.string.voice_first,
+                whatItDoes = R.string.voice_first_does,
+                whatLeaves = R.string.voice_first_leaves,
+                whoCanSee = R.string.voice_first_who,
+                howToUndo = R.string.voice_first_undo,
+            ),
+            privateState = true,
+            isOn = { settings.voiceFirst },
+            onAction = { settings.voiceFirst = true },
+            offAction = { settings.voiceFirst = false },
+        ),
     ),
 )

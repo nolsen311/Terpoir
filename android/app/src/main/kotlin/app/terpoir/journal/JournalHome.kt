@@ -29,6 +29,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,13 +46,16 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.core.BrandData
 import app.terpoir.core.ProductData
 import app.terpoir.core.SessionData
+import app.terpoir.core.SnippetData
 import app.terpoir.core.StrainData
 import app.terpoir.core.Vocabulary
+import app.terpoir.privacy.PrivacySettings
 
 /** Where the user is inside the unlocked app. */
 private sealed interface Screen {
@@ -64,6 +68,10 @@ private sealed interface Screen {
     data class Strain(val id: String?) : Screen
 
     data class Brand(val id: String?) : Screen
+
+    data object Receipt : Screen
+
+    data class Note(val id: String?) : Screen
 }
 
 private enum class Tab { JOURNAL, PRODUCTS, PRIVACY }
@@ -78,6 +86,8 @@ private enum class Catalog { PRODUCTS, STRAINS, BRANDS }
 fun JournalHome(
     repo: JournalRepository,
     vocab: Vocabulary,
+    scan: ScanServices,
+    settings: PrivacySettings,
     onLock: () -> Unit,
     privacyCenter: @Composable (onClose: () -> Unit) -> Unit,
 ) {
@@ -92,7 +102,16 @@ fun JournalHome(
 
     when (val screen = stack.last()) {
         is Screen.Session -> SessionEditor(repo, vocab, screen.id, pop)
-        is Screen.Product -> ProductEditor(repo, vocab, screen.id, pop)
+        is Screen.Product -> ProductEditor(
+            repo,
+            vocab,
+            scan,
+            screen.id,
+            onOpenProduct = { other -> stack[stack.lastIndex] = Screen.Product(other) },
+            onDone = pop,
+        )
+        Screen.Receipt -> ReceiptScreen(repo, scan, pop)
+        is Screen.Note -> NoteScreen(repo, settings, screen.id, pop)
         is Screen.Strain -> StrainEditor(repo, vocab, screen.id, pop)
         is Screen.Brand -> BrandEditor(repo, screen.id, pop)
         Screen.Home -> Scaffold(
@@ -105,16 +124,24 @@ fun JournalHome(
             },
             floatingActionButton = {
                 if (tab == Tab.JOURNAL) {
-                    ExtendedFloatingActionButton(
-                        onClick = { stack.add(Screen.Session(null)) },
-                        icon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
-                        text = { Text(stringResource(R.string.session_new)) },
-                    )
+                    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SmallFloatingActionButton(onClick = { stack.add(Screen.Session(null)) }) {
+                            Icon(painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.session_new))
+                        }
+                        // The new-note button: voice first unless the user chose typing.
+                        ExtendedFloatingActionButton(
+                            onClick = { stack.add(Screen.Note(null)) },
+                            icon = { Icon(painterResource(R.drawable.ic_mic), contentDescription = null) },
+                            text = { Text(stringResource(R.string.note_new)) },
+                        )
+                    }
                 }
             },
         ) { padding ->
             when (tab) {
-                Tab.JOURNAL -> JournalList(repo, revision, padding, onLock) { stack.add(Screen.Session(it)) }
+                Tab.JOURNAL -> JournalList(repo, revision, padding, onLock, onOpenNote = { stack.add(Screen.Note(it)) }) {
+                    stack.add(Screen.Session(it))
+                }
                 Tab.PRODUCTS -> CatalogLists(repo, vocab, revision, padding) { stack.add(it) }
                 Tab.PRIVACY -> Column(Modifier.padding(padding)) { privacyCenter { tab = Tab.JOURNAL } }
             }
@@ -138,14 +165,17 @@ private fun JournalList(
     revision: Int,
     padding: PaddingValues,
     onLock: () -> Unit,
+    onOpenNote: (String) -> Unit,
     onOpen: (String) -> Unit,
 ) {
     var sessions by remember { mutableStateOf<List<Entry<SessionData>>?>(null) }
+    var notes by remember { mutableStateOf<List<Entry<SnippetData>>>(emptyList()) }
     var productNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var effectNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     LaunchedEffect(revision) {
         productNames = repo.products().associate { it.id to it.data.name }
         effectNames = repo.tags(EFFECT_CATEGORY).associate { it.id to it.data.name }
+        notes = repo.standaloneSnippets()
         sessions = repo.sessions()
     }
     LazyColumn(
@@ -162,11 +192,18 @@ private fun JournalList(
             }
         }
         val list = sessions
-        if (list != null && list.isEmpty()) {
+        // One timeline: sessions and standalone notes, newest first.
+        val timeline: List<Pair<Long, Entry<*>>> = (
+            list.orEmpty().map { it.data.`when`.unixMs to it } + notes.map { it.data.at.unixMs to it }
+            ).sortedByDescending { it.first }
+        if (list != null && timeline.isEmpty()) {
             item { Text(stringResource(R.string.journal_empty), style = MaterialTheme.typography.bodyLarge) }
         }
-        items(list.orEmpty(), key = { it.id }) { entry ->
-            SessionCard(entry.data, productNames, effectNames) { onOpen(entry.id) }
+        items(timeline, key = { it.second.id }) { (_, entry) ->
+            when (val data = entry.data) {
+                is SessionData -> SessionCard(data, productNames, effectNames) { onOpen(entry.id) }
+                is SnippetData -> NoteCard(data) { onOpenNote(entry.id) }
+            }
         }
     }
 }
@@ -208,6 +245,23 @@ private fun SessionCard(
                     for (effect in top) AssistChip(onClick = onClick, label = { Text(tagLabel(effect.tag, effectNames)) })
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun NoteCard(note: SnippetData, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                formatWhen(note.at.unixMs, note.at.utcOffsetMin),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(note.text, style = MaterialTheme.typography.bodyLarge, maxLines = 4, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -268,6 +322,7 @@ private fun CatalogLists(
             }
         }
         item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             androidx.compose.material3.OutlinedButton(onClick = {
                 onOpen(
                     when (catalog) {
@@ -286,6 +341,12 @@ private fun CatalogLists(
                         },
                     ),
                 )
+            }
+            if (catalog == Catalog.PRODUCTS) {
+                androidx.compose.material3.OutlinedButton(onClick = { onOpen(Screen.Receipt) }) {
+                    Text(stringResource(R.string.scan_receipt))
+                }
+            }
             }
         }
         when (catalog) {

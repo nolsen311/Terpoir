@@ -8,6 +8,7 @@
 
 use terpoir_model::{
     CoreEffect, DoseUnit, Form, Intention, LabelUnit, Method, Social, StrainType, SymptomResult,
+    Terpene,
 };
 
 /// Every built-in vocabulary, each as slugs in display order.
@@ -31,6 +32,8 @@ pub struct Vocabulary {
     pub social: Vec<String>,
     /// Targeted-symptom results.
     pub symptom_results: Vec<String>,
+    /// Built-in terpene tags (custom terpenes are tags).
+    pub terpenes: Vec<String>,
 }
 
 fn owned(slugs: &[&str]) -> Vec<String> {
@@ -54,6 +57,7 @@ pub fn vocabulary() -> Vocabulary {
         intentions: owned(Intention::SLUGS),
         social: owned(Social::SLUGS),
         symptom_results: owned(SymptomResult::SLUGS),
+        terpenes: owned(Terpene::SLUGS),
     }
 }
 

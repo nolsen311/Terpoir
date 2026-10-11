@@ -15,6 +15,24 @@
          which also covers the device-credential fallback. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
+    <!-- In-app camera for label, receipt and code scans (asked on first
+         use). Photos stay in memory; nothing is written to the gallery. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+
+    <!-- Voice notes with the on-device speech recognizer (asked on first
+         use). Terpoir never receives or keeps the audio. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+    <!-- Lets the app see whether the system speech recognizer exists
+         (package visibility); it never binds to any other recognizer. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <application
         android:name=".TerpoirApplication"
         android:allowBackup="false"

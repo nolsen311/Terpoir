@@ -87,7 +87,7 @@ without it.
       needed); add package date and scanned identifiers to Product; add the
       per-spot purchase-prompt flag to Spot; let session product lines
       reference a purchase line. Update the FFI records and tests.
-- [ ] Rapid product entry: receipt scan (multi-product, image discarded by
+- [x] Rapid product entry: receipt scan (multi-product, image discarded by
       default), label scan, on-device barcode / QR decoding, duplicate
       detection. Online code lookups and COA links opt-in.
 - [x] OCR native libraries built from pinned source for F-Droid
@@ -100,14 +100,14 @@ without it.
       module plus asset pack (no INTERNET permission), bundled in foss;
       ML Kit (through Play services) as a Play-only opt-in in YOLO Mode.
       One engine interface.
-- [ ] When the scanner adds Tesseract4Android: the `terpoir.ocr.aar`
+- [x] When the scanner adds Tesseract4Android: the `terpoir.ocr.aar`
       Gradle property that switches the `foss` flavor to the from-source
       AAR (JitPack repository declared only without it); check the foss
-      build with it in the OCR workflow. Add an on-device smoke test (the
-      from-source AAR has been built and verified, never run): the
-      instrumented emulator job, built with the property, loads the
-      libraries and recognizes text in a bundled test image.
-- [ ] Voice-first FAB with on-device speech recognition (never cloud).
+      build with it in the OCR workflow.
+- [ ] On-device smoke test of the from-source OCR AAR (built and verified,
+      never run): the instrumented emulator job, built with the property,
+      loads the libraries and recognizes text in a bundled test image.
+- [x] Voice-first FAB with on-device speech recognition (never cloud).
 - [ ] Stream snippets; keyword tag suggestions with human confirmation.
 - [ ] Spots with purpose types; "Show me" mode first, then "Notify me"
       geofencing; notification tiers and check-ins.

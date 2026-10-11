@@ -147,10 +147,16 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Audio is discarded after transcription** by default; optionally kept as an encrypted attachment.
 - Microphone permission is "while using" only; the OS recording indicator stays visible.
 - Public-speaking caveat appears in the first-use card and voice-mode info text; one swipe switches to text.
+- **Android implementation (decided):**
+  - **Recognizer:** `SpeechRecognizer.createOnDeviceSpeechRecognizer` only, and only where `isOnDeviceRecognitionAvailable` says it exists (Android 12+). There is no code path to the general recognizer, which may use the network. Elsewhere (Android 11, or phones without one) the note screen says on-device recognition isn't available and offers typing. The bundled model is Phase 5.
+  - **No audio reaches Terpoir:** the system recognizer returns text only, so there is nothing to discard or keep. "Keep voice clips" waits for the bundled model, which handles audio itself.
+  - **Notes:** the main button on the Journal tab is "New note". It listens at once in voice mode and saves a standalone stream snippet. "New session" is the smaller button beside it. Notes show in the journal timeline with sessions, newest first.
+  - **First-use card:** the first time the button is used, the user picks "Speak" or "Type". Either is a choice; neither is pre-selected. The card states on-device processing, that keyboards see typing, and that people nearby can hear.
+  - **Permissions:** `RECORD_AUDIO`, asked on the first spoken note. A `<queries>` entry lets the app see whether a recognition service exists.
 
 ### Privacy Center entries
 - **Keyboard** (iOS options above). Off-action: future typing only; card links to keyboard dictionary reset.
-- **New note default:** voice or text.
+- **New note default:** voice or text. Android: the "New notes start with voice" toggle, in a "Keyboard and voice" section. Voice is its private state, as the design default, since on-device voice is seen by no one else while keyboards see typing. Neither side creates anything to clean up.
 - **Voice engine:** OS on-device or bundled. Off-action deletes the bundled model.
 - **Keep voice clips.** Off-action: delete stored clips (with confirmation) or keep existing ones.
 
@@ -214,8 +220,11 @@ A mobile app for cannabis consumers to journal experiences with strains, product
     - `java.util.logging.Logger` and `Throwable.printStackTrace()`;
     - Kotlin's `print`/`println`;
     - printing to any `PrintStream`, because Compose and JNA keep debug paths that print to `System.out`/`err` and Android sends those to logcat. The app never writes files through `PrintStream`; the core owns storage.
-  - **The shipped bytecode is checked:** `verify<Variant>NoLogging` (release variants, part of `check`) runs `dexdump` on the release APK and fails if any of those calls survived R8. `printStackTrace(PrintWriter)` is allowed: the UniFFI bindings use it to build an error string.
+  - **The shipped bytecode is checked:** `verify<Variant>NoLogging` (release variants, part of `check`) runs `dexdump` on the release APK and fails if any of those calls survived R8. `printStackTrace(PrintWriter)` and `Log.getStackTraceString` are allowed: they only build a string (the UniFFI bindings and CameraX use them); a call that would log it is caught on its own. Int-returning `Log` calls are assumed to return 0, so R8 removes them even where Kotlin uses the result.
   - **Backstop:** a non-debuggable build points `System.out` and `System.err` at a stream that discards everything, for anything that reaches them some other way.
+- **Recorded exception (accepted 2026-10-11): Tesseract's JitPack libraries.** The prebuilt Tesseract4Android libraries (text recognition, see "Rapid product entry") call Android's native logger directly, which R8 and the dexdump check cannot reach. They log fixed status lines only: "Initialized Tesseract API with language=eng" on each engine start, and a few error and assertion messages. Never image content, recognized text, keys, coordinates or identifiers.
+  - **Closed for F-Droid's build:** the from-source libraries (`android/ocr-native/`) have logging compiled out, and the `foss` flavor uses them with `-Pterpoir.ocr.aar`. The OCR workflow's `foss-app` job checks the shipped libraries.
+  - **Still open for JitPack builds** (Play, and app CI). It closes when every release build uses the from-source libraries (tracked in `docs/follow-ups.md`). No other native logging is allowed.
 - **No crash-reporting SDKs and no analytics, ever.**
 - **Disclosure:** Apple and Google collect OS-level crash reports (stack traces, device info, no journal data) when the user has opted in to share diagnostics with developers in device settings. The app cannot disable this; the privacy policy says so.
 - **Opt-in diagnostics mode** (Privacy Center): records a local, encrypted, redacted log; auto-off after 24 hours. Sharing requires the user to review the full text, then send it via the share sheet. Nothing is sent automatically. Off-action deletes all diagnostic logs.
@@ -325,7 +334,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 ### Build pipeline (GitHub Actions)
 - Reproducible Rust and Android builds, with a CI job that rebuilds and compares hashes.
   - Core (decided): `core/scripts/reproducible-build.sh` builds the committed source (`git archive`) at a fixed path with a fixed Cargo home, the pinned toolchain and `SOURCE_DATE_EPOCH` set to the commit time, because OpenSSL compiles in its install path and build date. The `Reproducible build` workflow runs it from two differently placed checkouts with a clean cache and requires identical hashes. Android targets join the same check in Phase 4.
-  - OCR native libraries (decided): the open text-recognition engine is Tesseract through [Tesseract4Android](https://github.com/adaptech-cz/Tesseract4Android) (Apache-2.0), whose JitPack AAR carries natives built by JitPack, which F-Droid does not accept. `android/ocr-native/build.sh` rebuilds that AAR from pinned upstream release tarballs (Tesseract, Leptonica, libpng, IJG libjpeg; from Tesseract4Android only its CMake files, JNI wrapper and Java API), each checked by SHA-256, with the app's pinned NDK for `arm64-v8a` and `x86_64`, 16 KB-aligned, and with the wrapper's logcat calls compiled out (no `liblog`). The `OCR native libraries` workflow builds it on two runners from different paths and requires identical outputs matching the committed `android/ocr-native/SHA256SUMS`. It is asynchronous (weekly, on demand, and when the pins or recipe change) and never a required check, so app CI is no slower. App CI keeps the JitPack AAR; when the scanner adds the dependency, a Gradle property (`terpoir.ocr.aar`) points the `foss` flavor at the from-source AAR instead, and F-Droid's recipe sets it (`android/ocr-native/README.md`).
+  - OCR native libraries (decided): the open text-recognition engine is Tesseract through [Tesseract4Android](https://github.com/adaptech-cz/Tesseract4Android) (Apache-2.0), whose JitPack AAR carries natives built by JitPack, which F-Droid does not accept. `android/ocr-native/build.sh` rebuilds that AAR from pinned upstream release tarballs (Tesseract, Leptonica, libpng, IJG libjpeg; from Tesseract4Android only its CMake files, JNI wrapper and Java API), each checked by SHA-256, with the app's pinned NDK for `arm64-v8a` and `x86_64`, 16 KB-aligned, and with the wrapper's logcat calls compiled out (no `liblog`). The `OCR native libraries` workflow builds it on two runners from different paths and requires identical outputs matching the committed `android/ocr-native/SHA256SUMS`. It is asynchronous (weekly, on demand, and when the pins or recipe change) and never a required check, so app CI is no slower. App CI keeps the JitPack AAR; a Gradle property (`terpoir.ocr.aar`) points the `foss` flavor at the from-source AAR instead, and F-Droid's recipe sets it (`android/ocr-native/README.md`). With the property set, JitPack is not declared at all. The workflow's `foss-app` job builds the `foss` release that way and checks that the shipped OCR libraries don't log.
 - Lockfiles committed; Gradle dependency verification; `cargo-deny` (licenses, advisories); `cargo-vet` (audits).
   - `cargo-deny` policy (`core/deny.toml`): fail on known vulnerabilities and on yanked, unmaintained, or unsound crates; licenses limited to a GPL-3.0-compatible allow list (Apache-2.0, BSD, CC0, ISC, MIT, MPL-2.0, Unicode-3.0, Zlib), extended only with a stated reason; crates.io as the only source; crash-reporting and telemetry crates banned.
   - `cargo-vet`: every Rust dependency audited, imported from a trusted auditor, or explicitly exempted (`core/supply-chain/`).
@@ -430,6 +439,9 @@ Each journal entry records one consumption session, not a product review. Produc
     - **FOSS:** F-Droid has no on-demand delivery and the app never downloads code itself, so the foss build bundles Tesseract (the from-source build, "OCR native libraries" under Builds and releases) with a compact English model. Larger models and other languages are optional data, once the app can download (see the INTERNET permission).
     - **iOS:** Apple's Vision framework (built in, nothing to download).
     - The scanner keeps the engine behind one interface, so the choice is one switch.
+    - **Implementation status (interim, 2026-10-11):** the first scanner bundles Tesseract in both builds, so scanning works before the Play on-demand module exists. It moves to the feature module and asset pack in the roadmap's "OCR engine for the scanner" item. Library: Tesseract 5 through Tesseract4Android 4.9.0, with the English `tessdata_fast` model. Its only published build is on JitPack, which `settings.gradle.kts` restricts to that one group. Its native logging is a recorded exception (see "Logs and crash reports"). Sources and hashes: `android/ocr/README.md`.
+    - **ML Kit's form:** the Play opt-in uses the Play services variant of ML Kit text recognition, which the "Google Play libraries" licensing permission covers. The bundled `com.google.mlkit` artifacts, which that permission does not clearly cover, are not used.
+    - **`ocrs` (pure-Rust OCR) was considered** and not used: the license of its model weights could not be confirmed.
   - Extracted lines appear as a checklist to confirm, fix, or drop.
   - Header text suggests the shop name, matched on-device against existing spots.
   - **The receipt image is discarded after parsing by default** (receipts can carry the user's name, loyalty numbers, or medical card numbers). Only confirmed fields are kept.
@@ -438,6 +450,14 @@ Each journal entry records one consumption session, not a product review. Produc
   - **Online lookups of a scanned code are opt-in** via the catalog toggles; a package tag is a precise identifier.
   - **Opening a label's lab-results (COA) link is opt-in** with the same disclosure: the lab's website learns the user's IP address and which batch they bought.
 - **Duplicate detection:** "Same product, new batch?" keeps history unified.
+- **Implementation (decided):**
+  - **Parsing lives in the core** (`terpoir-scan`): receipt lines, shop, date and total; label THC/CBD, terpenes, batch, package date and package tags; code classification (barcode, QR, package tag, link). Platforms only capture and recognize.
+  - **Duplicate detection and shop matching run in the core** over decrypted records (`Journal::find_products`, `Journal::match_spot`). Matching is by scanned code first, then by normalized name and brand. Codes are never put in the plaintext index.
+  - **Android capture:** a CameraX viewfinder in the app. Photos are taken into memory, read, and recycled at once; nothing is written to storage or the gallery. Code scanning decodes live frames with ZXing, so nothing is photographed. The camera permission is asked on first use.
+  - **Receipts never offer personal or payment lines** (cardholder, loyalty, patient or member numbers, totals, tax). The checklist is saved as one Purchase. The shop becomes an existing spot, a new Re-up Spot with no location, or nothing, as the user chooses.
+  - **Built-in terpene vocabulary** (myrcene, limonene, …) in the core, so label terpenes are tags like any other.
+  - **Lab-results links** are saved with the product either way. Opening one is behind the Privacy Center toggle "Open lab-results links" (Catalogs, off by default).
+  - **Online code lookups are not built yet:** they need a catalog provider (see "Open decisions").
 - On-device model tiers can improve parsing (messy receipts) but are not required; pattern parsing works without them.
 
 ## Stream journaling, tagging, and insights
@@ -500,7 +520,7 @@ Each journal entry records one consumption session, not a product review. Produc
 - Disclose that indexed content sits outside app encryption and removal depends on the OS honoring deletion.
 
 ## Privacy Center
-- One screen holding every privacy-relevant toggle, grouped by surface: Location, Notifications, Catalogs, OS Integration, Photos, Sync and Keys, Device Security.
+- One screen holding every privacy-relevant toggle, grouped by surface: Location, Notifications, Catalogs, OS Integration, Keyboard and Voice, Photos, Sync and Keys, Device Security.
 - Each toggle has a card: what it does, what leaves the app, who can see it, how to undo it.
 - Status summary at top ("All protections on" / "3 protections relaxed").
 - "Restore maximum privacy" resets defaults and runs every cleanup action.
@@ -617,4 +637,4 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - IP: trademark is the priority (file intent-to-use soon); copyright registration not planned given AI authorship; monetization paths unchanged.
 
 ## Open decisions
-None at the design level. New questions go here as they arise.
+- **Catalog provider for online code lookups.** Rapid product entry stores scanned codes locally, and online lookups are opt-in by design. No provider has been chosen, and the app has no network access. Choosing one means deciding on the provider, its terms (caching, redistribution), and the network permission behind its toggle.

@@ -82,6 +82,12 @@ android {
         disable += "UseKtx"
     }
 
+    androidResources {
+        // The OCR model is read through a file descriptor (and copied once),
+        // which needs it stored uncompressed.
+        noCompress += "traineddata"
+    }
+
     dependenciesInfo {
         // No signing-block blob of dependency metadata (Google-encrypted,
         // unverifiable by F-Droid); the SBOM covers this openly.
@@ -95,12 +101,28 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.lifecycle.process)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.compose)
+    implementation(libs.zxing.core)
 
     implementation(libs.jna) {
         artifact { type = "aar" }
     }
 
     "playImplementation"(libs.play.age.signals)
+
+    // Text recognition. The foss flavor can use the AAR built from pinned
+    // source by android/ocr-native/build.sh (F-Droid sets the property);
+    // otherwise both flavors use the JitPack AAR.
+    val ocrAar = providers.gradleProperty("terpoir.ocr.aar").orNull
+    if (ocrAar != null) {
+        "fossImplementation"(files(ocrAar))
+    } else {
+        "fossImplementation"(libs.tesseract4android)
+    }
+    "playImplementation"(libs.tesseract4android)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.runner)
@@ -290,10 +312,12 @@ tasks.named("check") { dependsOn(verifyNoLoggingInSource) }
  * Logging calls that must not survive R8 in a release APK, as dexdump
  * prints method references. printStackTrace(PrintWriter) is allowed: the
  * UniFFI bindings use it (via stackTraceToString) to build an error string,
- * not to print.
+ * not to print. Log.getStackTraceString is allowed for the same reason
+ * (CameraX builds a string with it); any call that would log the string is
+ * caught on its own.
  */
 val loggingInDex = Regex(
-    """Landroid/util/Log;\.|Ljava/util/logging/Logger;\.(log|logp|logrb|severe|warning|info|config|fine|finer|finest|entering|exiting|throwing):|""" +
+    """Landroid/util/Log;\.(?!getStackTraceString:)|Ljava/util/logging/Logger;\.(log|logp|logrb|severe|warning|info|config|fine|finer|finest|entering|exiting|throwing):|""" +
         """Ljava/lang/Throwable;\.printStackTrace:\((Ljava/io/PrintStream;)?\)V|""" +
         """Ljava/io/PrintStream;\.(print|println|printf|format):|Lkotlin/io/ConsoleKt;\.""",
 )
@@ -310,6 +334,12 @@ val allowedPermissions = setOf(
     // AndroidX core: a signature permission private to this app that
     // protects its own non-exported dynamic receivers.
     "app.terpoir.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
+    // In-app camera for label, receipt and code scans. Runtime permission,
+    // asked only when the user first opens a scanner.
+    "android.permission.CAMERA",
+    // Voice notes through the on-device speech recognizer. Runtime
+    // permission, asked only when the user first speaks a note.
+    "android.permission.RECORD_AUDIO",
 )
 
 androidComponents {
