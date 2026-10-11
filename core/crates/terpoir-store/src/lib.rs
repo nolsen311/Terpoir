@@ -62,6 +62,19 @@ pub struct SealedRecord {
     pub ciphertext: Vec<u8>,
 }
 
+impl SealedRecord {
+    /// Decrypts and decodes the record, checking that its contents match
+    /// its ID and kind. The document is not migrated.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Crypto`] if it does not decrypt under `master`;
+    /// [`Error::Mismatch`] if the contents disagree with the ID or kind.
+    pub fn open(&self, master: &MasterKey) -> Result<Document> {
+        open_sealed(master, self)
+    }
+}
+
 /// Associated data binding a record's ciphertext to its ID and kind, so
 /// rows cannot be swapped.
 fn record_aad(id: &RecordId, kind: RecordKind) -> [u8; 17] {

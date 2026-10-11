@@ -36,6 +36,13 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - Concurrent edits to the *same field* lose one side; accepted as rare for a personal journal.
 - CRDT text (e.g. for the notes field) deferred; revisit only if same-field conflicts become a real problem. CRDT operation history conflicts with crypto-erasure, so it would need compaction.
 
+### Sync implementation (decided, `core/crates/terpoir-sync`)
+- **Hybrid logical clock:** stamps follow wall time when clocks are sane and stay causally ordered when they are not. A remote reading can pull the local clock at most 1 hour past local wall time, so a device with a wildly wrong clock cannot drag everyone's stamps into the future.
+- **Merge:** per field, the greater stamp wins (time, counter, then device ID). Documents must be at the same schema version; a document from a newer app is kept aside, not merged. Unknown records are added (set union); a deletion marker always wins, so a deleted record never returns.
+- **Marker cleanup:** a marker can be dropped once every paired device has seen it **and** no sync blob still carries the record (old blobs are rewritten first); otherwise an old blob could resurrect it on a newly paired device.
+- **Blob format:** a batch of sealed records (the same ciphertext as the local store) plus deletion IDs, padded to a size bucket (4 KiB minimum, powers of two to 1 MiB, then whole MiB), encrypted under a container key derived from the master key, and stored under a random 128-bit hex name. Providers learn neither record counts, IDs, kinds, nor exact sizes. Master-key rotation changes the container key, so blobs are rewritten after rotation.
+- **Verified by property tests:** merge is commutative, associative and idempotent; three devices with clocks skewed by up to a day, random edits, deletions and partial syncs converge to identical journals for every delivery order, including redelivery.
+
 ## Keys and recovery
 - Key hierarchy: recovery key → master key → **per-entry data keys**. Rotation re-wraps keys instead of re-encrypting the journal.
 - **Per-entry keys (decided):** each entry, with its photos, gets its own random data key, wrapped by the master key.

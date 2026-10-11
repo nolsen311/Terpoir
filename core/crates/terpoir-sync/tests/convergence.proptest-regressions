@@ -1,0 +1,10 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 84786dfa1b03fb449fd501fa86e4cb695d7820afccaa93b83c031a4a29b7650d # shrinks to a = Document { kind: Session, schema_version: 1, fields: 1, .. }, b = Document { kind: Session, schema_version: 1, fields: 1, .. }
+cc 899cb5b2b75a97ca41ba6e8906f375050c82b2458e271d1e1a2210bb776f6f53 # shrinks to ops = [Create { device: 0, fields: [] }, Create { device: 1, fields: [(5, Null)] }, Sync { from: 1, to: 0 }, Edit { device: 0, record: 6072984739775668387, key: 5, value: Null }], skews = [0, 0, 0], delivery = [[0, 0, 2, 0, 0, 1], [0, 1, 2, 0, 0, 0], [0, 1, 2, 0, 0, 0]]
+cc e94200a0390e3afe2626e04a4cb5402200249af9ed68f32f50d96f767574c1b2 # shrinks to a = Document { kind: Session, schema_version: 1, fields: 1, .. }, b = Document { kind: Session, schema_version: 1, fields: 1, .. }, c = Document { kind: Session, schema_version: 1, fields: 1, .. }
+cc 9a0ceeee44b7b67193df2c21de061a1fa615ee74905296bba451eeba13b86064 # shrinks to ops = [Create { device: 1, fields: [] }, Edit { device: 1, record: 0, key: 4, value: Null }, Sync { from: 1, to: 0 }, Edit { device: 0, record: 0, key: 4, value: Null }], skews = [0, 0, 0], first = [[0, 1, 2, 0, 0, 0], [0, 1, 2, 0, 0, 0], [0, 1, 2, 0, 0, 0]], second = [[0, 2, 0, 0, 0, 1], [0, 1, 2, 0, 0, 0], [0, 1, 2, 0, 0, 0]]

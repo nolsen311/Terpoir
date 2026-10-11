@@ -4,7 +4,12 @@
 
 [workspace]
 resolver = "3"
-members = ["crates/terpoir-crypto", "crates/terpoir-model", "crates/terpoir-store"]
+members = [
+    "crates/terpoir-crypto",
+    "crates/terpoir-model",
+    "crates/terpoir-store",
+    "crates/terpoir-sync",
+]
 
 [workspace.package]
 version = "0.1.0"
@@ -18,6 +23,7 @@ publish = false
 terpoir-crypto = { path = "crates/terpoir-crypto" }
 terpoir-model = { path = "crates/terpoir-model" }
 terpoir-store = { path = "crates/terpoir-store" }
+terpoir-sync = { path = "crates/terpoir-sync" }
 
 aead-stream = { version = "0.6", features = ["alloc"] }
 argon2 = { version = "0.6", default-features = false, features = ["alloc", "zeroize"] }
@@ -28,6 +34,7 @@ hkdf = "0.13"
 # system crypto library.
 rusqlite = { version = "0.40", features = ["bundled-sqlcipher-vendored-openssl"] }
 postcard = { version = "1.1", default-features = false, features = ["alloc"] }
+proptest = { version = "1.11", default-features = false, features = ["std"] }
 secrecy = "0.10"
 serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
 sha2 = { version = "0.11", default-features = false }

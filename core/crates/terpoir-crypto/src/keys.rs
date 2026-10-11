@@ -271,6 +271,26 @@ impl SubKey {
     pub fn expose_secret(&self) -> &[u8; KEY_LEN] {
         self.secret()
     }
+
+    /// Encrypts `plaintext` under this subkey (for example, a sync
+    /// container). Domain-separated from record encryption.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Random`] or [`Error::Encrypt`].
+    pub fn seal(&self, aad: &[u8], plaintext: &[u8]) -> Result<Vec<u8>> {
+        aead::seal(self.secret(), Domain::SubKeySeal, aad, plaintext)
+    }
+
+    /// Decrypts output of [`SubKey::seal`]. The plaintext is wiped when
+    /// dropped.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Decrypt`] for the wrong key or `aad`, or tampered input.
+    pub fn open(&self, aad: &[u8], sealed: &[u8]) -> Result<Zeroizing<Vec<u8>>> {
+        aead::open(self.secret(), Domain::SubKeySeal, aad, sealed)
+    }
 }
 
 #[cfg(test)]
@@ -351,6 +371,18 @@ mod tests {
         assert_eq!(a1.expose_secret(), a2.expose_secret());
         assert_ne!(a1.expose_secret(), b.expose_secret());
         assert_ne!(a1.expose_secret(), master.expose_secret());
+    }
+
+    #[test]
+    fn subkey_seal_is_separate_from_record_seal() {
+        let master = MasterKey::from_slice(&[2; KEY_LEN]).unwrap();
+        let sub = master.derive_subkey("sync/container").unwrap();
+        let sealed = sub.seal(b"aad", b"container").unwrap();
+        assert_eq!(sub.open(b"aad", &sealed).unwrap().as_slice(), b"container");
+        assert_eq!(sub.open(b"other", &sealed).err(), Some(Error::Decrypt));
+        // Same key bytes used as a record key must not open it.
+        let record_key = RecordKey(secret_from_array(sub.expose_secret()));
+        assert_eq!(record_key.open(b"aad", &sealed).err(), Some(Error::Decrypt));
     }
 
     #[test]

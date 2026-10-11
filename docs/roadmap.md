@@ -54,7 +54,7 @@ without it.
       minimal indexes, `secure_delete`, WAL truncation, vacuum; encrypted
       file storage for photos and clips (streaming AEAD); crypto-erasure on
       delete.
-- [ ] `terpoir-sync`: hybrid logical clocks, per-field LWW with device-ID
+- [x] `terpoir-sync`: hybrid logical clocks, per-field LWW with device-ID
       tie-break, set union for new records, ID-only deletion markers, blob
       format with padding and opaque names. Property tests proving
       convergence regardless of merge order.
