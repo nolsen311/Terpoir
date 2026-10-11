@@ -51,8 +51,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Security issues: see
 
 ## License
 
-GPL-3.0-or-later, with an additional permission allowing app store
-distribution. See [LICENSING.md](LICENSING.md) and [LICENSE](LICENSE).
+GPL-3.0-or-later, with additional permissions allowing app store
+distribution and, in the Google Play build only, linking with Google's Play
+libraries. See [LICENSING.md](LICENSING.md) and [LICENSE](LICENSE).
 
 "Terpoir" and its logo are not covered by the code license. See
 [TRADEMARKS.md](TRADEMARKS.md).

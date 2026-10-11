@@ -27,7 +27,7 @@ change a recorded decision should open an issue first.
 All commits must be signed off, certifying the
 [Developer Certificate of Origin 1.1](https://developercertificate.org/):
 that you wrote the change or otherwise have the right to submit it under the
-project's license, including the additional permission in
+project's license, including the additional permissions in
 [LICENSING.md](LICENSING.md).
 
 Sign off by committing with `-s`:
