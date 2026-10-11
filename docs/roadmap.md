@@ -43,7 +43,7 @@ Run `cargo vet init` when creating the workspace (`core/supply-chain/`,
 importing audits from trusted auditors): the `cargo-vet` CI job fails
 without it.
 
-- [ ] `terpoir-crypto`: XChaCha20-Poly1305 AEAD, key wrapping, Argon2id,
+- [x] `terpoir-crypto`: XChaCha20-Poly1305 AEAD, key wrapping, Argon2id,
       HKDF, random 128-bit IDs; key types using `zeroize` and `secrecy`.
       Recovery key encoding (word list or grouped Base32 with checksum).
       Key hierarchy: recovery → master → per-record keys; rotation re-wraps.

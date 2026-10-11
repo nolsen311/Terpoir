@@ -2,8 +2,8 @@
 # Copyright (C) 2026 The Terpoir Authors
 #
 # Version updates. Security updates are enabled separately in repository
-# settings. Add the cargo and gradle ecosystems when core/ and android/ exist
-# (see docs/roadmap.md).
+# settings. Add the gradle ecosystem when android/ exists (see
+# docs/roadmap.md).
 
 version: 2
 updates:
@@ -20,3 +20,15 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: "ci"
+
+  - package-ecosystem: "cargo"
+    directory: "/core"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    groups:
+      cargo:
+        patterns: ["*"]
+    commit-message:
+      prefix: "deps"

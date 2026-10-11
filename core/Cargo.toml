@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+
+[workspace]
+resolver = "3"
+members = ["crates/terpoir-crypto"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception"
+repository = "https://github.com/nolsen311/Terpoir"
+publish = false
+
+[workspace.dependencies]
+terpoir-crypto = { path = "crates/terpoir-crypto" }
+
+aead-stream = { version = "0.6", features = ["alloc"] }
+argon2 = { version = "0.6", default-features = false, features = ["alloc", "zeroize"] }
+chacha20poly1305 = { version = "0.11", default-features = false, features = ["alloc", "zeroize"] }
+getrandom = "0.4"
+hkdf = "0.13"
+secrecy = "0.10"
+sha2 = { version = "0.11", default-features = false }
+zeroize = { version = "1.9", features = ["zeroize_derive"] }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+
+# Mirrors .github/workflows/rust.yml so editors flag the same things. CI
+# remains the backstop. clippy.toml allows unwrap and printing in tests.
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+unwrap_used = "deny"
+
+[profile.release]
+codegen-units = 1
+lto = true
+panic = "unwind"
+strip = "symbols"
+debug = false
