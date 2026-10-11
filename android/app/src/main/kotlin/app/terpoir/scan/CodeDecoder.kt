@@ -56,7 +56,10 @@ class CodeDecoder {
         val source = PlanarYUVLuminanceSource(data, width, height, 0, 0, width, height, false)
         return try {
             val result = reader.decodeWithState(BinaryBitmap(HybridBinarizer(source)))
-            DecodedCode(result.text, FORMATS[result.barcodeFormat] ?: false)
+            // UPC-A is EAN-13 with a leading 0 (GS1), and ZXing reports
+            // either for the same barcode; store one form so re-buys match.
+            val text = if (result.barcodeFormat == BarcodeFormat.UPC_A) "0${result.text}" else result.text
+            DecodedCode(text, FORMATS[result.barcodeFormat] ?: false)
         } catch (_: ReaderException) {
             null
         } finally {

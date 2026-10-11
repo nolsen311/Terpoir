@@ -302,10 +302,12 @@ tasks.named("check") { dependsOn(verifyNoLoggingInSource) }
  * Logging calls that must not survive R8 in a release APK, as dexdump
  * prints method references. printStackTrace(PrintWriter) is allowed: the
  * UniFFI bindings use it (via stackTraceToString) to build an error string,
- * not to print.
+ * not to print. Log.getStackTraceString is allowed for the same reason
+ * (CameraX builds a string with it); any call that would log the string is
+ * caught on its own.
  */
 val loggingInDex = Regex(
-    """Landroid/util/Log;\.|Ljava/util/logging/Logger;\.(log|logp|logrb|severe|warning|info|config|fine|finer|finest|entering|exiting|throwing):|""" +
+    """Landroid/util/Log;\.(?!getStackTraceString:)|Ljava/util/logging/Logger;\.(log|logp|logrb|severe|warning|info|config|fine|finer|finest|entering|exiting|throwing):|""" +
         """Ljava/lang/Throwable;\.printStackTrace:\((Ljava/io/PrintStream;)?\)V|""" +
         """Ljava/io/PrintStream;\.(print|println|printf|format):|Lkotlin/io/ConsoleKt;\.""",
 )

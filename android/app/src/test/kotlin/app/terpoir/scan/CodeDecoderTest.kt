@@ -43,6 +43,12 @@ class CodeDecoderTest {
     }
 
     @Test
+    fun upcAIsStoredInItsEan13Form() {
+        val (bytes, w, h) = encode("123456789012", BarcodeFormat.UPC_A, 400, 120)
+        assertEquals("0123456789012", CodeDecoder().decode(bytes, w, h)!!.text)
+    }
+
+    @Test
     fun readsPaddedRows() {
         val (bytes, w, h) = encode("1A4060300002EE1000012345", BarcodeFormat.CODE_128, 500, 100)
         val stride = w + 16
