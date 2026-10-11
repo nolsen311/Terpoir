@@ -10,6 +10,7 @@ do and `docs/roadmap.md` for build order.
 | `terpoir-crypto` | AEAD, key wrapping, Argon2id, HKDF, record IDs, recovery key, streaming file encryption |
 | `terpoir-model` | Record types, stamped field documents, serialization, schema migrations |
 | `terpoir-store` | SQLCipher store with per-record encryption, minimal index, encrypted files, crypto-erasure |
+| `terpoir-sync` | Hybrid logical clock, per-field merge, deletion markers, padded encrypted sync blobs |
 
 ## Checks
 

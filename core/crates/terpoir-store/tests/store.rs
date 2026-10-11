@@ -380,6 +380,12 @@ fn delete_erases_record_index_and_files() {
     assert!(store.contains(&product.id()).unwrap());
     // The WAL is truncated after deletion.
     assert_eq!(read(&journal.db().with_extension("db-wal")).len(), 0);
+    // Only the ID remains, as a deletion marker for sync.
+    assert!(store.is_deleted(&doc.id()).unwrap());
+    assert!(!store.is_deleted(&product.id()).unwrap());
+    assert_eq!(store.deletion_markers().unwrap(), vec![doc.id()]);
+    store.remove_deletion_markers(&[doc.id()]).unwrap();
+    assert!(store.deletion_markers().unwrap().is_empty());
 }
 
 #[test]
@@ -530,4 +536,34 @@ fn sqlcipher_logging_is_compiled_out() {
         .query_row("PRAGMA cipher_log = stderr", [], |r| r.get(0))
         .unwrap();
     assert_eq!(status, "1");
+}
+
+#[test]
+fn meta_round_trips() {
+    let journal = Journal::new();
+    {
+        let mut store = journal.open();
+        assert_eq!(store.meta("clock").unwrap(), None);
+        store.set_meta("clock", b"one").unwrap();
+        store.set_meta("clock", b"two").unwrap();
+    }
+    assert_eq!(journal.open().meta("clock").unwrap(), Some(b"two".to_vec()));
+}
+
+#[test]
+fn version_one_databases_upgrade() {
+    let journal = Journal::new();
+    drop(journal.open());
+    let key = journal
+        .master
+        .unwrap_database_key(&journal.wrapped_db_key)
+        .unwrap();
+    {
+        let conn = rusqlite_open(&journal, &key);
+        conn.execute_batch("DROP TABLE meta; DROP TABLE deletions; PRAGMA user_version = 1;")
+            .unwrap();
+    }
+    let mut store = Store::open(&journal.db(), &journal.files(), &key).unwrap();
+    store.set_meta("k", b"v").unwrap();
+    assert!(store.deletion_markers().unwrap().is_empty());
 }

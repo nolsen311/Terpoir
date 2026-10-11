@@ -40,6 +40,14 @@ const STEPS: &[&str] = &[
          owner BLOB NOT NULL
      ) WITHOUT ROWID;
      CREATE INDEX files_owner ON files (owner);",
+    // 1 -> 2: sync state and deletion markers (record IDs only).
+    "CREATE TABLE meta (
+         key TEXT PRIMARY KEY NOT NULL,
+         value BLOB NOT NULL
+     ) WITHOUT ROWID;
+     CREATE TABLE deletions (
+         id BLOB PRIMARY KEY NOT NULL
+     ) WITHOUT ROWID;",
 ];
 
 pub(crate) fn migrate(conn: &Connection) -> Result<()> {

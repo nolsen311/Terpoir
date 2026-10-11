@@ -62,6 +62,19 @@ pub struct SealedRecord {
     pub ciphertext: Vec<u8>,
 }
 
+impl SealedRecord {
+    /// Decrypts and decodes the record, checking that its contents match
+    /// its ID and kind. The document is not migrated.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Crypto`] if it does not decrypt under `master`;
+    /// [`Error::Mismatch`] if the contents disagree with the ID or kind.
+    pub fn open(&self, master: &MasterKey) -> Result<Document> {
+        open_sealed(master, self)
+    }
+}
+
 /// Associated data binding a record's ciphertext to its ID and kind, so
 /// rows cannot be swapped.
 fn record_aad(id: &RecordId, kind: RecordKind) -> [u8; 17] {
@@ -309,9 +322,10 @@ impl Store {
     }
 
     /// Deletes a record by destroying its wrapped key, ciphertext, index
-    /// rows and attached files, then truncates the WAL. Returns whether the
-    /// record existed. Other records that reference it are left as they
-    /// are (deleting a spot detaches it rather than deleting sessions).
+    /// rows and attached files, then truncates the WAL, and records a
+    /// deletion marker (the ID only) for sync. Returns whether the record
+    /// existed. Other records that reference it are left as they are
+    /// (deleting a spot detaches it rather than deleting sessions).
     ///
     /// # Errors
     ///
@@ -323,12 +337,89 @@ impl Store {
         clear_index(&tx, id)?;
         tx.execute("DELETE FROM files WHERE owner = ?1", params![id.as_bytes()])?;
         let existed = tx.execute("DELETE FROM records WHERE id = ?1", params![id.as_bytes()])? > 0;
+        tx.execute(
+            "INSERT OR IGNORE INTO deletions (id) VALUES (?1)",
+            params![id.as_bytes()],
+        )?;
         tx.commit()?;
         for file in files {
             remove_if_exists(&self.file_path(&file))?;
         }
         self.checkpoint()?;
         Ok(existed)
+    }
+
+    /// Whether a deletion marker exists for `id`.
+    ///
+    /// # Errors
+    ///
+    /// Database errors.
+    pub fn is_deleted(&self, id: &RecordId) -> Result<bool> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT 1 FROM deletions WHERE id = ?1",
+                params![id.as_bytes()],
+                |_| Ok(()),
+            )
+            .optional()?
+            .is_some())
+    }
+
+    /// Every deletion marker.
+    ///
+    /// # Errors
+    ///
+    /// Database errors.
+    pub fn deletion_markers(&self) -> Result<Vec<RecordId>> {
+        self.query_ids("SELECT id FROM deletions ORDER BY id", [])
+    }
+
+    /// Drops deletion markers (see `terpoir_sync::prunable_markers` for
+    /// when that is safe).
+    ///
+    /// # Errors
+    ///
+    /// Database errors.
+    pub fn remove_deletion_markers(&mut self, ids: &[RecordId]) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        for id in ids {
+            tx.execute(
+                "DELETE FROM deletions WHERE id = ?1",
+                params![id.as_bytes()],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// A small piece of local state (for example the sync clock), stored
+    /// inside the encrypted database.
+    ///
+    /// # Errors
+    ///
+    /// Database errors.
+    pub fn meta(&self, key: &str) -> Result<Option<Vec<u8>>> {
+        Ok(self
+            .conn
+            .query_row("SELECT value FROM meta WHERE key = ?1", params![key], |r| {
+                r.get(0)
+            })
+            .optional()?)
+    }
+
+    /// Sets a piece of local state.
+    ///
+    /// # Errors
+    ///
+    /// Database errors.
+    pub fn set_meta(&mut self, key: &str, value: &[u8]) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, ?2)
+             ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?;
+        Ok(())
     }
 
     /// Re-wraps every record key from `old` to `new` in one transaction,
