@@ -28,7 +28,7 @@ per item or small group of items. Keep this file updated as items land.
       (grouped, 7-day cooldown) once `core/` and `android/` exist.
 - [ ] CodeQL code scanning (Rust, Kotlin; Swift later), actions pinned by SHA.
 - [ ] OpenSSF Scorecard workflow.
-- [ ] Rust CI: `cargo fmt --check`, `cargo clippy -D warnings` with lints
+- [x] Rust CI: `cargo fmt --check`, `cargo clippy -D warnings` with lints
       denying `dbg_macro`, `print_stdout`, `print_stderr`, `todo`,
       `unwrap_used` in release code; `cargo test`.
 - [ ] `cargo-deny` (licenses compatible with GPL-3.0, advisories, banned

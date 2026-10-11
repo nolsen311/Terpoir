@@ -1,0 +1,93 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# Rust core CI: formatting, lints, tests for the core/ workspace.
+#
+# Until core/Cargo.toml exists the job passes with a notice, so it can be a
+# required status check from day one.
+#
+# Lints (see docs/design-decisions.md, "Logs and crash reports"):
+#   - All targets, including tests: every warning is an error; dbg!() and
+#     todo!() are denied.
+#   - Release code (library and binary targets, excluding #[cfg(test)]):
+#     print_stdout, print_stderr and unwrap_used are also denied. Tests may
+#     print and unwrap.
+
+name: Rust
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check for the core workspace
+        id: core
+        working-directory: .
+        run: |
+          if [ -f core/Cargo.toml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::core/Cargo.toml not found; skipping Rust checks."
+          fi
+
+      # Uses the runner's preinstalled rustup; no third-party toolchain action.
+      # A rust-toolchain.toml in core/ takes precedence once it exists.
+      - name: Install toolchain
+        if: steps.core.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          if [ -f rust-toolchain.toml ] || [ -f rust-toolchain ]; then
+            rustup toolchain install
+          else
+            rustup toolchain install stable --profile minimal --component rustfmt,clippy
+            rustup default stable
+          fi
+          rustc --version
+          cargo --version
+
+      - name: cargo fmt
+        if: steps.core.outputs.present == 'true'
+        run: cargo fmt --all --check
+
+      - name: cargo clippy (all targets)
+        if: steps.core.outputs.present == 'true'
+        run: >-
+          cargo clippy --workspace --all-targets --all-features --locked --
+          -D warnings
+          -D clippy::dbg_macro
+          -D clippy::todo
+
+      - name: cargo clippy (release code)
+        if: steps.core.outputs.present == 'true'
+        run: >-
+          cargo clippy --workspace --lib --bins --all-features --locked --
+          -D warnings
+          -D clippy::dbg_macro
+          -D clippy::todo
+          -D clippy::print_stdout
+          -D clippy::print_stderr
+          -D clippy::unwrap_used
+
+      - name: cargo test
+        if: steps.core.outputs.present == 'true'
+        run: cargo test --workspace --all-features --locked
