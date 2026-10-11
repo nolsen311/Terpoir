@@ -487,7 +487,7 @@ fun DeleteButton(label: Int, body: Int, onConfirm: () -> Unit) {
 }
 
 @Composable
-private fun NameDialog(title: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+internal fun NameDialog(title: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
     var text by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,

@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.core.ProductData
 import app.terpoir.core.SnippetData
+import app.terpoir.core.SpotData
 import app.terpoir.core.TagData
 import app.terpoir.core.TagRefData
 import app.terpoir.core.Vocabulary
@@ -60,7 +61,14 @@ import kotlinx.coroutines.launch
 
 /** Creates (`id` null) or edits a session. */
 @Composable
-fun SessionEditor(repo: JournalRepository, vocab: Vocabulary, settings: PrivacySettings, id: String?, onDone: () -> Unit) {
+fun SessionEditor(
+    repo: JournalRepository,
+    vocab: Vocabulary,
+    settings: PrivacySettings,
+    id: String?,
+    onDone: () -> Unit,
+    spotForNew: String? = null,
+) {
     val scope = rememberCoroutineScope()
     var draft by remember { mutableStateOf<SessionDraft?>(null) }
     var products by remember { mutableStateOf<List<Entry<ProductData>>>(emptyList()) }
@@ -68,16 +76,19 @@ fun SessionEditor(repo: JournalRepository, vocab: Vocabulary, settings: PrivacyS
     var error by remember { mutableStateOf<DraftError?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     var notes by remember { mutableStateOf<List<Entry<SnippetData>>>(emptyList()) }
+    var spots by remember { mutableStateOf<List<Entry<SpotData>>>(emptyList()) }
     // A note open over the editor (null id: a new one), so the session's
     // unsaved edits survive it.
     var openNote by remember { mutableStateOf<NoteTarget?>(null) }
 
     LaunchedEffect(id) {
         products = repo.products()
+        spots = repo.spots()
         customEffects = repo.tags(EFFECT_CATEGORY)
         draft = id?.let { repo.session(it) }?.let(SessionDraft::of) ?: SessionDraft.new(
             System.currentTimeMillis(),
             currentOffsetMin(System.currentTimeMillis()),
+            spot = spotForNew,
         )
     }
     LaunchedEffect(id, openNote) { if (id != null && openNote == null) notes = repo.sessionSnippets(id) }
@@ -163,6 +174,14 @@ fun SessionEditor(repo: JournalRepository, vocab: Vocabulary, settings: PrivacyS
                 label = { Text(stringResource(R.string.no)) },
             )
         }
+
+        SectionTitle(stringResource(R.string.session_spot))
+        Dropdown(
+            label = stringResource(R.string.session_spot),
+            options = listOf<Pair<String?, String>>(null to stringResource(R.string.session_no_spot)) + spots.map { it.id to it.data.name },
+            selected = current.spot,
+            onSelect = { draft = current.copy(spot = it) },
+        )
 
         SectionTitle(stringResource(R.string.session_notes))
         if (id == null) {

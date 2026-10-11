@@ -54,6 +54,52 @@ pub struct Location {
     pub accuracy_m: u32,
 }
 
+/// Mean Earth radius (IUGG), metres.
+const EARTH_RADIUS_M: f64 = 6_371_008.8;
+
+/// The radius a spot uses when it has none set, and the least any spot
+/// uses, in metres, so "near" never shrinks to a doorstep (design doc,
+/// "Location and saved spots": a minimum radius).
+pub const DEFAULT_SPOT_RADIUS_M: u32 = 150;
+/// The smallest radius a spot may use.
+pub const MIN_SPOT_RADIUS_M: u32 = 100;
+
+impl Location {
+    /// Great-circle distance in metres (haversine; ample for spots).
+    #[must_use]
+    pub fn distance_m(&self, other: &Self) -> f64 {
+        let rad = |e7: i32| f64::from(e7) * 1e-7_f64.to_radians();
+        let (lat1, lat2) = (rad(self.lat_e7), rad(other.lat_e7));
+        let dlat = lat2 - lat1;
+        let dlon = rad(other.lon_e7) - rad(self.lon_e7);
+        let h = (dlat / 2.0).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2);
+        2.0 * EARTH_RADIUS_M * h.sqrt().min(1.0).asin()
+    }
+}
+
+impl Spot {
+    /// The radius used to decide "near": the spot's own, at least
+    /// [`MIN_SPOT_RADIUS_M`], or [`DEFAULT_SPOT_RADIUS_M`].
+    #[must_use]
+    pub fn effective_radius_m(&self) -> u32 {
+        self.radius_m
+            .map_or(DEFAULT_SPOT_RADIUS_M, |r| r.max(MIN_SPOT_RADIUS_M))
+    }
+
+    /// The distance to `here` in metres when `here` is near this spot: within
+    /// its radius, plus the two fixes' accuracy capped at that radius, so a
+    /// coarse fix never makes far-away spots "near". `None` otherwise, or
+    /// when the spot has no coordinates.
+    #[must_use]
+    pub fn nearness_m(&self, here: &Location) -> Option<f64> {
+        let spot = self.location?;
+        let radius = f64::from(self.effective_radius_m());
+        let slack = (f64::from(spot.accuracy_m) + f64::from(here.accuracy_m)).min(radius);
+        let d = spot.distance_m(here);
+        (d <= radius + slack).then_some(d)
+    }
+}
+
 const LAT_MAX: i64 = 900_000_000;
 const LON_MAX: i64 = 1_800_000_000;
 
@@ -168,6 +214,64 @@ mod tests {
         };
         let doc = Document::create(&spot, stamp()).unwrap();
         assert_eq!(Spot::from_document(&doc).unwrap(), spot);
+    }
+
+    fn at(lat_e7: i32, lon_e7: i32, accuracy_m: u32) -> Location {
+        Location {
+            lat_e7,
+            lon_e7,
+            accuracy_m,
+        }
+    }
+
+    #[test]
+    fn distances_are_great_circle_metres() {
+        // One degree of latitude is about 111.2 km.
+        let d = at(0, 0, 0).distance_m(&at(10_000_000, 0, 0));
+        assert!((d - 111_195.0).abs() < 50.0, "{d}");
+        // 0.001° of latitude is about 111 m.
+        let d = at(377_000_000, -1_224_000_000, 0).distance_m(&at(377_010_000, -1_224_000_000, 0));
+        assert!((d - 111.2).abs() < 1.0, "{d}");
+        assert!(at(5, 5, 0).distance_m(&at(5, 5, 0)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn nearness_uses_the_radius_and_capped_accuracy() {
+        let mut spot = Spot {
+            name: "x".into(),
+            purposes: BTreeSet::new(),
+            location: Some(at(377_000_000, -1_224_000_000, 10)),
+            radius_m: None,
+            purchase_prompts: false,
+        };
+        // ~111 m away: inside the default 150 m.
+        assert!(
+            spot.nearness_m(&at(377_010_000, -1_224_000_000, 10))
+                .is_some()
+        );
+        // ~334 m away: outside 150 m + (20 m of accuracy).
+        assert!(
+            spot.nearness_m(&at(377_030_000, -1_224_000_000, 10))
+                .is_none()
+        );
+        // A coarse 2 km fix only stretches "near" by the radius (to 300 m).
+        assert!(
+            spot.nearness_m(&at(377_030_000, -1_224_000_000, 2_000))
+                .is_none()
+        );
+        assert!(
+            spot.nearness_m(&at(377_025_000, -1_224_000_000, 2_000))
+                .is_some()
+        );
+        // A tiny radius is raised to the minimum.
+        spot.radius_m = Some(10);
+        assert_eq!(spot.effective_radius_m(), MIN_SPOT_RADIUS_M);
+        // No coordinates: never near.
+        spot.location = None;
+        assert!(
+            spot.nearness_m(&at(377_000_000, -1_224_000_000, 10))
+                .is_none()
+        );
     }
 
     #[test]

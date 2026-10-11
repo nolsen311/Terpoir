@@ -25,6 +25,12 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
+    <!-- Spot locations and "Show me", only while the app is open and only
+         when the user asks: approximate by default, precise on request. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+
     <!-- Lets the app see whether the system speech recognizer exists
          (package visibility); it never binds to any other recognizer. -->
     <queries>

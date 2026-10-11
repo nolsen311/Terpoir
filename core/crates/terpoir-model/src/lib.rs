@@ -42,10 +42,11 @@ mod value;
 pub use document::{CURRENT_SCHEMA_VERSION, Document, Field, migrate};
 pub use error::{Error, Result};
 pub use records::{
-    Brand, CoreEffect, Dose, DoseUnit, Flavor, Form, IdentifierKind, Intention, LabelAmount,
-    LabelUnit, LocalTime, Location, Method, Mood, Price, Product, ProductLine, Provenance,
-    Purchase, PurchaseLine, PurchaseRef, Record, RecordKind, Session, Snippet, Social, Spot,
-    SpotPurpose, Strain, StrainType, SymptomResult, Tag, TagCategory, TagRef, Terpene, Timeline,
+    Brand, CoreEffect, DEFAULT_SPOT_RADIUS_M, Dose, DoseUnit, Flavor, Form, IdentifierKind,
+    Intention, LabelAmount, LabelUnit, LocalTime, Location, MIN_SPOT_RADIUS_M, Method, Mood, Price,
+    Product, ProductLine, Provenance, Purchase, PurchaseLine, PurchaseRef, Record, RecordKind,
+    Session, Snippet, Social, Spot, SpotPurpose, Strain, StrainType, SymptomResult, Tag,
+    TagCategory, TagRef, Terpene, Timeline,
 };
 pub use stamp::{DeviceId, Hlc, Stamp};
 pub use terpoir_crypto::RecordId;

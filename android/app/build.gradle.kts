@@ -340,6 +340,11 @@ val allowedPermissions = setOf(
     // Voice notes through the on-device speech recognizer. Runtime
     // permission, asked only when the user first speaks a note.
     "android.permission.RECORD_AUDIO",
+    // Spot locations and "Show me", while the app is open: approximate by
+    // default, precise only when the user asks. Runtime permissions, asked
+    // on first use. Never background location here.
+    "android.permission.ACCESS_COARSE_LOCATION",
+    "android.permission.ACCESS_FINE_LOCATION",
 )
 
 androidComponents {
