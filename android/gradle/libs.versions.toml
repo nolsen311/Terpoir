@@ -9,6 +9,7 @@
 agp = "9.4.1"
 kotlin = "2.4.20"
 activity-compose = "1.13.0"
+lifecycle = "2.11.0"
 compose-bom = "2026.09.00"
 junit = "4.13.2"
 jna = "5.19.1"
@@ -18,6 +19,9 @@ androidx-test-ext-junit = "1.3.0"
 [libraries]
 # Hosts the Compose UI in an Activity. Apache-2.0; no network, no telemetry.
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+# App-wide foreground/background signal for auto-lock. Apache-2.0; no
+# network, no telemetry.
+androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "lifecycle" }
 # Aligns Compose library versions. Apache-2.0.
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
 # Material 3 components. Apache-2.0; no network, no telemetry.

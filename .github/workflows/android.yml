@@ -102,11 +102,13 @@ jobs:
           timeout 600 sh -c "until [ \"\$($adb shell getprop sys.boot_completed | tr -d '\r')\" = 1 ]; do sleep 5; done"
 
       # Plain adb + am instrument, so no extra test-runner artifacts are
-      # downloaded at run time.
+      # downloaded at run time. The Keystore tests need a secure lock screen,
+      # so the emulator gets a PIN first.
       - name: Run instrumented tests
         run: |
           set -euo pipefail
           adb="$ANDROID_HOME/platform-tools/adb"
+          "$adb" shell locksettings set-pin 1234
           "$adb" install -r app/build/outputs/apk/foss/debug/app-foss-debug.apk
           "$adb" install -r app/build/outputs/apk/androidTest/foss/debug/app-foss-debug-androidTest.apk
           timeout 900 "$adb" shell am instrument -w app.terpoir.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/instrument.txt"

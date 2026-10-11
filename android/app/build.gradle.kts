@@ -76,6 +76,9 @@ android {
         // Version freshness is Dependabot's job (with a 7-day cooldown);
         // these checks also query Maven Central during the build.
         disable += setOf("NewerVersionAvailable", "GradleDependency", "AndroidGradlePluginVersion")
+        // Prefers Kotlin extension helpers from androidx.core-ktx; not worth
+        // a dependency for syntax.
+        disable += "UseKtx"
     }
 
     dependenciesInfo {
@@ -90,6 +93,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.lifecycle.process)
 
     implementation(libs.jna) {
         artifact { type = "aar" }
@@ -249,6 +253,9 @@ tasks.named("check") { dependsOn(verifyFossDependencies) }
  * added here deliberately, behind its privacy toggle.
  */
 val allowedPermissions = setOf(
+    // System BiometricPrompt for the crypto-bound unlock (biometric or
+    // device credential). Normal permission; no runtime prompt.
+    "android.permission.USE_BIOMETRIC",
     // AndroidX core: a signature permission private to this app that
     // protects its own non-exported dynamic receivers.
     "app.terpoir.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
