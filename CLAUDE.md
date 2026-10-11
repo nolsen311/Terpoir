@@ -50,7 +50,8 @@ completes them.
   build type. Strip logging from release builds.
 - **Every privacy toggle is a pair:** an on-action and an off-action that
   cleans up what the on-action created (indexes, geofences, shortcuts, etc.).
-  Register both with the Privacy Center.
+  Register both with the Privacy Center. Presets (such as YOLO Mode) are
+  sets of toggle states and never bypass a toggle or its disclosure.
 - **Defaults are the most private option.** Leaky features are opt-in and come
   with a plain-language disclosure card.
 - **Nothing leaves the encrypted store unencrypted** except through an

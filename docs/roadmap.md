@@ -93,8 +93,13 @@ without it.
 - [x] OCR native libraries built from pinned source for F-Droid
       (`android/ocr-native/`, asynchronous `OCR native libraries`
       workflow, reproducible on two runners).
-- [ ] Decide the Play build's default OCR engine (Open decisions in
-      `docs/design-decisions.md`) before building the scanner.
+- [ ] Privacy presets: "Most private" and YOLO Mode as sets of toggle
+      states with one combined confirmation; "Custom" status; the
+      optional threat-model question at onboarding.
+- [ ] OCR engine for the scanner: Tesseract as a Play on-demand feature
+      module plus asset pack (no INTERNET permission), bundled in foss;
+      ML Kit (through Play services) as a Play-only opt-in in YOLO Mode.
+      One engine interface.
 - [ ] When the scanner adds Tesseract4Android: the `terpoir.ocr.aar`
       Gradle property that switches the `foss` flavor to the from-source
       AAR (JitPack repository declared only without it); check the foss
