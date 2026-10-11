@@ -84,6 +84,33 @@ slug_enum! {
     }
 }
 
+impl Method {
+    /// The dose units that make sense for this method, the first being the
+    /// usual one. Empty when doses are not measured (topicals); every unit
+    /// for a method from a newer app version.
+    #[must_use]
+    pub fn dose_units(&self) -> &'static [DoseUnit] {
+        match self {
+            Self::Smoked | Self::VapedFlower => &[DoseUnit::Hits, DoseUnit::Bowls],
+            Self::VapeCart => &[DoseUnit::Puffs],
+            Self::Dabbed => &[DoseUnit::Dabs],
+            Self::Edible | Self::Beverage => &[DoseUnit::Milligrams],
+            Self::Tincture => &[DoseUnit::Millilitres, DoseUnit::Milligrams],
+            Self::Topical => &[],
+            Self::Unknown(_) => &ALL_DOSE_UNITS,
+        }
+    }
+}
+
+const ALL_DOSE_UNITS: [DoseUnit; 6] = [
+    DoseUnit::Hits,
+    DoseUnit::Bowls,
+    DoseUnit::Puffs,
+    DoseUnit::Dabs,
+    DoseUnit::Milligrams,
+    DoseUnit::Millilitres,
+];
+
 /// The fixed core effects vocabulary. Custom effects are [`TagRef::Custom`].
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[non_exhaustive]
@@ -381,6 +408,48 @@ impl Record for Session {
 mod tests {
     use super::*;
     use crate::{DeviceId, Hlc, Stamp};
+
+    #[test]
+    fn every_measured_method_has_a_usual_unit() {
+        for slug in Method::SLUGS {
+            let method = Method::from_slug(slug);
+            assert!(!matches!(method, Method::Unknown(_)), "{slug}");
+            if method == Method::Topical {
+                assert!(method.dose_units().is_empty());
+            } else {
+                assert!(!method.dose_units().is_empty(), "{slug}");
+            }
+        }
+        assert_eq!(Method::Smoked.dose_units()[0], DoseUnit::Hits);
+        assert_eq!(Method::VapeCart.dose_units(), &[DoseUnit::Puffs]);
+        // A method from a newer app version offers every unit.
+        assert_eq!(
+            Method::from_slug("nebulized").dose_units().len(),
+            DoseUnit::SLUGS.len()
+        );
+    }
+
+    #[test]
+    fn slug_lists_round_trip() {
+        for slug in DoseUnit::SLUGS
+            .iter()
+            .chain(Intention::SLUGS)
+            .chain(Social::SLUGS)
+        {
+            assert!(
+                [
+                    DoseUnit::from_slug(slug).slug(),
+                    Intention::from_slug(slug).slug(),
+                    Social::from_slug(slug).slug()
+                ]
+                .contains(slug)
+            );
+        }
+        assert!(!matches!(
+            DoseUnit::from_slug(DoseUnit::SLUGS[0]),
+            DoseUnit::Unknown(_)
+        ));
+    }
 
     fn stamp(ms: u64, device: u8) -> Stamp {
         Stamp {

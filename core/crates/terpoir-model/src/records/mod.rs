@@ -195,6 +195,9 @@ macro_rules! slug_enum {
         }
 
         impl $name {
+            /// Every slug this app version knows, in display order.
+            pub const SLUGS: &'static [&'static str] = &[$($slug),+];
+
             /// The stored slug.
             #[must_use]
             pub fn slug(&self) -> &str {

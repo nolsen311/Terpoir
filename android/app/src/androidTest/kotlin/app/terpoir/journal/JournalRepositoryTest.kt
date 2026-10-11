@@ -1,0 +1,89 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+// Copyright (C) 2026 The Terpoir Authors
+// See LICENSING.md for the additional permission under GPLv3 section 7.
+
+package app.terpoir.journal
+
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import app.terpoir.core.BrandData
+import app.terpoir.core.Journal
+import app.terpoir.core.LocalTimeData
+import app.terpoir.core.ProductData
+import app.terpoir.core.ProductLineData
+import app.terpoir.core.SessionData
+import app.terpoir.core.TagData
+import app.terpoir.core.TagIntensity
+import app.terpoir.core.TagRefData
+import app.terpoir.core.createKeys
+import app.terpoir.core.defaultMethodForForm
+import app.terpoir.core.doseUnitsForMethod
+import app.terpoir.core.vocabulary
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/** The journal UI's data layer against the real core on a device. */
+@RunWith(AndroidJUnit4::class)
+class JournalRepositoryTest {
+    private val dir = InstrumentationRegistry.getInstrumentation().targetContext.cacheDir
+        .resolve("repository-test").apply { deleteRecursively(); mkdirs() }
+    private val journal = createKeys().let { keys ->
+        Journal.open(dir.resolve("journal.db").path, dir.resolve("files").path, keys.masterKey, keys.wrappedDatabaseKey)
+            .also { keys.masterKey.fill(0) }
+    }
+    private val repo = JournalRepository(journal)
+
+    @After
+    fun cleanUp() {
+        journal.lock()
+        journal.close()
+        dir.deleteRecursively()
+    }
+
+    @Test
+    fun vocabularyComesFromTheCore() {
+        val vocab = vocabulary()
+        assertEquals("relaxed", vocab.coreEffects.first())
+        assertEquals(listOf("hits", "bowls"), doseUnitsForMethod("smoked"))
+        assertEquals("dabbed", defaultMethodForForm("concentrate"))
+        for (method in vocab.methods) assertTrue(vocab.knowsUnits(doseUnitsForMethod(method)))
+    }
+
+    @Test
+    fun sessionsListNewestFirstWithTheirProducts() = runBlocking {
+        val brand = repo.saveBrand(null, BrandData("Acme"))
+        val product = repo.saveProduct(
+            null,
+            ProductData("Blue Dream", "flower", brand, emptyList(), 22_400, "percent", null, null, emptyList(), null, null, null, null),
+        )
+        val custom = repo.saveTag(null, TagData("Chatty", EFFECT_CATEGORY))
+        repo.saveTag(null, TagData("Pine", "flavor"))
+        fun session(ms: Long) = SessionData(
+            LocalTimeData(ms, 0),
+            listOf(ProductLineData(null, product, "smoked", 2000, "hits")),
+            null, null, null, null,
+            listOf(TagIntensity(TagRefData.Builtin("relaxed"), 4), TagIntensity(TagRefData.Custom(custom), 2)),
+            null, null, null, null, 5u, null, null, emptyList(), emptyList(),
+        )
+        repo.saveSession(null, session(1_000))
+        val newer = repo.saveSession(null, session(2_000))
+
+        val sessions = repo.sessions()
+        assertEquals(listOf(newer), sessions.take(1).map { it.id })
+        assertEquals(2, sessions.size)
+        assertEquals(product, sessions.first().data.lines.single().product)
+        assertEquals(listOf("Chatty"), repo.tags(EFFECT_CATEGORY).map { it.data.name })
+        assertEquals(listOf("Blue Dream"), repo.products().map { it.data.name })
+
+        assertTrue(repo.delete(newer))
+        assertEquals(1, repo.sessions().size)
+        // Deleting a session leaves its product.
+        assertEquals(1, repo.products().size)
+    }
+
+    private fun app.terpoir.core.Vocabulary.knowsUnits(units: List<String>) = doseUnits.containsAll(units)
+}

@@ -19,7 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.terpoir.core.coreVersion
+import app.terpoir.core.vocabulary
+import app.terpoir.journal.JournalHome
+import app.terpoir.journal.JournalRepository
 import app.terpoir.onboarding.AgeGate
 import app.terpoir.onboarding.OnboardingStep
 import app.terpoir.onboarding.RecoveryKeyBackup
@@ -74,11 +76,9 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun Screen(session: JournalSession, core: String) {
         var message by remember { mutableStateOf<Int?>(null) }
-        var privacyCenter by remember { mutableStateOf(false) }
         val onboarding = app.onboarding
-        val unlocked = session.state is JournalSession.State.Unlocked
-        // Locking closes the Privacy Center; it is open only while unlocked.
-        LaunchedEffect(unlocked) { if (!unlocked) privacyCenter = false }
+        val state = session.state
+        val unlocked = state is JournalSession.State.Unlocked
         // Journal content, the recovery key included, is drawn only while
         // unlocked and in the foreground.
         val showContent = unlocked && session.contentVisible
@@ -102,12 +102,18 @@ class MainActivity : ComponentActivity() {
                 )
                 return
             }
-            showContent && privacyCenter -> {
-                PrivacyCenterScreen(
-                    center = app.privacyCenter,
-                    onChanged = { ScreenPrivacy.onResume(this, app.privacySettings.screenProtection) },
-                    onClose = { privacyCenter = false },
-                )
+            // Locking replaces the whole journal UI, editors included, so
+            // nothing opened while unlocked survives a lock.
+            showContent && step == OnboardingStep.DONE && state is JournalSession.State.Unlocked -> {
+                val repo = remember(state.journal) { JournalRepository(state.journal) }
+                val vocab = remember { vocabulary() }
+                JournalHome(repo, vocab, onLock = session::lock) { onClose ->
+                    PrivacyCenterScreen(
+                        center = app.privacyCenter,
+                        onChanged = { ScreenPrivacy.onResume(this, app.privacySettings.screenProtection) },
+                        onClose = onClose,
+                    )
+                }
                 return
             }
         }
@@ -116,7 +122,7 @@ class MainActivity : ComponentActivity() {
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            when (val state = session.state) {
+            when (state) {
                 JournalSession.State.NoJournal -> {
                     Text(stringResource(R.string.setup_explainer))
                     Button(onClick = { message = createJournal { message = it } }) {
@@ -127,14 +133,8 @@ class MainActivity : ComponentActivity() {
                     Text(stringResource(R.string.locked))
                     Button(onClick = { message = unlock() }) { Text(stringResource(R.string.unlock)) }
                 }
-                is JournalSession.State.Unlocked -> {
-                    // Journal content is drawn only while the app is in the foreground.
-                    if (session.contentVisible) {
-                        Text(stringResource(R.string.placeholder))
-                        Button(onClick = { privacyCenter = true }) { Text(stringResource(R.string.privacy_center)) }
-                        Button(onClick = { session.lock() }) { Text(stringResource(R.string.lock_now)) }
-                    }
-                }
+                // Unlocked but in the background: journal content stays hidden.
+                is JournalSession.State.Unlocked -> Unit
             }
             message?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
             Text(stringResource(R.string.core_version, core), style = MaterialTheme.typography.bodySmall)
