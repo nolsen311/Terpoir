@@ -29,6 +29,60 @@ slug_enum! {
     }
 }
 
+slug_enum! {
+    /// Built-in flavors and aromas (the tag map also accepts custom ones).
+    /// Slugs are unique across every built-in vocabulary.
+    Flavor {
+        /// Citrus.
+        Citrus => "citrus",
+        /// Berry.
+        Berry => "berry",
+        /// Sweet.
+        Sweet => "sweet",
+        /// Earthy.
+        Earthy => "earthy",
+        /// Pine.
+        Pine => "pine",
+        /// Diesel or fuel.
+        Diesel => "diesel",
+        /// Skunk.
+        Skunk => "skunk",
+        /// Spicy or peppery.
+        Spicy => "spicy",
+        /// Herbal.
+        Herbal => "herbal",
+        /// Floral.
+        Floral => "floral",
+        /// Woody.
+        Woody => "woody",
+        /// Minty.
+        Minty => "minty",
+    }
+}
+
+slug_enum! {
+    /// Built-in moods (the tag map also accepts custom ones). Slugs are
+    /// unique across every built-in vocabulary.
+    Mood {
+        /// Happy.
+        Happy => "happy",
+        /// Calm.
+        Calm => "calm",
+        /// Content.
+        Content => "content",
+        /// Energetic.
+        Energetic => "energetic",
+        /// Stressed.
+        Stressed => "stressed",
+        /// Irritable.
+        Irritable => "irritable",
+        /// Sad.
+        Sad => "sad",
+        /// Tired.
+        Tired => "tired",
+    }
+}
+
 /// A user-defined tag.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Tag {

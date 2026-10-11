@@ -100,5 +100,25 @@ class JournalRepositoryTest {
         assertEquals(listOf(older), repo.standaloneSnippets().map { it.id })
     }
 
+    @Test
+    fun suggestionsAndSessionNotes() = runBlocking {
+        val suggested = repo.suggestTags("so relaxed, not anxious, tasted piney")
+            .map { (it.tag as TagRefData.Builtin).slug }
+        assertEquals(listOf("relaxed", "pine"), suggested)
+
+        val session = repo.saveSession(
+            null,
+            SessionData(
+                LocalTimeData(5_000, 0), emptyList(), null, null, null, null, emptyList(),
+                null, null, null, null, null, null, null, emptyList(), emptyList(),
+            ),
+        )
+        val note = SnippetData(session, LocalTimeData(6_000, 0), "piney", emptyList())
+        val id = repo.saveSnippet(null, note)
+        assertEquals(listOf(id), repo.sessionSnippets(session).map { it.id })
+        // Session notes are not standalone.
+        assertTrue(repo.standaloneSnippets().none { it.id == id })
+    }
+
     private fun app.terpoir.core.Vocabulary.knowsUnits(units: List<String>) = doseUnits.containsAll(units)
 }

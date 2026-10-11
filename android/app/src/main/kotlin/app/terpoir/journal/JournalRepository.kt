@@ -14,6 +14,7 @@ import app.terpoir.core.SessionData
 import app.terpoir.core.SnippetData
 import app.terpoir.core.SpotData
 import app.terpoir.core.StrainData
+import app.terpoir.core.TagSuggestion
 import app.terpoir.core.TagData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -55,6 +56,16 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
     }
 
     suspend fun snippet(id: String): SnippetData? = io { journal.getSnippet(id) }
+
+    /** A session's stream snippets, oldest first (the order they were written). */
+    suspend fun sessionSnippets(session: String): List<Entry<SnippetData>> = io {
+        load(RecordType.SNIPPET, journal::getSnippet)
+            .filter { it.data.session == session }
+            .sortedBy { it.data.at.unixMs }
+    }
+
+    /** Keyword tag suggestions for [text], matched on the device by the core. */
+    suspend fun suggestTags(text: String): List<TagSuggestion> = io { journal.suggestTags(text) }
 
     suspend fun saveSnippet(id: String?, data: SnippetData): String = io { journal.saveSnippet(id, data, now()) }
 
