@@ -185,12 +185,24 @@ struct Word {
     text: String,
     start: usize,
     end: usize,
+    /// Which clause it is in: punctuation and line breaks start a new
+    /// one, and a negation never reaches past its clause.
+    clause: usize,
+}
+
+/// Characters that end a clause.
+fn ends_clause(c: char) -> bool {
+    matches!(
+        c,
+        '.' | ',' | ';' | ':' | '!' | '?' | '\n' | '(' | ')' | '…'
+    )
 }
 
 fn words(text: &str) -> Vec<Word> {
     let mut out = Vec::new();
     let mut current: Option<Word> = None;
     let mut pos = 0;
+    let mut clause = 0;
     for c in text.chars() {
         let len = c.len_utf16();
         if c.is_alphanumeric() {
@@ -198,13 +210,17 @@ fn words(text: &str) -> Vec<Word> {
                 text: String::new(),
                 start: pos,
                 end: pos,
+                clause,
             });
             w.text.extend(c.to_lowercase());
             w.end = pos + len;
         } else if (c == '\'' || c == '’') && current.is_some() {
             // Inside a word: keep going, without the apostrophe.
-        } else if let Some(w) = current.take() {
-            out.push(w);
+        } else {
+            out.extend(current.take());
+            if ends_clause(c) {
+                clause += 1;
+            }
         }
         pos += len;
     }
@@ -238,7 +254,7 @@ fn matches(text: &[Word], at: usize, phrase: &[String]) -> bool {
 fn negated(text: &[Word], at: usize) -> bool {
     text[at.saturating_sub(NEGATION_REACH)..at]
         .iter()
-        .any(|w| NEGATIONS.contains(&w.text.as_str()))
+        .any(|w| w.clause == text[at].clause && NEGATIONS.contains(&w.text.as_str()))
 }
 
 /// Suggests tags for `text`: built-in vocabulary plus `custom` tags by
@@ -349,6 +365,18 @@ mod tests {
         assert!(slugs("not anxious at all, no paranoia").is_empty());
         assert_eq!(slugs("wasn't sleepy, but very focused"), ["focused"]);
         assert_eq!(slugs("Didn't feel hungry"), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_negation_ends_with_its_clause() {
+        // "piney" is three words after "not", but in the next clause.
+        assert_eq!(
+            slugs("so relaxed, not anxious, tasted piney"),
+            ["relaxed", "pine"]
+        );
+        assert_eq!(slugs("not anxious. Hungry later"), ["hungry"]);
+        // Within one clause it still applies.
+        assert!(slugs("not really very anxious").is_empty());
     }
 
     #[test]
