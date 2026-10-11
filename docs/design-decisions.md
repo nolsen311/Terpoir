@@ -61,6 +61,17 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - Two modes: **Notify me** (geofences, "Always" permission, high consent bar) and **Show me** ("While Using" only; check nearby spots on app open; nothing registered with the OS).
 - Minimum radius and cooldown so alerts don't become a visit log; dismissed alerts are not persisted.
 
+### Spots: purpose types, never relationships
+- Every saved location is a **Spot** with one or more purpose types describing what it is *for*, not whose it is:
+  - **Blaze Spot:** where you consume.
+  - **Munch Spot:** where you eat after.
+  - **Re-up Spot:** where you buy.
+  - **Chill Spot:** scenic or outdoor places worth returning to.
+  - Custom types allowed; the app never suggests relational labels (home, friend's house, work).
+- Rationale: relational labels reveal a residence and a social graph; purpose types are more useful for insights anyway.
+- **No automatic place names.** Reverse geocoding sends coordinates to Google or Apple via the OS geocoder. Spots get user-chosen names with a neutral default ("Spot 7"). Address lookup is an opt-in Privacy Center toggle with that disclosure.
+- Playful type names stay inside the app. Discreet-tier notifications and the discreet-icon mode use neutral wording ("a saved spot").
+
 ## Notifications
 - Local notifications only; nothing via APNs or FCM.
 - Privacy tiers, default Discreet:
@@ -70,6 +81,79 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - Rich opt-in discloses where content lands: lock screen, notification history, notification-listener apps, wearables, OS summarization.
 - Middle option: rich content only when unlocked (Android private visibility with redacted public version; iOS hidden-previews placeholder).
 - Same tiering to apply to widgets and Live Activities later.
+
+### Follow-up check-ins (decided)
+- Opt-in per session; a local reminder after a method-based default delay (about 90 min for edibles, 45 for tinctures; none by default for inhaled), user-adjustable.
+- Notification text stays generic at every tier: "Quick check-in?" Tapping opens a one-screen update (effect ratings, a stream snippet).
+- Disclosure: a scheduled notification sits in the OS scheduler and reveals timing, not content.
+- Off-action cancels all pending check-ins.
+
+## Data model
+
+### Core idea: an entry is a session
+Each journal entry records one consumption session, not a product review. Product and strain ratings are derived from many sessions, which is what makes personal patterns visible.
+
+### Record types
+- **Session (journal entry)**
+  - When: date and time, editable after the fact.
+  - Product lines: one or more, each with product, delivery method, and dose. Stored as a map keyed by line ID.
+  - Context (all optional): activity, intention (sleep, relax, create, relief), mood before, and **solo / with others**. No place or relationship labels.
+  - Effects: map of tag → intensity 0–5. Core vocabulary (relaxed, euphoric, focused, creative, sleepy, hungry, anxious, paranoid, dry mouth, couch-lock) plus custom tags.
+  - Timeline: onset, peak, duration.
+  - Outcome: mood after, overall rating, would repeat.
+  - Stream (see below), photos, optional Spot.
+  - Targeted symptoms (optional section, see below).
+- **Product:** name, form (flower, pre-roll, vape cart, concentrate, edible, tincture, beverage, topical), brand, strain(s), label data (THC/CBD % or mg per unit, top terpenes), batch/lot, optionally where bought and price.
+- **Strain / cultivar:** name, lineage, dominant terpenes, indica/sativa/hybrid label. Insights are driven by terpene and cannabinoid profiles, not the label, which is scientifically weak.
+- **Brand.**
+- **Spot:** see Location and saved spots.
+
+### Delivery methods and doses
+- Method-specific units: hits or bowl fraction (flower), puffs (carts), dab size (concentrates), mg (edibles), ml or mg (tinctures).
+- Where label data allows, the core also estimates **mg THC** so sessions compare across methods.
+
+### Targeted symptoms (decided)
+- Optional section, **off by default**, enabled in the Privacy Center; hidden until enabled.
+- Symptoms, never conditions or diagnoses: suggestions (sleep, pain, anxiety, appetite, nausea, focus) plus custom.
+- Each targeted symptom rated **👍 helped / 👎 didn't help**, skippable when unsure.
+- Off-action asks whether to hide or delete existing symptom data.
+- Framed as self-tracking, never advice.
+
+### Structural rules
+- **Per-record keys for every record type**, not just sessions (spots and products are sensitive too). Deleting a session leaves its products; deleting a spot detaches it from sessions.
+- **Merge-friendly shapes:** maps (effects, product lines, stream snippets) so each element merges independently under per-field LWW.
+- **IDs:** random 128-bit, never time-ordered.
+- **Schema version on every record**; migrations live in the Rust core.
+
+## Stream journaling, tagging, and insights
+
+### Stream
+- Free-flow text per session (added during or after) plus standalone entries not tied to a session.
+- Stored as timestamped snippets with their own IDs, so concurrent additions from two devices both survive.
+- Optional voice input through **on-device speech recognition only**. Disclose that system-keyboard dictation may send audio to Google or Apple; the app offers its own on-device mic button instead.
+
+### Tag extraction (user chooses the tier)
+1. **Keyword matching** (default when enabled): curated vocabulary of effects, terpenes, flavors, and moods, matched in the Rust core. No model; auditable.
+2. **OS on-device model:** Gemini Nano (supported Android devices) or Apple's Foundation Models framework (supported iPhones). Disclose that text passes to an OS service the app doesn't control, on-device.
+3. **Bundled open model:** small quantized model running in-app; works on de-Googled devices. 1–2 GB download via app-store asset delivery or a neutral host with a pinned hash (never terpoir.app).
+- **Never a cloud model.**
+- **Human in the loop:** suggestions link to the phrase they came from; the user accepts, edits, or rejects. Only confirmed tags feed statistics. Each tag records its provenance (user-entered vs. model-suggested).
+
+### Insights engine
+- Plain statistics in the Rust core, not the LLM, so conclusions are checkable.
+- Opt-in; nothing computed until enabled.
+- Evidence thresholds: minimum sessions on each side and a meaningful difference before anything surfaces.
+- Every insight shows its evidence, e.g. "myrcene-dominant products averaged 1.8★ vs. 3.9★ (6 vs. 14 sessions)," with tap-through to those sessions.
+- Flags likely confounders (dose, method, time of day).
+- Wording: "your sessions suggest," never medical claims.
+- User can dismiss, mute a category, or mark an insight wrong.
+
+### Privacy Center entries
+- **Tag suggestions** (choose tier). Off-action: discard unconfirmed suggestions; optionally delete the downloaded model.
+- **Insights.** Off-action: delete computed insights and cached statistics; journal and confirmed tags remain.
+- **Targeted symptoms.** Off-action: hide or delete.
+- **Address lookup for spots.** Off-action: remove stored addresses.
+- **Follow-up check-ins.** Off-action: cancel pending check-ins.
 
 ## Photos
 - In-app capture writes directly into the encrypted sandbox, never the camera roll.
@@ -139,9 +223,14 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - No auto-expiry of entries.
 - Sync merge: per-field LWW with HLC + device ID; union for new entries; ID-only deletion markers.
 - License: GPL-3.0-or-later with app store additional permission; trademark policy; DCO sign-off.
+- Data model: session-centric entries; per-record keys; map-shaped fields for merging.
+- Spots: purpose types only, no relational labels, no automatic reverse geocoding.
+- Stream journaling with on-device tag suggestions (keyword / OS model / bundled model), human-confirmed; never a cloud model.
+- Insights: opt-in, statistical, evidence-backed.
+- Follow-up check-ins and targeted symptoms (👍/👎), both opt-in.
 
 ## Open decisions
-1. Data model (what a journal entry contains: product, strain, brand, delivery method, dose, effects, ratings, notes, photos, spot).
+1. Effects vocabulary: confirm fixed core list plus custom tags (proposed default).
 2. Keyboards and input (refuse third-party keyboards on iOS; no personalized learning on Android; likely a Privacy Center toggle).
 3. Accessibility vs. screen capture (FLAG_SECURE, recording blur, users who rely on accessibility services).
 4. Local storage format (SQLCipher or equivalent, secure-delete settings, encrypted timestamps and identifiers).
