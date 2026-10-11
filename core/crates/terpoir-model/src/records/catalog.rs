@@ -45,6 +45,18 @@ slug_enum! {
 }
 
 slug_enum! {
+    /// What kind of code a scanned product identifier came from.
+    IdentifierKind {
+        /// A retail barcode (UPC/EAN).
+        Barcode => "barcode",
+        /// A QR code on the package.
+        Qr => "qr",
+        /// A seed-to-sale package tag (for example a state tracking ID).
+        PackageTag => "package_tag",
+    }
+}
+
+slug_enum! {
     /// The indica/sativa/hybrid label. Kept because packaging uses it;
     /// insights rely on terpene and cannabinoid profiles instead.
     StrainType {
@@ -82,15 +94,6 @@ pub struct LabelAmount {
     pub milli: i64,
     /// The unit.
     pub unit: LabelUnit,
-}
-
-/// A price the user paid.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Price {
-    /// Amount in the currency's minor unit (cents).
-    pub minor_units: i64,
-    /// ISO 4217 currency code.
-    pub currency: String,
 }
 
 fn label_value(amount: &LabelAmount) -> Value {
@@ -133,10 +136,12 @@ pub struct Product {
     pub terpenes: BTreeMap<TagRef, i64>,
     /// Batch or lot number.
     pub batch: Option<String>,
-    /// Where it was bought (a spot), if the user records it.
-    pub bought_at: Option<RecordId>,
-    /// What it cost, if the user records it.
-    pub price: Option<Price>,
+    /// The package date printed on the label, as days since 1970-01-01
+    /// (a calendar date; no time zone).
+    pub package_date: Option<i64>,
+    /// Scanned codes (barcode, QR, package tag), by their value. Where and
+    /// for how much it was bought lives on [`crate::Purchase`] records.
+    pub identifiers: BTreeMap<String, IdentifierKind>,
 }
 
 impl Product {
@@ -152,8 +157,8 @@ impl Product {
             cbd: None,
             terpenes: BTreeMap::new(),
             batch: None,
-            bought_at: None,
-            price: None,
+            package_date: None,
+            identifiers: BTreeMap::new(),
         }
     }
 }
@@ -178,29 +183,25 @@ impl Record for Product {
                 |v| Value::Int(*v),
             )
             .text("batch", self.batch.as_ref())
-            .opt("bought_at", self.bought_at, Value::Id)
-            .opt("price", self.price.as_ref(), |p| {
-                Value::Tuple(vec![
-                    Value::Int(p.minor_units),
-                    Value::Text(p.currency.clone()),
-                ])
-            });
+            .opt("package_date", self.package_date, Value::Int)
+            .map(
+                "identifiers",
+                &self.identifiers,
+                |code| (*code).clone(),
+                |kind| Value::Text(kind.slug().to_owned()),
+            );
         f.finish()
     }
 
     fn from_document(doc: &Document) -> Result<Self> {
         let r = Reader::new::<Self>(doc)?;
-        let price = match r.value("price") {
-            Value::Null => None,
-            Value::Tuple(items) => match items.as_slice() {
-                [Value::Int(minor_units), Value::Text(currency)] => Some(Price {
-                    minor_units: *minor_units,
-                    currency: currency.clone(),
-                }),
-                _ => return Err(Error::InvalidField("price")),
-            },
-            _ => return Err(Error::InvalidField("price")),
-        };
+        let identifiers = r
+            .entries("identifiers")
+            .map(|(code, kind)| match kind {
+                Value::Text(kind) => Ok((code.to_owned(), IdentifierKind::from_slug(kind))),
+                _ => Err(Error::InvalidField("identifiers")),
+            })
+            .collect::<Result<_>>()?;
         Ok(Self {
             name: r.required_text("name")?,
             form: r.slug("form", Form::from_slug)?,
@@ -213,8 +214,8 @@ impl Record for Product {
                 _ => None,
             })?,
             batch: r.text("batch")?,
-            bought_at: r.id("bought_at")?,
-            price,
+            package_date: r.int_in("package_date", i64::MIN..=i64::MAX)?,
+            identifiers,
         })
     }
 
@@ -228,10 +229,9 @@ impl Record for Product {
                 "thc",
                 "cbd",
                 "batch",
-                "bought_at",
-                "price",
+                "package_date",
             ],
-            &["strains", "terpenes"],
+            &["strains", "terpenes", "identifiers"],
         )
     }
 }
@@ -354,11 +354,16 @@ mod tests {
         });
         p.terpenes.insert(TagRef::Builtin("myrcene".into()), 1_200);
         p.batch = Some("LOT-7".into());
-        p.bought_at = Some(RecordId::from_bytes([3; 16]));
-        p.price = Some(Price {
-            minor_units: 3_500,
-            currency: "USD".into(),
-        });
+        p.package_date = Some(20_370);
+        p.identifiers
+            .insert("0850012345678".into(), IdentifierKind::Barcode);
+        p.identifiers.insert(
+            "1A4060300003B01000012345".into(),
+            IdentifierKind::PackageTag,
+        );
+        // A code containing the key separator still round-trips.
+        p.identifiers
+            .insert("https://example.test/coa/42".into(), IdentifierKind::Qr);
         round_trip(&p);
         round_trip(&Product::new("bare".into()));
     }

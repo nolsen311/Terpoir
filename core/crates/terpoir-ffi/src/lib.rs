@@ -40,8 +40,9 @@ pub use keys::{
     master_key_from_passphrase, master_key_from_recovery, wrap_master_key_with_passphrase,
 };
 pub use records::{
-    BrandData, LocalTimeData, ProductData, ProductLineData, SessionData, SnippetData, SpotData,
-    StrainData, SymptomData, TagData, TagIntensity, TagProvenance, TagRefData,
+    BrandData, IdentifierData, LocalTimeData, ProductData, ProductLineData, PurchaseData,
+    PurchaseLineData, SessionData, SnippetData, SpotData, StrainData, SymptomData, TagData,
+    TagIntensity, TagProvenance, TagRefData,
 };
 pub use vocabulary::{Vocabulary, default_method_for_form, dose_units_for_method, vocabulary};
 

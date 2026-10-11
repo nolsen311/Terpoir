@@ -398,6 +398,11 @@ Each journal entry records one consumption session, not a product review. Produc
 - **Serialization:** `postcard` (compact, stable wire format) inside a versioned envelope; the serialized document is what the record key encrypts. Record-kind codes and value variants are append-only.
 - **Migrations** live in the core, run on read, must be deterministic and keep stamps (devices that migrate independently agree; a migration never beats a real edit). Documents from a newer schema are reported, not rewritten.
 - **Stream snippets** are separate records referencing their session; photos and voice clips are attachment IDs on the session.
+- **Purchases (record kind 8):** `when`, optional `spot`, and `lines/<id>` → (product, batch, price minor units, currency). A price is all-or-nothing, like a dose. Purchases are in the date index by `when`, and a line's product is a reference, so "every purchase of this product" is an index lookup.
+  - **Session product lines** may carry a (purchase ID, purchase line ID) pair; both or neither. Older four-item line values still read. Changing a line's product in the editor drops its purchase reference.
+  - **Product identifiers** are a map `identifiers/<code>` → kind (`barcode`, `qr`, `package_tag`), so codes scanned on two devices merge. Codes are free text and stay out of the plaintext index. The package date is a day number (days since 1970-01-01).
+  - **Spot purchase prompts** are a per-spot flag, stored only when on (default off).
+  - Pre-release, so Product's old `bought_at` and `price` fields get no migration; any already written are kept as unknown fields.
 - **Vocabularies come from the core.** The FFI's `vocabulary()` lists every built-in slug in display order: core effects, methods, dose units, forms, label units, strain types, intentions, social and symptom results.
   - `dose_units_for_method` gives each method's sensible units, the usual one first. Topicals have none, and an unknown method gets all of them.
   - `default_method_for_form` gives a product form's usual method.
@@ -406,7 +411,7 @@ Each journal entry records one consumption session, not a product review. Produc
   - **Screens:** journal list (newest first), session editor, and product, strain and brand editors. They sit behind a bottom bar: Journal, Products (with strains and brands), Privacy.
   - **Data layer:** every read and write goes through `JournalRepository` to the core, off the main thread.
   - **Effects map:** the core effects plus the user's own effect tags. Each selected effect gets a 0–5 intensity.
-  - **Editing never drops data:** fields an editor does not show yet (activity, spot, symptoms, attachments, product prices) are carried over unchanged.
+  - **Editing never drops data:** fields an editor does not show yet (activity, spot, symptoms, attachments, product terpenes, package date and identifiers, a line's purchase) are carried over unchanged.
   - **Lock clears everything:** locking replaces the whole UI, open editors included.
 - `Debug` output of documents, values and records is redacted; decrypted text is wiped when a document is dropped.
 

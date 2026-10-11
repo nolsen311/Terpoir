@@ -11,15 +11,19 @@ use terpoir_crypto::RecordId;
 use crate::{Document, Error, Result, Value};
 
 mod catalog;
+mod purchase;
 mod session;
 mod snippet;
 mod spot;
 mod tag;
 
-pub use catalog::{Brand, Form, LabelAmount, LabelUnit, Price, Product, Strain, StrainType};
+pub use catalog::{
+    Brand, Form, IdentifierKind, LabelAmount, LabelUnit, Product, Strain, StrainType,
+};
+pub use purchase::{Price, Purchase, PurchaseLine};
 pub use session::{
-    CoreEffect, Dose, DoseUnit, Intention, Method, ProductLine, Session, Social, SymptomResult,
-    Timeline,
+    CoreEffect, Dose, DoseUnit, Intention, Method, ProductLine, PurchaseRef, Session, Social,
+    SymptomResult, Timeline,
 };
 pub use snippet::{Provenance, Snippet};
 pub use spot::{Location, Spot, SpotPurpose};
@@ -44,11 +48,13 @@ pub enum RecordKind {
     Snippet,
     /// A user-defined tag.
     Tag,
+    /// A purchase.
+    Purchase,
 }
 
 impl RecordKind {
     /// Every kind.
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Session,
         Self::Product,
         Self::Strain,
@@ -56,6 +62,7 @@ impl RecordKind {
         Self::Spot,
         Self::Snippet,
         Self::Tag,
+        Self::Purchase,
     ];
 
     /// The stable numeric code.
@@ -69,6 +76,7 @@ impl RecordKind {
             Self::Spot => 5,
             Self::Snippet => 6,
             Self::Tag => 7,
+            Self::Purchase => 8,
         }
     }
 
@@ -83,6 +91,7 @@ impl RecordKind {
             5 => Self::Spot,
             6 => Self::Snippet,
             7 => Self::Tag,
+            8 => Self::Purchase,
             _ => return None,
         })
     }
@@ -230,7 +239,9 @@ macro_rules! redacted_debug {
         })+
     };
 }
-redacted_debug!(Session, Product, Strain, Brand, Spot, Snippet, Tag);
+redacted_debug!(
+    Session, Product, Strain, Brand, Spot, Snippet, Tag, Purchase
+);
 
 /// Builds a flattened field map.
 #[derive(Default)]

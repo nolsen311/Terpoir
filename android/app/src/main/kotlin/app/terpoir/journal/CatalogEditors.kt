@@ -100,9 +100,8 @@ fun ProductEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDon
                 cbdUnit = cbdUnit.takeIf { cbdValue != null },
                 terpenes = base?.terpenes.orEmpty(),
                 batch = batch.trim().ifEmpty { null },
-                boughtAt = base?.boughtAt,
-                priceMinorUnits = base?.priceMinorUnits,
-                priceCurrency = base?.priceCurrency,
+                packageDateDay = base?.packageDateDay,
+                identifiers = base?.identifiers.orEmpty(),
             )
             scope.launch {
                 repo.saveProduct(id, data)

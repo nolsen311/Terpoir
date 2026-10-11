@@ -17,6 +17,9 @@ data class LineDraft(
     val method: String,
     val dose: String = "",
     val doseUnit: String? = null,
+    /** The purchase this unit came from; not edited here yet, so carried over. */
+    val purchaseId: String? = null,
+    val purchaseLineId: String? = null,
 )
 
 /** What is wrong with a draft, if anything. */
@@ -53,7 +56,15 @@ data class SessionDraft(
                 is Parsed.Milli -> parsed.value
             }
             if (dose != null && line.doseUnit == null) return Result.Invalid(DraftError.DOSE)
-            ProductLineData(line.lineId, line.product, line.method, dose, line.doseUnit.takeIf { dose != null })
+            ProductLineData(
+                line.lineId,
+                line.product,
+                line.method,
+                dose,
+                line.doseUnit.takeIf { dose != null },
+                line.purchaseId,
+                line.purchaseLineId,
+            )
         }
         val minutes = listOf(onset, peak, duration).map {
             when (val parsed = parseMinutes(it)) {
@@ -100,7 +111,15 @@ data class SessionDraft(
             whenMs = data.`when`.unixMs,
             utcOffsetMin = data.`when`.utcOffsetMin,
             lines = data.lines.map {
-                LineDraft(it.lineId, it.product, it.method, it.doseMilli?.let(::formatMilli).orEmpty(), it.doseUnit)
+                LineDraft(
+                    it.lineId,
+                    it.product,
+                    it.method,
+                    it.doseMilli?.let(::formatMilli).orEmpty(),
+                    it.doseUnit,
+                    it.purchaseId,
+                    it.purchaseLineId,
+                )
             },
             intention = data.intention,
             social = data.social,

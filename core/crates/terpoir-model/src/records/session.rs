@@ -185,6 +185,15 @@ pub struct Dose {
     pub unit: DoseUnit,
 }
 
+/// A reference to one line of a [`crate::Purchase`].
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct PurchaseRef {
+    /// The purchase.
+    pub purchase: RecordId,
+    /// The line within it.
+    pub line: RecordId,
+}
+
 /// One product consumed in a session.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ProductLine {
@@ -194,6 +203,8 @@ pub struct ProductLine {
     pub method: Method,
     /// How much, if recorded.
     pub dose: Option<Dose>,
+    /// The purchase line this came from, if recorded.
+    pub purchase: Option<PurchaseRef>,
 }
 
 impl ProductLine {
@@ -207,6 +218,8 @@ impl ProductLine {
             self.dose
                 .as_ref()
                 .map_or(Value::Null, |d| Value::Text(d.unit.slug().to_owned())),
+            self.purchase.map_or(Value::Null, |p| Value::Id(p.purchase)),
+            self.purchase.map_or(Value::Null, |p| Value::Id(p.line)),
         ])
     }
 
@@ -214,8 +227,23 @@ impl ProductLine {
         let Value::Tuple(items) = value else {
             return None;
         };
-        let [product, Value::Text(method), amount, unit] = items.as_slice() else {
-            return None;
+        // Lines written before purchases existed have four items.
+        let (product, method, amount, unit, purchase, line) = match items.as_slice() {
+            [product, Value::Text(method), amount, unit] => {
+                (product, method, amount, unit, &Value::Null, &Value::Null)
+            }
+            [product, Value::Text(method), amount, unit, purchase, line] => {
+                (product, method, amount, unit, purchase, line)
+            }
+            _ => return None,
+        };
+        let purchase = match (purchase, line) {
+            (Value::Null, Value::Null) => None,
+            (Value::Id(purchase), Value::Id(line)) => Some(PurchaseRef {
+                purchase: *purchase,
+                line: *line,
+            }),
+            _ => return None,
         };
         let product = match product {
             Value::Null => None,
@@ -234,6 +262,7 @@ impl ProductLine {
             product,
             method: Method::from_slug(method),
             dose,
+            purchase,
         })
     }
 }
@@ -479,6 +508,10 @@ mod tests {
                     amount_milli: 2500,
                     unit: DoseUnit::Milligrams,
                 }),
+                purchase: Some(PurchaseRef {
+                    purchase: id(4),
+                    line: id(5),
+                }),
             },
         );
         s.lines.insert(
@@ -487,6 +520,7 @@ mod tests {
                 product: None,
                 method: Method::Unknown("future_method".into()),
                 dose: None,
+                purchase: None,
             },
         );
         s.activity = Some("hiking".into());
