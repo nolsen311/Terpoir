@@ -125,6 +125,16 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - Rationale: unlike keyboards, this default protects against other software rather than overriding the user's own tool.
 - Sharing has a deliberate path via share/export (see open decisions), so screenshots aren't the only option.
 
+## Local storage format (decided)
+- **Two layers:**
+  1. **Per-record encryption inside:** each record is serialized and encrypted with its own key and stored as a blob. The same ciphertext is what syncs, so sync never re-encrypts and destroying a record key erases it everywhere.
+  2. **SQLCipher outside:** the whole SQLite database is encrypted with a database key wrapped by the master key and held in Keystore / Keychain, hiding structure, row counts, and index columns.
+- **Minimal on-disk indexes** (inside SQLCipher only): record IDs, record type, references between records, dates, confirmed tag IDs. **Free text is never indexed on disk**; search and insights build working indexes in memory after unlock.
+- **Deletion hygiene:** `PRAGMA secure_delete=ON`; write-ahead log checkpointed and truncated regularly; periodic VACUUM.
+- **Photos and voice clips:** separate encrypted files using streaming encryption under the owning session's key; erased when that key is destroyed.
+- **Primitives (vetted Rust crates only):** XChaCha20-Poly1305 for records, files, and key wrapping; Argon2id for passphrase-derived keys; HKDF for subkeys.
+- **Lock-state tradeoff:** strongest OS file protection makes data unreadable while locked. Discreet notifications and check-ins need no journal data. **Named and Rich notifications use a small separate notification cache** (spot names, summary lines) readable after first unlock. The Rich/Named disclosure cards mention it; their off-action deletes it.
+
 ## Data model
 
 ### Core idea: an entry is a session
@@ -272,15 +282,15 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Ownership: personal (no LLC for now); trademark and copyright registration plans recorded above.
 - Keyboards: user's keyboard by default with zero-cost Android protections; opt-in iOS protections; voice-first FAB with on-device recognition only.
 - Screen capture: protection on by default (FLAG_SECURE / capture blur); Android accessibility-sensitive marking always on; screen readers unaffected.
+- Storage: per-record encryption inside SQLCipher; minimal indexes; no on-disk free-text index; secure delete; separate notification cache for Named/Rich tiers.
 
 ## Open decisions
-1. Local storage format (SQLCipher or equivalent, secure-delete settings, encrypted timestamps and identifiers).
-2. Logs and crash reports (none in release, or opt-in with review before sending).
-3. Sharing and export (metadata stripping, "leaves our protection" warning).
-4. Memory hygiene (key zeroing, purge on background, re-auth timeout).
-5. Age gating (self-attestation vs. app store requirements).
-6. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
-7. Builds and releases (reproducible builds, signing-key protection, binary transparency).
-8. Monetization (earning without touching user data).
-9. App store policy (verify current Google Play and Apple cannabis-app rules).
-10. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
+1. Logs and crash reports (none in release, or opt-in with review before sending).
+2. Sharing and export (metadata stripping, "leaves our protection" warning).
+3. Memory hygiene (key zeroing, purge on background, re-auth timeout).
+4. Age gating (self-attestation vs. app store requirements).
+5. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
+6. Builds and releases (reproducible builds, signing-key protection, binary transparency).
+7. Monetization (earning without touching user data).
+8. App store policy (verify current Google Play and Apple cannabis-app rules).
+9. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
