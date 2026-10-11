@@ -53,6 +53,15 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - No escrow: losing all devices and the recovery key means losing the data. Onboarding makes this clear.
 - In-app and on the website: **"We will never ask for your recovery key."**
 
+### Crypto details (decided, `core/crates/terpoir-crypto`)
+- **Key hierarchy in code:** a recovery key or app passphrase yields a key-encryption key, which wraps the master key; the platform keystore also wraps the master key. The master key wraps only other keys: one random key per record and the SQLCipher database key. Subkeys (sync container and similar) come from HKDF-SHA-256 over the master key with fixed purpose labels.
+- **Domain separation:** every XChaCha20-Poly1305 operation binds a purpose label (record, wrapped master/record/database key, file stream) and its context in the associated data. A wrapped record key is bound to its record ID and will not unwrap for another record.
+- **Formats are versioned:** sealed data is `version || 192-bit random nonce || ciphertext || tag`; wrapped keys are 73 bytes.
+- **Files** (photos, clips) use the STREAM construction (`aead-stream`, 64 KiB chunks) with a per-file key derived from the owning record key and the file ID, so destroying the record key erases its files.
+- **Recovery key:** 256 bits, written as 56 characters of Crockford Base32 in 14 groups of 4 (version byte, key, 16-bit SHA-256 checksum). Input ignores case, spaces and hyphens and reads I/L as 1 and O as 0. Chosen over a word list: no word list to ship or translate, and it fits a QR code and a password manager equally well.
+- **App passphrase:** Argon2id, 64 MiB, 3 iterations, 1 lane, 128-bit random salt; parameters are stored with the wrapped key and capped (1 GiB, 16 iterations) so tampered parameters cannot hang unlock.
+- **Not yet done:** locking key pages against swap (best effort per platform) is left to the FFI and platform layers.
+
 ## Location and saved spots
 - Location is opt-in, per entry, coarse by default; precise only on request.
 - Raw coordinates never leave the device except inside encrypted blobs.
