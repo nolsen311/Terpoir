@@ -59,7 +59,7 @@ without it.
       format with padding and opaque names. Property tests proving
       convergence regardless of merge order.
 - [x] `terpoir-ffi`: UniFFI bindings (Kotlin first).
-- [ ] Reproducible-build check for the core.
+- [x] Reproducible-build check for the core.
 
 ## Phase 2: Android shell (`android/`)
 

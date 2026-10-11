@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# Reproducible-build check for the Rust core: builds the release library
+# twice, from checkouts in different directories, with a clean build cache
+# each time, and fails unless the two are byte-for-byte identical.
+# core/scripts/reproducible-build.sh is the same recipe anyone can run to
+# verify a published hash.
+
+name: Reproducible build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  reproducible:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: first
+          persist-credentials: false
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: elsewhere/second-checkout
+          persist-credentials: false
+
+      - name: First build
+        working-directory: first
+        run: |
+          set -euo pipefail
+          core/scripts/reproducible-build.sh | tail -n 1 > "$RUNNER_TEMP/first.sha256"
+          rm -rf /tmp/terpoir-reproducible
+
+      - name: Second build
+        working-directory: elsewhere/second-checkout/core
+        run: |
+          set -euo pipefail
+          scripts/reproducible-build.sh | tail -n 1 > "$RUNNER_TEMP/second.sha256"
+
+      - name: Compare
+        run: |
+          set -euo pipefail
+          first=$(cat "$RUNNER_TEMP/first.sha256")
+          second=$(cat "$RUNNER_TEMP/second.sha256")
+          echo "first:  $first"
+          echo "second: $second"
+          if [ "$first" != "$second" ]; then
+            echo "::error::The core library is not reproducible: the two builds differ."
+            exit 1
+          fi
+          echo "### Reproducible core library" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`libterpoir_ffi.so\` (x86_64-unknown-linux-gnu): \`$first\`" >> "$GITHUB_STEP_SUMMARY"

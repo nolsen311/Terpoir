@@ -245,6 +245,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 
 ### Build pipeline (GitHub Actions)
 - Reproducible Rust and Android builds, with a CI job that rebuilds and compares hashes.
+  - Core (decided): `core/scripts/reproducible-build.sh` builds the committed source (`git archive`) at a fixed path with a fixed Cargo home, the pinned toolchain and `SOURCE_DATE_EPOCH` set to the commit time, because OpenSSL compiles in its install path and build date. The `Reproducible build` workflow runs it from two differently placed checkouts with a clean cache and requires identical hashes. Android targets join the same check in Phase 4.
 - Lockfiles committed; Gradle dependency verification; `cargo-deny` (licenses, advisories); `cargo-vet` (audits).
   - `cargo-deny` policy (`core/deny.toml`): fail on known vulnerabilities and on yanked, unmaintained, or unsound crates; licenses limited to a GPL-3.0-compatible allow list (Apache-2.0, BSD, CC0, ISC, MIT, MPL-2.0, Unicode-3.0, Zlib), extended only with a stated reason; crates.io as the only source; crash-reporting and telemetry crates banned.
   - `cargo-vet`: every Rust dependency audited, imported from a trusted auditor, or explicitly exempted (`core/supply-chain/`).
