@@ -179,6 +179,13 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - Default: **biometric or device passcode** (strong biometrics on Android; Face ID / Touch ID on iOS), which survives new biometric enrollments.
   - Optional strict mode: key bound to the currently enrolled biometric set; enrolling a new face or fingerprint invalidates it (re-unlock with passcode or recovery key).
 
+## Age gating (decided)
+- **Store rating at the top tier:** 18+ on the App Store, Mature on Google Play. Parental controls block installs on supervised devices.
+- **Platform age signals, checked on-device:** Apple Declared Age Range API and Google Play Age Signals API (verify current availability). If the signal indicates a minor, show only a "Terpoir is for adults" screen. Read the category only; never store or transmit it. No server involved.
+- **Self-attestation on first launch:** "I'm of legal age to use cannabis where I live." One local yes/no; no date of birth. Sole gate where age signals are unavailable (older OS versions, de-Googled devices).
+- **Disclosure:** the age category comes from Apple or Google; Terpoir only reads it.
+- Context: state app store accountability laws (Texas, enjoined; Utah, Louisiana, California upcoming) require runtime use of these APIs; re-check status before launch.
+
 ## Data model
 
 ### Core idea: an entry is a session
@@ -330,11 +337,11 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Logs: none in release; redacted types in debug; no crash SDKs or analytics; opt-in reviewed diagnostics.
 - Sharing: field-picked share cards with preview, never via the gallery, discreet brand mark on by default; encrypted export by default, opt-in plaintext export.
 - Memory and unlock: zeroizing key types; clear view state on background; 1-minute default auto-lock; crypto-bound biometric-or-passcode unlock.
+- Age gating: top-tier store rating; on-device platform age signals; self-attestation without date of birth.
 
 ## Open decisions
-1. Age gating (self-attestation vs. app store requirements).
-2. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
-3. Builds and releases (reproducible builds, signing-key protection, binary transparency).
-4. Monetization (earning without touching user data).
-5. App store policy (verify current Google Play and Apple cannabis-app rules).
-6. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
+1. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
+2. Builds and releases (reproducible builds, signing-key protection, binary transparency).
+3. Monetization (earning without touching user data).
+4. App store policy (verify current Google Play and Apple cannabis-app rules).
+5. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
