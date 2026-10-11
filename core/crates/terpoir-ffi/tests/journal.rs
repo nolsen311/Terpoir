@@ -222,7 +222,9 @@ fn full_lifecycle() {
         vec![id.clone()]
     );
     assert_eq!(
-        journal.with_tag(TagRefData::Custom { id: tag }).unwrap(),
+        journal
+            .with_tag(TagRefData::Custom { id: tag.clone() })
+            .unwrap(),
         vec![snippet.clone()]
     );
     let day = 1_760_000_000_000i64.div_euclid(86_400_000) - 1;
@@ -277,6 +279,30 @@ fn full_lifecycle() {
             .unwrap()
             .unwrap()
             .purchase_prompts
+    );
+
+    // Tag suggestions: the custom "giggly" effect wins over the built-in
+    // synonym; negated mentions are skipped.
+    let suggestions = journal
+        .suggest_tags("So giggly and relaxed, tasted lemony. Not anxious.".into())
+        .unwrap();
+    let found: Vec<(String, u32, u32)> = suggestions
+        .iter()
+        .map(|s| {
+            let tag = match &s.tag {
+                TagRefData::Builtin { slug } => slug.clone(),
+                TagRefData::Custom { id } => format!("custom:{id}"),
+            };
+            (tag, s.start, s.end)
+        })
+        .collect();
+    assert_eq!(
+        found,
+        vec![
+            (format!("custom:{tag}"), 3, 9),
+            ("relaxed".into(), 14, 21),
+            ("citrus".into(), 30, 36),
+        ]
     );
 
     // Duplicate detection and shop matching.

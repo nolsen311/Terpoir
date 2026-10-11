@@ -9,11 +9,12 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use terpoir_crypto::{MasterKey, RecoveryKey, WrappedKey};
 use terpoir_model::{
     Brand, DeviceId, Document, Hlc, Product, Purchase, Record, RecordId, RecordKind, Session,
-    Snippet, Spot, Strain, Tag, migrate,
+    Snippet, Spot, Strain, Tag, TagCategory, TagRef, migrate,
 };
 use terpoir_scan::{names_match, normalize_name};
 use terpoir_store::Store;
 use terpoir_sync::{Clock, export_blobs, import_blob};
+use terpoir_tagging::CustomTag;
 use zeroize::Zeroizing;
 
 use crate::keys::RotatedKeys;
@@ -35,6 +36,19 @@ pub struct ProductMatch {
     /// True when a scanned code matched (a sure match); false for a name
     /// match ("Same product, new batch?").
     pub by_code: bool,
+}
+
+/// A tag suggested for part of a snippet's text (keyword matching).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct TagSuggestion {
+    /// The tag.
+    pub tag: TagRefData,
+    /// `effect`, `terpene`, `flavor` or `mood`.
+    pub category: String,
+    /// Start of the phrase it came from, in UTF-16 code units.
+    pub start: u32,
+    /// End of that phrase (exclusive), in UTF-16 code units.
+    pub end: u32,
 }
 
 /// Record types, for listing.
@@ -414,6 +428,47 @@ impl Journal {
                     id: id.to_hex(),
                     by_code: false,
                 }))
+                .collect())
+        })
+    }
+
+    /// Keyword tag suggestions for a snippet's text: the built-in
+    /// vocabulary plus the user's custom effect, terpene, flavor and mood
+    /// tags, matched on the device. Nothing is stored; the user confirms
+    /// each suggestion first.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn suggest_tags(&self, text: String) -> Result<Vec<TagSuggestion>> {
+        self.with(|u| {
+            let mut custom = Vec::new();
+            for id in u.store.ids_of_kind(RecordKind::Tag)? {
+                let Some(tag) = u.store.get_record::<Tag>(&u.master, &id)? else {
+                    continue;
+                };
+                if matches!(
+                    tag.category,
+                    TagCategory::Effect
+                        | TagCategory::Terpene
+                        | TagCategory::Flavor
+                        | TagCategory::Mood
+                ) {
+                    custom.push(CustomTag {
+                        tag: TagRef::Custom(id),
+                        category: tag.category,
+                        name: tag.name,
+                    });
+                }
+            }
+            Ok(terpoir_tagging::suggest(&text, &custom)
+                .into_iter()
+                .map(|s| TagSuggestion {
+                    tag: TagRefData::from_model(&s.tag),
+                    category: s.category.slug().to_owned(),
+                    start: u32::try_from(s.start).unwrap_or(u32::MAX),
+                    end: u32::try_from(s.end).unwrap_or(u32::MAX),
+                })
                 .collect())
         })
     }

@@ -462,6 +462,11 @@ Each journal entry records one consumption session, not a product review. Produc
 3. **Bundled open model:** small quantized model running in-app; works on de-Googled devices. 1–2 GB download via app-store asset delivery or a neutral host with a pinned hash (never terpoir.app).
 - **Never a cloud model.**
 - **Human in the loop:** suggestions link to the phrase they came from; the user accepts, edits, or rejects. Only confirmed tags feed statistics. Each tag records its provenance (user-entered vs. model-suggested).
+- **Keyword tier implementation (decided, `core/crates/terpoir-tagging`):**
+  - **Vocabulary:** the core effects, the built-in terpenes, and new built-in **flavors** (citrus, berry, sweet, earthy, pine, diesel, skunk, spicy, herbal, floral, woody, minty) and **moods** (happy, calm, content, energetic, stressed, irritable, sad, tired). Each built-in tag has a short list of English phrases ("munchies" → hungry, "lemony" → citrus). Built-in slugs are unique across all vocabularies, because a snippet stores a built-in tag by slug alone; a test enforces it. The user's own effect, terpene, flavor and mood tags are matched by name, and win over a built-in synonym.
+  - **Matching:** case-insensitive whole words. A phrase's last word may take a common English ending (relax → relaxed, relaxing). The longest phrase wins, and each tag is suggested once. A mention within three words after a negation ("not", "no", "wasn't", "without", …) is skipped. Spans are in UTF-16 units, so the UI can quote the phrase. English only for now.
+  - **Always available, no toggle:** keyword matching runs in the core on text already in the app, and nothing leaves it. The OS-model and bundled-model tiers (Phase 5) will be opt-in toggles.
+  - **Android:** suggestions appear under a note's text as it changes. Each shows the tag and the quoted phrase, with Add and No. A rejected suggestion stays hidden while the note is open. Tags can also be added by hand (provenance `user`; accepted suggestions are `keyword`). A session's notes are listed in the session editor; "New note" there opens over the editor, so the session's unsaved edits survive. The journal timeline shows a note's first tags.
 
 ### Insights engine
 - Plain statistics in the Rust core, not the LLM, so conclusions are checkable.

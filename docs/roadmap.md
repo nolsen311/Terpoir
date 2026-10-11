@@ -98,7 +98,7 @@ without it.
       AAR (JitPack repository declared only without it); check the foss
       build with it in the OCR workflow.
 - [x] Voice-first FAB with on-device speech recognition (never cloud).
-- [ ] Stream snippets; keyword tag suggestions with human confirmation.
+- [x] Stream snippets; keyword tag suggestions with human confirmation.
 - [ ] Spots with purpose types; "Show me" mode first, then "Notify me"
       geofencing; notification tiers and check-ins.
 - [ ] Targeted symptoms (opt-in).

@@ -36,20 +36,36 @@ import androidx.core.content.ContextCompat
 import app.terpoir.R
 import app.terpoir.core.LocalTimeData
 import app.terpoir.core.SnippetData
+import app.terpoir.core.TagData
+import app.terpoir.core.TagProvenance
+import app.terpoir.core.TagRefData
+import app.terpoir.core.TagSuggestion
+import app.terpoir.core.Vocabulary
 import app.terpoir.privacy.PrivacySettings
 import app.terpoir.voice.OnDeviceSpeech
 import app.terpoir.voice.SpeechProblem
 import java.time.ZonedDateTime
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
  * A stream note: new ones open in voice mode when the user chose voice
  * first, existing ones open for editing. Voice uses the on-device
  * recognizer only and never falls back to an online one; the audio is not
- * kept. Saved as a standalone stream snippet.
+ * kept. Saved as a stream snippet: standalone, or on [session].
+ *
+ * Keyword tag suggestions (matched by the core, on the device) appear as
+ * the text changes; only the ones the user accepts or adds are saved.
  */
 @Composable
-fun NoteScreen(repo: JournalRepository, settings: PrivacySettings, id: String?, onDone: () -> Unit) {
+fun NoteScreen(
+    repo: JournalRepository,
+    settings: PrivacySettings,
+    vocab: Vocabulary,
+    id: String?,
+    onDone: () -> Unit,
+    session: String? = null,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val speech = remember { OnDeviceSpeech(context) }
@@ -61,6 +77,10 @@ fun NoteScreen(repo: JournalRepository, settings: PrivacySettings, id: String?, 
     var problem by remember { mutableStateOf<SpeechProblem?>(null) }
     var voice by remember { mutableStateOf(id == null && settings.voiceFirst && settings.voiceIntroSeen) }
     var intro by remember { mutableStateOf(id == null && !settings.voiceIntroSeen) }
+    var tags by remember { mutableStateOf<List<TagProvenance>>(emptyList()) }
+    var suggestions by remember { mutableStateOf<List<TagSuggestion>>(emptyList()) }
+    var rejected by remember { mutableStateOf<Set<TagRefData>>(emptySet()) }
+    var customTags by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
     var micGranted by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
     }
@@ -87,11 +107,19 @@ fun NoteScreen(repo: JournalRepository, settings: PrivacySettings, id: String?, 
     fun startVoice() = if (micGranted) listen() else askMic.launch(Manifest.permission.RECORD_AUDIO)
 
     LaunchedEffect(id) {
+        customTags = repo.tags(EFFECT_CATEGORY) + repo.tags("flavor") + repo.tags("mood") + repo.tags("terpene")
         id?.let { repo.snippet(it) }?.let {
             original = it
             text = it.text
+            tags = it.tags
         }
         loaded = true
+    }
+    // Suggestions follow the text, after a short pause in typing.
+    LaunchedEffect(text, tags, rejected) {
+        delay(SUGGEST_DELAY_MS)
+        val have = tags.map { it.tag }.toSet() + rejected
+        suggestions = if (text.isBlank()) emptyList() else repo.suggestTags(text).filter { it.tag !in have }
     }
     // Start listening as soon as voice mode opens, as a voice-first button should.
     LaunchedEffect(voice) { if (voice && speech.available) startVoice() }
@@ -104,11 +132,11 @@ fun NoteScreen(repo: JournalRepository, settings: PrivacySettings, id: String?, 
         saveEnabled = text.isNotBlank() && !listening,
         onSave = {
             val now = ZonedDateTime.now()
-            val data = original?.copy(text = text.trim()) ?: SnippetData(
-                session = null,
+            val data = original?.copy(text = text.trim(), tags = tags) ?: SnippetData(
+                session = session,
                 at = LocalTimeData(now.toInstant().toEpochMilli(), (now.offset.totalSeconds / 60).toShort()),
                 text = text.trim(),
-                tags = emptyList(),
+                tags = tags,
             )
             scope.launch {
                 repo.saveSnippet(id, data)
@@ -137,6 +165,18 @@ fun NoteScreen(repo: JournalRepository, settings: PrivacySettings, id: String?, 
             onValueChange = { text = it },
             label = { Text(stringResource(R.string.note_text)) },
             modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp),
+        )
+        NoteTags(
+            text = text,
+            tags = tags,
+            suggestions = suggestions,
+            customNames = customTags.associate { it.id to it.data.name },
+            vocab = vocab,
+            customTags = customTags,
+            onAccept = { s -> tags = tags + TagProvenance(s.tag, "keyword") },
+            onReject = { s -> rejected = rejected + s.tag },
+            onAdd = { tag -> tags = tags + TagProvenance(tag, "user") },
+            onRemove = { t -> tags = tags - t },
         )
         if (id == null) {
             OutlinedButton(onClick = {
@@ -178,6 +218,8 @@ fun NoteScreen(repo: JournalRepository, settings: PrivacySettings, id: String?, 
         )
     }
 }
+
+private const val SUGGEST_DELAY_MS = 400L
 
 private val SpeechProblem.message: Int
     get() = when (this) {
