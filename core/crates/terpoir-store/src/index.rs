@@ -52,6 +52,7 @@ impl IndexEntries {
         let date_field = match doc.kind() {
             RecordKind::Session => Some("when"),
             RecordKind::Snippet => Some("at"),
+            RecordKind::Purchase => Some("when"),
             _ => None,
         };
         entries.day = date_field.and_then(|f| local_day(doc.value(f)));
@@ -85,7 +86,8 @@ fn local_day(value: &Value) -> Option<i64> {
 mod tests {
     use super::*;
     use terpoir_model::{
-        CoreEffect, DeviceId, Hlc, LocalTime, Method, Product, ProductLine, Session, Stamp, TagRef,
+        CoreEffect, DeviceId, Hlc, IdentifierKind, LocalTime, Method, Product, ProductLine,
+        Purchase, PurchaseLine, Session, Stamp, TagRef,
     };
 
     fn stamp() -> Stamp {
@@ -112,6 +114,7 @@ mod tests {
                 product: Some(id(2)),
                 method: Method::Edible,
                 dose: None,
+                purchase: None,
             },
         );
         s.spot = Some(id(3));
@@ -137,6 +140,37 @@ mod tests {
         let entries = IndexEntries::from_document(&doc);
         assert_eq!(entries.refs, [id(7), id(8)].into());
         assert_eq!(entries.day, None);
+    }
+
+    #[test]
+    fn purchase_index() {
+        let mut p = Purchase::new(LocalTime {
+            unix_ms: 1_760_148_000_000,
+            utc_offset_min: 0,
+        });
+        p.spot = Some(id(5));
+        p.lines.insert(
+            id(1),
+            PurchaseLine {
+                product: Some(id(2)),
+                batch: Some("secret batch".into()),
+                price: None,
+            },
+        );
+        let doc = Document::create(&p, stamp()).unwrap();
+        let entries = IndexEntries::from_document(&doc);
+        assert_eq!(entries.refs, [id(2), id(5)].into());
+        assert_eq!(entries.day, Some(1_760_148_000_000 / MS_PER_DAY));
+        assert!(entries.tags.is_empty());
+    }
+
+    #[test]
+    fn identifiers_are_not_indexed() {
+        let mut p = Product::new("x".into());
+        p.identifiers
+            .insert("0123456789012".into(), IdentifierKind::Barcode);
+        let doc = Document::create(&p, stamp()).unwrap();
+        assert_eq!(IndexEntries::from_document(&doc), IndexEntries::default());
     }
 
     #[test]

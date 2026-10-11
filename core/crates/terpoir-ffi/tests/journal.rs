@@ -11,9 +11,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use terpoir_ffi::{
-    BrandData, CoreError, Journal, LocalTimeData, NewKeys, ProductData, ProductLineData,
-    RecordType, SessionData, SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity,
-    TagProvenance, TagRefData, check_recovery_key, create_keys, master_key_from_recovery,
+    BrandData, CoreError, IdentifierData, Journal, LocalTimeData, NewKeys, ProductData,
+    ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData, SnippetData,
+    SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance, TagRefData,
+    check_recovery_key, create_keys, master_key_from_recovery,
 };
 
 struct Device {
@@ -65,6 +66,8 @@ fn session(product: Option<String>) -> SessionData {
             method: "edible".into(),
             dose_milli: Some(5_000),
             dose_unit: Some("mg".into()),
+            purchase_id: None,
+            purchase_line_id: None,
         }],
         activity: Some("movie night".into()),
         intention: Some("relax".into()),
@@ -131,9 +134,11 @@ fn full_lifecycle() {
                 cbd_unit: None,
                 terpenes: vec![],
                 batch: None,
-                bought_at: None,
-                price_minor_units: Some(2_000),
-                price_currency: Some("USD".into()),
+                package_date_day: Some(20_300),
+                identifiers: vec![IdentifierData {
+                    code: "https://example.test/coa/1".into(),
+                    kind: "qr".into(),
+                }],
             },
             1,
         )
@@ -179,6 +184,7 @@ fn full_lifecycle() {
                 lon_e7: Some(-1_224_000_000),
                 accuracy_m: Some(500),
                 radius_m: Some(150),
+                purchase_prompts: true,
             },
             3,
         )
@@ -222,6 +228,57 @@ fn full_lifecycle() {
     let day = 1_760_000_000_000i64.div_euclid(86_400_000) - 1;
     assert_eq!(journal.on_days(day, day + 1).unwrap().len(), 2);
 
+    // A purchase at the spot, and the session's line pointing at it.
+    let purchase = journal
+        .save_purchase(
+            None,
+            PurchaseData {
+                when: LocalTimeData {
+                    unix_ms: 1_759_900_000_000,
+                    utc_offset_min: -420,
+                },
+                spot: Some(spot.clone()),
+                lines: vec![PurchaseLineData {
+                    line_id: None,
+                    product: Some(product.clone()),
+                    batch: Some("B-7".into()),
+                    price_minor_units: Some(2_000),
+                    price_currency: Some("USD".into()),
+                }],
+            },
+            4,
+        )
+        .unwrap();
+    let bought = journal.get_purchase(purchase.clone()).unwrap().unwrap();
+    assert!(bought.lines[0].price_currency.as_deref() == Some("USD"));
+    assert!(bought.lines[0].line_id.is_some());
+    assert_eq!(
+        journal.list(RecordType::Purchase).unwrap(),
+        vec![purchase.clone()]
+    );
+    let mut linked = journal.get_session(id.clone()).unwrap().unwrap();
+    linked.lines[0].purchase_id = Some(purchase.clone());
+    linked.lines[0]
+        .purchase_line_id
+        .clone_from(&bought.lines[0].line_id);
+    journal
+        .save_session(Some(id.clone()), linked.clone(), 4)
+        .unwrap();
+    assert!(journal.get_session(id.clone()).unwrap().unwrap() == linked);
+    let mut refs = journal.referencing(purchase.clone()).unwrap();
+    refs.sort();
+    assert_eq!(refs, vec![id.clone()]);
+    let stored_product = journal.get_product(product.clone()).unwrap().unwrap();
+    assert_eq!(stored_product.package_date_day, Some(20_300));
+    assert!(stored_product.identifiers[0].kind == "qr");
+    assert!(
+        journal
+            .get_spot(spot.clone())
+            .unwrap()
+            .unwrap()
+            .purchase_prompts
+    );
+
     // Type mismatch and bad input.
     assert_eq!(
         journal.get_brand(id.clone()).err(),
@@ -235,6 +292,18 @@ fn full_lifecycle() {
     bad.rating = Some(9);
     assert_eq!(
         journal.save_session(None, bad, 5).err(),
+        Some(CoreError::InvalidInput)
+    );
+    let mut half_ref = session(None);
+    half_ref.lines[0].purchase_id = Some(purchase.clone());
+    assert_eq!(
+        journal.save_session(None, half_ref, 5).err(),
+        Some(CoreError::InvalidInput)
+    );
+    let mut half_price = bought.clone();
+    half_price.lines[0].price_currency = None;
+    assert_eq!(
+        journal.save_purchase(None, half_price, 5).err(),
         Some(CoreError::InvalidInput)
     );
 

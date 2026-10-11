@@ -11,9 +11,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use terpoir_model::{
-    Brand, Dose, DoseUnit, Form, Intention, LabelAmount, LabelUnit, LocalTime, Location, Method,
-    Price, Product, ProductLine, Provenance, RecordId, Session, Snippet, Social, Spot, Strain,
-    StrainType, SymptomResult, Tag, TagCategory, TagRef, Timeline,
+    Brand, Dose, DoseUnit, Form, IdentifierKind, Intention, LabelAmount, LabelUnit, LocalTime,
+    Location, Method, Price, Product, ProductLine, Provenance, Purchase, PurchaseLine, PurchaseRef,
+    RecordId, Session, Snippet, Social, Spot, Strain, StrainType, SymptomResult, Tag, TagCategory,
+    TagRef, Timeline,
 };
 
 use crate::{CoreError, Result};
@@ -150,6 +151,11 @@ pub struct ProductLineData {
     pub dose_milli: Option<i64>,
     /// Dose unit slug, for example `mg`. Set with `dose_milli` or not at all.
     pub dose_unit: Option<String>,
+    /// The purchase this unit came from. Set with `purchase_line_id` or not
+    /// at all.
+    pub purchase_id: Option<String>,
+    /// The line within that purchase.
+    pub purchase_line_id: Option<String>,
 }
 
 /// A session (journal entry).
@@ -205,10 +211,19 @@ impl SessionData {
                 }),
                 _ => return Err(CoreError::InvalidInput),
             };
+            let purchase = match (&line.purchase_id, &line.purchase_line_id) {
+                (None, None) => None,
+                (Some(purchase), Some(line)) => Some(PurchaseRef {
+                    purchase: parse_id(purchase)?,
+                    line: parse_id(line)?,
+                }),
+                _ => return Err(CoreError::InvalidInput),
+            };
             let line = ProductLine {
                 product: opt_id(line.product.as_ref())?,
                 method: Method::from_slug(&line.method),
                 dose,
+                purchase,
             };
             if lines.insert(id, line).is_some() {
                 return Err(CoreError::InvalidInput);
@@ -264,6 +279,8 @@ impl SessionData {
                     method: line.method.slug().to_owned(),
                     dose_milli: line.dose.as_ref().map(|d| d.amount_milli),
                     dose_unit: line.dose.as_ref().map(|d| d.unit.slug().to_owned()),
+                    purchase_id: line.purchase.map(|r| r.purchase.to_hex()),
+                    purchase_line_id: line.purchase.map(|r| r.line.to_hex()),
                 })
                 .collect(),
             activity: s.activity.clone(),
@@ -321,12 +338,19 @@ pub struct ProductData {
     pub terpenes: Vec<TagIntensity>,
     /// Batch or lot.
     pub batch: Option<String>,
-    /// Spot ID where bought.
-    pub bought_at: Option<String>,
-    /// Price in minor units (cents).
-    pub price_minor_units: Option<i64>,
-    /// ISO 4217 currency code. Set with the price or not at all.
-    pub price_currency: Option<String>,
+    /// Package or harvest date, in days since 1970-01-01.
+    pub package_date_day: Option<i64>,
+    /// Barcodes, QR payloads and package tags read from the packaging.
+    pub identifiers: Vec<IdentifierData>,
+}
+
+/// A code read from a product's packaging.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct IdentifierData {
+    /// The code exactly as read. Must not be empty.
+    pub code: String,
+    /// `barcode`, `qr` or `package_tag`.
+    pub kind: String,
 }
 
 fn label(milli: Option<i64>, unit: Option<&String>) -> Result<Option<LabelAmount>> {
@@ -342,14 +366,13 @@ fn label(milli: Option<i64>, unit: Option<&String>) -> Result<Option<LabelAmount
 
 impl ProductData {
     pub(crate) fn to_model(&self) -> Result<Product> {
-        let price = match (self.price_minor_units, &self.price_currency) {
-            (None, None) => None,
-            (Some(minor_units), Some(currency)) => Some(Price {
-                minor_units,
-                currency: currency.clone(),
-            }),
-            _ => return Err(CoreError::InvalidInput),
-        };
+        let mut identifiers = BTreeMap::new();
+        for i in &self.identifiers {
+            if i.code.is_empty() {
+                return Err(CoreError::InvalidInput);
+            }
+            identifiers.insert(i.code.clone(), IdentifierKind::from_slug(&i.kind));
+        }
         Ok(Product {
             name: self.name.clone(),
             form: self.form.as_deref().map(Form::from_slug),
@@ -363,8 +386,8 @@ impl ProductData {
                 .map(|t| Ok((t.tag.to_model()?, t.value)))
                 .collect::<Result<_>>()?,
             batch: self.batch.clone(),
-            bought_at: opt_id(self.bought_at.as_ref())?,
-            price,
+            package_date: self.package_date_day,
+            identifiers,
         })
     }
 
@@ -387,9 +410,15 @@ impl ProductData {
                 })
                 .collect(),
             batch: p.batch.clone(),
-            bought_at: p.bought_at.map(|id| id.to_hex()),
-            price_minor_units: p.price.as_ref().map(|p| p.minor_units),
-            price_currency: p.price.as_ref().map(|p| p.currency.clone()),
+            package_date_day: p.package_date,
+            identifiers: p
+                .identifiers
+                .iter()
+                .map(|(code, kind)| IdentifierData {
+                    code: code.clone(),
+                    kind: kind.slug().to_owned(),
+                })
+                .collect(),
         }
     }
 }
@@ -449,6 +478,8 @@ pub struct SpotData {
     pub accuracy_m: Option<u32>,
     /// Geofence radius in metres.
     pub radius_m: Option<u32>,
+    /// Prompt to log a purchase on arrival (Re-up Spots; off by default).
+    pub purchase_prompts: bool,
 }
 
 impl SpotData {
@@ -472,6 +503,7 @@ impl SpotData {
             purposes: tags_to_model(&self.purposes)?,
             location,
             radius_m: self.radius_m,
+            purchase_prompts: self.purchase_prompts,
         })
     }
 
@@ -483,6 +515,84 @@ impl SpotData {
             lon_e7: s.location.map(|l| l.lon_e7),
             accuracy_m: s.location.map(|l| l.accuracy_m),
             radius_m: s.radius_m,
+            purchase_prompts: s.purchase_prompts,
+        }
+    }
+}
+
+/// One product bought in a purchase.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PurchaseLineData {
+    /// The line's ID; `None` for a new line.
+    pub line_id: Option<String>,
+    /// The product's ID, if recorded.
+    pub product: Option<String>,
+    /// Batch or lot of this unit.
+    pub batch: Option<String>,
+    /// Price in minor units (cents).
+    pub price_minor_units: Option<i64>,
+    /// ISO 4217 currency code. Set with the price or not at all.
+    pub price_currency: Option<String>,
+}
+
+/// A purchase.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PurchaseData {
+    /// When it was bought.
+    pub when: LocalTimeData,
+    /// The Re-up Spot's ID, if recorded.
+    pub spot: Option<String>,
+    /// What was bought.
+    pub lines: Vec<PurchaseLineData>,
+}
+
+impl PurchaseData {
+    pub(crate) fn to_model(&self) -> Result<Purchase> {
+        let mut lines = BTreeMap::new();
+        for line in &self.lines {
+            let id = match &line.line_id {
+                Some(id) => parse_id(id)?,
+                None => RecordId::random()?,
+            };
+            let price = match (line.price_minor_units, &line.price_currency) {
+                (None, None) => None,
+                (Some(minor_units), Some(currency)) if !currency.is_empty() => Some(Price {
+                    minor_units,
+                    currency: currency.clone(),
+                }),
+                _ => return Err(CoreError::InvalidInput),
+            };
+            let line = PurchaseLine {
+                product: opt_id(line.product.as_ref())?,
+                batch: line.batch.clone(),
+                price,
+            };
+            if lines.insert(id, line).is_some() {
+                return Err(CoreError::InvalidInput);
+            }
+        }
+        Ok(Purchase {
+            when: self.when.into(),
+            spot: opt_id(self.spot.as_ref())?,
+            lines,
+        })
+    }
+
+    pub(crate) fn from_model(p: &Purchase) -> Self {
+        Self {
+            when: p.when.into(),
+            spot: p.spot.map(|id| id.to_hex()),
+            lines: p
+                .lines
+                .iter()
+                .map(|(id, line)| PurchaseLineData {
+                    line_id: Some(id.to_hex()),
+                    product: line.product.map(|p| p.to_hex()),
+                    batch: line.batch.clone(),
+                    price_minor_units: line.price.as_ref().map(|p| p.minor_units),
+                    price_currency: line.price.as_ref().map(|p| p.currency.clone()),
+                })
+                .collect(),
         }
     }
 }

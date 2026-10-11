@@ -18,7 +18,7 @@ class SessionDraftTest {
 
     private val saved = SessionData(
         `when` = LocalTimeData(1_760_000_000_000, -420),
-        lines = listOf(ProductLineData("ab".repeat(16), "cd".repeat(16), "smoked", 2000, "hits")),
+        lines = listOf(ProductLineData("ab".repeat(16), "cd".repeat(16), "smoked", 2000, "hits", "ef".repeat(16), "01".repeat(16))),
         activity = "walk",
         intention = "relax",
         moodBefore = 3u,

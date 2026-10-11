@@ -8,8 +8,8 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 use terpoir_crypto::{MasterKey, RecoveryKey, WrappedKey};
 use terpoir_model::{
-    Brand, DeviceId, Document, Hlc, Product, Record, RecordId, RecordKind, Session, Snippet, Spot,
-    Strain, Tag, migrate,
+    Brand, DeviceId, Document, Hlc, Product, Purchase, Record, RecordId, RecordKind, Session,
+    Snippet, Spot, Strain, Tag, migrate,
 };
 use terpoir_store::Store;
 use terpoir_sync::{Clock, export_blobs, import_blob};
@@ -17,8 +17,8 @@ use zeroize::Zeroizing;
 
 use crate::keys::RotatedKeys;
 use crate::records::{
-    BrandData, ProductData, SessionData, SnippetData, SpotData, StrainData, TagData, TagRefData,
-    parse_id,
+    BrandData, ProductData, PurchaseData, SessionData, SnippetData, SpotData, StrainData, TagData,
+    TagRefData, parse_id,
 };
 use crate::{CoreError, Result};
 
@@ -43,6 +43,8 @@ pub enum RecordType {
     Snippet,
     /// Custom tags.
     Tag,
+    /// Purchases.
+    Purchase,
 }
 
 impl From<RecordType> for RecordKind {
@@ -55,6 +57,7 @@ impl From<RecordType> for RecordKind {
             RecordType::Spot => Self::Spot,
             RecordType::Snippet => Self::Snippet,
             RecordType::Tag => Self::Tag,
+            RecordType::Purchase => Self::Purchase,
         }
     }
 }
@@ -327,6 +330,34 @@ impl Journal {
     /// `WrongType` if `id` is another kind of record.
     pub fn get_spot(&self, id: String) -> Result<Option<SpotData>> {
         self.with(|u| Ok(u.get::<Spot>(&id)?.as_ref().map(SpotData::from_model)))
+    }
+
+    /// Creates or updates a purchase. Returns its ID.
+    ///
+    /// # Errors
+    ///
+    /// `InvalidInput`, `NotFound`, `Locked` or `Storage`.
+    pub fn save_purchase(
+        &self,
+        id: Option<String>,
+        purchase: PurchaseData,
+        now_ms: u64,
+    ) -> Result<String> {
+        let record = purchase.to_model()?;
+        self.with(|u| u.save(id, &record, now_ms))
+    }
+
+    /// A purchase, if it exists.
+    ///
+    /// # Errors
+    ///
+    /// `WrongType` if `id` is another kind of record.
+    pub fn get_purchase(&self, id: String) -> Result<Option<PurchaseData>> {
+        self.with(|u| {
+            Ok(u.get::<Purchase>(&id)?
+                .as_ref()
+                .map(PurchaseData::from_model))
+        })
     }
 
     /// Creates or updates a stream snippet. Returns its ID.

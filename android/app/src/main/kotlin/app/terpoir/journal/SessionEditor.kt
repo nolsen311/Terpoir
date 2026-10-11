@@ -202,7 +202,16 @@ private fun LineEditor(
                 onSelect = { productId ->
                     val form = products.firstOrNull { it.id == productId }?.data?.form
                     val method = form?.let(::defaultMethodForForm) ?: line.method
-                    onChange(line.copy(product = productId, method = method, doseUnit = unitFor(method, line.doseUnit)))
+                    onChange(
+                        line.copy(
+                            product = productId,
+                            method = method,
+                            doseUnit = unitFor(method, line.doseUnit),
+                            // A purchase line belongs to one product.
+                            purchaseId = line.purchaseId.takeIf { productId == line.product },
+                            purchaseLineId = line.purchaseLineId.takeIf { productId == line.product },
+                        ),
+                    )
                 },
             )
             Dropdown(

@@ -99,6 +99,8 @@ pub struct Spot {
     pub location: Option<Location>,
     /// Geofence radius in metres for "Notify me", if set.
     pub radius_m: Option<u32>,
+    /// "Remind me to log purchases here" (Re-up Spots with coordinates).
+    pub purchase_prompts: bool,
 }
 
 impl Record for Spot {
@@ -109,7 +111,13 @@ impl Record for Spot {
         f.put("name", Value::Text(self.name.clone()))
             .tag_set("purposes", &self.purposes)
             .opt("location", self.location, Location::to_value)
-            .opt("radius_m", self.radius_m, |r| Value::Int(i64::from(r)));
+            .opt("radius_m", self.radius_m, |r| Value::Int(i64::from(r)))
+            // Off is the default and is stored as absent.
+            .opt(
+                "purchase_prompts",
+                self.purchase_prompts.then_some(true),
+                Value::Bool,
+            );
         f.finish()
     }
 
@@ -120,11 +128,16 @@ impl Record for Spot {
             purposes: r.tag_set("purposes")?,
             location: Location::from_value(r.value("location"))?,
             radius_m: r.int_in("radius_m", 0..=u32::MAX)?,
+            purchase_prompts: r.bool("purchase_prompts")?.unwrap_or(false),
         })
     }
 
     fn owns_field(key: &str) -> bool {
-        owns(key, &["name", "location", "radius_m"], &["purposes"])
+        owns(
+            key,
+            &["name", "location", "radius_m", "purchase_prompts"],
+            &["purposes"],
+        )
     }
 }
 
@@ -151,6 +164,7 @@ mod tests {
                 accuracy_m: 1_000,
             }),
             radius_m: Some(150),
+            purchase_prompts: true,
         };
         let doc = Document::create(&spot, stamp()).unwrap();
         assert_eq!(Spot::from_document(&doc).unwrap(), spot);
@@ -163,6 +177,7 @@ mod tests {
             purposes: BTreeSet::new(),
             location: None,
             radius_m: None,
+            purchase_prompts: false,
         };
         let mut doc = Document::create(&spot, stamp()).unwrap();
         doc.set(
