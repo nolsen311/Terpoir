@@ -2,7 +2,7 @@
 
 Working name: **Terpoir** (terpene + terroir). Domain: **terpoir.app**.
 Repository: https://github.com/nolsen311/Terpoir
-Status: pre-development, high-level design. Last updated 2026-10-10.
+Status: pre-development, high-level design. Last updated 2026-10-11.
 
 ## Purpose
 A mobile app for cannabis consumers to journal experiences with strains, products, brands, delivery methods, and anything cannabis-related, and to understand how those affect them personally.
@@ -12,6 +12,8 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Consent first.** Every practice that affects the user is an explicit, informed, revocable choice. Defaults are the most private option.
 - **Honest disclosure.** When a feature leaks information, say exactly what, to whom, and how to avoid it.
 - **Voice and tone.** Playful and warm inside the app: cannabis can be fun, and people are sharing something personal, so laughing is allowed. Neutral wording on discreet surfaces (Discreet-tier notifications, discreet-icon mode). Humor never pressures a privacy choice: any playful nudge is one tap to dismiss with no extra step and no repeat nagging.
+- **The user's threat model, the user's choice.** Privacy options are as granular as practical, so each person can match the app to what they actually fear. Someone in a jurisdiction where they have little to fear can trade privacy for convenience, one toggle at a time or through YOLO Mode (see Privacy Center), with every trade disclosed. The default is still the most private option.
+- **A lean app.** The base app carries only the essentials; heavy components (text-recognition engines, language data, models) are optional downloads where the store allows it (see Optional components).
 - **Recorded exceptions to "most private default":** keyboard choice. The keyboard is the user's own configured tool; the app defaults to it unchanged, keeps only zero-cost protections, and discloses the risks (see Keyboards and voice input).
 
 ## Platforms and architecture
@@ -301,6 +303,10 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - Newer hardening is used at runtime where the device has it, with a safe fallback, rather than by raising the minimum: hiding other apps' overlays on sensitive screens (12+), approximate-location choice (12+), sensitive clipboard flag (13+), accessibility-data-sensitive marking (14+), screenshot and screen-recording callbacks (14+/15+).
 - **Flavors:** `play` and `foss` (dimension `distribution`), same application ID `app.terpoir`. Google-dependent features are listed as `Capability` values; only `play` may offer them. `verifyFossDependencies` fails the build if the FOSS release classpath contains Play services, Firebase, Play Billing, Play Core/age signals, ML Kit or on-device Gemini libraries.
 - **Permissions:** none (not even INTERNET). Every variant's merged manifest is checked against an allowlist in `app/build.gradle.kts`, so a library cannot add one silently.
+  - **INTERNET arrives with the first feature that needs it (decided),** not earlier: online catalog lookups, the WebDAV/S3 sync backends, or downloads the app makes itself. Adding it early buys nothing and gives up a claim anyone can check. Until then, downloads go through the store (Play Feature Delivery and Play Asset Delivery run in the Play Store app, over IPC). When it is added:
+    - All network access goes through one gateway that refuses any request whose Privacy Center toggle is off, so with the defaults the app opens no connection at all. A device test checks that.
+    - Android does not let users revoke INTERNET (some systems, such as GrapheneOS, do); the permission's card says so and points to the per-toggle controls.
+    - Syncthing folders and Google Drive through the system file picker need no INTERNET permission in the app.
 - **Backups:** `allowBackup=false`, plus full-backup and data-extraction rules that exclude every domain from cloud backup and device-to-device transfer.
 - **Dependency verification:** `gradle/verification-metadata.xml` pins a SHA-256 for every artifact; regenerate it with `./gradlew --write-verification-metadata sha256 assemble check` when dependencies change (Dependabot does not).
 - **Release builds** are minified with R8 and never signed in the build; the dependency-info blob that AGP normally embeds for Google is disabled.
@@ -418,7 +424,12 @@ Each journal entry records one consumption session, not a product review. Produc
 
 ## Rapid product entry (decided)
 - **Receipt scan:** one photo fills in several products with prices, the date, and the shop.
-  - On-device text recognition only: ML Kit's bundled model on the Play build, a fully open alternative on the FOSS build, Apple's Vision framework on iOS.
+  - On-device text recognition only. **Engine (decided):** the open engine, Tesseract (through Tesseract4Android), is the default everywhere on Android; ML Kit is a Play-only opt-in.
+    - **Play, default:** not in the base app. The first scan offers to download Tesseract: the code as an on-demand feature module (Play Feature Delivery), the language data as an asset pack (Play Asset Delivery). The Play Store app downloads them, so this needs no INTERNET permission.
+    - **Play, opt-in (part of YOLO Mode):** ML Kit text recognition through Google Play services: tiny in the app, and Google downloads and updates the model. Usually the most accurate on photographed receipts. Its card discloses that it is a closed Google component, and that Google's terms let it fetch updates and send usage metrics (operational data, never the scanned text; see "Cloud models").
+    - **FOSS:** F-Droid has no on-demand delivery and the app never downloads code itself, so the foss build bundles Tesseract (the from-source build, "OCR native libraries" under Builds and releases) with a compact English model. Larger models and other languages are optional data, once the app can download (see the INTERNET permission).
+    - **iOS:** Apple's Vision framework (built in, nothing to download).
+    - The scanner keeps the engine behind one interface, so the choice is one switch.
   - Extracted lines appear as a checklist to confirm, fix, or drop.
   - Header text suggests the shop name, matched on-device against existing spots.
   - **The receipt image is discarded after parsing by default** (receipts can carry the user's name, loyalty numbers, or medical card numbers). Only confirmed fields are kept.
@@ -440,7 +451,7 @@ Each journal entry records one consumption session, not a product review. Produc
 1. **Keyword matching** (default when enabled): curated vocabulary of effects, terpenes, flavors, and moods, matched in the Rust core. No model; auditable.
 2. **OS on-device model:** Gemini Nano (supported Android devices) or Apple's Foundation Models framework (supported iPhones). Disclose that text passes to an OS service the app doesn't control, on-device.
 3. **Bundled open model:** small quantized model running in-app; works on de-Googled devices. 1–2 GB download via app-store asset delivery or a neutral host with a pinned hash (never terpoir.app).
-- **Never a cloud model.**
+- **Never a cloud model (clarified 2026-10-11):** no model that runs in or from the cloud on the user's queries or content. A component whose only traffic is operational (downloading or updating a model, usage metrics that carry no journal content, such as ML Kit's) is not a cloud model: it may be offered as an opt-in with its disclosure card, for example in YOLO Mode.
 - **Human in the loop:** suggestions link to the phrase they came from; the user accepts, edits, or rejects. Only confirmed tags feed statistics. Each tag records its provenance (user-entered vs. model-suggested).
 
 ### Insights engine
@@ -506,6 +517,25 @@ Each journal entry records one consumption session, not a product review. Produc
   - **Disclosure first:** relaxing a protection shows its card in a confirmation dialog first. Returning to the private state is immediate.
   - **Only while unlocked:** the Privacy Center opens only when the journal is unlocked, and locking closes it. Someone holding the phone cannot relax protections without unlocking the journal.
   - **Device test:** an instrumented test runs every registered toggle both ways on the device.
+
+### Presets and YOLO Mode (decided)
+- **Granular first:** every privacy-relevant behavior is its own toggle, with its own card and its own off-action. Presets never replace toggles.
+- **Presets are sets of toggle states.** Choosing one shows a single combined confirmation that lists every toggle it changes, each with its card, and then sets them. Afterwards each toggle can still be changed on its own; the status summary shows "Custom" once they no longer match a preset.
+  - **Most private:** the default. Same as "Restore maximum privacy".
+  - **YOLO Mode** (working name; it amuses us): uses the platform's features for the best experience. Examples: ML Kit text recognition, OS on-device models for tagging, OS indexing and shortcuts, rich notifications, address lookup, online catalogs. Leaving it runs every off-action it caused.
+  - A middle preset may come later if users ask for one.
+- **Threat model at onboarding:** one optional question ("What are you protecting this journal from?") suggests a preset. Skipping it, or any answer, leaves the defaults at most private until the user confirms a preset.
+- **Hard lines in every mode, YOLO Mode included:**
+  - App data stays out of OS backups (Google and iCloud), and keys stay on the device. The encrypted sync and export model already covers backup.
+  - No cloud model on journal content (see "Never a cloud model").
+  - No analytics, ads, crash-reporting or attribution SDKs.
+  - The app never contacts terpoir.app or any project-run endpoint, and there is no server component.
+
+## Optional components (decided)
+- The base app ships only what every user needs. Heavy, optional pieces (text-recognition engines, language data, the bundled tagging model, offline catalogs) are downloads the user chooses, each named in the Privacy Center or the feature that uses it, with its size, and removable.
+- **Code** (native libraries, Kotlin/Java): only through the store. Google Play forbids downloading executable code from anywhere else, so on Play it comes as an on-demand feature module. F-Droid has no equivalent, so code the foss build needs is bundled; only data is optional there.
+- **Data** (models, language packs, catalogs): Play Asset Delivery on Play. Elsewhere, once the app has the INTERNET permission, from a neutral host with a SHA-256 pinned in the app, never terpoir.app.
+- Removing a component deletes its files; turning off the feature that uses it offers to remove it.
 
 ## Website and domain (terpoir.app)
 - The app does not contact terpoir.app in normal use. The domain hosts the website, docs, release notes, and published build hashes / reproducible-build verification.
@@ -578,6 +608,9 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Memory and unlock: zeroizing key types; clear view state on background; 1-minute default auto-lock; crypto-bound biometric-or-passcode unlock.
 - Age gating: top-tier store rating; on-device platform age signals; self-attestation without date of birth.
 - Device security: passcode-only and app-passphrase options; quick-lock; two-level panic wipe; no duress passcode; neutral discreet icon/name.
+- Privacy presets: granular toggles first; "Most private" default; opt-in YOLO Mode for platform features; hard lines (no OS backups, no cloud model on content, no analytics or crash SDKs, no terpoir.app contact, no server) in every mode.
+- Optional components: lean base app; code only through the store, data from the store or a pinned neutral host; Tesseract default, ML Kit a Play-only opt-in.
+- INTERNET permission: added with the first feature that needs it, behind a single toggle-checking gateway.
 - Builds: Play, F-Droid (FOSS flavor), GitHub Releases, App Store; maintainer key on two YubiKeys; reproducible, pinned, signed pipeline.
 - Monetization: free core; one-time Connoisseur unlock; tip jar; donations; never paywall privacy or security.
 - Store policy: Android ships as an individual; iOS attempted as an individual, Android-only acceptable if Apple requires an entity; no sale facilitation; all-ages store metadata.

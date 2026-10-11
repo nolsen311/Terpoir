@@ -81,9 +81,12 @@ dependencies {
     } else {
         "fossImplementation"(libs.tesseract4android)  // JitPack
     }
-    "playImplementation"(libs.tesseract4android)
 }
 ```
+
+On Play, Tesseract is not in the base app: it comes as an on-demand
+feature module (with the language data as an asset pack) that depends on
+the JitPack AAR (`docs/design-decisions.md`, Rapid product entry).
 
 The JitPack repository is declared only when the property is unset, so a
 from-source build never contacts JitPack. CI keeps building without the
