@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# CodeQL code scanning. Results appear under Security → Code scanning.
+#
+# Languages switch on as their code lands, so the workflow never fails on a
+# language with no source:
+#   - actions: always (these workflow files).
+#   - rust: once core/Cargo.toml exists.
+#   - java-kotlin: once android/ exists. Autobuild until the Android build
+#     needs explicit steps.
+#   - swift: later, with ios/ (needs a macOS runner).
+
+name: CodeQL
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly, so new queries run against unchanged code.
+    - cron: "23 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  languages:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Detect languages present in the tree
+        id: detect
+        run: |
+          set -euo pipefail
+          include='{"language":"actions","build-mode":"none"}'
+          if [ -f core/Cargo.toml ]; then
+            include="${include},"'{"language":"rust","build-mode":"none"}'
+          fi
+          if [ -d android ]; then
+            include="${include},"'{"language":"java-kotlin","build-mode":"autobuild"}'
+          fi
+          echo "matrix={\"include\":[${include}]}" >> "$GITHUB_OUTPUT"
+
+  analyze:
+    name: analyze (${{ matrix.language }})
+    needs: languages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.languages.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          category: "/language:${{ matrix.language }}"

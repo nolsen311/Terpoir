@@ -26,7 +26,7 @@ per item or small group of items. Keep this file updated as items land.
 - [x] Dependabot version updates for GitHub Actions.
 - [ ] Add `cargo` and `gradle` ecosystems to `.github/dependabot.yml`
       (grouped, 7-day cooldown) once `core/` and `android/` exist.
-- [ ] CodeQL code scanning (Rust, Kotlin; Swift later), actions pinned by SHA.
+- [x] CodeQL code scanning (Rust, Kotlin; Swift later), actions pinned by SHA.
 - [ ] OpenSSF Scorecard workflow.
 - [ ] Rust CI: `cargo fmt --check`, `cargo clippy -D warnings` with lints
       denying `dbg_macro`, `print_stdout`, `print_stderr`, `todo`,
