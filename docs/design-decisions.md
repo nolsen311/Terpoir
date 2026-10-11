@@ -299,6 +299,16 @@ Each journal entry records one consumption session, not a product review. Produc
 - **IDs:** random 128-bit, never time-ordered.
 - **Schema version on every record**; migrations live in the Rust core.
 
+### Model implementation (decided, `core/crates/terpoir-model`)
+- **Every record is a document:** ID, kind, schema version, and a map of named fields, each carrying its own stamp (HLC time + device ID) for per-field last-writer-wins.
+- **Maps are flattened** to one field per entry (`effects/relaxed`, `lines/<id>`, `attachments/<id>`). Values that only make sense together (a dose's amount and unit, coordinates, a price) are a single tuple replaced as a whole. Removing an entry writes a null with a fresh stamp, so removals merge like edits.
+- **Edits stamp only what changed.** Fields a record type doesn't know (written by a newer app) are kept untouched, and unknown vocabulary values round-trip unchanged, so an older device never destroys newer data.
+- **Fixed-point numbers:** doses and label amounts in thousandths of their unit; prices in minor currency units; coordinates in 1e-7 degrees with an accuracy radius.
+- **Serialization:** `postcard` (compact, stable wire format) inside a versioned envelope; the serialized document is what the record key encrypts. Record-kind codes and value variants are append-only.
+- **Migrations** live in the core, run on read, must be deterministic and keep stamps (devices that migrate independently agree; a migration never beats a real edit). Documents from a newer schema are reported, not rewritten.
+- **Stream snippets** are separate records referencing their session; photos and voice clips are attachment IDs on the session.
+- `Debug` output of documents, values and records is redacted; decrypted text is wiped when a document is dropped.
+
 ## Stream journaling, tagging, and insights
 
 ### Stream

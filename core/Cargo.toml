@@ -4,7 +4,7 @@
 
 [workspace]
 resolver = "3"
-members = ["crates/terpoir-crypto"]
+members = ["crates/terpoir-crypto", "crates/terpoir-model"]
 
 [workspace.package]
 version = "0.1.0"
@@ -16,13 +16,16 @@ publish = false
 
 [workspace.dependencies]
 terpoir-crypto = { path = "crates/terpoir-crypto" }
+terpoir-model = { path = "crates/terpoir-model" }
 
 aead-stream = { version = "0.6", features = ["alloc"] }
 argon2 = { version = "0.6", default-features = false, features = ["alloc", "zeroize"] }
 chacha20poly1305 = { version = "0.11", default-features = false, features = ["alloc", "zeroize"] }
 getrandom = "0.4"
 hkdf = "0.13"
+postcard = { version = "1.1", default-features = false, features = ["alloc"] }
 secrecy = "0.10"
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
 sha2 = { version = "0.11", default-features = false }
 zeroize = { version = "1.9", features = ["zeroize_derive"] }
 

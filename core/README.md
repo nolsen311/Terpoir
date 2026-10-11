@@ -8,6 +8,7 @@ do and `docs/roadmap.md` for build order.
 | Crate | Purpose |
 |---|---|
 | `terpoir-crypto` | AEAD, key wrapping, Argon2id, HKDF, record IDs, recovery key, streaming file encryption |
+| `terpoir-model` | Record types, stamped field documents, serialization, schema migrations |
 
 ## Checks
 
