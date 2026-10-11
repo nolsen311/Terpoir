@@ -50,6 +50,10 @@ The `DCO` check enforces this on every pull request. GitHub bots such as
 Dependabot are exempt. If the check fails, add sign-offs with
 `git rebase --signoff <base>` and force-push your branch.
 
+A commit that reaches `main` without a sign-off is never rewritten. The
+maintainer signs off on it in a follow-up commit recorded in
+[docs/dco-remediations.md](docs/dco-remediations.md).
+
 ## Security issues
 
 Do not open public issues for vulnerabilities. See [SECURITY.md](SECURITY.md).
