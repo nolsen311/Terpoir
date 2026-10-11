@@ -76,7 +76,7 @@ without it.
       on-action and off-action for every entry.
 - [x] Onboarding: age signals + self-attestation, recovery key creation and
       backup confirmation, Privacy Center tour with everything off.
-- [ ] R8 log stripping; release builds log nothing.
+- [x] R8 log stripping; release builds log nothing.
 
 ## Phase 3: Journaling features
 

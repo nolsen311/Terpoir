@@ -191,6 +191,15 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - iOS: logging compiled out of release builds.
   - CI lints fail the build on stray debug prints (e.g. `dbg!`, `println!`). Rust (`.github/workflows/rust.yml`): `cargo clippy -D warnings` on all targets, plus `dbg_macro` and `todo` denied everywhere; `print_stdout`, `print_stderr` and `unwrap_used` denied in library and binary code (tests may print and unwrap).
 - **Debug builds follow the no-content rule:** sensitive values use wrapper types that print as `<redacted>`.
+- **Android implementation:**
+  - **App code does not log at all, in any build.** `verifyNoLoggingInSource` (part of `check`) fails on `android.util.Log`, `println`/`print`, `printStackTrace`, `System.out`/`err` or `java.util.logging` in the app's sources. Tests may print.
+  - **R8 strips logging from release builds** (`proguard-rules.pro`), the app's and every library's (AndroidX, Compose, JNA):
+    - `android.util.Log`, with `isLoggable` forced to false;
+    - `java.util.logging.Logger` and `Throwable.printStackTrace()`;
+    - Kotlin's `print`/`println`;
+    - printing to any `PrintStream`, because Compose and JNA keep debug paths that print to `System.out`/`err` and Android sends those to logcat. The app never writes files through `PrintStream`; the core owns storage.
+  - **The shipped bytecode is checked:** `verify<Variant>NoLogging` (release variants, part of `check`) runs `dexdump` on the release APK and fails if any of those calls survived R8. `printStackTrace(PrintWriter)` is allowed: the UniFFI bindings use it to build an error string.
+  - **Backstop:** a non-debuggable build points `System.out` and `System.err` at a stream that discards everything, for anything that reaches them some other way.
 - **No crash-reporting SDKs and no analytics, ever.**
 - **Disclosure:** Apple and Google collect OS-level crash reports (stack traces, device info, no journal data) when the user has opted in to share diagnostics with developers in device settings. The app cannot disable this; the privacy policy says so.
 - **Opt-in diagnostics mode** (Privacy Center): records a local, encrypted, redacted log; auto-off after 24 hours. Sharing requires the user to review the full text, then send it via the share sheet. Nothing is sent automatically. Off-action deletes all diagnostic logs.
