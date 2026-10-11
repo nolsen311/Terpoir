@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# OpenSSF Scorecard: supply-chain security checks on this repository's
+# settings and workflows. Findings appear under Security → Code scanning.
+# Results are also published to the public Scorecard API (the repository is
+# public; this exposes nothing that is not already public), which enables
+# the README badge and lets users verify the score independently.
+
+name: Scorecard
+
+on:
+  # Branch-protection checks need the default branch.
+  push:
+    branches: [main]
+  schedule:
+    - cron: "41 6 * * 2"
+  # Re-run when branch protection rules change.
+  branch_protection_rule:
+
+permissions:
+  contents: read
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Upload SARIF to code scanning.
+      security-events: write
+      # Sign the published results (OIDC); required by publish_results.
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run Scorecard
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Keep results as an artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scorecard-sarif
+          path: results.sarif
+          retention-days: 5
+
+      - name: Upload to code scanning
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          sarif_file: results.sarif
