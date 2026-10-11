@@ -221,6 +221,8 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 ### Build pipeline (GitHub Actions)
 - Reproducible Rust and Android builds, with a CI job that rebuilds and compares hashes.
 - Lockfiles committed; Gradle dependency verification; `cargo-deny` (licenses, advisories); `cargo-vet` (audits).
+  - `cargo-deny` policy (`core/deny.toml`): fail on known vulnerabilities and on yanked, unmaintained, or unsound crates; licenses limited to a GPL-3.0-compatible allow list (Apache-2.0, BSD, CC0, ISC, MIT, MPL-2.0, Unicode-3.0, Zlib), extended only with a stated reason; crates.io as the only source; crash-reporting and telemetry crates banned.
+  - `cargo-vet`: every Rust dependency audited, imported from a trusted auditor, or explicitly exempted (`core/supply-chain/`).
 - Actions pinned by commit hash; release builds only from protected `main` and signed tags.
 - SBOM published with each release.
 

@@ -31,7 +31,7 @@ per item or small group of items. Keep this file updated as items land.
 - [ ] Rust CI: `cargo fmt --check`, `cargo clippy -D warnings` with lints
       denying `dbg_macro`, `print_stdout`, `print_stderr`, `todo`,
       `unwrap_used` in release code; `cargo test`.
-- [ ] `cargo-deny` (licenses compatible with GPL-3.0, advisories, banned
+- [x] `cargo-deny` (licenses compatible with GPL-3.0, advisories, banned
       crates, sources) and `cargo-vet` (audits).
 - [ ] Add the CI jobs as required status checks in the `protect-main`
       ruleset (maintainer step).
@@ -39,6 +39,9 @@ per item or small group of items. Keep this file updated as items land.
 ## Phase 1: Rust core (`core/`)
 
 Cargo workspace; every crate carries the SPDX header; no logging of content.
+Run `cargo vet init` when creating the workspace (`core/supply-chain/`,
+importing audits from trusted auditors): the `cargo-vet` CI job fails
+without it.
 
 - [ ] `terpoir-crypto`: XChaCha20-Poly1305 AEAD, key wrapping, Argon2id,
       HKDF, random 128-bit IDs; key types using `zeroize` and `secrecy`.

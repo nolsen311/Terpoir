@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# cargo-deny policy for the Rust core. Run from core/: `cargo deny check`.
+# CI: .github/workflows/supply-chain.yml.
+
+[graph]
+all-features = true
+
+[advisories]
+# Known vulnerabilities always fail. Also fail on yanked, unmaintained and
+# unsound crates anywhere in the graph. Any ignore needs an advisory ID and
+# a reason.
+yanked = "deny"
+unmaintained = "all"
+unsound = "all"
+ignore = []
+
+[licenses]
+# Licenses compatible with GPL-3.0-or-later. Adding one needs a reason in
+# the pull request. Our own crates are unpublished (publish = false) and
+# are skipped below; their license is the project's (see LICENSING.md).
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "ISC",
+    "MIT",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Zlib",
+]
+confidence-threshold = 0.93
+# The allow list is a policy, not an inventory; entries not yet used are fine.
+unused-allowed-license = "allow"
+
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# Path dependencies between our own unpublished crates.
+allow-wildcard-paths = true
+# Crates that contradict the design: no crash reporting, telemetry or
+# analytics, ever (docs/design-decisions.md, "Logs and crash reports").
+deny = [
+    { crate = "sentry", reason = "crash reporting SDK" },
+    { crate = "sentry-core", reason = "crash reporting SDK" },
+    { crate = "opentelemetry", reason = "telemetry" },
+    { crate = "opentelemetry_sdk", reason = "telemetry" },
+    { crate = "bugsnag", reason = "crash reporting SDK" },
+    { crate = "rollbar", reason = "crash reporting SDK" },
+]
+
+[sources]
+# crates.io only. A git or alternate-registry dependency needs a reason
+# and an explicit entry here.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
