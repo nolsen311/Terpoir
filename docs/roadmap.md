@@ -58,7 +58,7 @@ without it.
       tie-break, set union for new records, ID-only deletion markers, blob
       format with padding and opaque names. Property tests proving
       convergence regardless of merge order.
-- [ ] `terpoir-ffi`: UniFFI bindings (Kotlin first).
+- [x] `terpoir-ffi`: UniFFI bindings (Kotlin first).
 - [ ] Reproducible-build check for the core.
 
 ## Phase 2: Android shell (`android/`)

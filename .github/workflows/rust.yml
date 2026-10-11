@@ -91,3 +91,70 @@ jobs:
       - name: cargo test
         if: steps.core.outputs.present == 'true'
         run: cargo test --workspace --all-features --locked
+
+  # Generates the Kotlin bindings, compiles them with a small smoke test,
+  # and runs it on the JVM against the host build of the core library.
+  kotlin-bindings:
+    runs-on: ubuntu-latest
+    env:
+      KOTLIN_VERSION: "2.2.20"
+      KOTLIN_SHA256: "81f0264c9073b5cbbdb3ff8418cf2c5dac076879fc156fa1a6462f5a5acc4420"
+      JNA_VERSION: "5.17.0"
+      JNA_SHA256: "b3a9408e7c51e08ef0e3bfcc08f443f6ec0f6191ba8cd7c18d53d2b22e5bdbc0"
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check for the FFI crate
+        id: ffi
+        working-directory: .
+        run: |
+          if [ -f core/crates/terpoir-ffi/Cargo.toml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::core/crates/terpoir-ffi not found; skipping."
+          fi
+
+      - name: Install toolchain
+        if: steps.ffi.outputs.present == 'true'
+        run: rustup toolchain install
+
+      - name: Generate Kotlin bindings
+        if: steps.ffi.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          cargo build --locked -p terpoir-ffi
+          cargo run --locked -p uniffi-bindgen -- generate \
+            --library target/debug/libterpoir_ffi.so --language kotlin \
+            --no-format --out-dir target/bindings/kotlin
+
+      # Pinned compiler and JNA, verified by hash.
+      - name: Fetch Kotlin compiler and JNA
+        if: steps.ffi.outputs.present == 'true'
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          curl -sSfL --proto '=https' --tlsv1.2 -o kotlinc.zip \
+            "https://github.com/JetBrains/kotlin/releases/download/v${KOTLIN_VERSION}/kotlin-compiler-${KOTLIN_VERSION}.zip"
+          curl -sSfL --proto '=https' --tlsv1.2 -o jna.jar \
+            "https://repo1.maven.org/maven2/net/java/dev/jna/jna/${JNA_VERSION}/jna-${JNA_VERSION}.jar"
+          echo "${KOTLIN_SHA256}  kotlinc.zip" | sha256sum --check --strict
+          echo "${JNA_SHA256}  jna.jar" | sha256sum --check --strict
+          unzip -q kotlinc.zip
+
+      - name: Compile and run the smoke test
+        if: steps.ffi.outputs.present == 'true'
+        env:
+          TOOLS: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          "$TOOLS/kotlinc/bin/kotlinc" -cp "$TOOLS/jna.jar" \
+            target/bindings/kotlin/app/terpoir/core/terpoir_ffi.kt \
+            crates/terpoir-ffi/tests/kotlin/Smoke.kt \
+            -include-runtime -d target/smoke.jar
+          java -Djna.library.path=target/debug -cp "target/smoke.jar:$TOOLS/jna.jar" SmokeKt

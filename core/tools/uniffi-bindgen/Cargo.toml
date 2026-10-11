@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+
+[package]
+name = "uniffi-bindgen"
+description = "Generates Kotlin and Swift bindings for terpoir-ffi (build tool only; never shipped)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/main.rs"
+
+[dependencies]
+uniffi = { workspace = true, features = ["cli"] }
+
+[lints]
+workspace = true

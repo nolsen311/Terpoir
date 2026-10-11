@@ -9,6 +9,8 @@ members = [
     "crates/terpoir-model",
     "crates/terpoir-store",
     "crates/terpoir-sync",
+    "crates/terpoir-ffi",
+    "tools/uniffi-bindgen",
 ]
 
 [workspace.package]
@@ -38,6 +40,7 @@ proptest = { version = "1.11", default-features = false, features = ["std"] }
 secrecy = "0.10"
 serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
 sha2 = { version = "0.11", default-features = false }
+uniffi = "0.32"
 zeroize = { version = "1.9", features = ["zeroize_derive"] }
 
 [workspace.lints.rust]

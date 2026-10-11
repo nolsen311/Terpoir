@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+
+[bindings.kotlin]
+package_name = "app.terpoir.core"
+cdylib_name = "terpoir_ffi"
+
+[bindings.swift]
+module_name = "TerpoirCore"
+ffi_module_name = "TerpoirCoreFFI"
