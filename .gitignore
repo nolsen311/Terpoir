@@ -1,0 +1,52 @@
+# --- Signing material and secrets: never commit ---
+*.jks
+*.keystore
+keystore.properties
+*.p12
+*.p8
+*.pem
+*.key
+*.mobileprovision
+*.provisionprofile
+.env
+.env.*
+
+# --- Rust ---
+target/
+**/*.rs.bk
+
+# --- Android / Gradle ---
+.gradle/
+build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# --- iOS / Xcode ---
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+Pods/
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.xcframework
+.build/
+
+# --- UniFFI generated bindings ---
+**/generated/
+
+# --- Editors and OS ---
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
