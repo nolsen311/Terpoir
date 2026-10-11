@@ -4,8 +4,14 @@
 
 package app.terpoir
 
+import android.content.Context
 import app.terpoir.onboarding.AgeSignals
 import app.terpoir.onboarding.PlayAgeSignals
+import app.terpoir.privacy.PrivacySettings
+import app.terpoir.scan.GoogleTextEngine
+import app.terpoir.scan.PlayTesseractEngine
+import app.terpoir.scan.TextEngine
+import com.google.android.play.core.splitcompat.SplitCompat
 
 /** The Google Play distribution. */
 object Distribution {
@@ -17,4 +23,23 @@ object Distribution {
 
     /** Google Play Age Signals. */
     val ageSignals: AgeSignals = PlayAgeSignals
+
+    /**
+     * From the application's attachBaseContext: lets the app load the
+     * on-demand text recognition module as soon as Play installs it,
+     * without a restart.
+     */
+    fun attachBaseContext(context: Context) {
+        SplitCompat.install(context)
+    }
+
+    /**
+     * Text recognition: Google's ML Kit while the user has it on, otherwise
+     * Tesseract from the on-demand module.
+     */
+    fun textEngine(context: Context, settings: PrivacySettings): TextEngine =
+        if (settings.googleTextRecognition) GoogleTextEngine(context) else PlayTesseractEngine(context)
+
+    /** Lets Play services remove ML Kit's model (the toggle's off-action). */
+    suspend fun releaseGoogleTextRecognition(context: Context) = GoogleTextEngine.release(context)
 }

@@ -5,6 +5,7 @@
 package app.terpoir
 
 import android.app.Application
+import android.content.Context
 import android.content.pm.ApplicationInfo
 import app.terpoir.core.init as initCore
 import app.terpoir.onboarding.Onboarding
@@ -40,6 +41,11 @@ class TerpoirApplication : Application() {
     lateinit var onboarding: Onboarding
         private set
 
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base)
+        Distribution.attachBaseContext(this)
+    }
+
     override fun onCreate() {
         super.onCreate()
         if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) silenceConsole()
@@ -47,7 +53,7 @@ class TerpoirApplication : Application() {
         initCore()
         lockSettings = LockSettings(this)
         privacySettings = PrivacySettings(this)
-        privacyCenter = buildPrivacyCenter(privacySettings)
+        privacyCenter = buildPrivacyCenter(this, privacySettings)
         session = JournalSession(JournalFiles(noBackupFilesDir))
         onboarding = Onboarding(this)
         // The process died after the journal was created but before its

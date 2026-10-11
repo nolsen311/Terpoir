@@ -109,7 +109,7 @@ class MainActivity : ComponentActivity() {
             showContent && step == OnboardingStep.DONE && state is JournalSession.State.Unlocked -> {
                 val repo = remember(state.journal) { JournalRepository(state.journal) }
                 val vocab = remember { vocabulary() }
-                val scan = remember { ScanServices(Scanner(app)) { app.privacySettings.coaLinks } }
+                val scan = remember { ScanServices(Scanner { Distribution.textEngine(app, app.privacySettings) }) { app.privacySettings.coaLinks } }
                 JournalHome(repo, vocab, scan, app.privacySettings, onLock = session::lock) { onClose ->
                     PrivacyCenterScreen(
                         center = app.privacyCenter,

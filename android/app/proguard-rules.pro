@@ -60,3 +60,10 @@
     public java.io.PrintStream printf(...);
     public java.io.PrintStream format(...);
 }
+
+# Tesseract4Android: its native code calls this method back by name and
+# signature (progress reports), so R8 must keep it. Everything else the
+# native code reaches is a native method, which R8 keeps by default.
+-keepclassmembers class com.googlecode.tesseract.android.TessBaseAPI {
+    void onProgressValues(int, int, int, int, int, int, int, int, int);
+}

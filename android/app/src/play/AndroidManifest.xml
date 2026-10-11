@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception -->
+<!-- Copyright (C) 2026 The Terpoir Authors -->
+<!-- See LICENSING.md for the additional permission under GPLv3 section 7. -->
+<!--
+  ML Kit's Google Data Transport dependency asks for network access to send
+  usage metrics. The app still has none: Play services downloads ML Kit's
+  model in its own process, and the metrics are never sent from here
+  (docs/design-decisions.md, "Rapid product entry"). ACCESS_NETWORK_STATE
+  stays (see playOnlyPermissions in app/build.gradle.kts).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission
+        android:name="android.permission.INTERNET"
+        tools:node="remove" />
+</manifest>

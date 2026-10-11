@@ -22,4 +22,7 @@ enum class Capability {
 
     /** Google Play Billing for the one-time unlock. */
     PLAY_BILLING,
+
+    /** ML Kit text recognition through Google Play services. */
+    GOOGLE_TEXT_RECOGNITION,
 }

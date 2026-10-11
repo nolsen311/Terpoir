@@ -9,6 +9,7 @@ enum class PrivacyGroup {
     LOCATION,
     NOTIFICATIONS,
     CATALOGS,
+    SCANNING,
     OS_INTEGRATION,
     KEYBOARD_AND_VOICE,
     PHOTOS,

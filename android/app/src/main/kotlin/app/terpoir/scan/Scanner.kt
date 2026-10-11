@@ -4,7 +4,6 @@
 
 package app.terpoir.scan
 
-import android.content.Context
 import android.graphics.Bitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -13,11 +12,14 @@ import kotlinx.coroutines.withContext
 class PhotoText(val text: String?, val code: DecodedCode?)
 
 /**
- * Reads photos for rapid product entry: text through the open engine
- * (Tesseract) and any barcode or QR code through ZXing. Everything runs on
+ * Reads photos for rapid product entry: text through the current
+ * [TextEngine] and any barcode or QR code through ZXing. Everything runs on
  * the device.
+ *
+ * @property textEngine the engine to read text with; asked on every photo,
+ *   since the user can switch engines in the Privacy Center.
  */
-class Scanner(private val context: Context) {
+class Scanner(val textEngine: () -> TextEngine) {
     /**
      * Reads [photo] and recycles it, whatever happens: the image is never
      * kept (docs/design-decisions.md, "Rapid product entry").
@@ -25,7 +27,7 @@ class Scanner(private val context: Context) {
     suspend fun read(photo: Bitmap): PhotoText = withContext(Dispatchers.Default) {
         try {
             val code = CodeDecoder().decode(photo)
-            val recognizer = OpenTextEngine.open(context)
+            val recognizer = textEngine().open()
             val text = try {
                 recognizer?.recognize(photo)
             } finally {
@@ -36,5 +38,4 @@ class Scanner(private val context: Context) {
             photo.recycle()
         }
     }
-
 }
