@@ -11,6 +11,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Privacy first.** Protect user data from platform vendors, storage providers, network observers, and anyone without the user's consent.
 - **Consent first.** Every practice that affects the user is an explicit, informed, revocable choice. Defaults are the most private option.
 - **Honest disclosure.** When a feature leaks information, say exactly what, to whom, and how to avoid it.
+- **Recorded exceptions to "most private default":** keyboard choice. The keyboard is the user's own configured tool; the app defaults to it unchanged, keeps only zero-cost protections, and discloses the risks (see Keyboards and voice input).
 
 ## Platforms and architecture
 - Native apps on both Android and iOS. **Android first, iOS second.**
@@ -87,6 +88,31 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - Notification text stays generic at every tier: "Quick check-in?" Tapping opens a one-screen update (effect ratings, a stream snippet).
 - Disclosure: a scheduled notification sits in the OS scheduler and reveals timing, not content.
 - Off-action cancels all pending check-ins.
+
+## Keyboards and voice input (decided)
+
+### Keyboards
+- **Default: the user's normal keyboard experience.** The user knows their own input preferences; the app trusts that choice.
+- **Zero-cost protections stay on by default** because they don't change typing: on Android, the no-personalized-learning flag on all fields and opting fields out of autofill. iOS has no equivalent free protection.
+- **Opt-in protections (Privacy Center), iOS:** block third-party keyboards app-wide; disable autocorrect and predictions on journal fields. Each with a disclosure card.
+- **Info card:** keyboards see everything typed before encryption; third-party keyboards can log and transmit keystrokes (on iOS when granted Full Access); system keyboards learn new words, and the iOS keyboard dictionary can sync via iCloud. On Android the app cannot control which keyboard is used, and third-party keyboards may ignore the no-learning request. Words already learned stay until the user resets the keyboard dictionary in system settings (link provided).
+
+### Voice-first new notes
+- The **new-note FAB opens voice mode by default**: speak, and the transcript becomes a stream snippet ready for tag suggestions. A keyboard button in the capture sheet switches to typing; the FAB can be set to text-first.
+- **First-use card:** transcription happens on the phone and is never sent anywhere; keyboards can see typing, on-device voice can't be seen by anyone else; others nearby can hear you. The user then picks voice or text as the default.
+- **Engine tiers:**
+  1. **OS on-device recognition** (default where available): iOS must require on-device recognition; Android must explicitly use the on-device recognizer.
+  2. **Bundled Whisper-class model** (~75–150 MB) in the Rust core; works on de-Googled devices; can share the download path with the bundled tagging model.
+- **Never fall back to cloud recognition.** If on-device recognition is unavailable, say so and offer the bundled model.
+- **Audio is discarded after transcription** by default; optionally kept as an encrypted attachment.
+- Microphone permission is "while using" only; the OS recording indicator stays visible.
+- Public-speaking caveat appears in the first-use card and voice-mode info text; one swipe switches to text.
+
+### Privacy Center entries
+- **Keyboard** (iOS options above). Off-action: future typing only; card links to keyboard dictionary reset.
+- **New note default:** voice or text.
+- **Voice engine:** OS on-device or bundled. Off-action deletes the bundled model.
+- **Keep voice clips.** Off-action: delete stored clips (with confirmation) or keep existing ones.
 
 ## Data model
 
@@ -233,17 +259,17 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Follow-up check-ins and targeted symptoms (👍/👎), both opt-in.
 - Effects vocabulary: fixed core list plus custom tags.
 - Ownership: personal (no LLC for now); trademark and copyright registration plans recorded above.
+- Keyboards: user's keyboard by default with zero-cost Android protections; opt-in iOS protections; voice-first FAB with on-device recognition only.
 
 ## Open decisions
-1. Keyboards and input (refuse third-party keyboards on iOS; no personalized learning on Android; likely a Privacy Center toggle).
-2. Accessibility vs. screen capture (FLAG_SECURE, recording blur, users who rely on accessibility services).
-3. Local storage format (SQLCipher or equivalent, secure-delete settings, encrypted timestamps and identifiers).
-4. Logs and crash reports (none in release, or opt-in with review before sending).
-5. Sharing and export (metadata stripping, "leaves our protection" warning).
-6. Memory hygiene (key zeroing, purge on background, re-auth timeout).
-7. Age gating (self-attestation vs. app store requirements).
-8. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
-9. Builds and releases (reproducible builds, signing-key protection, binary transparency).
-10. Monetization (earning without touching user data).
-11. App store policy (verify current Google Play and Apple cannabis-app rules).
-12. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
+1. Accessibility vs. screen capture (FLAG_SECURE, recording blur, users who rely on accessibility services).
+2. Local storage format (SQLCipher or equivalent, secure-delete settings, encrypted timestamps and identifiers).
+3. Logs and crash reports (none in release, or opt-in with review before sending).
+4. Sharing and export (metadata stripping, "leaves our protection" warning).
+5. Memory hygiene (key zeroing, purge on background, re-auth timeout).
+6. Age gating (self-attestation vs. app store requirements).
+7. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
+8. Builds and releases (reproducible builds, signing-key protection, binary transparency).
+9. Monetization (earning without touching user data).
+10. App store policy (verify current Google Play and Apple cannabis-app rules).
+11. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
