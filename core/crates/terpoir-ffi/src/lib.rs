@@ -35,7 +35,9 @@ mod scan;
 mod vocabulary;
 
 pub use error::{CoreError, Result};
-pub use journal::{ImportResult, Journal, ProductMatch, RecordType, SyncBlob, TagSuggestion};
+pub use journal::{
+    ImportResult, Journal, NearbySpot, ProductMatch, RecordType, SyncBlob, TagSuggestion,
+};
 pub use keys::{
     NewKeys, PassphraseWrapped, RotatedKeys, check_recovery_key, create_keys,
     master_key_from_passphrase, master_key_from_recovery, wrap_master_key_with_passphrase,

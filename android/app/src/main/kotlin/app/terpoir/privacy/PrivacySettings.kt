@@ -40,6 +40,15 @@ class PrivacySettings(context: Context) {
         get() = prefs.getBoolean(KEY_VOICE_FIRST, true)
         set(value) = prefs.edit().putBoolean(KEY_VOICE_FIRST, value).apply()
 
+    /**
+     * "Show me": when the journal opens, check whether you're near a saved
+     * spot, with a location fix taken only then. Nothing is registered with
+     * the OS. Off by default.
+     */
+    var showNearbySpots: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_NEARBY, false)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_NEARBY, value).apply()
+
     /** Whether the voice first-use card has been shown and answered. */
     var voiceIntroSeen: Boolean
         get() = prefs.getBoolean(KEY_VOICE_INTRO_SEEN, false)
@@ -49,6 +58,7 @@ class PrivacySettings(context: Context) {
         const val KEY_SCREEN_PROTECTION = "screen_protection"
         const val KEY_COA_LINKS = "coa_links"
         const val KEY_VOICE_FIRST = "voice_first"
+        const val KEY_SHOW_NEARBY = "show_nearby_spots"
         const val KEY_VOICE_INTRO_SEEN = "voice_intro_seen"
     }
 }

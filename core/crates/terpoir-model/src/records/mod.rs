@@ -26,7 +26,7 @@ pub use session::{
     SymptomResult, Timeline,
 };
 pub use snippet::{Provenance, Snippet};
-pub use spot::{Location, Spot, SpotPurpose};
+pub use spot::{DEFAULT_SPOT_RADIUS_M, Location, MIN_SPOT_RADIUS_M, Spot, SpotPurpose};
 pub use tag::{Flavor, Mood, Tag, TagCategory};
 
 /// The kind of record a document holds. The numeric codes are stored on

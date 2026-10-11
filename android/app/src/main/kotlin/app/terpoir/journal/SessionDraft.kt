@@ -27,7 +27,7 @@ enum class DraftError { DOSE, TIMELINE }
 
 /**
  * A session being edited. Fields the editor does not show yet (activity,
- * spot, symptoms, attachments) are carried over from the saved session
+ * symptoms, attachments) are carried over from the saved session
  * unchanged, so editing never drops them.
  */
 data class SessionDraft(
@@ -45,6 +45,8 @@ data class SessionDraft(
     val moodAfter: Int? = null,
     val rating: Int? = null,
     val wouldRepeat: Boolean? = null,
+    /** The spot it happened at, if recorded. */
+    val spot: String? = null,
     private val original: SessionData? = null,
 ) {
     /** The session to save, or what is wrong. */
@@ -88,7 +90,7 @@ data class SessionDraft(
                 moodAfter = moodAfter?.toUByte(),
                 rating = rating?.toUByte(),
                 wouldRepeat = wouldRepeat,
-                spot = original?.spot,
+                spot = spot,
                 symptoms = original?.symptoms.orEmpty(),
                 attachments = original?.attachments.orEmpty(),
             ),
@@ -104,7 +106,8 @@ data class SessionDraft(
 
     companion object {
         /** A new session, now, in the device's time zone. */
-        fun new(nowMs: Long, utcOffsetMin: Short): SessionDraft = SessionDraft(nowMs, utcOffsetMin)
+        fun new(nowMs: Long, utcOffsetMin: Short, spot: String? = null): SessionDraft =
+            SessionDraft(nowMs, utcOffsetMin, spot = spot)
 
         /** A saved session, for editing. */
         fun of(data: SessionData): SessionDraft = SessionDraft(
@@ -131,6 +134,7 @@ data class SessionDraft(
             moodAfter = data.moodAfter?.toInt(),
             rating = data.rating?.toInt(),
             wouldRepeat = data.wouldRepeat,
+            spot = data.spot,
             original = data,
         )
     }

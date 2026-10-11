@@ -100,6 +100,11 @@ private val LABELS: Map<String, Int> = mapOf(
     "irritable" to R.string.mood_irritable,
     "sad" to R.string.mood_sad,
     "tired" to R.string.mood_tired,
+    // Spot purposes
+    "blaze" to R.string.purpose_blaze,
+    "munch" to R.string.purpose_munch,
+    "re_up" to R.string.purpose_re_up,
+    "chill" to R.string.purpose_chill,
     // Scanned code kinds
     "barcode" to R.string.code_barcode,
     "qr" to R.string.code_qr,

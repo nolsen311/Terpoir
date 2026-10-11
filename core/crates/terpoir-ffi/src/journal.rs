@@ -8,8 +8,8 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 use terpoir_crypto::{MasterKey, RecoveryKey, WrappedKey};
 use terpoir_model::{
-    Brand, DeviceId, Document, Hlc, Product, Purchase, Record, RecordId, RecordKind, Session,
-    Snippet, Spot, Strain, Tag, TagCategory, TagRef, migrate,
+    Brand, DeviceId, Document, Hlc, Location, Product, Purchase, Record, RecordId, RecordKind,
+    Session, Snippet, Spot, Strain, Tag, TagCategory, TagRef, migrate,
 };
 use terpoir_scan::{names_match, normalize_name};
 use terpoir_store::Store;
@@ -49,6 +49,17 @@ pub struct TagSuggestion {
     pub start: u32,
     /// End of that phrase (exclusive), in UTF-16 code units.
     pub end: u32,
+}
+
+/// A saved spot near a location fix.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct NearbySpot {
+    /// The spot's ID.
+    pub id: String,
+    /// Its name.
+    pub name: String,
+    /// Distance from the fix, in whole metres.
+    pub distance_m: u32,
 }
 
 /// Record types, for listing.
@@ -468,6 +479,47 @@ impl Journal {
                     category: s.category.slug().to_owned(),
                     start: u32::try_from(s.start).unwrap_or(u32::MAX),
                     end: u32::try_from(s.end).unwrap_or(u32::MAX),
+                })
+                .collect())
+        })
+    }
+
+    /// Saved spots near a location fix, closest first ("Show me"). Runs on
+    /// the device over the encrypted spots; the fix is not stored. A spot
+    /// is near when within its radius plus the fixes' accuracy, capped
+    /// (`Spot::nearness_m`).
+    ///
+    /// # Errors
+    ///
+    /// `InvalidInput` for impossible coordinates, `Locked` or `Storage`.
+    pub fn spots_near(&self, lat_e7: i32, lon_e7: i32, accuracy_m: u32) -> Result<Vec<NearbySpot>> {
+        if lat_e7.unsigned_abs() > 900_000_000 || lon_e7.unsigned_abs() > 1_800_000_000 {
+            return Err(CoreError::InvalidInput);
+        }
+        let here = Location {
+            lat_e7,
+            lon_e7,
+            accuracy_m,
+        };
+        self.with(|u| {
+            let mut near = Vec::new();
+            for id in u.store.ids_of_kind(RecordKind::Spot)? {
+                let Some(spot) = u.store.get_record::<Spot>(&u.master, &id)? else {
+                    continue;
+                };
+                if let Some(d) = spot.nearness_m(&here) {
+                    near.push((d, id, spot.name));
+                }
+            }
+            near.sort_by(|a, b| a.0.total_cmp(&b.0));
+            Ok(near
+                .into_iter()
+                .map(|(d, id, name)| NearbySpot {
+                    id: id.to_hex(),
+                    name,
+                    // Rounded; nearness is bounded by a radius, far below u32::MAX.
+                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                    distance_m: d.round() as u32,
                 })
                 .collect())
         })

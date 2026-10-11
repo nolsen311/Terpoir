@@ -335,6 +335,26 @@ fn full_lifecycle() {
         Some(spot.clone())
     );
     assert_eq!(journal.match_spot("Elsewhere".into()).unwrap(), None);
+    // "Show me": the spot (377_000_000, -1_224_000_000, radius 150 m) is
+    // near a fix ~111 m away, not one ~1.1 km away.
+    let near = journal.spots_near(377_010_000, -1_224_000_000, 20).unwrap();
+    assert_eq!(near.len(), 1);
+    assert!(near[0].id == spot && near[0].name == "Spot 1");
+    assert!(
+        (105..=118).contains(&near[0].distance_m),
+        "{}",
+        near[0].distance_m
+    );
+    assert!(
+        journal
+            .spots_near(377_100_000, -1_224_000_000, 20)
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        journal.spots_near(900_000_001, 0, 1).err(),
+        Some(CoreError::InvalidInput)
+    );
 
     // Type mismatch and bad input.
     assert_eq!(

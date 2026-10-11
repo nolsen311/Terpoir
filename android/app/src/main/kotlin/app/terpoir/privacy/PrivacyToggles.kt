@@ -26,6 +26,24 @@ fun buildPrivacyCenter(settings: PrivacySettings): PrivacyCenter = PrivacyCenter
             onAction = { settings.screenProtection = true },
             offAction = { settings.screenProtection = false },
         ),
+        // A fix is taken only when the journal opens and only compared with
+        // spots inside the core; nothing is registered with the OS, so off
+        // has nothing to clean up.
+        PrivacyToggle(
+            id = "show_nearby_spots",
+            group = PrivacyGroup.LOCATION,
+            card = PrivacyCard(
+                title = R.string.show_nearby,
+                whatItDoes = R.string.show_nearby_does,
+                whatLeaves = R.string.show_nearby_leaves,
+                whoCanSee = R.string.show_nearby_who,
+                howToUndo = R.string.show_nearby_undo,
+            ),
+            privateState = false,
+            isOn = { settings.showNearbySpots },
+            onAction = { settings.showNearbySpots = true },
+            offAction = { settings.showNearbySpots = false },
+        ),
         // Scanned links are always stored as identifiers; this only allows
         // handing one to the browser. Nothing to clean up when turned off.
         PrivacyToggle(

@@ -6,6 +6,7 @@ package app.terpoir.journal
 
 import app.terpoir.core.BrandData
 import app.terpoir.core.Journal
+import app.terpoir.core.NearbySpot
 import app.terpoir.core.ProductData
 import app.terpoir.core.ProductMatch
 import app.terpoir.core.PurchaseData
@@ -73,6 +74,12 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
     suspend fun spots(): List<Entry<SpotData>> = io {
         load(RecordType.SPOT, journal::getSpot).sortedBy { it.data.name.lowercase() }
     }
+
+    suspend fun spot(id: String): SpotData? = io { journal.getSpot(id) }
+
+    /** Saved spots near a fix, closest first, matched by the core. */
+    suspend fun spotsNear(latE7: Int, lonE7: Int, accuracyM: Int): List<NearbySpot> =
+        io { journal.spotsNear(latE7, lonE7, accuracyM.toUInt()) }
 
     /** Purchases that include [product], newest first. */
     suspend fun purchasesOf(product: String): List<Entry<PurchaseData>> = io {

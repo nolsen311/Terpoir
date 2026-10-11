@@ -4,6 +4,9 @@
 
 package app.terpoir.journal
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -41,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -50,18 +54,24 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.core.BrandData
+import app.terpoir.core.NearbySpot
 import app.terpoir.core.ProductData
 import app.terpoir.core.SessionData
 import app.terpoir.core.SnippetData
+import app.terpoir.core.SpotData
 import app.terpoir.core.StrainData
+import app.terpoir.core.TagRefData
 import app.terpoir.core.Vocabulary
+import app.terpoir.location.CurrentLocation
+import app.terpoir.location.LocationAccess
 import app.terpoir.privacy.PrivacySettings
 
 /** Where the user is inside the unlocked app. */
 private sealed interface Screen {
     data object Home : Screen
 
-    data class Session(val id: String?) : Screen
+    /** [spot]: a new session at that spot ("Log a session here"). */
+    data class Session(val id: String?, val spot: String? = null) : Screen
 
     data class Product(val id: String?) : Screen
 
@@ -72,11 +82,13 @@ private sealed interface Screen {
     data object Receipt : Screen
 
     data class Note(val id: String?) : Screen
+
+    data class Spot(val id: String?) : Screen
 }
 
 private enum class Tab { JOURNAL, PRODUCTS, PRIVACY }
 
-private enum class Catalog { PRODUCTS, STRAINS, BRANDS }
+private enum class Catalog { PRODUCTS, STRAINS, BRANDS, SPOTS }
 
 /**
  * The unlocked app: journal, products and the Privacy Center, plus the
@@ -101,7 +113,8 @@ fun JournalHome(
     }
 
     when (val screen = stack.last()) {
-        is Screen.Session -> SessionEditor(repo, vocab, settings, screen.id, pop)
+        is Screen.Session -> SessionEditor(repo, vocab, settings, screen.id, pop, spotForNew = screen.spot)
+        is Screen.Spot -> SpotEditor(repo, screen.id, pop)
         is Screen.Product -> ProductEditor(
             repo,
             vocab,
@@ -139,7 +152,15 @@ fun JournalHome(
             },
         ) { padding ->
             when (tab) {
-                Tab.JOURNAL -> JournalList(repo, revision, padding, onLock, onOpenNote = { stack.add(Screen.Note(it)) }) {
+                Tab.JOURNAL -> JournalList(
+                    repo,
+                    settings,
+                    revision,
+                    padding,
+                    onLock,
+                    onOpenNote = { stack.add(Screen.Note(it)) },
+                    onSessionAt = { stack.add(Screen.Session(null, spot = it)) },
+                ) {
                     stack.add(Screen.Session(it))
                 }
                 Tab.PRODUCTS -> CatalogLists(repo, vocab, revision, padding) { stack.add(it) }
@@ -162,10 +183,12 @@ private fun androidx.compose.foundation.layout.RowScope.NavItem(selected: Boolea
 @Composable
 private fun JournalList(
     repo: JournalRepository,
+    settings: PrivacySettings,
     revision: Int,
     padding: PaddingValues,
     onLock: () -> Unit,
     onOpenNote: (String) -> Unit,
+    onSessionAt: (String) -> Unit,
     onOpen: (String) -> Unit,
 ) {
     var sessions by remember { mutableStateOf<List<Entry<SessionData>>?>(null) }
@@ -194,6 +217,7 @@ private fun JournalList(
                 }
             }
         }
+        if (settings.showNearbySpots) item { NearbyBanner(repo, onSessionAt) }
         val list = sessions
         // One timeline: sessions and standalone notes, newest first.
         val timeline: List<Pair<Long, Entry<*>>> = (
@@ -297,10 +321,12 @@ private fun CatalogLists(
     var products by remember { mutableStateOf<List<Entry<ProductData>>>(emptyList()) }
     var strains by remember { mutableStateOf<List<Entry<StrainData>>>(emptyList()) }
     var brands by remember { mutableStateOf<List<Entry<BrandData>>>(emptyList()) }
+    var spots by remember { mutableStateOf<List<Entry<SpotData>>>(emptyList()) }
     LaunchedEffect(revision) {
         products = repo.products()
         strains = repo.strains()
         brands = repo.brands()
+        spots = repo.spots()
     }
     val brandNames = brands.associate { it.id to it.data.name }
     LazyColumn(
@@ -322,6 +348,7 @@ private fun CatalogLists(
                                         Catalog.PRODUCTS -> R.string.tab_products
                                         Catalog.STRAINS -> R.string.catalog_strains
                                         Catalog.BRANDS -> R.string.catalog_brands
+                                        Catalog.SPOTS -> R.string.catalog_spots
                                     },
                                 ),
                             )
@@ -338,6 +365,7 @@ private fun CatalogLists(
                         Catalog.PRODUCTS -> Screen.Product(null)
                         Catalog.STRAINS -> Screen.Strain(null)
                         Catalog.BRANDS -> Screen.Brand(null)
+                        Catalog.SPOTS -> Screen.Spot(null)
                     },
                 )
             }) {
@@ -347,6 +375,7 @@ private fun CatalogLists(
                             Catalog.PRODUCTS -> R.string.product_new
                             Catalog.STRAINS -> R.string.strain_new
                             Catalog.BRANDS -> R.string.brand_new
+                            Catalog.SPOTS -> R.string.spot_new
                         },
                     ),
                 )
@@ -368,6 +397,53 @@ private fun CatalogLists(
             }
             Catalog.BRANDS -> items(brands, key = { it.id }) { b ->
                 CatalogRow(b.data.name, "") { onOpen(Screen.Brand(b.id)) }
+            }
+            Catalog.SPOTS -> items(spots, key = { it.id }) { sp ->
+                val purposes = sp.data.purposes.mapNotNull { (it as? TagRefData.Builtin)?.slug }.map { label(it) }
+                CatalogRow(sp.data.name, purposes.joinToString(" · ")) { onOpen(Screen.Spot(sp.id)) }
+            }
+        }
+    }
+}
+
+/**
+ * "Show me": a location fix taken now, while the journal is open, compared
+ * with saved spots inside the core. Nothing is registered with the OS and
+ * the fix is not kept.
+ */
+@Composable
+private fun NearbyBanner(repo: JournalRepository, onSessionAt: (String) -> Unit) {
+    val context = LocalContext.current
+    var access by remember { mutableStateOf(CurrentLocation.access(context)) }
+    var near by remember { mutableStateOf<List<NearbySpot>>(emptyList()) }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        access = CurrentLocation.access(context)
+    }
+    LaunchedEffect(access) {
+        if (access != LocationAccess.NONE) {
+            near = CurrentLocation.get(context)?.let { repo.spotsNear(it.latE7, it.lonE7, it.accuracyM) }.orEmpty()
+        }
+    }
+    if (access == LocationAccess.NONE) {
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.show_nearby_needs_location))
+                androidx.compose.material3.OutlinedButton(onClick = { ask.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION)) }) {
+                    Text(stringResource(R.string.show_nearby_allow))
+                }
+            }
+        }
+        return
+    }
+    val spot = near.firstOrNull() ?: return
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.show_nearby_at, spot.name), style = MaterialTheme.typography.titleMedium)
+            androidx.compose.material3.OutlinedButton(onClick = { onSessionAt(spot.id) }) {
+                Text(stringResource(R.string.show_nearby_log_here))
             }
         }
     }
