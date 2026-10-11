@@ -3,6 +3,7 @@
 // See LICENSING.md for the additional permission under GPLv3 section 7.
 
 import com.android.build.api.artifact.SingleArtifact
+import java.util.zip.ZipFile
 import javax.inject.Inject
 
 plugins {
@@ -250,6 +251,54 @@ val verifyFossDependencies by tasks.registering {
 tasks.named("check") { dependsOn(verifyFossDependencies) }
 
 /**
+ * Release builds log nothing (docs/design-decisions.md, "Logs and crash
+ * reports"). App code may not log at all; R8 strips library logging from
+ * release builds (proguard-rules.pro), and verify<Variant>NoLogging checks
+ * the shipped bytecode.
+ */
+val loggingInSource = Regex(
+    """\bandroid\.util\.Log\b|\bLog\.(v|d|i|w|e|wtf|println)\(|\bprintln\(|\bprint\(|""" +
+        """printStackTrace\(|\bSystem\.(out|err)\b|\bjava\.util\.logging\b""",
+)
+
+val verifyNoLoggingInSource by tasks.registering {
+    description = "Fails if app code calls a logging or console-printing API (comment lines are skipped)."
+    group = "verification"
+    val sources = fileTree("src") {
+        include("main/**", "play/**", "foss/**")
+        include("**/*.kt", "**/*.java")
+    }
+    inputs.files(sources)
+    val pattern = loggingInSource
+    doLast {
+        val offenders = sources.files.sorted().flatMap { file ->
+            file.readLines().mapIndexedNotNull { index, line ->
+                val code = line.trim()
+                val comment = code.startsWith("//") || code.startsWith("*") || code.startsWith("/*")
+                if (!comment && pattern.containsMatchIn(code)) "${file.relativeTo(projectDir)}:${index + 1}: $code" else null
+            }
+        }
+        if (offenders.isNotEmpty()) {
+            throw GradleException("Logging in app code (release builds log nothing):\n" + offenders.joinToString("\n"))
+        }
+    }
+}
+
+tasks.named("check") { dependsOn(verifyNoLoggingInSource) }
+
+/**
+ * Logging calls that must not survive R8 in a release APK, as dexdump
+ * prints method references. printStackTrace(PrintWriter) is allowed: the
+ * UniFFI bindings use it (via stackTraceToString) to build an error string,
+ * not to print.
+ */
+val loggingInDex = Regex(
+    """Landroid/util/Log;\.|Ljava/util/logging/Logger;\.(log|logp|logrb|severe|warning|info|config|fine|finer|finest|entering|exiting|throwing):|""" +
+        """Ljava/lang/Throwable;\.printStackTrace:\((Ljava/io/PrintStream;)?\)V|""" +
+        """Ljava/io/PrintStream;\.(print|println|printf|format):|Lkotlin/io/ConsoleKt;\.""",
+)
+
+/**
  * Every permission the app may request, with its reason. A library that
  * quietly adds one (INTERNET, location, ...) fails the build until it is
  * added here deliberately, behind its privacy toggle.
@@ -287,5 +336,48 @@ androidComponents {
             }
         }
         tasks.named("check") { dependsOn(task) }
+
+        if (variant.buildType == "release") {
+            val apkDir = variant.artifacts.get(SingleArtifact.APK)
+            val loader = variant.artifacts.getBuiltArtifactsLoader()
+            val dexdump = androidComponents.sdkComponents.sdkDirectory.map {
+                it.file("build-tools/${android.buildToolsVersion}/dexdump")
+            }
+            val forbidden = loggingInDex
+            val noLogging = tasks.register("verify${name}NoLogging") {
+                description = "Fails if the ${variant.name} APK still calls a logging API after R8."
+                group = "verification"
+                inputs.dir(apkDir)
+                doLast {
+                    val apk = loader.load(apkDir.get())?.elements?.single()?.outputFile
+                        ?: throw GradleException("No APK for ${variant.name}")
+                    val dexDir = temporaryDir.apply { deleteRecursively(); mkdirs() }
+                    ZipFile(apk).use { zip ->
+                        zip.entries().asSequence()
+                            .filter { it.name.matches(Regex("classes\\d*\\.dex")) }
+                            .forEach { entry -> zip.getInputStream(entry).use { dexDir.resolve(entry.name).outputStream().use(it::copyTo) } }
+                    }
+                    val calls = dexDir.listFiles().orEmpty().sorted().flatMap { dex ->
+                        val process = ProcessBuilder(dexdump.get().asFile.path, "-d", dex.path)
+                            .redirectError(ProcessBuilder.Redirect.DISCARD)
+                            .start()
+                        val found = process.inputStream.bufferedReader().useLines { lines ->
+                            lines.filter { "invoke-" in it }
+                                .mapNotNull { forbidden.find(it)?.value }
+                                .toList()
+                        }
+                        if (process.waitFor() != 0) throw GradleException("dexdump failed on ${dex.name}")
+                        found
+                    }
+                    if (calls.isNotEmpty()) {
+                        throw GradleException(
+                            "Logging survives R8 in ${variant.name}:\n" +
+                                calls.groupingBy { it }.eachCount().entries.joinToString("\n") { "${it.value}x ${it.key}" },
+                        )
+                    }
+                }
+            }
+            tasks.named("check") { dependsOn(noLogging) }
+        }
     }
 }

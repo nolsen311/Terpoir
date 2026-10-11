@@ -5,6 +5,7 @@
 package app.terpoir
 
 import android.app.Application
+import android.content.pm.ApplicationInfo
 import app.terpoir.core.init as initCore
 import app.terpoir.onboarding.Onboarding
 import app.terpoir.privacy.PrivacyCenter
@@ -14,6 +15,8 @@ import app.terpoir.session.AutoLock
 import app.terpoir.session.JournalFiles
 import app.terpoir.session.JournalSession
 import app.terpoir.session.LockSettings
+import java.io.OutputStream
+import java.io.PrintStream
 
 /** Process-wide state: the journal session and auto-lock. */
 class TerpoirApplication : Application() {
@@ -39,6 +42,7 @@ class TerpoirApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) silenceConsole()
         // Installs the core's panic hook (never reports panic messages).
         initCore()
         lockSettings = LockSettings(this)
@@ -56,5 +60,23 @@ class TerpoirApplication : Application() {
             onboarding.discarded()
         }
         AutoLock(this, session, lockSettings).install()
+    }
+
+    /**
+     * Backstop for release builds, which log nothing: R8 already strips
+     * logging and console printing (proguard-rules.pro), and this catches
+     * anything that writes to System.out or System.err some other way, which
+     * Android would otherwise send to logcat.
+     */
+    private fun silenceConsole() {
+        val nothing = PrintStream(
+            object : OutputStream() {
+                override fun write(b: Int) = Unit
+
+                override fun write(b: ByteArray, off: Int, len: Int) = Unit
+            },
+        )
+        System.setOut(nothing)
+        System.setErr(nothing)
     }
 }
