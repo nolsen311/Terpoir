@@ -14,6 +14,9 @@ compose-bom = "2026.09.00"
 junit = "4.13.2"
 jna = "5.19.1"
 play-age-signals = "0.0.4"
+camerax = "1.6.2"
+zxing = "3.5.4"
+tesseract4android = "4.9.0"
 androidx-test-runner = "1.7.0"
 androidx-test-ext-junit = "1.3.0"
 
@@ -27,6 +30,26 @@ androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", 
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
 # Material 3 components. Apache-2.0; no network, no telemetry.
 androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
+# LocalLifecycleOwner for binding the camera to the screen. Apache-2.0; no
+# network, no telemetry.
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+# In-app camera for label, receipt and code scans: frames and photos stay in
+# memory and are never written to storage. Apache-2.0; no network, no
+# telemetry.
+androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
+androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
+androidx-camera-compose = { module = "androidx.camera:camera-compose", version.ref = "camerax" }
+# Barcode and QR decoding on the device. Apache-2.0; pure Java, no network,
+# no telemetry.
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+# Default text recognition for label and receipt scans, on both flavors:
+# Tesseract 5.5.1 with Leptonica, libpng and libjpeg, through a JNI wrapper.
+# Apache-2.0 (wrapper, Tesseract); Leptonica, libpng and IJG licenses for the
+# rest (texts in app/src/main/assets/licenses/). No network, no telemetry.
+# Only on JitPack (settings.gradle.kts); its prebuilt native code logs a few
+# fixed status lines (never image or text content), see
+# docs/design-decisions.md, "Rapid product entry".
+tesseract4android = { module = "cz.adaptech.tesseract4android:tesseract4android", version.ref = "tesseract4android" }
 # Lets the generated UniFFI bindings call the Rust core (libterpoir_ffi.so).
 # Apache-2.0 (dual-licensed with LGPL-2.1); no network, no telemetry.
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }

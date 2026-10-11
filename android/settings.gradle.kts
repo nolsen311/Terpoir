@@ -28,6 +28,14 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        // JitPack serves exactly one group: Tesseract4Android, which is not
+        // published elsewhere. JitPack builds it from the tagged source;
+        // gradle/verification-metadata.xml pins the artifact's checksum.
+        // Nothing else may resolve from JitPack.
+        exclusiveContent {
+            forRepository { maven("https://jitpack.io") }
+            filter { includeGroup("cz.adaptech.tesseract4android") }
+        }
     }
 }
 

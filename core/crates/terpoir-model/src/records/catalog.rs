@@ -45,6 +45,37 @@ slug_enum! {
 }
 
 slug_enum! {
+    /// Common terpenes, as built-in tags for product label amounts (the map
+    /// also accepts custom terpene tags).
+    Terpene {
+        /// Myrcene.
+        Myrcene => "myrcene",
+        /// Limonene.
+        Limonene => "limonene",
+        /// Caryophyllene (beta-caryophyllene).
+        Caryophyllene => "caryophyllene",
+        /// Linalool.
+        Linalool => "linalool",
+        /// Alpha-pinene.
+        AlphaPinene => "alpha_pinene",
+        /// Beta-pinene.
+        BetaPinene => "beta_pinene",
+        /// Humulene.
+        Humulene => "humulene",
+        /// Terpinolene.
+        Terpinolene => "terpinolene",
+        /// Ocimene.
+        Ocimene => "ocimene",
+        /// Bisabolol.
+        Bisabolol => "bisabolol",
+        /// Nerolidol.
+        Nerolidol => "nerolidol",
+        /// Terpineol.
+        Terpineol => "terpineol",
+    }
+}
+
+slug_enum! {
     /// What kind of code a scanned product identifier came from.
     IdentifierKind {
         /// A retail barcode (UPC/EAN).

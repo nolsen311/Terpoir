@@ -95,7 +95,7 @@ impl TagRefData {
         }
     }
 
-    fn from_model(tag: &TagRef) -> Self {
+    pub(crate) fn from_model(tag: &TagRef) -> Self {
         match tag {
             TagRef::Builtin(slug) => Self::Builtin { slug: slug.clone() },
             TagRef::Custom(id) => Self::Custom { id: id.to_hex() },

@@ -65,6 +65,23 @@ private val LABELS: Map<String, Int> = mapOf(
     "relax" to R.string.intention_relax,
     "create" to R.string.intention_create,
     "relief" to R.string.intention_relief,
+    // Terpenes
+    "myrcene" to R.string.terpene_myrcene,
+    "limonene" to R.string.terpene_limonene,
+    "caryophyllene" to R.string.terpene_caryophyllene,
+    "linalool" to R.string.terpene_linalool,
+    "alpha_pinene" to R.string.terpene_alpha_pinene,
+    "beta_pinene" to R.string.terpene_beta_pinene,
+    "humulene" to R.string.terpene_humulene,
+    "terpinolene" to R.string.terpene_terpinolene,
+    "ocimene" to R.string.terpene_ocimene,
+    "bisabolol" to R.string.terpene_bisabolol,
+    "nerolidol" to R.string.terpene_nerolidol,
+    "terpineol" to R.string.terpene_terpineol,
+    // Scanned code kinds
+    "barcode" to R.string.code_barcode,
+    "qr" to R.string.code_qr,
+    "package_tag" to R.string.code_package_tag,
     // Social
     "solo" to R.string.social_solo,
     "with_others" to R.string.social_with_others,

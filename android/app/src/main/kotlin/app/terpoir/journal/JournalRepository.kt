@@ -7,8 +7,11 @@ package app.terpoir.journal
 import app.terpoir.core.BrandData
 import app.terpoir.core.Journal
 import app.terpoir.core.ProductData
+import app.terpoir.core.ProductMatch
+import app.terpoir.core.PurchaseData
 import app.terpoir.core.RecordType
 import app.terpoir.core.SessionData
+import app.terpoir.core.SpotData
 import app.terpoir.core.StrainData
 import app.terpoir.core.TagData
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +46,25 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
         load(RecordType.BRAND, journal::getBrand).sortedBy { it.data.name.lowercase() }
     }
 
+    /** Spots, by name. */
+    suspend fun spots(): List<Entry<SpotData>> = io {
+        load(RecordType.SPOT, journal::getSpot).sortedBy { it.data.name.lowercase() }
+    }
+
+    /** Purchases that include [product], newest first. */
+    suspend fun purchasesOf(product: String): List<Entry<PurchaseData>> = io {
+        load(RecordType.PURCHASE, journal::getPurchase)
+            .filter { p -> p.data.lines.any { it.product == product } }
+            .sortedByDescending { it.data.`when`.unixMs }
+    }
+
+    /** Products that may be the one being entered (scanned code first, then same name and brand). */
+    suspend fun findProducts(name: String?, brand: String?, codes: List<String>): List<ProductMatch> =
+        io { journal.findProducts(name, brand, codes) }
+
+    /** The saved spot a receipt's shop name most likely refers to. */
+    suspend fun matchSpot(shop: String): String? = io { journal.matchSpot(shop) }
+
     /** Custom tags of one category (for example `effect`), by name. */
     suspend fun tags(category: String): List<Entry<TagData>> = io {
         load(RecordType.TAG, journal::getTag)
@@ -66,6 +88,10 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
     suspend fun saveStrain(id: String?, data: StrainData): String = io { journal.saveStrain(id, data, now()) }
 
     suspend fun saveBrand(id: String?, data: BrandData): String = io { journal.saveBrand(id, data, now()) }
+
+    suspend fun saveSpot(id: String?, data: SpotData): String = io { journal.saveSpot(id, data, now()) }
+
+    suspend fun savePurchase(id: String?, data: PurchaseData): String = io { journal.savePurchase(id, data, now()) }
 
     suspend fun saveTag(id: String?, data: TagData): String = io { journal.saveTag(id, data, now()) }
 

@@ -11,6 +11,7 @@ use terpoir_model::{
     Brand, DeviceId, Document, Hlc, Product, Purchase, Record, RecordId, RecordKind, Session,
     Snippet, Spot, Strain, Tag, migrate,
 };
+use terpoir_scan::{names_match, normalize_name};
 use terpoir_store::Store;
 use terpoir_sync::{Clock, export_blobs, import_blob};
 use zeroize::Zeroizing;
@@ -25,6 +26,16 @@ use crate::{CoreError, Result};
 const META_DEVICE: &str = "device_id";
 const META_CLOCK: &str = "clock";
 const META_SEQUENCE: &str = "sync_sequence";
+
+/// An existing product that may be the one being entered.
+#[derive(Clone, PartialEq, Eq, Debug, uniffi::Record)]
+pub struct ProductMatch {
+    /// The product's ID.
+    pub id: String,
+    /// True when a scanned code matched (a sure match); false for a name
+    /// match ("Same product, new batch?").
+    pub by_code: bool,
+}
 
 /// Record types, for listing.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, uniffi::Enum)]
@@ -357,6 +368,79 @@ impl Journal {
             Ok(u.get::<Purchase>(&id)?
                 .as_ref()
                 .map(PurchaseData::from_model))
+        })
+    }
+
+    /// Products that may be the one being entered: those sharing any of
+    /// `codes`, then those with the same name and, when both have one, the
+    /// same brand. Code matches come first.
+    ///
+    /// # Errors
+    ///
+    /// `InvalidInput` for a malformed brand ID, `Locked` or `Storage`.
+    pub fn find_products(
+        &self,
+        name: Option<String>,
+        brand: Option<String>,
+        codes: Vec<String>,
+    ) -> Result<Vec<ProductMatch>> {
+        let brand = brand.map(|b| parse_id(&b)).transpose()?;
+        let name = name.map(|n| normalize_name(&n)).filter(|n| !n.is_empty());
+        self.with(|u| {
+            let mut by_code = Vec::new();
+            let mut by_name = Vec::new();
+            for id in u.store.ids_of_kind(RecordKind::Product)? {
+                let Some(product) = u.store.get_record::<Product>(&u.master, &id)? else {
+                    continue;
+                };
+                if codes
+                    .iter()
+                    .any(|c| product.identifiers.contains_key(c.trim()))
+                {
+                    by_code.push(id);
+                } else if name.as_ref() == Some(&normalize_name(&product.name))
+                    && (brand.is_none() || product.brand.is_none() || brand == product.brand)
+                {
+                    by_name.push(id);
+                }
+            }
+            Ok(by_code
+                .iter()
+                .map(|id| ProductMatch {
+                    id: id.to_hex(),
+                    by_code: true,
+                })
+                .chain(by_name.iter().map(|id| ProductMatch {
+                    id: id.to_hex(),
+                    by_code: false,
+                }))
+                .collect())
+        })
+    }
+
+    /// The saved spot a receipt's shop name most likely refers to: an
+    /// exact name match, else one name containing the other as whole
+    /// words. Matching happens on the device; nothing is looked up.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn match_spot(&self, shop: String) -> Result<Option<String>> {
+        let wanted = normalize_name(&shop);
+        self.with(|u| {
+            let mut partial = None;
+            for id in u.store.ids_of_kind(RecordKind::Spot)? {
+                let Some(spot) = u.store.get_record::<Spot>(&u.master, &id)? else {
+                    continue;
+                };
+                if !wanted.is_empty() && normalize_name(&spot.name) == wanted {
+                    return Ok(Some(id.to_hex()));
+                }
+                if partial.is_none() && names_match(&spot.name, &shop) {
+                    partial = Some(id.to_hex());
+                }
+            }
+            Ok(partial)
         })
     }
 

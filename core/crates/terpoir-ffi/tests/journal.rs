@@ -279,6 +279,37 @@ fn full_lifecycle() {
             .purchase_prompts
     );
 
+    // Duplicate detection and shop matching.
+    let by_code = journal
+        .find_products(None, None, vec![" https://example.test/coa/1 ".into()])
+        .unwrap();
+    assert_eq!(by_code.len(), 1);
+    assert!(by_code[0].by_code && by_code[0].id == product);
+    let by_name = journal
+        .find_products(Some("  gummies ".into()), Some(brand.clone()), vec![])
+        .unwrap();
+    assert!(by_name.len() == 1 && !by_name[0].by_code);
+    let other_brand = journal
+        .save_brand(
+            None,
+            BrandData {
+                name: "Other".into(),
+            },
+            4,
+        )
+        .unwrap();
+    assert!(
+        journal
+            .find_products(Some("Gummies".into()), Some(other_brand), vec![])
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        journal.match_spot("SPOT 1".into()).unwrap(),
+        Some(spot.clone())
+    );
+    assert_eq!(journal.match_spot("Elsewhere".into()).unwrap(), None);
+
     // Type mismatch and bad input.
     assert_eq!(
         journal.get_brand(id.clone()).err(),

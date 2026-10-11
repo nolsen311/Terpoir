@@ -31,12 +31,14 @@ import app.terpoir.core.coreVersion
 import app.terpoir.core.vocabulary
 import app.terpoir.journal.JournalHome
 import app.terpoir.journal.JournalRepository
+import app.terpoir.journal.ScanServices
 import app.terpoir.onboarding.AgeGate
 import app.terpoir.onboarding.OnboardingStep
 import app.terpoir.onboarding.RecoveryKeyBackup
 import app.terpoir.privacy.PrivacyCenterScreen
 import app.terpoir.privacy.PrivateTextInput
 import app.terpoir.privacy.ScreenPrivacy
+import app.terpoir.scan.Scanner
 import app.terpoir.security.UserAuthentication
 import app.terpoir.session.JournalSession
 import app.terpoir.ui.theme.TerpoirTheme
@@ -107,7 +109,8 @@ class MainActivity : ComponentActivity() {
             showContent && step == OnboardingStep.DONE && state is JournalSession.State.Unlocked -> {
                 val repo = remember(state.journal) { JournalRepository(state.journal) }
                 val vocab = remember { vocabulary() }
-                JournalHome(repo, vocab, onLock = session::lock) { onClose ->
+                val scan = remember { ScanServices(Scanner(app)) { app.privacySettings.coaLinks } }
+                JournalHome(repo, vocab, scan, onLock = session::lock) { onClose ->
                     PrivacyCenterScreen(
                         center = app.privacyCenter,
                         onChanged = { ScreenPrivacy.onResume(this, app.privacySettings.screenProtection) },

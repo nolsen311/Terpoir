@@ -15,6 +15,11 @@
          which also covers the device-credential fallback. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
+    <!-- In-app camera for label, receipt and code scans (asked on first
+         use). Photos stay in memory; nothing is written to the gallery. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+
     <application
         android:name=".TerpoirApplication"
         android:allowBackup="false"

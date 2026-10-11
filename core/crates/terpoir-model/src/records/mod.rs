@@ -18,7 +18,7 @@ mod spot;
 mod tag;
 
 pub use catalog::{
-    Brand, Form, IdentifierKind, LabelAmount, LabelUnit, Product, Strain, StrainType,
+    Brand, Form, IdentifierKind, LabelAmount, LabelUnit, Product, Strain, StrainType, Terpene,
 };
 pub use purchase::{Price, Purchase, PurchaseLine};
 pub use session::{
