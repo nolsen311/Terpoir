@@ -459,6 +459,13 @@ Each journal entry records one consumption session, not a product review. Produc
 
 ## Licensing, trademark, and anti-clone protection
 - **License: GPL-3.0-or-later with an additional permission (GPLv3 §7) allowing app store distribution**, provided source stays available under the GPL elsewhere. See `LICENSING.md`.
+- **Linking permission for Google Play libraries (decided):** a second §7 permission lets the program be conveyed linked with Google's proprietary Play libraries:
+  - what it covers: Play and Play services client libraries and their Google-distributed dependencies, for example the Maven groups `com.google.android.play`, `com.google.android.gms` and `com.android.billingclient`;
+  - what it excludes: no other non-free library;
+  - why: needed for the `play` flavor's Google-only features (Play Age Signals first, Play Billing later);
+  - the `foss` flavor never contains these libraries (`verifyFossDependencies`).
+
+  The existing SPDX identifier covers both permissions rather than every file header changing. Any future contributor's work is covered because contributions are accepted under LICENSING.md's terms.
 - **Trademark policy** (`TRADEMARKS.md`): the code is free, the name and logo are not. Modified builds must use a different name and icon.
 - **Contributions:** Developer Certificate of Origin sign-off (`git commit -s`), no CLA.
 - **DCO enforcement (blocking):** the `dco` job in `.github/workflows/dco.yml` runs on every pull request and is a required status check on `main`.
