@@ -4,6 +4,9 @@
 
 package app.terpoir
 
+import app.terpoir.onboarding.AgeSignals
+import app.terpoir.onboarding.PlayAgeSignals
+
 /** The Google Play distribution. */
 object Distribution {
     /** Short name, for the about screen. */
@@ -11,4 +14,7 @@ object Distribution {
 
     /** Google-dependent features this build may offer (each still opt-in). */
     val capabilities: Set<Capability> = Capability.entries.toSet()
+
+    /** Google Play Age Signals. */
+    val ageSignals: AgeSignals = PlayAgeSignals
 }

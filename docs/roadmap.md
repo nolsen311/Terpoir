@@ -74,7 +74,7 @@ without it.
       and autofill opt-out on text fields.
 - [x] Privacy Center skeleton with a toggle registry that requires a paired
       on-action and off-action for every entry.
-- [ ] Onboarding: age signals + self-attestation, recovery key creation and
+- [x] Onboarding: age signals + self-attestation, recovery key creation and
       backup confirmation, Privacy Center tour with everything off.
 - [ ] R8 log stripping; release builds log nothing.
 

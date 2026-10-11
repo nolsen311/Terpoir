@@ -7,15 +7,18 @@ package app.terpoir.session
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import app.terpoir.core.CoreException
 import app.terpoir.core.Journal
 import app.terpoir.core.createKeys
+import app.terpoir.core.masterKeyFromRecovery
 import app.terpoir.security.MasterKeyVault
 import java.io.File
 import javax.crypto.Cipher
 
 /** Where the journal lives: app-private, no-backup storage. */
 class JournalFiles(noBackupDir: File) {
-    private val root = noBackupDir.resolve("journal")
+    /** Everything below belongs to the journal. */
+    val root: File = noBackupDir.resolve("journal")
 
     /** The SQLCipher database. */
     val database: File = root.resolve("journal.db")
@@ -62,15 +65,30 @@ class JournalSession(private val files: JournalFiles) {
     var contentVisible: Boolean by mutableStateOf(true)
         private set
 
+    /** How a typed recovery key compares with this journal's. */
+    enum class RecoveryCheck {
+        /** It unlocks this journal. */
+        MATCHES,
+
+        /** Not all characters typed yet. */
+        INCOMPLETE,
+
+        /** A character that never appears in a recovery key. */
+        INVALID_CHARACTER,
+
+        /** A typo: the checksum does not match. */
+        TYPO,
+
+        /** A valid recovery key, but for another journal. */
+        WRONG_KEY,
+    }
+
     /**
      * Creates a new journal and unlocks it, wrapping the master key with an
      * [MasterKeyVault.encryptCipher] the user has just authenticated.
-     *
-     * Interim: the recovery key is not shown or kept yet. Onboarding
-     * (roadmap Phase 2) adds recovery-key backup and confirmation; until
-     * then a journal created here cannot be restored on another device.
+     * Returns the recovery key, to show once for backup; it is never stored.
      */
-    fun create(authenticated: Cipher) {
+    fun create(authenticated: Cipher): String {
         val keys = createKeys()
         try {
             files.masterWrappedByRecovery.parentFile?.mkdirs()
@@ -81,6 +99,35 @@ class JournalSession(private val files: JournalFiles) {
         } finally {
             keys.masterKey.fill(0)
         }
+        return keys.recoveryKey
+    }
+
+    /**
+     * Checks a typed recovery key against this journal: the core unwraps
+     * the master key with it, and the result is wiped at once.
+     */
+    fun checkRecoveryKey(typed: String): RecoveryCheck = try {
+        masterKeyFromRecovery(typed, files.masterWrappedByRecovery.readBytes()).fill(0)
+        RecoveryCheck.MATCHES
+    } catch (_: CoreException.RecoveryKeyLength) {
+        RecoveryCheck.INCOMPLETE
+    } catch (_: CoreException.RecoveryKeyCharacter) {
+        RecoveryCheck.INVALID_CHARACTER
+    } catch (_: CoreException.RecoveryKeyChecksum) {
+        RecoveryCheck.TYPO
+    } catch (_: CoreException.WrongKey) {
+        RecoveryCheck.WRONG_KEY
+    }
+
+    /**
+     * Deletes the journal and its Keystore key. Only for a journal whose
+     * setup did not finish, which holds no entries yet.
+     */
+    fun reset() {
+        lock()
+        files.root.deleteRecursively()
+        vault.destroy()
+        state = State.NoJournal
     }
 
     /** Unlocks with a [MasterKeyVault.decryptCipher] the user has just authenticated. */

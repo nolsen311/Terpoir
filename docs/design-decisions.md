@@ -61,6 +61,15 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - Onboarding requires confirming the backup before sync is enabled, with a deliberate "skip, I accept data loss" path.
 - No escrow: losing all devices and the recovery key means losing the data. Onboarding makes this clear.
 - In-app and on the website: **"We will never ask for your recovery key."**
+- **Android onboarding (implemented):**
+  - **The key is shown once.** It comes from `createKeys`, is held in process memory only (a JVM string cannot be wiped, so it is dropped as soon as the backup is resolved), and is never written anywhere. The screen is under screen protection.
+  - **Backup options in this build:**
+    - Paper.
+    - Copy for a password manager, with the disclosure. The copy is marked sensitive and cleared after a minute.
+    - Later: the Credential Manager path, an encrypted key file and a printable QR code.
+  - **Confirming the backup** means typing the whole key back. The core unwraps the master key with it (`masterKeyFromRecovery`) and the result is wiped at once, so a confirmed copy is proven to open this journal, not just to look right. Typos and another journal's key are told apart.
+  - **Skipping** means "Skip, I accept data loss", behind a dialog that says the key won't be shown again.
+  - **The journal is blocked until the backup is resolved.** If the process dies before that, the next start discards the new journal and its Keystore key and restarts setup. The journal is still empty, and its only recovery key died with the process.
 
 ### Crypto details (decided, `core/crates/terpoir-crypto`)
 - **Key hierarchy in code:** a recovery key or app passphrase yields a key-encryption key, which wraps the master key; the platform keystore also wraps the master key. The master key wraps only other keys: one random key per record and the SQLCipher database key. Subkeys (sync container and similar) come from HKDF-SHA-256 over the master key with fixed purpose labels.
@@ -230,6 +239,14 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Self-attestation on first launch:** "I'm of legal age to use cannabis where I live." One local yes/no; no date of birth. Sole gate where age signals are unavailable (older OS versions, de-Googled devices).
 - **Disclosure:** the age category comes from Apple or Google; Terpoir only reads it.
 - Context: state app store accountability laws (Texas, enjoined; Utah, Louisiana, California upcoming) require runtime use of these APIs; re-check status before launch.
+- **Android implementation (`app.terpoir.onboarding`):** one age gate in both flavors.
+  - **The platform signal (`AgeSignals`) comes first, and it can only block.** An upper age bound under 18 shows only "Terpoir is for adults".
+  - **It never passes anyone.** Google's top range is 18+, and the legal age for cannabis is often higher (21 in most US states, 19 in most Canadian provinces). Everyone not blocked answers the self-attestation.
+  - **Stored:** only the pass, never the signal's range or a "no", so a "no" is asked again next launch.
+  - **Play flavor:** Google Play Age Signals (`checkAgeSignals`), through IPC to the Play Store. The app still has no INTERNET permission. A disclosure on the age screen says the range comes from Google and is checked on the phone only.
+    - Terpoir never calls `requestAgeSignalsAccess`, which would prompt the user to share their age with the app.
+    - Re-check before launch whether state laws require that prompt.
+  - **FOSS flavor:** no signal; self-attestation only.
 
 ## Device security features (decided)
 - **Unlock options** (default remains biometric or device passcode):
@@ -437,7 +454,7 @@ Each journal entry records one consumption session, not a product review. Produc
 - Each toggle has a card: what it does, what leaves the app, who can see it, how to undo it.
 - Status summary at top ("All protections on" / "3 protections relaxed").
 - "Restore maximum privacy" resets defaults and runs every cleanup action.
-- Shown once during onboarding with everything off.
+- Shown once during onboarding with everything off. Android: the last onboarding step is the Privacy Center in tour mode (an introduction; "Finish setup" completes onboarding).
 - Optional encrypted local history of setting changes.
 - **Rule:** every privacy toggle is designed as a paired on-action and off-action (cleanup) from the start.
 - **Android implementation (`app.terpoir.privacy`):**
