@@ -88,6 +88,10 @@ jobs:
         run: |
           set -euo pipefail
           sdk="$ANDROID_HOME/cmdline-tools/latest/bin"
+          # avdmanager and the emulator disagree on the default AVD
+          # directory, so pin it for both.
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
           { yes || true; } | "$sdk/sdkmanager" --licenses >/dev/null
           "$sdk/sdkmanager" emulator platform-tools "$SYSTEM_IMAGE" >/dev/null
           echo no | "$sdk/avdmanager" create avd -n ci -k "$SYSTEM_IMAGE"
