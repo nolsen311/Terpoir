@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+#
+# Version updates. Security updates are enabled separately in repository
+# settings. Add the cargo and gradle ecosystems when core/ and android/ exist
+# (see docs/roadmap.md).
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Let new releases age before adopting them, to avoid pulling a
+    # compromised version in its first days.
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
