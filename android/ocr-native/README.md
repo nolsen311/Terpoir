@@ -45,15 +45,18 @@ Needs `ANDROID_HOME`, a JDK 17 or newer, `curl`, `sha256sum`, `tar`, `xz` and
 tarballs to build offline (they are still checked against `sources.txt`).
 Takes a few minutes on a 4-core machine.
 
-Reproducible: from any directory, the outputs match `SHA256SUMS` byte for
-byte. Compiled-in paths are mapped to fixed names, `SOURCE_DATE_EPOCH` is
+Reproducible: from any directory, and wherever the SDK is installed, the
+outputs match `SHA256SUMS` byte for byte. Compiled-in paths (including the
+NDK's, which the NDK's debug info and so the build ID would otherwise
+carry) are mapped to fixed names, `SOURCE_DATE_EPOCH` is
 pinned, the libraries are stripped, and the AAR and its `classes.jar` are
 written with fixed timestamps and order, uncompressed.
 
 ## CI
 
 `.github/workflows/ocr-native.yml` (**OCR native libraries**) runs the
-recipe on two runners from checkouts at different paths. It requires the
+recipe on two runners from checkouts at different paths (the second also
+reaching the SDK through a different path). It requires the
 two results to be identical and to match `SHA256SUMS`, and keeps them as a
 workflow artifact for 90 days. It runs weekly, on manual dispatch, and when
 anything here (or the NDK pin) changes. It is not a required check, and the

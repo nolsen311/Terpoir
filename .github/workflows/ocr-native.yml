@@ -13,7 +13,8 @@
 # demand, and when the pins or the recipe change. The app's own CI keeps
 # using the JitPack artifact and does not wait for this.
 #
-# Reproducibility: two runners build from checkouts at different paths;
+# Reproducibility: two runners build from checkouts at different paths,
+# the second with the SDK reached through a different path too;
 # both results must be byte-identical, and must match the hashes committed
 # in android/ocr-native/SHA256SUMS. After an intended change (a version
 # bump), update that file from the hashes this workflow prints.
@@ -52,8 +53,10 @@ jobs:
         include:
           - copy: first
             checkout: first
+            sdk: ""
           - copy: second
             checkout: elsewhere/second-checkout
+            sdk: elsewhere/android-sdk
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -74,9 +77,15 @@ jobs:
         working-directory: ${{ matrix.checkout }}
         env:
           OCR_WORK: ${{ runner.temp }}/${{ matrix.copy }}/work
+          SDK_ALIAS: ${{ matrix.sdk }}
         run: |
           set -euo pipefail
           export JAVA_HOME="$JAVA_HOME_21_X64"
+          if [ -n "$SDK_ALIAS" ]; then
+            mkdir -p "$(dirname "$RUNNER_TEMP/$SDK_ALIAS")"
+            ln -s "$ANDROID_HOME" "$RUNNER_TEMP/$SDK_ALIAS"
+            export ANDROID_HOME="$RUNNER_TEMP/$SDK_ALIAS"
+          fi
           "$JAVA_HOME/bin/javac" -version
           android/ocr-native/build.sh "$RUNNER_TEMP/ocr-native"
 

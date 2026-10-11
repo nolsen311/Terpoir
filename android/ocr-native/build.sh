@@ -139,9 +139,11 @@ fi
 # --- Native libraries ------------------------------------------------------
 
 export SOURCE_DATE_EPOCH=$EPOCH
-# Compiled-in paths (__FILE__ in assertions) are mapped to fixed names, so
-# the libraries do not depend on where the build ran.
-prefix_map="-ffile-prefix-map=$src=/terpoir-ocr/src -ffile-prefix-map=$work/build=/terpoir-ocr/build"
+# Compiled-in paths (__FILE__ in assertions; the debug info the NDK adds,
+# which the build ID covers before stripping) are mapped to fixed names, so
+# the libraries depend neither on where the build ran nor on where the SDK
+# is installed.
+prefix_map="-ffile-prefix-map=$src=/terpoir-ocr/src -ffile-prefix-map=$work/build=/terpoir-ocr/build -ffile-prefix-map=$ndk=/android-ndk"
 
 for abi in "${ABIS[@]}"; do
     build="$work/build/$abi"
