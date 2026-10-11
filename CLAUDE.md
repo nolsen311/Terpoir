@@ -9,6 +9,16 @@ model, and decisions already made. Do not contradict a recorded decision
 without raising it with the maintainer first. When a decision is made in a
 session, update that doc in the same change.
 
+`docs/roadmap.md` is the build order. Start at the first unchecked item in
+the earliest phase, and tick items off in the same pull request that
+completes them.
+
+## Workflow
+
+- `main` is protected: never push to it. Work on a branch and open a pull
+  request; the maintainer reviews, signs off, and squash-merges.
+- Pin every GitHub Action by full commit SHA with a version comment.
+
 ## Architecture
 
 - `core/` (planned): Rust library owning encryption, the data model, sync,

@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# Developer Certificate of Origin enforcement (see CONTRIBUTING.md).
+#
+# Pull requests (job "dco"):
+#   - Human-authored commits must carry "Signed-off-by:" matching the
+#     commit author's email.
+#   - GitHub bots (e.g. Dependabot) are exempt.
+#   - Claude-authored commits (author noreply@anthropic.com) are exempt
+#     ONLY in pull requests opened by the repository owner. Claude never
+#     signs off on anyone's behalf; the maintainer signs off on the squash
+#     commit when merging. Outside contributors cannot use this exemption.
+#
+# Pushes to main (job "dco-audit"):
+#   - Verifies the new commit on main carries a sign-off (bots exempt).
+#     This cannot block a merge after the fact; a failure flags it.
+
+name: DCO
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check sign-offs on pull request commits
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          fail=0
+          for c in $(git rev-list --no-merges "${BASE_SHA}..${HEAD_SHA}"); do
+            short=$(git rev-parse --short "$c")
+            email=$(git show -s --format='%ae' "$c")
+            if printf '%s' "$email" | grep -qE '\[bot\]@users\.noreply\.github\.com$'; then
+              echo "ok    $short  bot commit (exempt)"
+              continue
+            fi
+            if [ "$email" = "noreply@anthropic.com" ] && [ "$PR_AUTHOR" = "$REPO_OWNER" ]; then
+              echo "ok    $short  Claude-authored; maintainer signs off at merge"
+              continue
+            fi
+            if git show -s --format='%B' "$c" | grep -qiF "Signed-off-by:" \
+               && git show -s --format='%B' "$c" | grep -i "^Signed-off-by:" | grep -qiF "<${email}>"; then
+              echo "ok    $short  signed off"
+            else
+              echo "FAIL  $short  missing 'Signed-off-by:' matching <${email}>"
+              fail=1
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo
+            echo "Every commit needs a DCO sign-off. Amend with 'git commit --amend -s'"
+            echo "or rebase with 'git rebase --signoff ${BASE_SHA}', then force-push your branch."
+            echo "See CONTRIBUTING.md."
+            exit 1
+          fi
+
+  dco-audit:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Check sign-off on the merged commit
+        run: |
+          set -euo pipefail
+          email=$(git show -s --format='%ae' HEAD)
+          if printf '%s' "$email" | grep -qE '\[bot\]@users\.noreply\.github\.com$'; then
+            echo "ok    bot-authored commit (exempt)"
+            exit 0
+          fi
+          if git show -s --format='%B' HEAD | grep -qi "^Signed-off-by:"; then
+            echo "ok    merged commit is signed off"
+          else
+            echo "FAIL  merged commit on main has no 'Signed-off-by:' line."
+            echo "Add the sign-off in the squash-merge message next time (see CONTRIBUTING.md)."
+            exit 1
+          fi

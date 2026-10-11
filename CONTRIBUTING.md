@@ -43,7 +43,12 @@ Signed-off-by: Your Name <you@example.com>
 ```
 
 You may use a pseudonym and a no-reply address. A GitHub
-`users.noreply.github.com` address works.
+`users.noreply.github.com` address works. The email in your sign-off must
+match the commit's author email.
+
+The `DCO` check enforces this on every pull request. GitHub bots such as
+Dependabot are exempt. If the check fails, add sign-offs with
+`git rebase --signoff <base>` and force-push your branch.
 
 ## Security issues
 

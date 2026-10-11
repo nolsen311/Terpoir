@@ -358,6 +358,11 @@ Each journal entry records one consumption session, not a product review. Produc
 - **License: GPL-3.0-or-later with an additional permission (GPLv3 §7) allowing app store distribution**, provided source stays available under the GPL elsewhere. See `LICENSING.md`.
 - **Trademark policy** (`TRADEMARKS.md`): the code is free, the name and logo are not. Modified builds must use a different name and icon.
 - **Contributions:** Developer Certificate of Origin sign-off (`git commit -s`), no CLA.
+- **DCO enforcement (blocking):** the `dco` job in `.github/workflows/dco.yml` runs on every pull request and is a required status check on `main`.
+  - Human-authored commits must carry a `Signed-off-by:` matching the commit author's email.
+  - GitHub bots (Dependabot) are exempt.
+  - Claude-authored commits are exempt only in pull requests opened by the repository owner; Claude never signs off on anyone's behalf, and the maintainer adds the sign-off to the squash-merge message.
+  - Known limit: the squash commit is created at merge time, after checks run, so the maintainer's own sign-off cannot be blocked pre-merge. The `dco-audit` job flags any commit on `main` without a sign-off. (It must not be a required check: it only runs on pushes to `main`.)
 - **Verifiable original:** official builds are identified by signing-certificate fingerprints and reproducible-build hashes published on terpoir.app.
 - **Ownership (decided):** held personally by the maintainer; no LLC for now. Accepted tradeoff: the maintainer's name appears on public trademark, copyright, and app store records. An LLC can be formed later and the trademark and copyright assigned to it.
 - **Trademark plan:** USPTO clearance search (Terpoir, terp* and terroir variants, sound-alikes; weigh the existing "Terpenes with Terroir" mark), then an intent-to-use (Section 1(b)) application for the standard-character mark TERPOIR in Class 9 (downloadable software), using an ID Manual description that is accurate and neutral. Use a PO box / virtual mailbox and dedicated email for the public record. File the Statement of Use with a store-listing specimen after launch. Attorney consult recommended before filing.
