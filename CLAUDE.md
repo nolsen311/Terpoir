@@ -23,6 +23,11 @@ completes them.
   (`git rebase --onto main <old lower tip> <branch>`) and force-push it with
   `--force-with-lease`, so each PR shows only its own commits. Only do this
   on branches Claude created; never rewrite anyone else's branch.
+- When the network blocks a source (a host denied, a page unreachable), tell
+  the maintainer at once, naming the host. Never fill the gap silently: any
+  placeholder, workaround or substitute source gets an entry in
+  `docs/follow-ups.md`, which stays open until the maintainer either allows
+  the domain or accepts the alternative.
 
 ## Architecture
 
