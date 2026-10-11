@@ -50,7 +50,7 @@ without it.
 - [x] `terpoir-model`: record types (Session, Product, Strain, Brand, Spot,
       stream snippets, tags), schema version on every record, serialization,
       migrations.
-- [ ] `terpoir-store`: SQLCipher database with per-record encrypted blobs,
+- [x] `terpoir-store`: SQLCipher database with per-record encrypted blobs,
       minimal indexes, `secure_delete`, WAL truncation, vacuum; encrypted
       file storage for photos and clips (streaming AEAD); crypto-erasure on
       delete.

@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+
+[env]
+# Compile SQLCipher's own logging out entirely (it would otherwise write to
+# stderr, logcat or the Apple console). Release builds log nothing; see
+# docs/design-decisions.md, "Logs and crash reports".
+LIBSQLITE3_FLAGS = "-DSQLCIPHER_OMIT_LOG -DSQLCIPHER_OMIT_LOG_DEVICE"
