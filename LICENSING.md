@@ -60,6 +60,13 @@ If you modify this program, you may extend this additional permission to your
 version, but you are not obligated to do so. If you do not wish to do so,
 delete this additional permission from your version.
 
+## Bundled fonts
+
+The Android app bundles the fonts Fraunces and Work Sans. Both are under
+the SIL Open Font License 1.1, not the GPL. Their license texts ship in the
+app (`android/app/src/main/assets/licenses/`), and their sources are in
+[android/fonts/README.md](android/fonts/README.md).
+
 ## Trademarks
 
 The GPL grants rights to the code, not to the Terpoir name or logo. GPLv3

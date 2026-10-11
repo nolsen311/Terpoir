@@ -8,10 +8,12 @@ import android.os.Bundle
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -35,6 +37,7 @@ import app.terpoir.privacy.PrivateTextInput
 import app.terpoir.privacy.ScreenPrivacy
 import app.terpoir.security.UserAuthentication
 import app.terpoir.session.JournalSession
+import app.terpoir.ui.theme.TerpoirTheme
 import javax.crypto.Cipher
 
 /** The app's only activity. UI only: data, crypto and sync live in the Rust core. */
@@ -45,10 +48,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         ScreenPrivacy.install(this)
         val core = coreVersion()
+        // System bars follow the theme: light icons in dark mode and back.
+        enableEdgeToEdge()
         setContent {
             PrivateTextInput {
-                MaterialTheme {
-                    Surface(modifier = Modifier.fillMaxSize()) {
+                TerpoirTheme {
+                    Surface(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
                         Screen(app.session, core)
                     }
                 }

@@ -152,6 +152,20 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Voice engine:** OS on-device or bundled. Off-action deletes the bundled model.
 - **Keep voice clips.** Off-action: delete stored clips (with confirmation) or keep existing ones.
 
+## Visual design (decided)
+- **Theme: Terroir**, Material 3, in light and dark following the system setting:
+  - colors: moss green (primary), sage (secondary), amber resin (tertiary) on linen by day; the same hues lifted on a forest-floor dark by night;
+  - type: Fraunces (a soft serif) for display, headline and large titles; Work Sans for everything else;
+  - corners: chips 8, fields 12, cards 16, sheets 28.
+- **Accessibility:** every text color meets WCAG AA (4.5:1) on every surface it is used on, in both modes. `ThemeContrastTest` enforces it.
+- **The brand palette is used as is.** Wallpaper-based dynamic color is not applied; offering it as an option is undecided.
+- **Fonts are bundled, never downloaded.** Downloadable Google Fonts go through Play services, which FOSS lacks, and they contact Google. Provenance: `android/fonts/README.md`.
+- **Kept as ideas** from the same design exploration:
+  - **Night Garden:** dark-first, sage and violet, Sora and Figtree. The maintainer's personal favorite.
+  - **Terpene Pop:** bright violet, rounder shapes, effect chips colored by terpene, Bricolage Grotesque and DM Sans.
+
+  Either could return, for example as an alternate theme or as accents.
+
 ## Accessibility and screen capture (decided)
 - **Always on (zero cost):**
   - Android 14+: journal content marked accessibility-data-sensitive, so it is exposed only to services declared as genuine accessibility tools (e.g. TalkBack), not to other apps holding accessibility permission.
