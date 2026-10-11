@@ -9,6 +9,8 @@
 //!   ties broken by device ID (see [`terpoir_model::Stamp`]).
 //! - [`apply_changes`]: new records merge as a set union; deletion markers
 //!   carry only the record ID and always win.
+//! - [`export_blobs`] / [`import_blob`]: the same, against the encrypted
+//!   store.
 //! - [`Blob`]: the file format written to the user's own storage: sealed
 //!   records and deletion markers, padded to a size bucket, encrypted under
 //!   a key derived from the master key, and stored under a random name.
@@ -22,6 +24,7 @@
 
 mod blob;
 mod error;
+mod exchange;
 mod hlc;
 mod merge;
 
@@ -29,5 +32,6 @@ pub use blob::{
     Blob, MAX_BLOB_LEN, container_key, decode_blob, encode_blob, opaque_name, padded_len,
 };
 pub use error::{Error, Result};
+pub use exchange::{ImportSummary, StoreReplica, export_blobs, import_blob};
 pub use hlc::{Clock, MAX_DRIFT_MS};
 pub use merge::{MemoryReplica, Replica, apply_changes, merge_document, prunable_markers};

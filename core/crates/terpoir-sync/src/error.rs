@@ -21,6 +21,8 @@ pub enum Error {
     Crypto(terpoir_crypto::Error),
     /// A store error while applying changes.
     Store(terpoir_store::Error),
+    /// A record could not be decoded or migrated.
+    Model(terpoir_model::Error),
 }
 
 impl fmt::Display for Error {
@@ -30,6 +32,7 @@ impl fmt::Display for Error {
             Self::Blob => f.write_str("invalid sync blob"),
             Self::Crypto(e) => write!(f, "{e}"),
             Self::Store(e) => write!(f, "{e}"),
+            Self::Model(e) => write!(f, "{e}"),
         }
     }
 }
