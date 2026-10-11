@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception -->
+<!-- Copyright (C) 2026 The Terpoir Authors -->
+<resources>
+    <string name="app_name" translatable="false">Terpoir</string>
+    <string name="placeholder">Your journal will live here.</string>
+</resources>

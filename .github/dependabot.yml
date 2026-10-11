@@ -2,8 +2,12 @@
 # Copyright (C) 2026 The Terpoir Authors
 #
 # Version updates. Security updates are enabled separately in repository
-# settings. Add the gradle ecosystem when android/ exists (see
-# docs/roadmap.md).
+# settings.
+#
+# Gradle updates also change android/gradle/verification-metadata.xml, which
+# Dependabot does not regenerate: run
+#   ./gradlew --write-verification-metadata sha256 assemble check
+# on its branch before merging (the Android check fails until then).
 
 version: 2
 updates:
@@ -29,6 +33,18 @@ updates:
       default-days: 7
     groups:
       cargo:
+        patterns: ["*"]
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: "gradle"
+    directory: "/android"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    groups:
+      gradle:
         patterns: ["*"]
     commit-message:
       prefix: "deps"

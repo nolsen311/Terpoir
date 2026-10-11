@@ -8,8 +8,8 @@
 # language with no source:
 #   - actions: always (these workflow files).
 #   - rust: once core/Cargo.toml exists.
-#   - java-kotlin: once android/ exists. Autobuild until the Android build
-#     needs explicit steps.
+#   - java-kotlin: once android/ exists, built explicitly (debug variants of
+#     both flavors) so all Kotlin source sets are analyzed.
 #   - swift: later, with ios/ (needs a macOS runner).
 
 name: CodeQL
@@ -44,7 +44,7 @@ jobs:
             include="${include},"'{"language":"rust","build-mode":"none"}'
           fi
           if [ -d android ]; then
-            include="${include},"'{"language":"java-kotlin","build-mode":"autobuild"}'
+            include="${include},"'{"language":"java-kotlin","build-mode":"manual"}'
           fi
           echo "matrix={\"include\":[${include}]}" >> "$GITHUB_OUTPUT"
 
@@ -69,6 +69,13 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           queries: security-extended
+
+      - name: Build Android app
+        if: matrix.build-mode == 'manual'
+        working-directory: android
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          ./gradlew --no-daemon --no-build-cache assembleFossDebug assemblePlayDebug
 
       - name: Analyze
         uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2

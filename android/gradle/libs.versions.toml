@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# Every dependency and its reason. New entries need a stated reason
+# (network access, telemetry, license) in the pull request.
+
+[versions]
+agp = "9.4.1"
+kotlin = "2.4.20"
+activity-compose = "1.13.0"
+compose-bom = "2026.09.00"
+junit = "4.13.2"
+
+[libraries]
+# Hosts the Compose UI in an Activity. Apache-2.0; no network, no telemetry.
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+# Aligns Compose library versions. Apache-2.0.
+androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
+# Material 3 components. Apache-2.0; no network, no telemetry.
+androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
+# Unit tests only. EPL-1.0, never shipped.
+junit = { module = "junit:junit", version.ref = "junit" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+# Compose compiler; also pins the Kotlin version used by AGP's built-in Kotlin.
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
