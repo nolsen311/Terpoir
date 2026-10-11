@@ -18,6 +18,11 @@ completes them.
 - `main` is protected: never push to it. Work on a branch and open a pull
   request; the maintainer reviews, signs off, and squash-merges.
 - Pin every GitHub Action by full commit SHA with a version comment.
+- Stacked pull requests (a branch built on another open PR's branch): after
+  the lower PR is squash-merged, rebase the next branch onto `main`
+  (`git rebase --onto main <old lower tip> <branch>`) and force-push it with
+  `--force-with-lease`, so each PR shows only its own commits. Only do this
+  on branches Claude created; never rewrite anyone else's branch.
 
 ## Architecture
 
