@@ -98,7 +98,7 @@ Each journal entry records one consumption session, not a product review. Produc
   - When: date and time, editable after the fact.
   - Product lines: one or more, each with product, delivery method, and dose. Stored as a map keyed by line ID.
   - Context (all optional): activity, intention (sleep, relax, create, relief), mood before, and **solo / with others**. No place or relationship labels.
-  - Effects: map of tag → intensity 0–5. Core vocabulary (relaxed, euphoric, focused, creative, sleepy, hungry, anxious, paranoid, dry mouth, couch-lock) plus custom tags.
+  - Effects (decided): map of tag → intensity 0–5. Fixed core vocabulary (relaxed, euphoric, focused, creative, sleepy, hungry, anxious, paranoid, dry mouth, couch-lock) plus user-defined custom tags.
   - Timeline: onset, peak, duration.
   - Outcome: mood after, overall rating, would repeat.
   - Stream (see below), photos, optional Spot.
@@ -196,7 +196,10 @@ Each journal entry records one consumption session, not a product review. Produc
 - **Trademark policy** (`TRADEMARKS.md`): the code is free, the name and logo are not. Modified builds must use a different name and icon.
 - **Contributions:** Developer Certificate of Origin sign-off (`git commit -s`), no CLA.
 - **Verifiable original:** official builds are identified by signing-certificate fingerprints and reproducible-build hashes published on terpoir.app.
-- Planned: register "Terpoir" as a trademark (software class) and optionally register the copyright, ideally through a business entity for identity separation.
+- **Ownership (decided):** held personally by the maintainer; no LLC for now. Accepted tradeoff: the maintainer's name appears on public trademark, copyright, and app store records. An LLC can be formed later and the trademark and copyright assigned to it.
+- **Trademark plan:** USPTO clearance search (Terpoir, terp* and terroir variants, sound-alikes; weigh the existing "Terpenes with Terroir" mark), then an intent-to-use (Section 1(b)) application for the standard-character mark TERPOIR in Class 9 (downloadable software), using an ID Manual description that is accurate and neutral. Use a PO box / virtual mailbox and dedicated email for the public record. File the Statement of Use with a store-listing specimen after launch. Attorney consult recommended before filing.
+- **Copyright plan:** register meaningful releases (first public release within three months of publication) via the Standard Application, claiming human-authored code and selection/arrangement, and **excluding AI-generated code**. Record in commits or PRs which changes the maintainer wrote personally.
+- **Repository protection:** a GitHub ruleset on `main` (no deletion, no force push, pull request required with 0 approvals, optional linear history and signed commits). Claude Code works on branches and opens PRs; the maintainer reviews, signs off, and merges. Add required status checks and a DCO check once CI exists.
 
 ## Threat model
 
@@ -228,18 +231,19 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Stream journaling with on-device tag suggestions (keyword / OS model / bundled model), human-confirmed; never a cloud model.
 - Insights: opt-in, statistical, evidence-backed.
 - Follow-up check-ins and targeted symptoms (👍/👎), both opt-in.
+- Effects vocabulary: fixed core list plus custom tags.
+- Ownership: personal (no LLC for now); trademark and copyright registration plans recorded above.
 
 ## Open decisions
-1. Effects vocabulary: confirm fixed core list plus custom tags (proposed default).
-2. Keyboards and input (refuse third-party keyboards on iOS; no personalized learning on Android; likely a Privacy Center toggle).
-3. Accessibility vs. screen capture (FLAG_SECURE, recording blur, users who rely on accessibility services).
-4. Local storage format (SQLCipher or equivalent, secure-delete settings, encrypted timestamps and identifiers).
-5. Logs and crash reports (none in release, or opt-in with review before sending).
-6. Sharing and export (metadata stripping, "leaves our protection" warning).
-7. Memory hygiene (key zeroing, purge on background, re-auth timeout).
-8. Age gating (self-attestation vs. app store requirements).
-9. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
-10. Builds and releases (reproducible builds, signing-key protection, binary transparency).
-11. Monetization (earning without touching user data).
-12. App store policy (verify current Google Play and Apple cannabis-app rules).
-13. Trademark clearance and filing for "Terpoir"; whether to form an LLC and move the repo to a GitHub organization.
+1. Keyboards and input (refuse third-party keyboards on iOS; no personalized learning on Android; likely a Privacy Center toggle).
+2. Accessibility vs. screen capture (FLAG_SECURE, recording blur, users who rely on accessibility services).
+3. Local storage format (SQLCipher or equivalent, secure-delete settings, encrypted timestamps and identifiers).
+4. Logs and crash reports (none in release, or opt-in with review before sending).
+5. Sharing and export (metadata stripping, "leaves our protection" warning).
+6. Memory hygiene (key zeroing, purge on background, re-auth timeout).
+7. Age gating (self-attestation vs. app store requirements).
+8. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
+9. Builds and releases (reproducible builds, signing-key protection, binary transparency).
+10. Monetization (earning without touching user data).
+11. App store policy (verify current Google Play and Apple cannabis-app rules).
+12. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
