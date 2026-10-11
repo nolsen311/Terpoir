@@ -141,7 +141,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - Rust: release max level off; custom panic handler reports only the code location, never panic message contents.
   - Android: R8 strips logging calls.
   - iOS: logging compiled out of release builds.
-  - CI lints fail the build on stray debug prints (e.g. `dbg!`, `println!`).
+  - CI lints fail the build on stray debug prints (e.g. `dbg!`, `println!`). Rust (`.github/workflows/rust.yml`): `cargo clippy -D warnings` on all targets, plus `dbg_macro` and `todo` denied everywhere; `print_stdout`, `print_stderr` and `unwrap_used` denied in library and binary code (tests may print and unwrap).
 - **Debug builds follow the no-content rule:** sensitive values use wrapper types that print as `<redacted>`.
 - **No crash-reporting SDKs and no analytics, ever.**
 - **Disclosure:** Apple and Google collect OS-level crash reports (stack traces, device info, no journal data) when the user has opted in to share diagnostics with developers in device settings. The app cannot disable this; the privacy policy says so.
