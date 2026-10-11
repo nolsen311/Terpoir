@@ -1,0 +1,111 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# Rust dependency checks for the core/ workspace:
+#   - cargo-deny: advisories, licenses, banned crates, sources
+#     (policy in core/deny.toml).
+#   - cargo-vet: every dependency is audited or explicitly exempted
+#     (core/supply-chain/, created with `cargo vet init` alongside the
+#     workspace in Phase 1).
+#
+# Until core/Cargo.toml exists both jobs pass with a notice, so they can be
+# required status checks now. The weekly run catches new advisories against
+# unchanged code.
+#
+# Tool versions are pinned. To bump: update the version and, for
+# cargo-deny, the SHA-256 of the release tarball (compare with the .sha256
+# file published next to it).
+
+name: Supply chain
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "11 7 * * 3"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_DENY_VERSION: "0.20.2"
+  CARGO_DENY_SHA256: "9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f"
+  CARGO_VET_VERSION: "0.10.2"
+
+jobs:
+  cargo-deny:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check for the core workspace
+        id: core
+        working-directory: .
+        run: |
+          if [ -f core/Cargo.toml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::core/Cargo.toml not found; skipping cargo-deny."
+          fi
+
+      # Upstream's prebuilt static binary, verified against a pinned hash.
+      - name: Install cargo-deny
+        if: steps.core.outputs.present == 'true'
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          name="cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl"
+          curl -sSfL --proto '=https' --tlsv1.2 -o "${name}.tar.gz" \
+            "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/${name}.tar.gz"
+          echo "${CARGO_DENY_SHA256}  ${name}.tar.gz" | sha256sum --check --strict
+          tar -xzf "${name}.tar.gz"
+          install -m 0755 "${name}/cargo-deny" "${HOME}/.cargo/bin/cargo-deny"
+          cargo deny --version
+
+      - name: cargo deny check
+        if: steps.core.outputs.present == 'true'
+        run: cargo deny --locked check
+
+  cargo-vet:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check for the core workspace
+        id: core
+        working-directory: .
+        run: |
+          if [ -f core/Cargo.toml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::core/Cargo.toml not found; skipping cargo-vet."
+          fi
+
+      # No prebuilt Linux binary is published; build the pinned release from
+      # crates.io with its own lockfile.
+      - name: Install cargo-vet
+        if: steps.core.outputs.present == 'true'
+        working-directory: .
+        run: |
+          set -euo pipefail
+          cargo install --locked "cargo-vet@${CARGO_VET_VERSION}"
+          cargo vet --version
+
+      - name: cargo vet
+        if: steps.core.outputs.present == 'true'
+        run: cargo vet --locked

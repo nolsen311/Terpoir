@@ -141,7 +141,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - Rust: release max level off; custom panic handler reports only the code location, never panic message contents.
   - Android: R8 strips logging calls.
   - iOS: logging compiled out of release builds.
-  - CI lints fail the build on stray debug prints (e.g. `dbg!`, `println!`).
+  - CI lints fail the build on stray debug prints (e.g. `dbg!`, `println!`). Rust (`.github/workflows/rust.yml`): `cargo clippy -D warnings` on all targets, plus `dbg_macro` and `todo` denied everywhere; `print_stdout`, `print_stderr` and `unwrap_used` denied in library and binary code (tests may print and unwrap).
 - **Debug builds follow the no-content rule:** sensitive values use wrapper types that print as `<redacted>`.
 - **No crash-reporting SDKs and no analytics, ever.**
 - **Disclosure:** Apple and Google collect OS-level crash reports (stack traces, device info, no journal data) when the user has opted in to share diagnostics with developers in device settings. The app cannot disable this; the privacy policy says so.
@@ -221,6 +221,8 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 ### Build pipeline (GitHub Actions)
 - Reproducible Rust and Android builds, with a CI job that rebuilds and compares hashes.
 - Lockfiles committed; Gradle dependency verification; `cargo-deny` (licenses, advisories); `cargo-vet` (audits).
+  - `cargo-deny` policy (`core/deny.toml`): fail on known vulnerabilities and on yanked, unmaintained, or unsound crates; licenses limited to a GPL-3.0-compatible allow list (Apache-2.0, BSD, CC0, ISC, MIT, MPL-2.0, Unicode-3.0, Zlib), extended only with a stated reason; crates.io as the only source; crash-reporting and telemetry crates banned.
+  - `cargo-vet`: every Rust dependency audited, imported from a trusted auditor, or explicitly exempted (`core/supply-chain/`).
 - Actions pinned by commit hash; release builds only from protected `main` and signed tags.
 - SBOM published with each release.
 
