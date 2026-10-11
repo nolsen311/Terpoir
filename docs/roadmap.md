@@ -72,7 +72,7 @@ without it.
 - [x] Backup exclusion; FLAG_SECURE screen protection (default on);
       accessibility-data-sensitive marking; app-switcher blur; no-learning
       and autofill opt-out on text fields.
-- [ ] Privacy Center skeleton with a toggle registry that requires a paired
+- [x] Privacy Center skeleton with a toggle registry that requires a paired
       on-action and off-action for every entry.
 - [ ] Onboarding: age signals + self-attestation, recovery key creation and
       backup confirmation, Privacy Center tour with everything off.
