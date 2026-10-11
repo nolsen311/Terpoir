@@ -5,6 +5,12 @@
 
 Items waiting on the maintainer. See CLAUDE.md, "Workflow".
 
+## Recorded exceptions
+
+| Exception | Closes when | Recorded |
+|---|---|---|
+| Tesseract4Android's prebuilt native libraries log fixed status lines (no content) in release builds, which R8 cannot strip. See `docs/design-decisions.md`, "Logs and crash reports". | Tesseract and Leptonica are built from source with logging compiled out, and the FOSS and Play builds use those libraries. | 2026-10-11, accepted by the maintainer |
+
 ## Blocked network sources
 
 When a source could not be reached, what was done instead stays here until
@@ -13,10 +19,7 @@ an item by moving it to "Resolved" with the decision and date.
 
 ### Open
 
-| Host | Needed for | Done instead | Decision needed |
-|---|---|---|---|
-| `developers.google.com` | Google's ML Kit data disclosure page, to check what ML Kit sends Google | Relied on search-result summaries of that page and of ML Kit's terms. ML Kit was then left out of the app entirely, so nothing shipped depends on it. | Accept the summaries as enough, or allow the domain so the page is read directly before ML Kit is reconsidered. |
-| `www.ijg.org` | libjpeg 9f release, for the IJG license notice in `android/app/src/main/assets/licenses/libjpeg-IJG.txt` | Fetched the same release from `ijg.org` (no `www`), which is allowed; it matches the copy vendored in Tesseract4Android byte for byte. | Accept `ijg.org` as the source, or also allow `www.ijg.org`. |
+None.
 
 ### Resolved
 
@@ -24,3 +27,5 @@ an item by moving it to "Resolved" with the decision and date.
 |---|---|---|
 | `jitpack.io` | Tesseract4Android, the only published build of it | Domain allowed. The placeholder "no text engine" stub was replaced with Tesseract. |
 | `huggingface.co` | The license of the `ocrs` OCR model weights | Alternative accepted: Tesseract instead of `ocrs`, so the weights are not used. |
+| `developers.google.com` | Google's ML Kit data disclosure page | Domain allowed. Read directly: ML Kit's Android SDKs collect device information, app information and performance metrics for diagnostics and usage analytics, as the search summaries said. ML Kit stays out of the app. |
+| `www.ijg.org` | libjpeg 9f release, for the IJG license notice | Domain allowed. `jpegsrc.v9f.tar.gz` from `www.ijg.org` is byte-identical to the copy from `ijg.org` (SHA-256 `04705c110cb2469caa79fb71fba3d7bf834914706e9641a4589485c1f832565b`). |
