@@ -29,6 +29,11 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels that pull request's older run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   CARGO_TERM_COLOR: always
   CARGO_DENY_VERSION: "0.20.2"
@@ -36,7 +41,31 @@ env:
   CARGO_VET_VERSION: "0.10.2"
 
 jobs:
+  # Skips the jobs below on pull requests that change nothing they check
+  # (a skipped job still reports, so it can be a required check).
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.files.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Check the changed files
+        id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: .github/scripts/changes.sh '^(core/|\.github/)' >> "$GITHUB_OUTPUT"
+
   cargo-deny:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -76,6 +105,8 @@ jobs:
         run: cargo deny --locked check
 
   cargo-vet:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:

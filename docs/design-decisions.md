@@ -318,6 +318,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
     - Syncthing folders and Google Drive through the system file picker need no INTERNET permission in the app.
 - **Backups:** `allowBackup=false`, plus full-backup and data-extraction rules that exclude every domain from cloud backup and device-to-device transfer.
 - **Dependency verification:** `gradle/verification-metadata.xml` pins a SHA-256 for every artifact; regenerate it with `./gradlew --write-verification-metadata sha256 assemble check` when dependencies change (Dependabot does not).
+  - **Two trusted hashes for one file (decided 2026-10-11):** the Kotlin Compose plugin's marker POM is published by both Maven Central and the Gradle Plugin Portal with the same content, formatted differently. Gradle falls back to the Portal when Maven Central rate-limits CI, so both hashes are trusted (`also-trust`). The marker only names the plugin artifact, whose own files are pinned to a single hash. Any other second hash needs the same review.
 - **Release builds** are minified with R8 and never signed in the build; the dependency-info blob that AGP normally embeds for Google is disabled.
 - **Rust core in the app (decided):** Gradle cross-compiles `core/` (`terpoir-ffi`) with cargo-ndk for `arm64-v8a` and `x86_64` only (64-bit; no 32-bit devices), and generates the Kotlin bindings from an unstripped host build with the core's own `uniffi-bindgen` (release libraries are stripped, which removes UniFFI's interface metadata). Nothing generated is committed. The bindings call the library through JNA (Apache-2.0). The native libraries are 16 KB page-aligned and link only `libc`, `libm` and `libdl`: no `liblog`, so the core cannot write to logcat.
 - **On-device tests:** CI runs the instrumented tests on an Android 11 (minSdk) emulator image without Google services, through plain `adb`/`am instrument` so no extra test-runner artifacts are fetched at run time.
@@ -339,6 +340,10 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - `cargo-deny` policy (`core/deny.toml`): fail on known vulnerabilities and on yanked, unmaintained, or unsound crates; licenses limited to a GPL-3.0-compatible allow list (Apache-2.0, BSD, CC0, ISC, MIT, MPL-2.0, Unicode-3.0, Zlib), extended only with a stated reason; crates.io as the only source; crash-reporting and telemetry crates banned.
   - `cargo-vet`: every Rust dependency audited, imported from a trusted auditor, or explicitly exempted (`core/supply-chain/`).
 - Actions pinned by commit hash; release builds only from protected `main` and signed tags.
+- **CI cost (decided 2026-10-11):**
+  - A new push to a pull request cancels that pull request's older runs.
+  - Pull requests skip the jobs that check nothing they change (`.github/scripts/changes.sh`): Android and CodeQL run for `android/`, `core/` or `.github/` changes; Rust, Reproducible build and Supply chain for `core/` or `.github/`. Markdown-only changes run none of them. Pushes to `main` and scheduled runs always run everything. A skipped job still reports, so it can be a required check.
+  - Downloaded dependencies (Gradle modules and wrapper, the Cargo registry, cargo-ndk) are cached. Only the Android job on `main` saves the cache, so a pull request cannot seed it, and dependency verification and `Cargo.lock` checksums still apply to cached files. Build outputs are never cached, and the reproducible-build jobs use no cache.
 - SBOM published with each release.
 
 ### Transparency and updates
