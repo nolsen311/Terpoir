@@ -165,7 +165,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 ### Import
 - From Terpoir encrypted exports. CSV import from other apps later.
 
-### Future idea
+### Future enhancement (approved, post-launch)
 - Terpoir-to-Terpoir sharing: a product or strain record travels as a small file or QR code that a friend imports into their own journal. No server.
 
 ## Data model
