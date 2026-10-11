@@ -186,6 +186,21 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Disclosure:** the age category comes from Apple or Google; Terpoir only reads it.
 - Context: state app store accountability laws (Texas, enjoined; Utah, Louisiana, California upcoming) require runtime use of these APIs; re-check status before launch.
 
+## Device security features (decided)
+- **Unlock options** (default remains biometric or device passcode):
+  - **Device passcode only:** disables biometrics (some users prefer this given US courts' greater willingness to compel biometrics than passcodes).
+  - **App passphrase:** separate from the device passcode, so someone who knows the phone's passcode still can't open the journal. Argon2id-derived; escalating delays on failed attempts.
+- **Quick-lock:** in-app lock button and a "Lock now" app-icon shortcut, plus lock-on-device-lock. No gesture triggers (they misfire).
+- **Panic wipe** (both behind confirmation):
+  - **Wipe this device:** destroys the local master key, crypto-erasing the journal on this phone; synced encrypted copies remain and can be restored with the recovery key.
+  - **Destroy everything:** also deletes synced blobs. Irreversible.
+- **No duress passcode.** Rejected: easily triggered by mistake, and destroying data under legal compulsion can itself be a crime (obstruction, evidence tampering). Panic wipe stays a calm, deliberate action.
+- **Discreet icon and name:**
+  - Android: icon and launcher name can change (e.g. "Journal" with an abstract icon).
+  - iOS: icon only; the name stays "Terpoir" (platform limit, stated on the option's card).
+  - Neutral alternatives only; never impersonate a real app.
+  - Disclosure: the app still appears as Terpoir in system settings, the app store, and storage listings.
+
 ## Data model
 
 ### Core idea: an entry is a session
@@ -310,7 +325,7 @@ Assets: journal entries, photos, saved spots, ratings, keys, and metadata (frequ
 | Network observers | DNS, SNI, traffic patterns | TLS, encrypted DNS / VPN / Tor options | Traffic analysis can reveal app use |
 | Catalog providers | Query content, IP, timing | Toggles, disclosure, offline catalogs | Per user choice |
 | Casual physical access | Unlocked phone, glances | App lock, discreet icon/name, notification tiers, switcher blur | App presence visible unless disguised |
-| Compelled access | Device under legal compulsion | Passcode-only option, quick-lock, panic wipe, user-initiated deletion with crypto-erasure | Forensic extraction of unlocked device |
+| Compelled access | Device under legal compulsion | Passcode-only option, app passphrase, quick-lock, deliberate panic wipe (no duress code), user-initiated deletion with crypto-erasure | Forensic extraction of unlocked device |
 | Loss or theft | Device at rest | Data protection class complete, StrongBox / Secure Enclave keys | No remote wipe (no server) |
 | Other apps on device | Listeners, clipboard, accessibility, screenshots | FLAG_SECURE, clipboard avoidance, private notifications | Accessibility tradeoff (open) |
 | Phishing / impersonation | Fake site, email, or clone app asking for recovery key | Domain anti-spoofing (DMARC reject, null MX), trademark policy, published signing fingerprints, "we never ask for your key" messaging | User education |
@@ -338,10 +353,10 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Sharing: field-picked share cards with preview, never via the gallery, discreet brand mark on by default; encrypted export by default, opt-in plaintext export.
 - Memory and unlock: zeroizing key types; clear view state on background; 1-minute default auto-lock; crypto-bound biometric-or-passcode unlock.
 - Age gating: top-tier store rating; on-device platform age signals; self-attestation without date of birth.
+- Device security: passcode-only and app-passphrase options; quick-lock; two-level panic wipe; no duress passcode; neutral discreet icon/name.
 
 ## Open decisions
-1. Device security features (passcode-only option, quick-lock, panic wipe, discreet icon or name).
-2. Builds and releases (reproducible builds, signing-key protection, binary transparency).
-3. Monetization (earning without touching user data).
-4. App store policy (verify current Google Play and Apple cannabis-app rules).
-5. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
+1. Builds and releases (reproducible builds, signing-key protection, binary transparency).
+2. Monetization (earning without touching user data).
+3. App store policy (verify current Google Play and Apple cannabis-app rules).
+4. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
