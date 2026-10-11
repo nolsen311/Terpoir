@@ -361,7 +361,9 @@ Each journal entry records one consumption session, not a product review. Produc
 - **Verifiable original:** official builds are identified by signing-certificate fingerprints and reproducible-build hashes published on terpoir.app.
 - **Ownership (decided):** held personally by the maintainer; no LLC for now. Accepted tradeoff: the maintainer's name appears on public trademark, copyright, and app store records. An LLC can be formed later and the trademark and copyright assigned to it.
 - **Trademark plan:** USPTO clearance search (Terpoir, terp* and terroir variants, sound-alikes; weigh the existing "Terpenes with Terroir" mark), then an intent-to-use (Section 1(b)) application for the standard-character mark TERPOIR in Class 9 (downloadable software), using an ID Manual description that is accurate and neutral. Use a PO box / virtual mailbox and dedicated email for the public record. File the Statement of Use with a store-listing specimen after launch. Attorney consult recommended before filing.
-- **Copyright plan:** register meaningful releases (first public release within three months of publication) via the Standard Application, claiming human-authored code and selection/arrangement, and **excluding AI-generated code**. Record in commits or PRs which changes the maintainer wrote personally.
+- **Copyright (decided): not planned.** The code is expected to be almost entirely AI-generated, and the US Copyright Office protects only human authorship. Reassess at v1.0 only if meaningful human-authored material exists (logo, in-app copy, substantially reworked code). Raise at the attorney consult.
+- **Recorded risk:** the GPL is enforced through copyright, so it has limited force over uncopyrightable AI-generated code. It still covers human contributions and states intent. **Anti-clone and revenue protection rest on the trademark and on being the verifiable, signed original.**
+- **Trademark is the priority (decided):** clearance search now; attorney consult (goods description, AI-authorship questions); intent-to-use Class 9 filing soon, since the priority date is the filing date and the name is already public in the repo; Statement of Use after the Play launch; use ™ until registered.
 - **Repository protection:** a GitHub ruleset on `main` (no deletion, no force push, pull request required with 0 approvals, optional linear history and signed commits). Claude Code works on branches and opens PRs; the maintainer reviews, signs off, and merges. Add required status checks and a DCO check once CI exists.
 
 ## Threat model
@@ -407,6 +409,7 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Builds: Play, F-Droid (FOSS flavor), GitHub Releases, App Store; maintainer key on two YubiKeys; reproducible, pinned, signed pipeline.
 - Monetization: free core; one-time Connoisseur unlock; tip jar; donations; never paywall privacy or security.
 - Store policy: Android ships as an individual; iOS attempted as an individual, Android-only acceptable if Apple requires an entity; no sale facilitation; all-ages store metadata.
+- IP: trademark is the priority (file intent-to-use soon); copyright registration not planned given AI authorship; monetization paths unchanged.
 
 ## Open decisions
-1. Trademark clearance and filing for "Terpoir"; copyright registration at first release.
+None at the design level. New questions go here as they arise.
