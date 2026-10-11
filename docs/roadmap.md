@@ -38,9 +38,10 @@ per item or small group of items. Keep this file updated as items land.
 
 ## Phase 1: Rust core (`core/`)
 
-Cargo workspace; every crate carries the SPDX header; no logging of content. Create the
-workspace with `cargo vet init` (`core/supply-chain/`, importing audits
-from trusted auditors): the supply-chain CI job fails without it.
+Cargo workspace; every crate carries the SPDX header; no logging of content.
+Run `cargo vet init` when creating the workspace (`core/supply-chain/`,
+importing audits from trusted auditors): the `cargo-vet` CI job fails
+without it.
 
 - [ ] `terpoir-crypto`: XChaCha20-Poly1305 AEAD, key wrapping, Argon2id,
       HKDF, random 128-bit IDs; key types using `zeroize` and `secrecy`.
