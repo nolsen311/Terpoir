@@ -87,7 +87,7 @@ jobs:
         run: |
           set -euo pipefail
           sdk="$ANDROID_HOME/cmdline-tools/latest/bin"
-          yes | "$sdk/sdkmanager" --licenses >/dev/null
+          { yes || true; } | "$sdk/sdkmanager" --licenses >/dev/null
           "$sdk/sdkmanager" emulator platform-tools "$SYSTEM_IMAGE" >/dev/null
           echo no | "$sdk/avdmanager" create avd -n ci -k "$SYSTEM_IMAGE"
           nohup "$ANDROID_HOME/emulator/emulator" -avd ci -no-window -no-audio \

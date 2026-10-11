@@ -18,6 +18,6 @@ cargo install --locked "cargo-ndk@${CARGO_NDK_VERSION}"
 
 ndk=$(sed -n 's/^ *ndkVersion = "\(.*\)"$/\1/p' android/app/build.gradle.kts)
 [ -n "$ndk" ] || { echo "ndkVersion not found" >&2; exit 1; }
-yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+{ yes || true; } | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
 "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;${ndk}" >/dev/null
 echo "Rust Android targets, cargo-ndk ${CARGO_NDK_VERSION} and NDK ${ndk} ready"
