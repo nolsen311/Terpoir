@@ -145,10 +145,16 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Audio is discarded after transcription** by default; optionally kept as an encrypted attachment.
 - Microphone permission is "while using" only; the OS recording indicator stays visible.
 - Public-speaking caveat appears in the first-use card and voice-mode info text; one swipe switches to text.
+- **Android implementation (decided):**
+  - **Recognizer:** `SpeechRecognizer.createOnDeviceSpeechRecognizer` only, and only where `isOnDeviceRecognitionAvailable` says it exists (Android 12+). There is no code path to the general recognizer, which may use the network. Elsewhere (Android 11, or phones without one) the note screen says on-device recognition isn't available and offers typing. The bundled model is Phase 5.
+  - **No audio reaches Terpoir:** the system recognizer returns text only, so there is nothing to discard or keep. "Keep voice clips" waits for the bundled model, which handles audio itself.
+  - **Notes:** the main button on the Journal tab is "New note". It listens at once in voice mode and saves a standalone stream snippet. "New session" is the smaller button beside it. Notes show in the journal timeline with sessions, newest first.
+  - **First-use card:** the first time the button is used, the user picks "Speak" or "Type". Either is a choice; neither is pre-selected. The card states on-device processing, that keyboards see typing, and that people nearby can hear.
+  - **Permissions:** `RECORD_AUDIO`, asked on the first spoken note. A `<queries>` entry lets the app see whether a recognition service exists.
 
 ### Privacy Center entries
 - **Keyboard** (iOS options above). Off-action: future typing only; card links to keyboard dictionary reset.
-- **New note default:** voice or text.
+- **New note default:** voice or text. Android: the "New notes start with voice" toggle, in a "Keyboard and voice" section. Voice is its private state, as the design default, since on-device voice is seen by no one else while keyboards see typing. Neither side creates anything to clean up.
 - **Voice engine:** OS on-device or bundled. Off-action deletes the bundled model.
 - **Keep voice clips.** Off-action: delete stored clips (with confirmation) or keep existing ones.
 
@@ -503,7 +509,7 @@ Each journal entry records one consumption session, not a product review. Produc
 - Disclose that indexed content sits outside app encryption and removal depends on the OS honoring deletion.
 
 ## Privacy Center
-- One screen holding every privacy-relevant toggle, grouped by surface: Location, Notifications, Catalogs, OS Integration, Photos, Sync and Keys, Device Security.
+- One screen holding every privacy-relevant toggle, grouped by surface: Location, Notifications, Catalogs, OS Integration, Keyboard and Voice, Photos, Sync and Keys, Device Security.
 - Each toggle has a card: what it does, what leaves the app, who can see it, how to undo it.
 - Status summary at top ("All protections on" / "3 protections relaxed").
 - "Restore maximum privacy" resets defaults and runs every cleanup action.

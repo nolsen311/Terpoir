@@ -11,6 +11,7 @@ import app.terpoir.core.ProductMatch
 import app.terpoir.core.PurchaseData
 import app.terpoir.core.RecordType
 import app.terpoir.core.SessionData
+import app.terpoir.core.SnippetData
 import app.terpoir.core.SpotData
 import app.terpoir.core.StrainData
 import app.terpoir.core.TagData
@@ -45,6 +46,17 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
     suspend fun brands(): List<Entry<BrandData>> = io {
         load(RecordType.BRAND, journal::getBrand).sortedBy { it.data.name.lowercase() }
     }
+
+    /** Standalone stream snippets (not attached to a session), newest first. */
+    suspend fun standaloneSnippets(): List<Entry<SnippetData>> = io {
+        load(RecordType.SNIPPET, journal::getSnippet)
+            .filter { it.data.session == null }
+            .sortedByDescending { it.data.at.unixMs }
+    }
+
+    suspend fun snippet(id: String): SnippetData? = io { journal.getSnippet(id) }
+
+    suspend fun saveSnippet(id: String?, data: SnippetData): String = io { journal.saveSnippet(id, data, now()) }
 
     /** Spots, by name. */
     suspend fun spots(): List<Entry<SpotData>> = io {

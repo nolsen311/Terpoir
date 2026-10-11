@@ -12,6 +12,7 @@ import app.terpoir.core.LocalTimeData
 import app.terpoir.core.ProductData
 import app.terpoir.core.ProductLineData
 import app.terpoir.core.SessionData
+import app.terpoir.core.SnippetData
 import app.terpoir.core.TagData
 import app.terpoir.core.TagIntensity
 import app.terpoir.core.TagRefData
@@ -83,6 +84,20 @@ class JournalRepositoryTest {
         assertEquals(1, repo.sessions().size)
         // Deleting a session leaves its product.
         assertEquals(1, repo.products().size)
+    }
+
+    @Test
+    fun standaloneNotesListNewestFirst() = runBlocking {
+        fun note(ms: Long, text: String) = SnippetData(null, LocalTimeData(ms, 0), text, emptyList())
+        val older = repo.saveSnippet(null, note(1_000, "first"))
+        val newer = repo.saveSnippet(null, note(2_000, "second"))
+        assertEquals(listOf(newer, older), repo.standaloneSnippets().map { it.id })
+
+        repo.saveSnippet(older, note(1_000, "first, edited"))
+        assertEquals("first, edited", repo.snippet(older)?.text)
+
+        assertTrue(repo.delete(newer))
+        assertEquals(listOf(older), repo.standaloneSnippets().map { it.id })
     }
 
     private fun app.terpoir.core.Vocabulary.knowsUnits(units: List<String>) = doseUnits.containsAll(units)

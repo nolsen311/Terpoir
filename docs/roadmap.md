@@ -97,7 +97,7 @@ without it.
       Gradle property that switches the `foss` flavor to the from-source
       AAR (JitPack repository declared only without it); check the foss
       build with it in the OCR workflow.
-- [ ] Voice-first FAB with on-device speech recognition (never cloud).
+- [x] Voice-first FAB with on-device speech recognition (never cloud).
 - [ ] Stream snippets; keyword tag suggestions with human confirmation.
 - [ ] Spots with purpose types; "Show me" mode first, then "Notify me"
       geofencing; notification tiers and check-ins.
