@@ -110,7 +110,7 @@ class MainActivity : ComponentActivity() {
                 val repo = remember(state.journal) { JournalRepository(state.journal) }
                 val vocab = remember { vocabulary() }
                 val scan = remember { ScanServices(Scanner(app)) { app.privacySettings.coaLinks } }
-                JournalHome(repo, vocab, scan, onLock = session::lock) { onClose ->
+                JournalHome(repo, vocab, scan, app.privacySettings, onLock = session::lock) { onClose ->
                     PrivacyCenterScreen(
                         center = app.privacyCenter,
                         onChanged = { ScreenPrivacy.onResume(this, app.privacySettings.screenProtection) },

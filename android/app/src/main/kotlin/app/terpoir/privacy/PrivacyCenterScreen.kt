@@ -150,6 +150,7 @@ private val PrivacyGroup.title: Int
         PrivacyGroup.NOTIFICATIONS -> R.string.privacy_group_notifications
         PrivacyGroup.CATALOGS -> R.string.privacy_group_catalogs
         PrivacyGroup.OS_INTEGRATION -> R.string.privacy_group_os_integration
+        PrivacyGroup.KEYBOARD_AND_VOICE -> R.string.privacy_group_keyboard_and_voice
         PrivacyGroup.PHOTOS -> R.string.privacy_group_photos
         PrivacyGroup.SYNC_AND_KEYS -> R.string.privacy_group_sync_and_keys
         PrivacyGroup.DEVICE_SECURITY -> R.string.privacy_group_device_security

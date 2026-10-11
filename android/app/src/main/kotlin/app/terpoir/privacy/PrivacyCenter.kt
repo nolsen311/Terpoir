@@ -10,6 +10,7 @@ enum class PrivacyGroup {
     NOTIFICATIONS,
     CATALOGS,
     OS_INTEGRATION,
+    KEYBOARD_AND_VOICE,
     PHOTOS,
     SYNC_AND_KEYS,
     DEVICE_SECURITY,

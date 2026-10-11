@@ -107,7 +107,7 @@ without it.
 - [ ] On-device smoke test of the from-source OCR AAR (built and verified,
       never run): the instrumented emulator job, built with the property,
       loads the libraries and recognizes text in a bundled test image.
-- [ ] Voice-first FAB with on-device speech recognition (never cloud).
+- [x] Voice-first FAB with on-device speech recognition (never cloud).
 - [ ] Stream snippets; keyword tag suggestions with human confirmation.
 - [ ] Spots with purpose types; "Show me" mode first, then "Notify me"
       geofencing; notification tiers and check-ins.

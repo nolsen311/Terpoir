@@ -337,6 +337,9 @@ val allowedPermissions = setOf(
     // In-app camera for label, receipt and code scans. Runtime permission,
     // asked only when the user first opens a scanner.
     "android.permission.CAMERA",
+    // Voice notes through the on-device speech recognizer. Runtime
+    // permission, asked only when the user first speaks a note.
+    "android.permission.RECORD_AUDIO",
 )
 
 androidComponents {
