@@ -398,6 +398,16 @@ Each journal entry records one consumption session, not a product review. Produc
 - **Serialization:** `postcard` (compact, stable wire format) inside a versioned envelope; the serialized document is what the record key encrypts. Record-kind codes and value variants are append-only.
 - **Migrations** live in the core, run on read, must be deterministic and keep stamps (devices that migrate independently agree; a migration never beats a real edit). Documents from a newer schema are reported, not rewritten.
 - **Stream snippets** are separate records referencing their session; photos and voice clips are attachment IDs on the session.
+- **Vocabularies come from the core.** The FFI's `vocabulary()` lists every built-in slug in display order: core effects, methods, dose units, forms, label units, strain types, intentions, social and symptom results.
+  - `dose_units_for_method` gives each method's sensible units, the usual one first. Topicals have none, and an unknown method gets all of them.
+  - `default_method_for_form` gives a product form's usual method.
+  - Platforms only translate the slugs; an unknown slug from a newer app is shown as is.
+- **Android journal UI (`app.terpoir.journal`):**
+  - **Screens:** journal list (newest first), session editor, and product, strain and brand editors. They sit behind a bottom bar: Journal, Products (with strains and brands), Privacy.
+  - **Data layer:** every read and write goes through `JournalRepository` to the core, off the main thread.
+  - **Effects map:** the core effects plus the user's own effect tags. Each selected effect gets a 0–5 intensity.
+  - **Editing never drops data:** fields an editor does not show yet (activity, spot, symptoms, attachments, product prices) are carried over unchanged.
+  - **Lock clears everything:** locking replaces the whole UI, open editors included.
 - `Debug` output of documents, values and records is redacted; decrypted text is wiped when a document is dropped.
 
 ## Rapid product entry (decided)

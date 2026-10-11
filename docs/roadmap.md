@@ -80,7 +80,7 @@ without it.
 
 ## Phase 3: Journaling features
 
-- [ ] Sessions, products, strains, brands; effects map and core vocabulary.
+- [x] Sessions, products, strains, brands; effects map and core vocabulary.
 - [ ] `terpoir-model`: add the **Purchase** record kind (date, optional
       Re-up Spot, line items with product, batch, price); remove
       `bought_at` and `price` from Product (pre-release, so no migration

@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+// Copyright (C) 2026 The Terpoir Authors
+// See LICENSING.md for the additional permission under GPLv3 section 7.
+
+package app.terpoir.journal
+
+import app.terpoir.core.BrandData
+import app.terpoir.core.Journal
+import app.terpoir.core.ProductData
+import app.terpoir.core.RecordType
+import app.terpoir.core.SessionData
+import app.terpoir.core.StrainData
+import app.terpoir.core.TagData
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+/** A record and its ID. */
+data class Entry<T>(val id: String, val data: T)
+
+/**
+ * The open journal for the UI. Every call goes to the Rust core, which owns
+ * the data, encryption and storage; calls run off the main thread because
+ * they touch the encrypted database.
+ */
+class JournalRepository(private val journal: Journal, private val clock: () -> Long = System::currentTimeMillis) {
+    /** Sessions, newest first. */
+    suspend fun sessions(): List<Entry<SessionData>> = io {
+        load(RecordType.SESSION, journal::getSession).sortedByDescending { it.data.`when`.unixMs }
+    }
+
+    /** Products, by name. */
+    suspend fun products(): List<Entry<ProductData>> = io {
+        load(RecordType.PRODUCT, journal::getProduct).sortedBy { it.data.name.lowercase() }
+    }
+
+    /** Strains, by name. */
+    suspend fun strains(): List<Entry<StrainData>> = io {
+        load(RecordType.STRAIN, journal::getStrain).sortedBy { it.data.name.lowercase() }
+    }
+
+    /** Brands, by name. */
+    suspend fun brands(): List<Entry<BrandData>> = io {
+        load(RecordType.BRAND, journal::getBrand).sortedBy { it.data.name.lowercase() }
+    }
+
+    /** Custom tags of one category (for example `effect`), by name. */
+    suspend fun tags(category: String): List<Entry<TagData>> = io {
+        load(RecordType.TAG, journal::getTag)
+            .filter { it.data.category == category }
+            .sortedBy { it.data.name.lowercase() }
+    }
+
+    suspend fun session(id: String): SessionData? = io { journal.getSession(id) }
+
+    suspend fun product(id: String): ProductData? = io { journal.getProduct(id) }
+
+    suspend fun strain(id: String): StrainData? = io { journal.getStrain(id) }
+
+    suspend fun brand(id: String): BrandData? = io { journal.getBrand(id) }
+
+    /** Saves a session; `id` null creates one. Returns its ID. */
+    suspend fun saveSession(id: String?, data: SessionData): String = io { journal.saveSession(id, data, now()) }
+
+    suspend fun saveProduct(id: String?, data: ProductData): String = io { journal.saveProduct(id, data, now()) }
+
+    suspend fun saveStrain(id: String?, data: StrainData): String = io { journal.saveStrain(id, data, now()) }
+
+    suspend fun saveBrand(id: String?, data: BrandData): String = io { journal.saveBrand(id, data, now()) }
+
+    suspend fun saveTag(id: String?, data: TagData): String = io { journal.saveTag(id, data, now()) }
+
+    /** Deletes a record (crypto-erasure in the core). */
+    suspend fun delete(id: String): Boolean = io { journal.deleteRecord(id) }
+
+    private fun <T> load(type: RecordType, get: (String) -> T?): List<Entry<T>> =
+        journal.list(type).mapNotNull { id -> get(id)?.let { Entry(id, it) } }
+
+    private fun now(): ULong = clock().toULong()
+
+    private suspend fun <T> io(block: () -> T): T = withContext(Dispatchers.IO) { block() }
+}

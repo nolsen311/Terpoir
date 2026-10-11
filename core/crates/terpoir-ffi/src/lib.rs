@@ -31,6 +31,7 @@ mod error;
 mod journal;
 mod keys;
 mod records;
+mod vocabulary;
 
 pub use error::{CoreError, Result};
 pub use journal::{ImportResult, Journal, RecordType, SyncBlob};
@@ -42,6 +43,7 @@ pub use records::{
     BrandData, LocalTimeData, ProductData, ProductLineData, SessionData, SnippetData, SpotData,
     StrainData, SymptomData, TagData, TagIntensity, TagProvenance, TagRefData,
 };
+pub use vocabulary::{Vocabulary, default_method_for_form, dose_units_for_method, vocabulary};
 
 uniffi::setup_scaffolding!();
 

@@ -7,7 +7,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use terpoir_crypto::RecordId;
 
-use super::{Fields, Reader, Record, RecordKind, TagRef, owns, slug_enum};
+use super::{Fields, Method, Reader, Record, RecordKind, TagRef, owns, slug_enum};
 use crate::{Document, Error, Result, Value};
 
 slug_enum! {
@@ -54,6 +54,24 @@ slug_enum! {
         Sativa => "sativa",
         /// Hybrid.
         Hybrid => "hybrid",
+    }
+}
+
+impl Form {
+    /// The usual way this form is consumed, as a session's default method.
+    /// `None` for a form from a newer app version.
+    #[must_use]
+    pub fn default_method(&self) -> Option<Method> {
+        Some(match self {
+            Self::Flower | Self::PreRoll => Method::Smoked,
+            Self::VapeCart => Method::VapeCart,
+            Self::Concentrate => Method::Dabbed,
+            Self::Edible => Method::Edible,
+            Self::Tincture => Method::Tincture,
+            Self::Beverage => Method::Beverage,
+            Self::Topical => Method::Topical,
+            Self::Unknown(_) => return None,
+        })
     }
 }
 
@@ -292,6 +310,19 @@ impl Record for Brand {
 mod tests {
     use super::*;
     use crate::{DeviceId, Hlc, Stamp};
+
+    #[test]
+    fn every_form_has_a_default_method() {
+        for slug in Form::SLUGS {
+            let method = Form::from_slug(slug).default_method();
+            assert!(
+                matches!(&method, Some(m) if !matches!(m, Method::Unknown(_))),
+                "{slug}"
+            );
+        }
+        assert_eq!(Form::PreRoll.default_method(), Some(Method::Smoked));
+        assert_eq!(Form::from_slug("suppository").default_method(), None);
+    }
 
     fn stamp() -> Stamp {
         Stamp {
