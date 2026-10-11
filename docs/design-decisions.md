@@ -91,6 +91,15 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - Rationale: relational labels reveal a residence and a social graph; purpose types are more useful for insights anyway.
 - **No automatic place names.** Reverse geocoding sends coordinates to Google or Apple via the OS geocoder. Spots get user-chosen names with a neutral default ("Spot 7"). Address lookup is an opt-in Privacy Center toggle with that disclosure.
 - Playful type names stay inside the app. Discreet-tier notifications and the discreet-icon mode use neutral wording ("a saved spot").
+- **Coordinates are optional on every spot.** A Re-up Spot can be just a name (from a receipt or typed in); plenty of users won't want shop locations stored at all.
+
+### Purchase prompts (decided)
+- **Per-spot opt-in** on a Re-up Spot: "Remind me to log purchases here." Requires that spot to have coordinates; uses "Notify me" geofencing.
+- **Trigger: leaving after a real stop**, not driving past: a minimum dwell inside the spot (a few minutes), then exit. Android geofences support dwell directly; on iOS the app times entry to exit.
+- **Discreet at every notification tier:** "Quick log?" with no shop name. Tapping opens purchase capture, receipt scan first.
+- **No visit log:** the entry time is held only until exit (in the encrypted store if the app is killed meanwhile), then discarded. Dismissed prompts leave no trace. At most one prompt per spot per day.
+- **"Show me" alternative** (no "Always" permission): a banner when the app is opened while at a Re-up Spot; nothing registered with the OS.
+- **Off-action:** removes purchase-prompt geofences and clears pending state.
 
 ## Notifications
 - Local notifications only; nothing via APNs or FCM.
@@ -294,7 +303,8 @@ Each journal entry records one consumption session, not a product review. Produc
   - Outcome: mood after, overall rating, would repeat.
   - Stream (see below), photos, optional Spot.
   - Targeted symptoms (optional section, see below).
-- **Product:** name, form (flower, pre-roll, vape cart, concentrate, edible, tincture, beverage, topical), brand, strain(s), label data (THC/CBD % or mg per unit, top terpenes), batch/lot, optionally where bought and price.
+- **Product:** name, form (flower, pre-roll, vape cart, concentrate, edible, tincture, beverage, topical), brand, strain(s), label data (THC/CBD % or mg per unit, top terpenes), batch/lot, package date, and optional scanned identifiers (barcode / package tag). Where and for how much it was bought lives on Purchase records, not here.
+- **Purchase (decided):** date, optional Re-up Spot, and line items (map keyed by line ID), each with product, batch, and price. A product links to every purchase of it, so the same product bought at two shops can be compared. Session product lines may reference the purchase line they came from.
 - **Strain / cultivar:** name, lineage, dominant terpenes, indica/sativa/hybrid label. Insights are driven by terpene and cannabinoid profiles, not the label, which is scientifically weak.
 - **Brand.**
 - **Spot:** see Location and saved spots.
@@ -326,6 +336,19 @@ Each journal entry records one consumption session, not a product review. Produc
 - **Stream snippets** are separate records referencing their session; photos and voice clips are attachment IDs on the session.
 - `Debug` output of documents, values and records is redacted; decrypted text is wiped when a document is dropped.
 
+## Rapid product entry (decided)
+- **Receipt scan:** one photo fills in several products with prices, the date, and the shop.
+  - On-device text recognition only: ML Kit's bundled model on the Play build, a fully open alternative on the FOSS build, Apple's Vision framework on iOS.
+  - Extracted lines appear as a checklist to confirm, fix, or drop.
+  - Header text suggests the shop name, matched on-device against existing spots.
+  - **The receipt image is discarded after parsing by default** (receipts can carry the user's name, loyalty numbers, or medical card numbers). Only confirmed fields are kept.
+- **Label scan:** on-device text recognition of the compliance label pre-fills name, brand, THC/CBD, terpenes, batch, and package date. Optionally keep the photo as the product picture (EXIF-stripped, never written to the gallery).
+- **Barcodes and QR codes:** decoded on-device; stored locally as identifiers so re-buys are recognized instantly.
+  - **Online lookups of a scanned code are opt-in** via the catalog toggles; a package tag is a precise identifier.
+  - **Opening a label's lab-results (COA) link is opt-in** with the same disclosure: the lab's website learns the user's IP address and which batch they bought.
+- **Duplicate detection:** "Same product, new batch?" keeps history unified.
+- On-device model tiers can improve parsing (messy receipts) but are not required; pattern parsing works without them.
+
 ## Stream journaling, tagging, and insights
 
 ### Stream
@@ -349,12 +372,20 @@ Each journal entry records one consumption session, not a product review. Produc
 - Wording: "your sessions suggest," never medical claims.
 - User can dismiss, mute a category, or mark an insight wrong.
 
+### Shop insights (decided)
+- Sessions grouped by the Re-up Spot where each product was bought: average rating and **hit rate** (share of sessions rated 4★+ or marked "would repeat") per shop.
+- **Selection vs. shop effect:** separates "you tend to buy better-suited products here" from "the same product rated higher when bought at this shop." The shop effect surfaces only when the same product was bought at two or more shops.
+- **Freshness:** from label package dates, product age at purchase per shop ("products from Shop B were four months older on average").
+- Same evidence thresholds and tap-through as all insights.
+
 ### Privacy Center entries
 - **Tag suggestions** (choose tier). Off-action: discard unconfirmed suggestions; optionally delete the downloaded model.
 - **Insights.** Off-action: delete computed insights and cached statistics; journal and confirmed tags remain.
 - **Targeted symptoms.** Off-action: hide or delete.
 - **Address lookup for spots.** Off-action: remove stored addresses.
 - **Follow-up check-ins.** Off-action: cancel pending check-ins.
+- **Purchase prompts.** Off-action: remove purchase-prompt geofences; clear pending state.
+- **Open lab-results (COA) links.** Off-action: stop opening them; nothing stored to clean up.
 
 ## Photos
 - In-app capture writes directly into the encrypted sandbox, never the camera roll.
@@ -439,6 +470,7 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Stream journaling with on-device tag suggestions (keyword / OS model / bundled model), human-confirmed; never a cloud model.
 - Insights: opt-in, statistical, evidence-backed.
 - Follow-up check-ins and targeted symptoms (👍/👎), both opt-in.
+- Purchases as their own records; rapid entry by on-device receipt, label, and barcode scanning; shop insights; opt-in discreet purchase prompts.
 - Effects vocabulary: fixed core list plus custom tags.
 - Ownership: personal (no LLC for now); trademark and copyright registration plans recorded above.
 - Keyboards: user's keyboard by default with zero-cost Android protections; opt-in iOS protections; voice-first FAB with on-device recognition only.
