@@ -11,6 +11,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Privacy first.** Protect user data from platform vendors, storage providers, network observers, and anyone without the user's consent.
 - **Consent first.** Every practice that affects the user is an explicit, informed, revocable choice. Defaults are the most private option.
 - **Honest disclosure.** When a feature leaks information, say exactly what, to whom, and how to avoid it.
+- **Voice and tone.** Playful and warm inside the app: cannabis can be fun, and people are sharing something personal, so laughing is allowed. Neutral wording on discreet surfaces (Discreet-tier notifications, discreet-icon mode). Humor never pressures a privacy choice: any playful nudge is one tap to dismiss with no extra step and no repeat nagging.
 - **Recorded exceptions to "most private default":** keyboard choice. The keyboard is the user's own configured tool; the app defaults to it unchanged, keeps only zero-cost protections, and discloses the risks (see Keyboards and voice input).
 
 ## Platforms and architecture
@@ -155,7 +156,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - Preview shows exactly what will be shared (rendered card or plain text).
 - The card is a temporary in-app file handed to the share sheet and deleted afterward; it **never touches the photo gallery**. Included photos are already EXIF-stripped.
 - Copy to clipboard marks content sensitive and sets it to expire.
-- **Small, tasteful "made with Terpoir" mark included by default**, with a one-tap toggle in the share preview to remove it. Rationale: the user is already sharing cannabis content, and word of mouth is how a no-ads, no-tracking app gets discovered.
+- **Small, tasteful "made with Terpoir" mark included by default**, with a one-tap toggle in the share preview to remove it. Toggle label: **"C'mon, be cool, bud!"** Turning it off is instant and gets a friendly "No worries, we get it ✌️" — no extra step, no repeat nag. Rationale: the user is already sharing cannabis content, and word of mouth is how a no-ads, no-tracking app gets discovered.
 - Notice: "Once shared, this is outside Terpoir's protection."
 
 ### Full export
