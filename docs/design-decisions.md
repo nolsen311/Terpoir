@@ -102,6 +102,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - **"Show me"** is a Privacy Center toggle, off by default. With it on, opening the journal takes one fix and shows a banner for the nearest saved spot, with "Log a session here", which pre-attaches the spot. Without location permission it offers to ask. The fix is not kept. Off has nothing to clean up.
   - **Sessions** can be attached to a spot in the session editor.
   - Address lookup stays out (it would send coordinates to the OS geocoder); it remains a future opt-in.
+- **Geofence alerts while the journal is locked (decided 2026-10-11, for part 2):** every tier stays discreet until the journal is unlocked. Spot names live only in the encrypted journal, and no plaintext copy is kept for alerts. The alert text is cheeky but vague, along the lines of "Did you hit a spot?". It never names a spot, purpose or product. After the user taps and unlocks, the app shows which spot. The Named and Rich tiers apply only to content shown once the journal is open.
 
 ### Spots: purpose types, never relationships
 - Every saved location is a **Spot** with one or more purpose types describing what it is *for*, not whose it is:
