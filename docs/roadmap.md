@@ -74,10 +74,8 @@ without it.
       and autofill opt-out on text fields.
 - [x] Privacy Center skeleton with a toggle registry that requires a paired
       on-action and off-action for every entry.
-- [ ] Onboarding: age signals + self-attestation, recovery key creation and
+- [x] Onboarding: age signals + self-attestation, recovery key creation and
       backup confirmation, Privacy Center tour with everything off.
-      (Done except the Play age signal, which waits on the licensing
-      decision in "Open decisions".)
 - [ ] R8 log stripping; release builds log nothing.
 
 ## Phase 3: Journaling features

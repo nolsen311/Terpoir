@@ -45,6 +45,7 @@
     <string name="age_question">Are you of legal age to use cannabis where you live?</string>
     <string name="age_yes">Yes, I am</string>
     <string name="age_no">No</string>
+    <string name="age_signal_disclosure">Google Play may tell Terpoir an age range for your account. Terpoir only checks it on this phone, to keep out under-18s, and never stores or sends it.</string>
     <string name="age_adults_only">Terpoir is for adults</string>
     <string name="age_adults_only_body">Come back when you\'re of legal age where you live.</string>
     <string name="recovery_title">Your recovery key</string>

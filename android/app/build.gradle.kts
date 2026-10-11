@@ -99,6 +99,8 @@ dependencies {
         artifact { type = "aar" }
     }
 
+    "playImplementation"(libs.play.age.signals)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)

@@ -8,10 +8,14 @@ import android.content.Context
 
 /** What a platform age signal says about the user. Read only; never stored. */
 enum class AgeCategory {
-    /** The platform says the user is an adult. */
+    /**
+     * The platform says 18 or over. That is below the legal age for
+     * cannabis in many places (21 in most US states), so self-attestation
+     * still decides.
+     */
     ADULT,
 
-    /** The platform says the user is a minor: show only "Terpoir is for adults". */
+    /** The platform says the user is under 18: show only "Terpoir is for adults". */
     MINOR,
 
     /** No signal (unsupported, unavailable, or no answer): self-attestation decides. */
@@ -32,3 +36,15 @@ fun interface AgeSignals {
         val NONE = AgeSignals { AgeCategory.UNKNOWN }
     }
 }
+
+/**
+ * The category for an age range from a platform signal, where either bound
+ * may be missing. Only an upper bound under 18 makes a minor.
+ */
+fun ageCategoryFromRange(lower: Int?, upper: Int?): AgeCategory = when {
+    upper != null && upper < ADULT_AGE -> AgeCategory.MINOR
+    lower != null && lower >= ADULT_AGE -> AgeCategory.ADULT
+    else -> AgeCategory.UNKNOWN
+}
+
+private const val ADULT_AGE = 18

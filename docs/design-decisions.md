@@ -240,12 +240,13 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Disclosure:** the age category comes from Apple or Google; Terpoir only reads it.
 - Context: state app store accountability laws (Texas, enjoined; Utah, Louisiana, California upcoming) require runtime use of these APIs; re-check status before launch.
 - **Android implementation (`app.terpoir.onboarding`):** one age gate in both flavors.
-  - **Order:** the platform signal (`AgeSignals`) is checked first.
-    - A minor sees only "Terpoir is for adults".
-    - An adult passes without being asked.
-    - With no signal (unsupported, unavailable, or no answer), self-attestation decides.
-  - **Stored:** only the pass, never the signal's category or a "no", so a "no" is asked again next launch.
-  - **Signal sources:** no flavor provides one yet. The FOSS flavor never will. For the Play flavor, see the open decision on Google Play Age Signals.
+  - **The platform signal (`AgeSignals`) comes first, and it can only block.** An upper age bound under 18 shows only "Terpoir is for adults".
+  - **It never passes anyone.** Google's top range is 18+, and the legal age for cannabis is often higher (21 in most US states, 19 in most Canadian provinces). Everyone not blocked answers the self-attestation.
+  - **Stored:** only the pass, never the signal's range or a "no", so a "no" is asked again next launch.
+  - **Play flavor:** Google Play Age Signals (`checkAgeSignals`), through IPC to the Play Store. The app still has no INTERNET permission. A disclosure on the age screen says the range comes from Google and is checked on the phone only.
+    - Terpoir never calls `requestAgeSignalsAccess`, which would prompt the user to share their age with the app.
+    - Re-check before launch whether state laws require that prompt.
+  - **FOSS flavor:** no signal; self-attestation only.
 
 ## Device security features (decided)
 - **Unlock options** (default remains biometric or device passcode):
@@ -544,8 +545,4 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - IP: trademark is the priority (file intent-to-use soon); copyright registration not planned given AI authorship; monetization paths unchanged.
 
 ## Open decisions
-- **Google Play Age Signals in the Play flavor (licensing).** `com.google.android.play:age-signals` is proprietary (Android SDK License) and pulls in `play-services-basement`. The AppStore exception in `LICENSING.md` covers store distribution terms, not linking proprietary libraries into the GPL program. Options:
-  - add a linking permission for the Play flavor's Google libraries (Play Billing will raise the same question);
-  - or keep self-attestation as the only gate.
-
-  Until decided, both flavors use self-attestation; the `AgeSignals` hook is ready for the Play implementation.
+None at the design level. New questions go here as they arise.

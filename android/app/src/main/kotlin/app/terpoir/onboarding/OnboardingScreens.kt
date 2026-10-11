@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.privacy.SensitiveClipboard
 import app.terpoir.session.JournalSession.RecoveryCheck
+import kotlinx.coroutines.CancellationException
 
 @Composable
 private fun Page(content: @Composable () -> Unit) {
@@ -46,9 +47,10 @@ private fun Page(content: @Composable () -> Unit) {
 }
 
 /**
- * The age gate. The platform signal comes first: a minor sees only
- * "Terpoir is for adults", an adult passes without being asked. Without a
- * signal, self-attestation decides. A "no" is not stored.
+ * The age gate. The platform signal comes first, and a minor sees only
+ * "Terpoir is for adults". A signal cannot pass the gate (its top range is
+ * 18+, below many legal cannabis ages), so everyone else is asked. The
+ * signal is read once and never stored; neither is a "no".
  */
 @Composable
 fun AgeGate(signals: AgeSignals, onAdult: () -> Unit) {
@@ -56,8 +58,13 @@ fun AgeGate(signals: AgeSignals, onAdult: () -> Unit) {
     var category by remember { mutableStateOf<AgeCategory?>(null) }
     var declined by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        val result = runCatching { signals.category(context) }.getOrDefault(AgeCategory.UNKNOWN)
-        if (result == AgeCategory.ADULT) onAdult() else category = result
+        category = try {
+            signals.category(context)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            AgeCategory.UNKNOWN
+        }
     }
     Page {
         when {
@@ -71,6 +78,9 @@ fun AgeGate(signals: AgeSignals, onAdult: () -> Unit) {
                 Text(stringResource(R.string.age_question))
                 Button(onClick = onAdult) { Text(stringResource(R.string.age_yes)) }
                 OutlinedButton(onClick = { declined = true }) { Text(stringResource(R.string.age_no)) }
+                if (signals !== AgeSignals.NONE) {
+                    Text(stringResource(R.string.age_signal_disclosure), style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
     }
