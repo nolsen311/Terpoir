@@ -93,10 +93,15 @@ without it.
 - [x] OCR native libraries built from pinned source for F-Droid
       (`android/ocr-native/`, asynchronous `OCR native libraries`
       workflow, reproducible on two runners).
+- [ ] Decide the Play build's default OCR engine (Open decisions in
+      `docs/design-decisions.md`) before building the scanner.
 - [ ] When the scanner adds Tesseract4Android: the `terpoir.ocr.aar`
       Gradle property that switches the `foss` flavor to the from-source
       AAR (JitPack repository declared only without it); check the foss
-      build with it in the OCR workflow.
+      build with it in the OCR workflow. Add an on-device smoke test (the
+      from-source AAR has been built and verified, never run): the
+      instrumented emulator job, built with the property, loads the
+      libraries and recognizes text in a bundled test image.
 - [ ] Voice-first FAB with on-device speech recognition (never cloud).
 - [ ] Stream snippets; keyword tag suggestions with human confirmation.
 - [ ] Spots with purpose types; "Show me" mode first, then "Notify me"
@@ -115,6 +120,10 @@ without it.
 - [ ] Reproducible Android builds verified in CI; SBOM; signed release
       hashes published on terpoir.app; signing fingerprints in README.
 - [ ] Google Play, F-Droid, GitHub Releases.
+  - [ ] F-Droid recipe: builds the OCR AAR with
+        `android/ocr-native/build.sh` and sets `terpoir.ocr.aar` for the
+        foss build (outline in `android/ocr-native/README.md`); settle
+        with F-Droid whether the source tarballs come in as `srclibs`.
 - [ ] Trademark Statement of Use after launch.
 
 ## Phase 5: Stretch

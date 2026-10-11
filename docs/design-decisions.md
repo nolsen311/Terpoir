@@ -418,7 +418,7 @@ Each journal entry records one consumption session, not a product review. Produc
 
 ## Rapid product entry (decided)
 - **Receipt scan:** one photo fills in several products with prices, the date, and the shop.
-  - On-device text recognition only: ML Kit's bundled model on the Play build, a fully open alternative on the FOSS build, Apple's Vision framework on iOS.
+  - On-device text recognition only: ML Kit's bundled model on the Play build, a fully open alternative on the FOSS build, Apple's Vision framework on iOS. The FOSS engine is Tesseract (see "OCR native libraries" under Builds and releases). **Which engine is the Play build's default is open** (see Open decisions).
   - Extracted lines appear as a checklist to confirm, fix, or drop.
   - Header text suggests the shop name, matched on-device against existing spots.
   - **The receipt image is discarded after parsing by default** (receipts can carry the user's name, loyalty numbers, or medical card numbers). Only confirmed fields are kept.
@@ -584,4 +584,10 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - IP: trademark is the priority (file intent-to-use soon); copyright registration not planned given AI authorship; monetization paths unchanged.
 
 ## Open decisions
-None at the design level. New questions go here as they arise.
+New questions go here as they arise.
+
+- **Play build's default text-recognition engine** (decide before the scanner is built). The FOSS build uses Tesseract (Tesseract4Android); iOS uses Apple's Vision framework. For the Play build:
+  - *As recorded in Rapid product entry:* ML Kit's bundled model is the default on Play.
+  - *Proposed by the maintainer:* Tesseract is the default on both flavors, and ML Kit is a Play-only opt-in (a Privacy Center toggle with a disclosure card).
+  - Trade-offs: ML Kit is generally more accurate on photographed receipts and smaller to ship, but it is a closed Google library (allowed only in `play`, under the Google Play libraries permission in `LICENSING.md`). Its terms allow it to fetch updates and send usage metrics; the app has no INTERNET permission, so it cannot do either, but the code cannot be audited. Tesseract is open and auditable, and keeps the two flavors identical (one OCR code path, one set of tests), at the cost of accuracy and APK size (about 15 MB of native libraries for two ABIs, plus the language data). "Defaults are the most private option" favors the proposal.
+  - Either way, the scanner keeps the engine behind one interface so the choice stays a single switch.
