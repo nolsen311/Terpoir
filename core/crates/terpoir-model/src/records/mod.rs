@@ -27,7 +27,7 @@ pub use session::{
 };
 pub use snippet::{Provenance, Snippet};
 pub use spot::{Location, Spot, SpotPurpose};
-pub use tag::{Tag, TagCategory};
+pub use tag::{Flavor, Mood, Tag, TagCategory};
 
 /// The kind of record a document holds. The numeric codes are stored on
 /// disk and synced: never change or reuse them.

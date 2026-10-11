@@ -101,7 +101,7 @@ fun JournalHome(
     }
 
     when (val screen = stack.last()) {
-        is Screen.Session -> SessionEditor(repo, vocab, screen.id, pop)
+        is Screen.Session -> SessionEditor(repo, vocab, settings, screen.id, pop)
         is Screen.Product -> ProductEditor(
             repo,
             vocab,
@@ -111,7 +111,7 @@ fun JournalHome(
             onDone = pop,
         )
         Screen.Receipt -> ReceiptScreen(repo, scan, pop)
-        is Screen.Note -> NoteScreen(repo, settings, screen.id, pop)
+        is Screen.Note -> NoteScreen(repo, settings, vocab, screen.id, pop)
         is Screen.Strain -> StrainEditor(repo, vocab, screen.id, pop)
         is Screen.Brand -> BrandEditor(repo, screen.id, pop)
         Screen.Home -> Scaffold(
@@ -172,9 +172,12 @@ private fun JournalList(
     var notes by remember { mutableStateOf<List<Entry<SnippetData>>>(emptyList()) }
     var productNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var effectNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var tagNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     LaunchedEffect(revision) {
         productNames = repo.products().associate { it.id to it.data.name }
         effectNames = repo.tags(EFFECT_CATEGORY).associate { it.id to it.data.name }
+        tagNames = (repo.tags(EFFECT_CATEGORY) + repo.tags("flavor") + repo.tags("mood") + repo.tags("terpene"))
+            .associate { it.id to it.data.name }
         notes = repo.standaloneSnippets()
         sessions = repo.sessions()
     }
@@ -202,7 +205,7 @@ private fun JournalList(
         items(timeline, key = { it.second.id }) { (_, entry) ->
             when (val data = entry.data) {
                 is SessionData -> SessionCard(data, productNames, effectNames) { onOpen(entry.id) }
-                is SnippetData -> NoteCard(data) { onOpenNote(entry.id) }
+                is SnippetData -> NoteCard(data, tagNames) { onOpenNote(entry.id) }
             }
         }
     }
@@ -250,7 +253,8 @@ private fun SessionCard(
 }
 
 @Composable
-private fun NoteCard(note: SnippetData, onClick: () -> Unit) {
+@OptIn(ExperimentalLayoutApi::class)
+private fun NoteCard(note: SnippetData, customNames: Map<String, String>, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -262,6 +266,11 @@ private fun NoteCard(note: SnippetData, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(note.text, style = MaterialTheme.typography.bodyLarge, maxLines = 4, overflow = TextOverflow.Ellipsis)
+            if (note.tags.isNotEmpty()) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for (t in note.tags.take(MAX_CARD_TAGS)) AssistChip(onClick = onClick, label = { Text(tagLabel(t.tag, customNames)) })
+                }
+            }
         }
     }
 }
@@ -376,3 +385,6 @@ private fun CatalogRow(title: String, detail: String, onClick: () -> Unit) {
         }
     }
 }
+
+/** Tags shown on a note card; the note itself lists them all. */
+private const val MAX_CARD_TAGS = 4

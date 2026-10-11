@@ -21,6 +21,7 @@ name = "terpoir_ffi"
 terpoir-crypto.workspace = true
 terpoir-model.workspace = true
 terpoir-scan.workspace = true
+terpoir-tagging.workspace = true
 terpoir-store.workspace = true
 terpoir-sync.workspace = true
 uniffi.workspace = true

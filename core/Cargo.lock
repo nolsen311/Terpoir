@@ -1041,6 +1041,7 @@ dependencies = [
  "terpoir-scan",
  "terpoir-store",
  "terpoir-sync",
+ "terpoir-tagging",
  "uniffi",
  "zeroize",
 ]
@@ -1083,6 +1084,13 @@ dependencies = [
  "terpoir-model",
  "terpoir-store",
  "zeroize",
+]
+
+[[package]]
+name = "terpoir-tagging"
+version = "0.1.0"
+dependencies = [
+ "terpoir-model",
 ]
 
 [[package]]

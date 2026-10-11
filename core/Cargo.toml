@@ -10,6 +10,7 @@ members = [
     "crates/terpoir-store",
     "crates/terpoir-sync",
     "crates/terpoir-scan",
+    "crates/terpoir-tagging",
     "crates/terpoir-ffi",
     "tools/uniffi-bindgen",
 ]
@@ -28,6 +29,7 @@ terpoir-model = { path = "crates/terpoir-model" }
 terpoir-store = { path = "crates/terpoir-store" }
 terpoir-sync = { path = "crates/terpoir-sync" }
 terpoir-scan = { path = "crates/terpoir-scan" }
+terpoir-tagging = { path = "crates/terpoir-tagging" }
 
 aead-stream = { version = "0.6", features = ["alloc"] }
 argon2 = { version = "0.6", default-features = false, features = ["alloc", "zeroize"] }

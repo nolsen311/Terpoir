@@ -39,14 +39,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.core.ProductData
+import app.terpoir.core.SnippetData
 import app.terpoir.core.TagData
 import app.terpoir.core.TagRefData
 import app.terpoir.core.Vocabulary
 import app.terpoir.core.defaultMethodForForm
 import app.terpoir.core.doseUnitsForMethod
+import app.terpoir.privacy.PrivacySettings
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -57,13 +60,17 @@ import kotlinx.coroutines.launch
 
 /** Creates (`id` null) or edits a session. */
 @Composable
-fun SessionEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone: () -> Unit) {
+fun SessionEditor(repo: JournalRepository, vocab: Vocabulary, settings: PrivacySettings, id: String?, onDone: () -> Unit) {
     val scope = rememberCoroutineScope()
     var draft by remember { mutableStateOf<SessionDraft?>(null) }
     var products by remember { mutableStateOf<List<Entry<ProductData>>>(emptyList()) }
     var customEffects by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
     var error by remember { mutableStateOf<DraftError?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var notes by remember { mutableStateOf<List<Entry<SnippetData>>>(emptyList()) }
+    // A note open over the editor (null id: a new one), so the session's
+    // unsaved edits survive it.
+    var openNote by remember { mutableStateOf<NoteTarget?>(null) }
 
     LaunchedEffect(id) {
         products = repo.products()
@@ -73,7 +80,12 @@ fun SessionEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDon
             currentOffsetMin(System.currentTimeMillis()),
         )
     }
+    LaunchedEffect(id, openNote) { if (id != null && openNote == null) notes = repo.sessionSnippets(id) }
     val current = draft ?: return
+    openNote?.let { target ->
+        NoteScreen(repo, settings, vocab, target.id, onDone = { openNote = null }, session = id)
+        return
+    }
 
     EditorScaffold(
         title = stringResource(if (id == null) R.string.session_new else R.string.session_edit),
@@ -150,6 +162,18 @@ fun SessionEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDon
                 onClick = { draft = current.copy(wouldRepeat = if (current.wouldRepeat == false) null else false) },
                 label = { Text(stringResource(R.string.no)) },
             )
+        }
+
+        SectionTitle(stringResource(R.string.session_notes))
+        if (id == null) {
+            Text(stringResource(R.string.session_notes_after_save), style = MaterialTheme.typography.bodySmall)
+        } else {
+            for (note in notes) {
+                TextButton(onClick = { openNote = NoteTarget(note.id) }) {
+                    Text(note.data.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            OutlinedButton(onClick = { openNote = NoteTarget(null) }) { Text(stringResource(R.string.note_new)) }
         }
 
         error?.let {
@@ -374,3 +398,6 @@ const val EFFECT_CATEGORY = "effect"
 
 private const val DEFAULT_INTENSITY = 3
 private const val MAX_INTENSITY = 5
+
+/** A note to open over the session editor; `id` null for a new one. */
+private data class NoteTarget(val id: String?)
