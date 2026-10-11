@@ -24,8 +24,10 @@ permission that is not on the allowlist in `app/build.gradle.kts`.
 
 Declared in `gradle/libs.versions.toml` with a reason for each. Every
 artifact is verified against `gradle/verification-metadata.xml`; after
-changing dependencies, regenerate it:
+changing dependencies, regenerate it **with an empty Gradle cache** (a warm
+cache hides artifacts, which CI then rejects):
 
 ```sh
-./gradlew --write-verification-metadata sha256 assemble check lintFossRelease lintPlayRelease
+GRADLE_USER_HOME=$(mktemp -d) ./gradlew --write-verification-metadata sha256 \
+    assemble check lintFossRelease lintPlayRelease
 ```
