@@ -4,6 +4,7 @@
 
 //! The unlocked journal.
 
+use std::collections::BTreeSet;
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 use terpoir_crypto::{MasterKey, RecoveryKey, WrappedKey};
@@ -460,7 +461,8 @@ impl Journal {
         self.with(|u| Ok(u.get::<Spot>(&id)?.as_ref().map(SpotData::from_model)))
     }
 
-    /// Creates or updates a purchase. Returns its ID.
+    /// Creates or updates a purchase. Returns its ID. When it has a Re-up
+    /// Spot, the spot is added to each listed product's shops.
     ///
     /// # Errors
     ///
@@ -472,7 +474,26 @@ impl Journal {
         now_ms: u64,
     ) -> Result<String> {
         let record = purchase.to_model()?;
-        self.with(|u| u.save(id, &record, now_ms))
+        self.with(|u| {
+            let saved = u.save(id, &record, now_ms)?;
+            // The receipt's shop joins each product's "Where I buy it".
+            if let Some(spot) = record.spot {
+                let products: BTreeSet<RecordId> =
+                    record.lines.values().filter_map(|l| l.product).collect();
+                for product_id in products {
+                    // A line naming a missing or non-product record is skipped.
+                    let Ok(Some(mut product)) =
+                        u.store.get_record::<Product>(&u.master, &product_id)
+                    else {
+                        continue;
+                    };
+                    if product.shops.insert(spot) {
+                        u.save(Some(product_id.to_hex()), &product, now_ms)?;
+                    }
+                }
+            }
+            Ok(saved)
+        })
     }
 
     /// A purchase, if it exists.

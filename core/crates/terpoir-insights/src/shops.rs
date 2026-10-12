@@ -3,15 +3,17 @@
 // See LICENSING.md for the additional permission under GPLv3 section 7.
 
 //! Shop insights (docs/design-decisions.md, "Shop insights"): sessions
-//! grouped by the Re-up Spot each product was bought at.
+//! grouped by the Re-up Spot each product came from.
 //!
 //! - Per shop: the average rating and the **hit rate** (the share of
 //!   sessions rated 4★ or more, or marked "would repeat").
-//! - **Shop effect**, kept apart from selection: the same product rated
-//!   differently depending on where it was bought. Only for products bought
-//!   at two or more shops.
+//! - **Shop effect**, kept apart from selection: the same brand, product or
+//!   strain rated differently depending on where it was bought. Only for
+//!   ones bought at two or more shops. Brand is the main level: individual
+//!   products often appear at one shop only, while a brand's are usually
+//!   consistent across shops.
 //! - **Freshness:** how old products were (from the label's package date)
-//!   when bought at each shop.
+//!   when bought at each shop, from purchase-dated lines only.
 //!
 //! The same evidence thresholds as every insight ([`MIN_SESSIONS`],
 //! [`MIN_DIFFERENCE`]).
@@ -20,15 +22,41 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{MIN_DIFFERENCE, MIN_SESSIONS};
 
+/// What a shop effect compares.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub enum Level {
+    /// The same brand.
+    Brand,
+    /// The same product.
+    Product,
+    /// The same strain.
+    Strain,
+}
+
 /// One product in a session, and where it was bought.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Default)]
 pub struct Buy {
     /// The shop (the caller's key for the spot).
     pub shop: String,
     /// The product (the caller's key).
     pub product: String,
+    /// The product's brand, if known.
+    pub brand: Option<String>,
+    /// The product's strains.
+    pub strains: Vec<String>,
     /// Days from the package date to the purchase, if both are known.
     pub age_days: Option<i64>,
+}
+
+impl Buy {
+    /// The keys this buy has at `level`.
+    fn keys(&self, level: Level) -> Vec<&str> {
+        match level {
+            Level::Brand => self.brand.as_deref().into_iter().collect(),
+            Level::Product => vec![self.product.as_str()],
+            Level::Strain => self.strains.iter().map(String::as_str).collect(),
+        }
+    }
 }
 
 /// What one session contributes to shop insights.
@@ -44,11 +72,14 @@ pub struct ShopSessionFacts {
     pub buys: Vec<Buy>,
 }
 
-/// The same product, rated differently depending on where it was bought.
-#[derive(Clone, PartialEq, Eq)]
+/// The same brand, product or strain, rated differently depending on where
+/// it was bought.
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ShopEffect {
-    /// The product.
-    pub product: String,
+    /// What is compared.
+    pub level: Level,
+    /// The brand, product or strain (the caller's key).
+    pub subject: String,
     /// Its average rating when bought here, in thousandths of a star.
     pub here_avg_milli: i64,
     /// Its average rating when bought elsewhere.
@@ -74,8 +105,9 @@ pub struct ShopSummary {
     /// Average age of products at purchase here, in days, when enough
     /// package dates are known.
     pub avg_age_days: Option<i64>,
-    /// Products rated differently here than elsewhere.
-    pub same_product: Vec<ShopEffect>,
+    /// Brands, products and strains rated differently here than elsewhere:
+    /// brands first, then products, then strains.
+    pub effects: Vec<ShopEffect>,
 }
 
 fn is_hit(s: &ShopSessionFacts) -> Option<bool> {
@@ -90,6 +122,63 @@ fn average(ratings: &[u8]) -> Option<i64> {
     Some(ratings.iter().map(|r| i64::from(*r) * 1000).sum::<i64>() / n)
 }
 
+/// The shop effects at `level` for `shop`. A session with the subject
+/// bought both here and elsewhere says nothing about either, so it is left
+/// out of both sides.
+fn effects(sessions: &[ShopSessionFacts], shop: &str, level: Level) -> Vec<ShopEffect> {
+    // Where each subject was bought, across all sessions.
+    let mut places: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
+    for s in sessions {
+        for b in &s.buys {
+            for key in b.keys(level) {
+                places.entry(key).or_default().insert(b.shop.as_str());
+            }
+        }
+    }
+    let mut out = Vec::new();
+    for (subject, at) in &places {
+        if at.len() < 2 || !at.contains(shop) {
+            continue;
+        }
+        let mut here = Vec::new();
+        let mut elsewhere = Vec::new();
+        for s in sessions {
+            let Some(rating) = s.rating else { continue };
+            let with = s.buys.iter().filter(|b| b.keys(level).contains(subject));
+            let (mut in_here, mut in_else) = (false, false);
+            for b in with {
+                if b.shop == shop {
+                    in_here = true;
+                } else {
+                    in_else = true;
+                }
+            }
+            match (in_here, in_else) {
+                (true, false) => here.push(rating),
+                (false, true) => elsewhere.push(rating),
+                _ => {}
+            }
+        }
+        if here.len() < MIN_SESSIONS || elsewhere.len() < MIN_SESSIONS {
+            continue;
+        }
+        let (Some(a), Some(b)) = (average(&here), average(&elsewhere)) else {
+            continue;
+        };
+        if (a - b).abs() >= MIN_DIFFERENCE {
+            out.push(ShopEffect {
+                level,
+                subject: (*subject).to_owned(),
+                here_avg_milli: a,
+                elsewhere_avg_milli: b,
+                here_sessions: here.len(),
+                elsewhere_sessions: elsewhere.len(),
+            });
+        }
+    }
+    out
+}
+
 /// Per-shop summaries for shops with enough rated sessions, most-used
 /// first.
 #[must_use]
@@ -98,16 +187,6 @@ pub fn shop_insights(sessions: &[ShopSessionFacts]) -> Vec<ShopSummary> {
         .iter()
         .flat_map(|s| s.buys.iter().map(|b| b.shop.as_str()))
         .collect();
-    // Where each product was bought, across all sessions.
-    let mut product_shops: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
-    for s in sessions {
-        for b in &s.buys {
-            product_shops
-                .entry(b.product.as_str())
-                .or_default()
-                .insert(b.shop.as_str());
-        }
-    }
 
     let mut out = Vec::new();
     for shop in shops {
@@ -133,50 +212,16 @@ pub fn shop_insights(sessions: &[ShopSessionFacts]) -> Vec<ShopSummary> {
         let avg_age = (ages.len() >= MIN_SESSIONS)
             .then(|| ages.iter().sum::<i64>() / i64::try_from(ages.len()).unwrap_or(1));
 
-        let mut same_product = Vec::new();
-        for (product, at) in &product_shops {
-            if at.len() < 2 || !at.contains(shop) {
-                continue;
-            }
-            let bought = |s: &&ShopSessionFacts, here: bool| {
-                s.buys
-                    .iter()
-                    .any(|b| b.product == *product && (b.shop == shop) == here)
-            };
-            let here_ratings: Vec<u8> = sessions
-                .iter()
-                .filter(|s| bought(s, true))
-                .filter_map(|s| s.rating)
-                .collect();
-            let else_ratings: Vec<u8> = sessions
-                .iter()
-                .filter(|s| bought(s, false))
-                .filter_map(|s| s.rating)
-                .collect();
-            if here_ratings.len() < MIN_SESSIONS || else_ratings.len() < MIN_SESSIONS {
-                continue;
-            }
-            let (Some(a), Some(b)) = (average(&here_ratings), average(&else_ratings)) else {
-                continue;
-            };
-            if (a - b).abs() >= MIN_DIFFERENCE {
-                same_product.push(ShopEffect {
-                    product: (*product).to_owned(),
-                    here_avg_milli: a,
-                    elsewhere_avg_milli: b,
-                    here_sessions: here_ratings.len(),
-                    elsewhere_sessions: else_ratings.len(),
-                });
-            }
-        }
-
         out.push(ShopSummary {
             shop: shop.to_owned(),
             sessions: here.iter().map(|s| s.index).collect(),
             avg_rating_milli: average(&ratings),
             hit_rate_percent: hit_rate,
             avg_age_days: avg_age,
-            same_product,
+            effects: [Level::Brand, Level::Product, Level::Strain]
+                .into_iter()
+                .flat_map(|level| effects(sessions, shop, level))
+                .collect(),
         });
     }
     out.sort_by_key(|s| std::cmp::Reverse(s.sessions.len()));
@@ -192,6 +237,17 @@ mod tests {
             shop: shop.into(),
             product: product.into(),
             age_days: age,
+            ..Buy::default()
+        }
+    }
+
+    fn branded(shop: &str, product: &str, brand: &str, strain: &str) -> Buy {
+        Buy {
+            shop: shop.into(),
+            product: product.into(),
+            brand: Some(brand.into()),
+            strains: vec![strain.into()],
+            age_days: None,
         }
     }
 
@@ -283,17 +339,91 @@ mod tests {
         }
         let found = shop_insights(&all);
         let a = found.iter().find(|s| s.shop == "a").unwrap();
-        assert_eq!(a.same_product.len(), 1);
-        let effect = &a.same_product[0];
-        assert_eq!(effect.product, "blue dream");
+        assert_eq!(a.effects.len(), 1);
+        let effect = &a.effects[0];
+        assert_eq!(
+            (effect.level, effect.subject.as_str()),
+            (Level::Product, "blue dream")
+        );
         assert_eq!(
             (effect.here_avg_milli, effect.elsewhere_avg_milli),
             (5_000, 3_000)
         );
         assert_eq!((effect.here_sessions, effect.elsewhere_sessions), (5, 5));
         let b = found.iter().find(|s| s.shop == "b").unwrap();
-        assert_eq!(b.same_product[0].here_avg_milli, 3_000);
+        assert_eq!(b.effects[0].here_avg_milli, 3_000);
         // Most-used shop first.
         assert_eq!(found[0].shop, "a");
+    }
+
+    #[test]
+    fn a_brand_rated_higher_at_one_shop_is_a_shop_effect_across_products() {
+        // Each shop carries different products of the same brand.
+        let mut all = Vec::new();
+        for i in 0..5 {
+            all.push(session(
+                i,
+                Some(5),
+                None,
+                vec![branded("a", &format!("a{i}"), "acme", "og")],
+            ));
+            all.push(session(
+                10 + i,
+                Some(2),
+                None,
+                vec![branded("b", &format!("b{i}"), "acme", "og")],
+            ));
+        }
+        let found = shop_insights(&all);
+        let a = found.iter().find(|s| s.shop == "a").unwrap();
+        let levels: Vec<_> = a
+            .effects
+            .iter()
+            .map(|e| (e.level, e.subject.as_str()))
+            .collect();
+        // Brand first; no product effect (no product at both shops).
+        assert_eq!(levels, vec![(Level::Brand, "acme"), (Level::Strain, "og")]);
+        assert_eq!(
+            (
+                a.effects[0].here_avg_milli,
+                a.effects[0].elsewhere_avg_milli
+            ),
+            (5_000, 2_000)
+        );
+    }
+
+    #[test]
+    fn a_session_with_both_shops_counts_on_neither_side() {
+        let mut all = Vec::new();
+        for i in 0..5 {
+            all.push(session(
+                i,
+                Some(5),
+                None,
+                vec![branded("a", "p", "acme", "og")],
+            ));
+            all.push(session(
+                10 + i,
+                Some(2),
+                None,
+                vec![branded("b", "p", "acme", "og")],
+            ));
+        }
+        all.push(session(
+            20,
+            Some(1),
+            None,
+            vec![
+                branded("a", "p", "acme", "og"),
+                branded("b", "p", "acme", "og"),
+            ],
+        ));
+        let found = shop_insights(&all);
+        let a = found.iter().find(|s| s.shop == "a").unwrap();
+        assert!(
+            a.effects
+                .iter()
+                .all(|e| e.here_sessions == 5 && e.elsewhere_sessions == 5)
+        );
     }
 }

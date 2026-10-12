@@ -9,8 +9,12 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use terpoir_insights::{Buy, SessionFacts, ShopSessionFacts, insights, shop_insights, time_of_day};
-use terpoir_model::{DoseUnit, Product, Purchase, RecordId, Session, Spot, Strain, TagRef};
+use terpoir_insights::{
+    Buy, Level, SessionFacts, ShopSessionFacts, insights, shop_insights, time_of_day,
+};
+use terpoir_model::{
+    DoseUnit, Product, ProductLine, Purchase, RecordId, Session, Spot, Strain, TagRef,
+};
 
 use crate::error::Result;
 
@@ -92,16 +96,20 @@ pub struct ShopInsightData {
     /// Average age of products at purchase here, in days, when enough
     /// package dates are known.
     pub avg_age_days: Option<i64>,
-    /// Products rated differently here than at other shops.
-    pub same_product: Vec<ShopEffectData>,
+    /// Brands, products and strains rated differently here than at other
+    /// shops: brands first, then products, then strains.
+    pub effects: Vec<ShopEffectData>,
 }
 
-/// One product rated differently depending on the shop it came from.
+/// A brand, product or strain rated differently depending on the shop it
+/// came from.
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
 pub struct ShopEffectData {
-    /// The product's ID.
-    pub product: String,
-    /// Its display label (brand, then name).
+    /// `brand`, `product` or `strain`.
+    pub level: String,
+    /// The brand's, product's or strain's ID.
+    pub subject: String,
+    /// Its display label (for a product: brand, then name).
     pub label: String,
     /// Average rating when bought here, in thousandths of a star.
     pub here_avg_milli: i64,
@@ -113,64 +121,80 @@ pub struct ShopEffectData {
     pub elsewhere_sessions: u32,
 }
 
-/// Shop insights over the journal. A session line counts for a shop when
-/// it names the purchase it came from, or when its product was only ever
-/// bought at one shop; otherwise its shop is unknown and it is left out.
+/// Where a session line's product came from: the shop the user picked on
+/// the line, else the shop of the purchase it names, else the product's
+/// only known shop ("Where I buy it" and purchases). Otherwise unknown,
+/// and the line is left out. The purchase day is known only from a named
+/// purchase.
+fn line_shop(
+    line: &ProductLine,
+    product: &Product,
+    purchases: &BTreeMap<RecordId, Purchase>,
+    bought_at: Option<&BTreeSet<RecordId>>,
+) -> Option<(RecordId, Option<i64>)> {
+    let named = line
+        .purchase
+        .as_ref()
+        .and_then(|r| purchases.get(&r.purchase))
+        .and_then(|p| p.spot.map(|spot| (spot, local_day(p))));
+    if let Some(shop) = line.shop {
+        let day = named.filter(|(s, _)| *s == shop).map(|(_, d)| d);
+        return Some((shop, day));
+    }
+    if let Some((shop, day)) = named {
+        return Some((shop, Some(day)));
+    }
+    let mut known: BTreeSet<RecordId> = product.shops.clone();
+    known.extend(bought_at.into_iter().flatten());
+    match known.len() {
+        1 => known.pop_first().map(|s| (s, None)),
+        _ => None,
+    }
+}
+
+/// Shop insights over the journal; see [`line_shop`] for how a line gets
+/// its shop.
 pub(crate) fn shops(source: &dyn Source) -> Result<Vec<ShopInsightData>> {
     let sessions = source.sessions()?;
     let purchases: BTreeMap<RecordId, Purchase> = source.purchases()?.into_iter().collect();
-    // Where each product was bought: (shop, purchase day) per purchase line.
-    let mut bought: BTreeMap<RecordId, Vec<(RecordId, i64)>> = BTreeMap::new();
+    // The shops each product appears on receipts from.
+    let mut bought_at: BTreeMap<RecordId, BTreeSet<RecordId>> = BTreeMap::new();
     for purchase in purchases.values() {
         let Some(shop) = purchase.spot else {
             continue;
         };
-        for line in purchase.lines.values() {
-            if let Some(product) = line.product {
-                bought
-                    .entry(product)
-                    .or_default()
-                    .push((shop, local_day(purchase)));
-            }
+        for product in purchase.lines.values().filter_map(|l| l.product) {
+            bought_at.entry(product).or_default().insert(shop);
         }
     }
-    let mut package_dates: BTreeMap<RecordId, Option<i64>> = BTreeMap::new();
+    let mut products: BTreeMap<RecordId, Option<Product>> = BTreeMap::new();
     let mut facts = Vec::with_capacity(sessions.len());
     for (index, (_, session)) in sessions.iter().enumerate() {
         let mut buys = Vec::new();
         for line in session.lines.values() {
-            let Some(product) = line.product else {
+            let Some(product_id) = line.product else {
                 continue;
             };
-            // The purchase this line names, or the product's only purchase
-            // place (and, with one purchase, its day).
-            let (shop, day) = match line
-                .purchase
-                .as_ref()
-                .and_then(|r| purchases.get(&r.purchase))
-            {
-                Some(p) => match p.spot {
-                    Some(shop) => (shop, Some(local_day(p))),
-                    None => continue,
-                },
-                None => {
-                    let places = bought.get(&product).map_or(&[][..], Vec::as_slice);
-                    let shops: BTreeSet<RecordId> = places.iter().map(|(s, _)| *s).collect();
-                    if shops.len() != 1 {
-                        continue;
-                    }
-                    let day = (places.len() == 1).then(|| places[0].1);
-                    (places[0].0, day)
-                }
-            };
-            if let std::collections::btree_map::Entry::Vacant(slot) = package_dates.entry(product) {
-                slot.insert(source.product(&product)?.and_then(|p| p.package_date));
+            if let std::collections::btree_map::Entry::Vacant(slot) = products.entry(product_id) {
+                slot.insert(source.product(&product_id)?);
             }
-            let package = package_dates.get(&product).copied().flatten();
+            let Some(Some(product)) = products.get(&product_id) else {
+                continue;
+            };
+            let Some((shop, day)) =
+                line_shop(line, product, &purchases, bought_at.get(&product_id))
+            else {
+                continue;
+            };
             buys.push(Buy {
                 shop: shop.to_hex(),
-                product: product.to_hex(),
-                age_days: day.zip(package).map(|(d, p)| d - p).filter(|age| *age >= 0),
+                product: product_id.to_hex(),
+                brand: product.brand.map(|b| b.to_hex()),
+                strains: product.strains.iter().map(RecordId::to_hex).collect(),
+                age_days: day
+                    .zip(product.package_date)
+                    .map(|(d, p)| d - p)
+                    .filter(|age| *age >= 0),
             });
         }
         facts.push(ShopSessionFacts {
@@ -187,28 +211,28 @@ pub(crate) fn shops(source: &dyn Source) -> Result<Vec<ShopInsightData>> {
             continue;
         };
         let name = source.spot(&spot_id)?.map(|s| s.name).unwrap_or_default();
-        let mut same_product = Vec::new();
-        for effect in &summary.same_product {
-            let Ok(product_id) = RecordId::from_hex(&effect.product) else {
+        let mut effects = Vec::new();
+        for effect in &summary.effects {
+            let Ok(id) = RecordId::from_hex(&effect.subject) else {
                 continue;
             };
-            let label = match source.product(&product_id)? {
-                Some(p) => {
-                    let brand = match p.brand {
-                        Some(b) => source.brand_name(&b)?,
+            let (level, label) = match effect.level {
+                Level::Brand => ("brand", source.brand_name(&id)?),
+                Level::Strain => ("strain", source.strain(&id)?.map(|s| s.name)),
+                Level::Product => (
+                    "product",
+                    match products.get(&id).cloned().flatten() {
+                        Some(p) => Some(product_label(source, &p)?),
                         None => None,
-                    };
-                    match brand {
-                        Some(b) if !p.name.to_lowercase().starts_with(&b.to_lowercase()) => {
-                            format!("{b} {}", p.name)
-                        }
-                        _ => p.name,
-                    }
-                }
-                None => continue,
+                    },
+                ),
             };
-            same_product.push(ShopEffectData {
-                product: effect.product.clone(),
+            let Some(label) = label else {
+                continue;
+            };
+            effects.push(ShopEffectData {
+                level: level.to_owned(),
+                subject: effect.subject.clone(),
                 label,
                 here_avg_milli: effect.here_avg_milli,
                 elsewhere_avg_milli: effect.elsewhere_avg_milli,
@@ -227,10 +251,25 @@ pub(crate) fn shops(source: &dyn Source) -> Result<Vec<ShopInsightData>> {
             avg_rating_milli: summary.avg_rating_milli,
             hit_rate_percent: summary.hit_rate_percent,
             avg_age_days: summary.avg_age_days,
-            same_product,
+            effects,
         });
     }
     Ok(out)
+}
+
+/// A product's display label: brand, then name (unless the name already
+/// starts with the brand).
+fn product_label(source: &dyn Source, p: &Product) -> Result<String> {
+    let brand = match p.brand {
+        Some(b) => source.brand_name(&b)?,
+        None => None,
+    };
+    Ok(match brand {
+        Some(b) if !p.name.to_lowercase().starts_with(&b.to_lowercase()) => {
+            format!("{b} {}", p.name)
+        }
+        _ => p.name.clone(),
+    })
 }
 
 /// The purchase's local calendar day, in days since 1970-01-01.

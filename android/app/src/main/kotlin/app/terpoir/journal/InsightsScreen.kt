@@ -131,15 +131,24 @@ fun InsightsScreen(repo: JournalRepository, onOpenSession: (String) -> Unit, onC
                     shop.avgAgeDays?.let {
                         Text(pluralStringResource(R.plurals.insights_shop_age, it.toInt(), it.toInt()), style = MaterialTheme.typography.bodySmall)
                     }
-                    for (effect in shop.sameProduct) {
+                    for (effect in shop.effects) {
+                        val subject = when (effect.level) {
+                            "brand" -> R.string.insights_shop_level_brand
+                            "strain" -> R.string.insights_shop_level_strain
+                            else -> R.string.insights_shop_level_product
+                        }
                         Text(
                             stringResource(
                                 R.string.insights_shop_effect,
-                                effect.label,
+                                stringResource(subject, effect.label),
                                 stars(effect.hereAvgMilli),
                                 stars(effect.elsewhereAvgMilli),
-                                effect.hereSessions.toInt(),
-                                effect.elsewhereSessions.toInt(),
+                                pluralStringResource(
+                                    R.plurals.insights_shop_effect_evidence,
+                                    effect.hereSessions.toInt(),
+                                    effect.hereSessions.toInt(),
+                                    effect.elsewhereSessions.toInt(),
+                                ),
                             ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.tertiary,

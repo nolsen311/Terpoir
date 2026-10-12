@@ -23,7 +23,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod shops;
 
-pub use shops::{Buy, ShopEffect, ShopSessionFacts, ShopSummary, shop_insights};
+pub use shops::{Buy, Level, ShopEffect, ShopSessionFacts, ShopSummary, shop_insights};
 
 /// Sessions needed on each side of a comparison (maintainer, 2026-10-12).
 pub const MIN_SESSIONS: usize = 5;

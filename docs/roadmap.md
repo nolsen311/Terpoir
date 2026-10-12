@@ -175,4 +175,6 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       as rough proportions (such as dominant, secondary, trace), never
       exact percentages, which stay on products where a label states them.
       Insights could then use a strain's profile when a product's label
-      lists no terpenes, and group related strains.
+      lists no terpenes, and group related strains,
+      and the shop effect (which compares by strain record for now) could
+      compare by lineage or terpene profile.
