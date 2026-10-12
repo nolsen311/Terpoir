@@ -27,6 +27,7 @@
 
 use std::sync::Once;
 
+mod archive;
 mod error;
 mod journal;
 mod keys;
@@ -34,6 +35,7 @@ mod records;
 mod scan;
 mod vocabulary;
 
+pub use archive::{ExportArchive, RestoredKeys, keys_for_restore, read_export_archive};
 pub use error::{CoreError, Result};
 pub use journal::{
     ImportResult, Journal, NearbySpot, ProductMatch, RecordType, SyncBlob, TagSuggestion,

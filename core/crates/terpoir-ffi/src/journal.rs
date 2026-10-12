@@ -823,6 +823,22 @@ impl Journal {
         })
     }
 
+    /// The whole journal as an encrypted export archive (see
+    /// `read_export_archive`): `master_wrapped_by_recovery` (as stored on
+    /// this device) plus every sync blob, so only the recovery key opens it.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn export_archive(&self, master_wrapped_by_recovery: Vec<u8>) -> Result<Vec<u8>> {
+        let blobs: Vec<Vec<u8>> = self
+            .export_sync_blobs()?
+            .into_iter()
+            .map(|b| b.bytes)
+            .collect();
+        crate::archive::write(&master_wrapped_by_recovery, &blobs)
+    }
+
     /// Applies a sync blob downloaded from the user's storage. Safe to
     /// repeat.
     ///
