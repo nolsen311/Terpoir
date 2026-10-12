@@ -231,7 +231,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                     val lines = chosen.zip(prices).map { (item, price) ->
                         val product = item.product ?: repo.saveProduct(
                             null,
-                            ProductData(item.name.trim(), null, null, emptyList(), null, null, null, null, emptyList(), null, null, emptyList()),
+                            ProductData(item.name.trim(), null, null, emptyList(), null, null, null, null, emptyList(), null, null, emptyList(), emptyList()),
                         )
                         PurchaseLineData(null, product, null, price, code.takeIf { price != null })
                     }

@@ -8,6 +8,7 @@ import app.terpoir.core.BrandData
 import app.terpoir.core.ExportFile
 import app.terpoir.core.InsightData
 import app.terpoir.core.InsightFeedback
+import app.terpoir.core.ShopInsightData
 import app.terpoir.core.Journal
 import app.terpoir.core.NearbySpot
 import app.terpoir.core.ProductData
@@ -143,6 +144,9 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
 
     /** Insights over the rated sessions; see [InsightsScreen]. Call only while insights are on. */
     suspend fun insights(): List<InsightData> = io { journal.insights() }
+
+    /** Shop insights, per Re-up Spot; same opt-in as [insights]. */
+    suspend fun shopInsights(): List<ShopInsightData> = io { journal.shopInsights() }
 
     /** Records the user's feedback on an insight (or a category, for muting). */
     suspend fun setInsightFeedback(key: String, feedback: InsightFeedback) = io { journal.setInsightFeedback(key, feedback) }

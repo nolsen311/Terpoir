@@ -12,6 +12,7 @@ import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.SpotAlerts
 import app.terpoir.core.Journal
 import app.terpoir.map.OnlineMap
+import app.terpoir.sync.FolderSync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -21,6 +22,7 @@ fun buildPrivacyCenter(
     settings: PrivacySettings,
     alerts: SpotAlerts,
     checkIns: CheckIns,
+    folderSync: FolderSync,
     journal: () -> Journal?,
 ): PrivacyCenter = PrivacyCenter(
     listOfNotNull(
@@ -156,6 +158,30 @@ fun buildPrivacyCenter(
                 alerts.clear()
             },
         ),
+        // On lets Re-up Spots opt in (spot editor) and registers their fences
+        // with the next refresh, once the journal asks for the permissions.
+        // Off removes the prompt fences and any pending state.
+        PrivacyToggle(
+            id = "purchase_prompts",
+            group = PrivacyGroup.LOCATION,
+            card = PrivacyCard(
+                title = R.string.purchase_prompts,
+                whatItDoes = R.string.purchase_prompts_does,
+                whatLeaves = R.string.purchase_prompts_leaves,
+                whoCanSee = R.string.purchase_prompts_who,
+                howToUndo = R.string.purchase_prompts_undo,
+            ),
+            privateState = false,
+            isOn = { settings.purchasePrompts },
+            onAction = {
+                settings.purchasePrompts = true
+                alerts.refresh(journal())
+            },
+            offAction = {
+                settings.purchasePrompts = false
+                alerts.refresh(journal())
+            },
+        ),
         // The Named tier. On writes spot names to the notification cache
         // (now if the journal is open, else at the next unlock); off drops
         // them, unless the Rich tier still shows them.
@@ -265,6 +291,27 @@ fun buildPrivacyCenter(
         } else {
             null
         },
+        // On only enables the sync card (choose a folder, sync now); syncing
+        // runs while the app is open. Off gives up the folder permission and
+        // forgets what was synced; files already there stay, encrypted.
+        PrivacyToggle(
+            id = "folder_sync",
+            group = PrivacyGroup.SYNC_AND_KEYS,
+            card = PrivacyCard(
+                title = R.string.folder_sync,
+                whatItDoes = R.string.folder_sync_does,
+                whatLeaves = R.string.folder_sync_leaves,
+                whoCanSee = R.string.folder_sync_who,
+                howToUndo = R.string.folder_sync_undo,
+            ),
+            privateState = false,
+            isOn = { settings.folderSync },
+            onAction = { settings.folderSync = true },
+            offAction = {
+                settings.folderSync = false
+                folderSync.forget()
+            },
+        ),
         // Which input the new-note button opens. Voice is on-device only,
         // so neither side creates anything to clean up.
         PrivacyToggle(

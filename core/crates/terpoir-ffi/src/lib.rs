@@ -39,9 +39,10 @@ mod vocabulary;
 
 pub use archive::{ExportArchive, RestoredKeys, keys_for_restore, read_export_archive};
 pub use error::{CoreError, Result};
-pub use insights::{InsightData, InsightFeedback};
+pub use insights::{InsightData, InsightFeedback, ShopEffectData, ShopInsightData};
 pub use journal::{
-    ImportResult, Journal, NearbySpot, ProductMatch, RecordType, SyncBlob, TagSuggestion,
+    ImportResult, Journal, NearbySpot, ProductMatch, PromptFence, RecordType, SyncBlob,
+    TagSuggestion,
 };
 pub use keys::{
     NewKeys, PassphraseWrapped, RotatedKeys, check_recovery_key, create_keys,

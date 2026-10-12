@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.terpoir.alerts.CheckIns
+import app.terpoir.alerts.PurchasePrompts
 import app.terpoir.alerts.SpotAlerts
 import app.terpoir.core.ExportArchive
 import app.terpoir.core.coreVersion
@@ -49,6 +50,7 @@ import app.terpoir.onboarding.RecoveryBackup
 import app.terpoir.onboarding.RecoveryKeyBackup
 import app.terpoir.onboarding.RestoreScreen
 import app.terpoir.privacy.ONLINE_MAP
+import app.terpoir.sync.FolderSyncCard
 import app.terpoir.privacy.PrivacyCenterScreen
 import app.terpoir.privacy.PrivateTextInput
 import app.terpoir.privacy.ScreenPrivacy
@@ -74,10 +76,14 @@ class MainActivity : ComponentActivity() {
     /** Opened from a "Quick check-in?" reminder: after unlock, open the check-in. */
     private var checkInRequested by mutableStateOf(false)
 
+    /** Opened from a "Quick log?" purchase prompt: after unlock, open receipt scan. */
+    private var quickLogRequested by mutableStateOf(false)
+
     private fun fromAlert(intent: Intent?) {
         when (intent?.action) {
             SpotAlerts.ACTION_NEAR_SPOT -> nearbyRequested = true
             CheckIns.ACTION_CHECK_IN -> checkInRequested = true
+            PurchasePrompts.ACTION_QUICK_LOG -> quickLogRequested = true
         }
     }
 
@@ -159,7 +165,11 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
                 // Each unlock re-registers "Notify me" geofences: they need the
                 // spots' coordinates, which only the open journal has.
-                LaunchedEffect(state.journal) { app.spotAlerts.refresh(state.journal) }
+                LaunchedEffect(state.journal) {
+                    app.spotAlerts.refresh(state.journal)
+                    // Folder sync, on unlock: it runs only while the app is open.
+                    if (app.privacySettings.folderSync) runCatching { app.folderSync.sync(state.journal) }
+                }
                 JournalHome(
                     repo,
                     vocab,
@@ -174,7 +184,14 @@ class MainActivity : ComponentActivity() {
                         checkInRequested = false
                         app.checkIns.done()
                     },
-                    onEdited = { scope.launch { app.spotAlerts.refresh(state.journal) } },
+                    quickLog = quickLogRequested,
+                    onQuickLogOpened = { quickLogRequested = false },
+                    onEdited = {
+                        scope.launch {
+                            app.spotAlerts.refresh(state.journal)
+                            if (app.privacySettings.folderSync) runCatching { app.folderSync.sync(state.journal) }
+                        }
+                    },
                     onLock = session::lock,
                 ) { onClose ->
                     PrivacyCenterScreen(
@@ -183,6 +200,7 @@ class MainActivity : ComponentActivity() {
                         onClose = onClose,
                     ) {
                         DataCard(repo, session::masterWrappedByRecovery)
+                        if (app.privacySettings.folderSync) FolderSyncCard(app.folderSync, state.journal)
                     }
                 }
                 return

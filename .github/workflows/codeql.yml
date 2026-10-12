@@ -65,10 +65,13 @@ jobs:
           fi
           echo "matrix={\"include\":[${include}]}" >> "$GITHUB_OUTPUT"
 
+  # Always runs, so every "analyze (<language>)" check reports: a job skipped
+  # as a whole never expands its matrix, and the required checks would wait
+  # forever on pull requests that change no code. Those runs skip each step
+  # instead, and pass in seconds.
   analyze:
     name: analyze (${{ matrix.language }})
     needs: languages
-    if: needs.languages.outputs.run == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -77,11 +80,17 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.languages.outputs.matrix) }}
     steps:
+      - name: Nothing to analyze
+        if: needs.languages.outputs.run != 'true'
+        run: echo "No code or workflow changes in this pull request; analysis skipped."
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.languages.outputs.run == 'true'
         with:
           persist-credentials: false
 
       - name: Initialize CodeQL
+        if: needs.languages.outputs.run == 'true'
         uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           languages: ${{ matrix.language }}
@@ -90,7 +99,7 @@ jobs:
 
       # Downloaded dependencies only; see android.yml, which saves it.
       - name: Restore dependency cache
-        if: matrix.build-mode == 'manual'
+        if: needs.languages.outputs.run == 'true' && matrix.build-mode == 'manual'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -103,17 +112,18 @@ jobs:
           restore-keys: deps-${{ runner.os }}-
 
       - name: Set up Rust core toolchain
-        if: matrix.build-mode == 'manual'
+        if: needs.languages.outputs.run == 'true' && matrix.build-mode == 'manual'
         run: .github/scripts/setup-android-core.sh
 
       - name: Build Android app
-        if: matrix.build-mode == 'manual'
+        if: needs.languages.outputs.run == 'true' && matrix.build-mode == 'manual'
         working-directory: android
         run: |
           export JAVA_HOME="$JAVA_HOME_21_X64"
           ./gradlew --no-daemon --no-build-cache assembleFossDebug assemblePlayDebug
 
       - name: Analyze
+        if: needs.languages.outputs.run == 'true'
         uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           category: "/language:${{ matrix.language }}"
