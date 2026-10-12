@@ -59,6 +59,7 @@ import app.terpoir.core.Vocabulary
 import app.terpoir.core.defaultMethodForForm
 import app.terpoir.core.doseUnitsForMethod
 import app.terpoir.privacy.PrivacySettings
+import app.terpoir.share.SessionShare
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -93,6 +94,7 @@ fun SessionEditor(
     // Follow-up check-in: null follows the default for the session's methods.
     var checkInChoice by remember { mutableStateOf<Boolean?>(null) }
     var checkInMinutes by remember { mutableStateOf<String?>(null) }
+    var sharing by remember { mutableStateOf(false) }
 
     LaunchedEffect(id) {
         products = repo.products()
@@ -107,6 +109,10 @@ fun SessionEditor(
     }
     LaunchedEffect(id, openNote) { if (id != null && openNote == null) notes = repo.sessionSnippets(id) }
     val current = draft ?: return
+    if (sharing && id != null) {
+        SessionShare(repo, id) { sharing = false }
+        return
+    }
     openNote?.let { target ->
         NoteScreen(repo, settings, vocab, target.id, onDone = { openNote = null }, session = id)
         return
@@ -238,6 +244,8 @@ fun SessionEditor(
             )
         }
         if (id != null) {
+            // Shares what is saved, not unsaved edits.
+            OutlinedButton(onClick = { sharing = true }) { Text(stringResource(R.string.share)) }
             TextButton(onClick = { confirmDelete = true }) {
                 Text(stringResource(R.string.session_delete), color = MaterialTheme.colorScheme.error)
             }

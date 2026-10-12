@@ -83,6 +83,15 @@
         <receiver
             android:name=".alerts.CheckInReceiver"
             android:exported="false" />
+
+        <!-- Serves a share card to the app the user picked, from memory;
+             nothing is written to storage. Not exported: the share sheet
+             grants a read permission for the one URI. -->
+        <provider
+            android:name=".share.ShareProvider"
+            android:authorities="${applicationId}.share"
+            android:exported="false"
+            android:grantUriPermissions="true" />
     </application>
 
 </manifest>
