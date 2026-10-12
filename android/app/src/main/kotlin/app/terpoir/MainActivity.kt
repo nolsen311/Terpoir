@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.SpotAlerts
 import app.terpoir.core.coreVersion
 import app.terpoir.core.vocabulary
@@ -61,8 +62,14 @@ class MainActivity : ComponentActivity() {
         fromAlert(intent)
     }
 
+    /** Opened from a "Quick check-in?" reminder: after unlock, open the check-in. */
+    private var checkInRequested by mutableStateOf(false)
+
     private fun fromAlert(intent: Intent?) {
-        if (intent?.action == SpotAlerts.ACTION_NEAR_SPOT) nearbyRequested = true
+        when (intent?.action) {
+            SpotAlerts.ACTION_NEAR_SPOT -> nearbyRequested = true
+            CheckIns.ACTION_CHECK_IN -> checkInRequested = true
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -138,7 +145,13 @@ class MainActivity : ComponentActivity() {
                     scan,
                     app.privacySettings,
                     app.spotAlerts,
+                    app.checkIns,
                     checkNearby = nearbyRequested,
+                    checkInSession = if (checkInRequested) app.checkIns.pending() else null,
+                    onCheckInOpened = {
+                        checkInRequested = false
+                        app.checkIns.done()
+                    },
                     onEdited = { scope.launch { app.spotAlerts.refresh(state.journal) } },
                     onLock = session::lock,
                 ) { onClose ->

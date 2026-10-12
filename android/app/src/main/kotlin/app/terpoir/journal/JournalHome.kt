@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.alerts.AlertNeed
+import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.SpotAlerts
 import app.terpoir.core.BrandData
 import app.terpoir.core.NearbySpot
@@ -87,6 +88,9 @@ private sealed interface Screen {
     data class Note(val id: String?) : Screen
 
     data class Spot(val id: String?) : Screen
+
+    /** The follow-up check-in on a session. */
+    data class CheckIn(val session: String) : Screen
 }
 
 private enum class Tab { JOURNAL, PRODUCTS, PRIVACY }
@@ -104,7 +108,10 @@ fun JournalHome(
     scan: ScanServices,
     settings: PrivacySettings,
     alerts: SpotAlerts,
+    checkIns: CheckIns,
     checkNearby: Boolean,
+    checkInSession: String?,
+    onCheckInOpened: () -> Unit,
     onEdited: () -> Unit,
     onLock: () -> Unit,
     privacyCenter: @Composable (onClose: () -> Unit) -> Unit,
@@ -117,11 +124,19 @@ fun JournalHome(
         if (stack.size > 1) stack.removeAt(stack.lastIndex)
         revision++
     }
+    // Opened from a "Quick check-in?" reminder.
+    LaunchedEffect(checkInSession) {
+        if (checkInSession != null) {
+            stack.add(Screen.CheckIn(checkInSession))
+            onCheckInOpened()
+        }
+    }
     // Spots may have changed: "Notify me" re-registers its geofences.
     LaunchedEffect(revision) { if (revision > 0) onEdited() }
 
     when (val screen = stack.last()) {
-        is Screen.Session -> SessionEditor(repo, vocab, settings, screen.id, pop, spotForNew = screen.spot)
+        is Screen.Session -> SessionEditor(repo, vocab, settings, checkIns, screen.id, pop, spotForNew = screen.spot)
+        is Screen.CheckIn -> CheckInScreen(repo, vocab, screen.session, pop)
         is Screen.Spot -> SpotEditor(repo, screen.id, pop)
         is Screen.Product -> ProductEditor(
             repo,

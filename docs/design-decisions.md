@@ -148,6 +148,12 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - Notification text stays generic at every tier: "Quick check-in?" Tapping opens a one-screen update (effect ratings, a stream snippet).
 - Disclosure: a scheduled notification sits in the OS scheduler and reveals timing, not content.
 - Off-action cancels all pending check-ins.
+- **Android implementation (decided 2026-10-11):**
+  - **Toggle:** "Follow-up check-ins" (Notifications, off by default). With it on, the session editor offers "Check in later" with a delay in minutes. The default comes from the session's methods: 90 minutes for edibles and drinks, 45 for tinctures, and no check-in by default for inhaled or topical use. The editor asks for the notification permission when it's missing.
+  - **Scheduling:** an inexact `AlarmManager` alarm (`setAndAllowWhileIdle`), so no exact-alarm permission is needed. The alarm carries nothing. One check-in is pending at a time, and a newer one replaces it. A reboot drops a pending check-in (no boot receiver).
+  - **Session ID:** waits in the app's private, no-backup preferences. It is an opaque random ID, meaningless without the journal, and is removed once the check-in is opened or cancelled.
+  - **Reminder:** "Quick check-in?" at every tier, public on the lock screen because it says nothing.
+  - **Check-in screen:** tapping the reminder opens it after unlock. It updates the session's effects, mood after and rating, and can add a note to its stream.
 
 ## Keyboards and voice input (decided)
 
