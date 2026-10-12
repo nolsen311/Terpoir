@@ -169,6 +169,17 @@ without it.
         with F-Droid whether the source tarballs come in as `srclibs`.
 - [ ] Trademark Statement of Use after launch.
 
+## Feature releases (after the first public release)
+
+Features planned for the first versioned releases, each its own release.
+
+- [ ] Scan recognition from the journal (`docs/design-decisions.md`,
+      "Scan recognition from the journal"): learned receipt names with
+      automatic linking on an exact match; OCR-tolerant suggestions
+      ranked by shop and brand; brand and strain detection on labels;
+      matched text broken down into brand, strain, product type and size
+      over time. Later, an offline strain database (per "Catalog lookups").
+
 ## Phase 5: Stretch
 
 - [ ] iOS app (Swift, UniFFI Swift bindings); submit as an individual,

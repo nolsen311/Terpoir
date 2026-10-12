@@ -603,6 +603,16 @@ Each journal entry records one consumption session, not a product review. Produc
   - **Online code lookups are not planned** (maintainer, 2026-10-12; see "Settled 2026-10-12").
 - On-device model tiers can improve parsing (messy receipts) but are not required; pattern parsing works without them.
 
+## Scan recognition from the journal (decided 2026-10-12, maintainer)
+Scans get better at recognising what the user buys by using what the journal already holds: products, brands, strains, shops, and how receipts have named them before. All of it runs on the device, in the Rust core (`terpoir-scan` for matching, the product record for learned names); the platforms only show the results. Planned as one of the first versioned feature releases.
+- **Learned receipt names.** When the user links a receipt line to a product, the product keeps the line's normalised text as an alias (encrypted, synced with the product). The next time a receipt prints that exact text, the line links to that product **automatically**, shown with a "matched" chip that one tap changes or undoes.
+- **OCR-tolerant suggestions.** Without an exact alias, the core ranks the user's products, brands and strains against the scanned text: word by word, tolerant of common OCR confusions (`0/O`, `1/l/I`, `5/S`, `8/B`, `rn/m`), boosted for products whose "Where I buy it" includes the receipt's shop and for lines that contain a known brand. These are **suggestions only** ("Looks like Acme Blue Dream?"); nothing below an exact alias links on its own.
+- **Labels.** Known brand and strain names found in label text pre-fill Brand and Strain, and narrow the duplicate-product check.
+- **Growing over time.** Matched text is broken down into what it identifies (brand, strain, product type or form, size), so later scans recognise those pieces even in products the user hasn't logged before.
+- **Later: a strain database.** Recognition can draw on a strain database when one exists, in the way the "Catalog lookups" section allows: a downloadable offline catalog first (no per-scan queries, so nothing about what the user scans leaves the phone); any online lookup is its own opt-in catalog toggle with a disclosure card.
+- **Not done: vocabulary fed to the OCR engine.** Tesseract only takes custom words as a file on disk, which would put journal-derived names outside the encrypted store, and ML Kit has no such hook. Correcting after recognition gets most of the benefit without that.
+- **Privacy:** no new toggle; nothing leaves the encrypted store. Aliases are part of the product: included in the plaintext export, never on share cards.
+
 ## Stream journaling, tagging, and insights
 
 ### Stream
