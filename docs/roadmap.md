@@ -129,6 +129,10 @@ without it.
 - [ ] Purchase prompts on Re-up Spots: dwell-then-exit geofence, discreet
       "Quick log?", no visit log; "Show me" banner alternative.
 - [ ] Bring-your-own-storage sync backends and direct device pairing.
+- [ ] Privacy Center readability pass (maintainer, 2026-10-12): the screen
+      is visually dense and hard to scan. Review it and try a few layout
+      options for the maintainer to pick from. After the main
+      functionality above.
 
 ## Phase 4: Release
 
@@ -148,3 +152,18 @@ without it.
 - [ ] OS on-device and bundled LLM tagging tiers; bundled speech model.
 - [ ] Terpoir-to-Terpoir record sharing.
 - [ ] Sigstore transparency logging for releases.
+
+## Backlog (not yet scheduled)
+
+Ideas the maintainer wants kept, to be designed and scheduled later.
+
+- [ ] Personal gear for consumption methods (maintainer, 2026-10-12): let
+      users name their own pieces (a favorite bong, a favorite pipe, a
+      particular vaporizer) and pick one on a session's product line, so
+      sessions can be compared piece against piece, as with any other
+      insight. Decided: gear is an optional detail of a method, never a
+      replacement for it. A line stays "smoked" and can add "the green
+      bong"; each piece belongs to a method, and only that method's pieces
+      are offered. Still to design: how it is stored (its own record or a
+      tag kind), and how it shows in shares (excluded by default) and the
+      plaintext export.

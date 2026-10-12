@@ -252,6 +252,7 @@
     <string name="share_field_timeline">Timeline</string>
     <string name="share_field_spot">Spot</string>
     <string name="share_field_notes">Notes</string>
+    <string name="share_field_symptoms">Targeted symptoms</string>
     <string name="share_field_form">Form</string>
     <string name="share_field_cannabinoids">THC and CBD</string>
     <string name="share_field_terpenes">Terpenes</string>

@@ -46,6 +46,16 @@ private val SESSION_OPTIONS = listOf(
     ShareOption("notes", R.string.share_field_notes, false),
 )
 
+/** Offered only while the targeted-symptoms section is on, and off by default. */
+private val SYMPTOMS_OPTION = ShareOption("symptoms", R.string.share_field_symptoms, false)
+
+/** How a symptom result reads in a share. */
+private val SYMPTOM_RESULTS = mapOf(
+    "helped" to R.string.symptom_helped,
+    "did_not_help" to R.string.symptom_did_not_help,
+    "not_rated" to R.string.symptom_not_rated,
+)
+
 /** How much of a session's time to share; none by default. */
 private enum class DateShare(val label: Int) {
     NONE(R.string.share_date_none),
@@ -61,12 +71,16 @@ private class SessionSource(
     val customNames: Map<String, String>,
     val spot: String?,
     val notes: List<String>,
+    val symptomNames: Map<String, String>,
 )
 
-/** Shares a saved session. */
+/**
+ * Shares a saved session. Targeted symptoms are offered only while their
+ * section is on ([symptomsOn]), and start excluded.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SessionShare(repo: JournalRepository, id: String, onClose: () -> Unit) {
+fun SessionShare(repo: JournalRepository, id: String, symptomsOn: Boolean, onClose: () -> Unit) {
     var source by remember { mutableStateOf<SessionSource?>(null) }
     var date by rememberSaveable { mutableStateOf(DateShare.NONE) }
     LaunchedEffect(id) {
@@ -81,11 +95,12 @@ fun SessionShare(repo: JournalRepository, id: String, onClose: () -> Unit) {
             customNames = (repo.tags("effect")).associate { it.id to it.data.name },
             spot = session.spot?.let { repo.spot(it)?.name },
             notes = repo.sessionSnippets(id).map { it.data.text },
+            symptomNames = repo.tags("symptom").associate { it.id to it.data.name },
         )
     }
     val loaded = source ?: return
     ShareScreen(
-        options = SESSION_OPTIONS,
+        options = if (symptomsOn && loaded.session.symptoms.isNotEmpty()) SESSION_OPTIONS + SYMPTOMS_OPTION else SESSION_OPTIONS,
         onClose = onClose,
         extra = {
             Text(stringResource(R.string.share_field_date), style = MaterialTheme.typography.labelLarge)
@@ -141,6 +156,13 @@ private fun sessionShare(source: SessionSource, chosen: Set<String>, date: DateS
             if (parts.isNotEmpty()) add(ShareLine(stringResource(R.string.share_field_timeline), parts.joinToString(", ")))
         }
         if ("spot" in chosen) source.spot?.let { add(ShareLine(stringResource(R.string.share_field_spot), it)) }
+        if ("symptoms" in chosen && s.symptoms.isNotEmpty()) {
+            val symptoms = s.symptoms.map { symptom ->
+                val result = SYMPTOM_RESULTS[symptom.result]?.let { stringResource(it) } ?: symptom.result
+                "${tagLabel(symptom.tag, source.symptomNames)}: $result"
+            }
+            add(ShareLine(stringResource(R.string.share_field_symptoms), symptoms.joinToString(", ")))
+        }
         if ("notes" in chosen && source.notes.isNotEmpty()) {
             add(ShareLine(stringResource(R.string.share_field_notes), source.notes.joinToString("\n")))
         }
