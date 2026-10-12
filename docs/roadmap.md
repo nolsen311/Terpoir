@@ -152,3 +152,15 @@ without it.
 - [ ] OS on-device and bundled LLM tagging tiers; bundled speech model.
 - [ ] Terpoir-to-Terpoir record sharing.
 - [ ] Sigstore transparency logging for releases.
+
+## Backlog (not yet scheduled)
+
+Ideas the maintainer wants kept, to be designed and scheduled later.
+
+- [ ] Personal gear for consumption methods (maintainer, 2026-10-12): let
+      users name their own pieces (a favorite bong, a favorite pipe, a
+      particular vaporizer) and pick one on a session's product line, so
+      sessions can be compared piece against piece, as with any other
+      insight. Needs a design decision first: gear as its own record kind
+      or as tags under each method, how it shows in shares (excluded by
+      default) and in the plaintext export.
