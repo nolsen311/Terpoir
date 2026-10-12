@@ -67,6 +67,27 @@ fun buildPrivacyCenter(
                 },
             ),
         ),
+        // On only shows the journal's Insights entry; insights are computed
+        // in the core when opened and never stored. Off forgets what the
+        // user dismissed, marked wrong or muted.
+        PrivacyToggle(
+            id = "insights",
+            group = PrivacyGroup.JOURNAL,
+            card = PrivacyCard(
+                title = R.string.insights_toggle,
+                whatItDoes = R.string.insights_does,
+                whatLeaves = R.string.insights_leaves,
+                whoCanSee = R.string.insights_who,
+                howToUndo = R.string.insights_undo,
+            ),
+            privateState = false,
+            isOn = { settings.insights },
+            onAction = { settings.insights = true },
+            offAction = {
+                settings.insights = false
+                withContext(Dispatchers.IO) { journal()?.forgetInsightFeedback() }
+            },
+        ),
         // A fix is taken only when the journal opens and only compared with
         // spots inside the core; nothing is registered with the OS, so off
         // has nothing to clean up.

@@ -109,6 +109,14 @@ class PrivacySettings(context: Context) {
         get() = prefs.getBoolean(KEY_SYMPTOMS, false)
         set(value) = prefs.edit().putBoolean(KEY_SYMPTOMS, value).apply()
 
+    /**
+     * Insights: patterns in the user's own ratings, computed on the phone
+     * when opened. Off by default: nothing is computed until the user asks.
+     */
+    var insights: Boolean
+        get() = prefs.getBoolean(KEY_INSIGHTS, false)
+        set(value) = prefs.edit().putBoolean(KEY_INSIGHTS, value).apply()
+
     /** Whether the voice first-use card has been shown and answered. */
     var voiceIntroSeen: Boolean
         get() = prefs.getBoolean(KEY_VOICE_INTRO_SEEN, false)
@@ -127,5 +135,6 @@ class PrivacySettings(context: Context) {
         const val KEY_CHECK_INS = "follow_up_check_ins"
         const val KEY_ONLINE_MAP = "online_map"
         const val KEY_SYMPTOMS = "targeted_symptoms"
+        const val KEY_INSIGHTS = "insights"
     }
 }

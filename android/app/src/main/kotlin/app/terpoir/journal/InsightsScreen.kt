@@ -1,0 +1,151 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+// Copyright (C) 2026 The Terpoir Authors
+// See LICENSING.md for the additional permission under GPLv3 section 7.
+
+package app.terpoir.journal
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import app.terpoir.R
+import app.terpoir.core.InsightData
+import app.terpoir.core.InsightFeedback
+import app.terpoir.core.SessionData
+import java.util.Locale
+import kotlinx.coroutines.launch
+
+/**
+ * Insights (docs/design-decisions.md, "Insights engine"): plain averages of
+ * the user's own ratings, computed in the core only while insights are on.
+ * Each shows its evidence and likely confounders, opens its sessions, and
+ * can be dismissed, marked wrong, or muted by category. Never advice.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun InsightsScreen(repo: JournalRepository, onOpenSession: (String) -> Unit, onClose: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var insights by remember { mutableStateOf<List<InsightData>?>(null) }
+    var sessions by remember { mutableStateOf<Map<String, SessionData>>(emptyMap()) }
+    var expanded by remember { mutableStateOf<String?>(null) }
+    var revision by remember { mutableIntStateOf(0) }
+    LaunchedEffect(revision) {
+        insights = repo.insights()
+        sessions = repo.sessions().associate { it.id to it.data }
+    }
+    fun feedback(key: String, kind: InsightFeedback) {
+        scope.launch {
+            repo.setInsightFeedback(key, kind)
+            revision++
+        }
+    }
+
+    EditorScaffold(title = stringResource(R.string.insights_title), onClose = onClose, onSave = {}, saveEnabled = false) {
+        Text(stringResource(R.string.insights_explainer), style = MaterialTheme.typography.bodySmall)
+        val list = insights ?: return@EditorScaffold
+        if (list.isEmpty()) Text(stringResource(R.string.insights_none), style = MaterialTheme.typography.bodyMedium)
+        for (insight in list) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(stringResource(R.string.insights_suggest), style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        stringResource(
+                            R.string.insights_finding,
+                            subjectPhrase(insight),
+                            stars(insight.withAvgMilli),
+                            stars(insight.withoutAvgMilli),
+                        ),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        pluralStringResource(
+                            R.plurals.insights_evidence,
+                            insight.withSessions.size,
+                            insight.withSessions.size,
+                            insight.withoutCount.toInt(),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (insight.confounders.isNotEmpty()) {
+                        val also = insight.confounders.map { stringResource(confounderLabel(it)) }.joinToString(", ")
+                        Text(stringResource(R.string.insights_confounders, also), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+                    }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(onClick = { expanded = if (expanded == insight.key) null else insight.key }) {
+                            Text(stringResource(R.string.insights_sessions))
+                        }
+                        TextButton(onClick = { feedback(insight.key, InsightFeedback.DISMISSED) }) { Text(stringResource(R.string.insights_dismiss)) }
+                        TextButton(onClick = { feedback(insight.key, InsightFeedback.WRONG) }) { Text(stringResource(R.string.insights_wrong)) }
+                        TextButton(onClick = { feedback(insight.category, InsightFeedback.MUTED) }) {
+                            Text(stringResource(R.string.insights_mute, stringResource(categoryLabel(insight.category))))
+                        }
+                    }
+                    if (expanded == insight.key) {
+                        for (id in insight.withSessions) {
+                            val s = sessions[id] ?: continue
+                            TextButton(onClick = { onOpenSession(id) }) {
+                                Text(listOfNotNull(formatWhen(s.`when`.unixMs, s.`when`.utcOffsetMin), s.rating?.let { "${it}★" }).joinToString(" · "))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** What was compared, as the start of a sentence. */
+@Composable
+private fun subjectPhrase(insight: InsightData): String {
+    val name = if (insight.custom) insight.subject else label(insight.subject)
+    return when (insight.category) {
+        "terpene" -> stringResource(R.string.insights_subject_terpene, name)
+        "method" -> stringResource(R.string.insights_subject_method, name)
+        "form" -> stringResource(R.string.insights_subject_form, name)
+        "strain_type" -> stringResource(R.string.insights_subject_strain_type, name)
+        "time" -> stringResource(R.string.insights_subject_time, stringResource(timeLabel(insight.subject)))
+        else -> name
+    }
+}
+
+/** Thousandths of a star as "3.4". */
+private fun stars(milli: Long): String = String.format(Locale.getDefault(), "%.1f", milli / 1000.0)
+
+private fun timeLabel(slug: String): Int = when (slug) {
+    "morning" -> R.string.insights_time_morning
+    "afternoon" -> R.string.insights_time_afternoon
+    "evening" -> R.string.insights_time_evening
+    else -> R.string.insights_time_night
+}
+
+private fun confounderLabel(slug: String): Int = when (slug) {
+    "method" -> R.string.insights_category_method
+    "time" -> R.string.insights_category_time
+    else -> R.string.insights_confounder_dose
+}
+
+private fun categoryLabel(slug: String): Int = when (slug) {
+    "terpene" -> R.string.insights_category_terpene
+    "method" -> R.string.insights_category_method
+    "form" -> R.string.insights_category_form
+    "strain_type" -> R.string.insights_category_strain_type
+    else -> R.string.insights_category_time
+}
