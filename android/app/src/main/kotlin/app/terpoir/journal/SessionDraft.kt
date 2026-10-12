@@ -7,6 +7,7 @@ package app.terpoir.journal
 import app.terpoir.core.LocalTimeData
 import app.terpoir.core.ProductLineData
 import app.terpoir.core.SessionData
+import app.terpoir.core.SymptomData
 import app.terpoir.core.TagIntensity
 import app.terpoir.core.TagRefData
 
@@ -27,8 +28,9 @@ enum class DraftError { DOSE, TIMELINE }
 
 /**
  * A session being edited. Fields the editor does not show yet (activity,
- * symptoms, attachments) are carried over from the saved session
- * unchanged, so editing never drops them.
+ * attachments) are carried over from the saved session unchanged, so
+ * editing never drops them. Symptoms are carried the same way while the
+ * targeted-symptoms section is hidden.
  */
 data class SessionDraft(
     val whenMs: Long,
@@ -47,6 +49,8 @@ data class SessionDraft(
     val wouldRepeat: Boolean? = null,
     /** The spot it happened at, if recorded. */
     val spot: String? = null,
+    /** Targeted symptom → result slug (`helped`, `did_not_help`, `not_rated`). */
+    val symptoms: Map<TagRefData, String> = emptyMap(),
     private val original: SessionData? = null,
 ) {
     /** The session to save, or what is wrong. */
@@ -91,7 +95,7 @@ data class SessionDraft(
                 rating = rating?.toUByte(),
                 wouldRepeat = wouldRepeat,
                 spot = spot,
-                symptoms = original?.symptoms.orEmpty(),
+                symptoms = symptoms.map { (tag, result) -> SymptomData(tag, result) },
                 attachments = original?.attachments.orEmpty(),
             ),
         )
@@ -135,6 +139,7 @@ data class SessionDraft(
             rating = data.rating?.toInt(),
             wouldRepeat = data.wouldRepeat,
             spot = data.spot,
+            symptoms = data.symptoms.associate { it.tag to it.result },
             original = data,
         )
     }

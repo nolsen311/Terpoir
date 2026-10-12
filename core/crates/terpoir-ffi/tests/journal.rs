@@ -768,3 +768,50 @@ fn the_plaintext_export_has_every_record_readably() {
     assert!(products_csv.contains(",'=1+1,2026-10-11"));
     assert!(products_csv.contains(",85.5,percent,"));
 }
+
+#[test]
+fn deleting_symptoms_keeps_the_rest_of_each_session() {
+    let keys = create_keys().unwrap();
+    let dir = Device::new();
+    let journal = dir.open(&keys).unwrap();
+    let custom = journal
+        .save_tag(
+            None,
+            TagData {
+                name: "Cramps".into(),
+                category: "symptom".into(),
+            },
+            5,
+        )
+        .unwrap();
+    let effect = journal
+        .save_tag(
+            None,
+            TagData {
+                name: "Giggly".into(),
+                category: "effect".into(),
+            },
+            6,
+        )
+        .unwrap();
+    let mut with_symptoms = session(None);
+    with_symptoms.symptoms.push(SymptomData {
+        tag: TagRefData::Custom { id: custom.clone() },
+        result: "not_rated".into(),
+    });
+    let first = journal.save_session(None, with_symptoms, 10).unwrap();
+    let mut without = session(None);
+    without.symptoms.clear();
+    let second = journal.save_session(None, without, 11).unwrap();
+
+    assert_eq!(journal.delete_symptoms(20).unwrap(), 1);
+    let first = journal.get_session(first).unwrap().unwrap();
+    assert!(first.symptoms.is_empty());
+    assert_eq!(first.effects.len(), 1);
+    assert_eq!(first.rating, Some(4));
+    assert!(journal.get_session(second).unwrap().is_some());
+    assert!(journal.get_tag(custom).unwrap().is_none());
+    assert!(journal.get_tag(effect).unwrap().is_some());
+    // Nothing left to delete.
+    assert_eq!(journal.delete_symptoms(30).unwrap(), 0);
+}

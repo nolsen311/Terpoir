@@ -81,6 +81,28 @@ slug_enum! {
         Helped => "helped",
         /// 👎 did not help.
         DidNotHelp => "did_not_help",
+        /// Targeted, but the user was unsure and skipped rating it.
+        NotRated => "not_rated",
+    }
+}
+
+slug_enum! {
+    /// Built-in targeted symptoms: symptoms, never conditions or diagnoses
+    /// (the symptom map also accepts custom ones). Slugs are unique across
+    /// every built-in tag vocabulary.
+    TargetedSymptom {
+        /// Sleep.
+        Sleep => "sleep",
+        /// Pain.
+        Pain => "pain",
+        /// Anxiety.
+        Anxiety => "anxiety",
+        /// Appetite.
+        Appetite => "appetite",
+        /// Nausea.
+        Nausea => "nausea",
+        /// Focus.
+        Focus => "focus",
     }
 }
 

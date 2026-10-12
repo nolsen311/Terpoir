@@ -46,8 +46,39 @@ pub use records::{
     Intention, LabelAmount, LabelUnit, LocalTime, Location, MIN_SPOT_RADIUS_M, Method, Mood, Price,
     Product, ProductLine, Provenance, Purchase, PurchaseLine, PurchaseRef, Record, RecordKind,
     Session, Snippet, Social, Spot, SpotPurpose, Strain, StrainType, SymptomResult, Tag,
-    TagCategory, TagRef, Terpene, Timeline,
+    TagCategory, TagRef, TargetedSymptom, Terpene, Timeline,
 };
 pub use stamp::{DeviceId, Hlc, Stamp};
 pub use terpoir_crypto::RecordId;
 pub use value::Value;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    /// Built-in tags are stored and indexed by slug alone, so one slug must
+    /// never name two things.
+    #[test]
+    fn builtin_tag_slugs_are_unique() {
+        let effects: Vec<&str> = CoreEffect::ALL.iter().map(|e| e.slug()).collect();
+        let purposes = [
+            SpotPurpose::Blaze,
+            SpotPurpose::Munch,
+            SpotPurpose::ReUp,
+            SpotPurpose::Chill,
+        ]
+        .map(SpotPurpose::slug);
+        let all: Vec<&str> = effects
+            .iter()
+            .copied()
+            .chain(Terpene::SLUGS.iter().copied())
+            .chain(Flavor::SLUGS.iter().copied())
+            .chain(Mood::SLUGS.iter().copied())
+            .chain(TargetedSymptom::SLUGS.iter().copied())
+            .chain(purposes)
+            .collect();
+        let unique: HashSet<&str> = all.iter().copied().collect();
+        assert_eq!(unique.len(), all.len());
+    }
+}

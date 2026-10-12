@@ -59,6 +59,7 @@ fun PrivacyCenterScreen(
     // Toggle state lives in settings, not Compose; bumped after each action.
     var revision by remember { mutableIntStateOf(0) }
     var confirming by remember { mutableStateOf<PrivacyToggle?>(null) }
+    var turningOff by remember { mutableStateOf<PrivacyToggle?>(null) }
     var choosing by remember { mutableStateOf<PrivacyPreset?>(null) }
     // The tour's optional question; never stored.
     var threat by remember { mutableStateOf<Threat?>(null) }
@@ -114,7 +115,7 @@ fun PrivacyCenterScreen(
                         checked = on,
                         onCheckedChange = { wanted ->
                             if (wanted == toggle.privateState) {
-                                run { toggle.set(wanted) }
+                                if (toggle.offChoice != null) turningOff = toggle else run { toggle.set(wanted) }
                             } else {
                                 confirming = toggle
                             }
@@ -166,6 +167,33 @@ fun PrivacyCenterScreen(
             },
             dismissButton = {
                 TextButton(onClick = { choosing = null }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+
+    turningOff?.let { toggle ->
+        val choice = toggle.offChoice ?: return@let
+        AlertDialog(
+            onDismissRequest = { turningOff = null },
+            title = { Text(stringResource(toggle.card.title)) },
+            text = { Text(stringResource(choice.question)) },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = {
+                        turningOff = null
+                        run {
+                            toggle.set(toggle.privateState)
+                            choice.delete()
+                        }
+                    }) { Text(stringResource(choice.deleteLabel), color = MaterialTheme.colorScheme.error) }
+                    TextButton(onClick = {
+                        turningOff = null
+                        run { toggle.set(toggle.privateState) }
+                    }) { Text(stringResource(choice.hideLabel)) }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { turningOff = null }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }
@@ -237,6 +265,7 @@ private fun Card(card: PrivacyCard) {
 
 private val PrivacyGroup.title: Int
     get() = when (this) {
+        PrivacyGroup.JOURNAL -> R.string.privacy_group_journal
         PrivacyGroup.LOCATION -> R.string.privacy_group_location
         PrivacyGroup.NOTIFICATIONS -> R.string.privacy_group_notifications
         PrivacyGroup.CATALOGS -> R.string.privacy_group_catalogs

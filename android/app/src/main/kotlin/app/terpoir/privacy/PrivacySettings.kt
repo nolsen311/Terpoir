@@ -100,6 +100,15 @@ class PrivacySettings(context: Context) {
         get() = prefs.getBoolean(KEY_ONLINE_MAP, false)
         set(value) = prefs.edit().putBoolean(KEY_ONLINE_MAP, value).apply()
 
+    /**
+     * Targeted symptoms: the session editor shows a section for rating
+     * whether a session helped with a symptom. Off by default: symptoms
+     * are health information.
+     */
+    var targetedSymptoms: Boolean
+        get() = prefs.getBoolean(KEY_SYMPTOMS, false)
+        set(value) = prefs.edit().putBoolean(KEY_SYMPTOMS, value).apply()
+
     /** Whether the voice first-use card has been shown and answered. */
     var voiceIntroSeen: Boolean
         get() = prefs.getBoolean(KEY_VOICE_INTRO_SEEN, false)
@@ -117,5 +126,6 @@ class PrivacySettings(context: Context) {
         const val KEY_ALERT_DETAILS = "alert_details"
         const val KEY_CHECK_INS = "follow_up_check_ins"
         const val KEY_ONLINE_MAP = "online_map"
+        const val KEY_SYMPTOMS = "targeted_symptoms"
     }
 }

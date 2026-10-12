@@ -12,6 +12,8 @@ import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.SpotAlerts
 import app.terpoir.core.Journal
 import app.terpoir.map.OnlineMap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Builds the Privacy Center with every toggle this build has. */
 fun buildPrivacyCenter(
@@ -38,6 +40,32 @@ fun buildPrivacyCenter(
             isOn = { settings.screenProtection },
             onAction = { settings.screenProtection = true },
             offAction = { settings.screenProtection = false },
+        ),
+        // Only shows or hides the session editor's section; nothing leaves
+        // the journal. Turned off by hand, it asks whether to keep what was
+        // recorded (hidden) or delete it.
+        PrivacyToggle(
+            id = "targeted_symptoms",
+            group = PrivacyGroup.JOURNAL,
+            card = PrivacyCard(
+                title = R.string.symptoms,
+                whatItDoes = R.string.symptoms_does,
+                whatLeaves = R.string.symptoms_leaves,
+                whoCanSee = R.string.symptoms_who,
+                howToUndo = R.string.symptoms_undo,
+            ),
+            privateState = false,
+            isOn = { settings.targetedSymptoms },
+            onAction = { settings.targetedSymptoms = true },
+            offAction = { settings.targetedSymptoms = false },
+            offChoice = OffChoice(
+                question = R.string.symptoms_off_question,
+                hideLabel = R.string.symptoms_off_hide,
+                deleteLabel = R.string.symptoms_off_delete,
+                delete = {
+                    withContext(Dispatchers.IO) { journal()?.deleteSymptoms(System.currentTimeMillis().toULong()) }
+                },
+            ),
         ),
         // A fix is taken only when the journal opens and only compared with
         // spots inside the core; nothing is registered with the OS, so off

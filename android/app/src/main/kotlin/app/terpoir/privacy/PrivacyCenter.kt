@@ -8,6 +8,7 @@ import androidx.annotation.StringRes
 
 /** Privacy Center sections, in display order. */
 enum class PrivacyGroup {
+    JOURNAL,
     LOCATION,
     NOTIFICATIONS,
     CATALOGS,
@@ -40,6 +41,8 @@ class PrivacyCard(
  * @property privateState the state that is most private, and the default.
  *   Usually off; on for protections such as screen protection.
  * @property isOn reads the current state.
+ * @property offChoice for a toggle that collects journal data: turning it
+ *   off by hand asks whether to keep that data hidden or delete it.
  */
 class PrivacyToggle(
     val id: String,
@@ -49,6 +52,7 @@ class PrivacyToggle(
     val isOn: () -> Boolean,
     private val onAction: suspend () -> Unit,
     private val offAction: suspend () -> Unit,
+    val offChoice: OffChoice? = null,
 ) {
     /** Whether the toggle is in its most private state. */
     val isPrivate: Boolean get() = isOn() == privateState
@@ -59,6 +63,19 @@ class PrivacyToggle(
         check(isOn() == on) { "Privacy toggle $id did not turn ${if (on) "on" else "off"}" }
     }
 }
+
+/**
+ * The question asked when a toggle that collects journal data is turned off
+ * by hand: keep the data, hidden, or delete it ([delete] runs after the
+ * off-action). Presets and "Restore maximum privacy" only hide; nothing is
+ * deleted without asking.
+ */
+class OffChoice(
+    @StringRes val question: Int,
+    @StringRes val hideLabel: Int,
+    @StringRes val deleteLabel: Int,
+    val delete: suspend () -> Unit,
+)
 
 /**
  * A preset: a full set of toggle states (docs/design-decisions.md, "Presets
