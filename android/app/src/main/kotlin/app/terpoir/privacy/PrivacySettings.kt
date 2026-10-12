@@ -127,6 +127,14 @@ class PrivacySettings(context: Context) {
         get() = prefs.getBoolean(KEY_PURCHASE_PROMPTS, false)
         set(value) = prefs.edit().putBoolean(KEY_PURCHASE_PROMPTS, value).apply()
 
+    /**
+     * Folder sync: encrypted sync files in a folder the user picks. Off by
+     * default: whatever syncs that folder (a cloud drive app) stores them.
+     */
+    var folderSync: Boolean
+        get() = prefs.getBoolean(KEY_FOLDER_SYNC, false)
+        set(value) = prefs.edit().putBoolean(KEY_FOLDER_SYNC, value).apply()
+
     /** Whether the voice first-use card has been shown and answered. */
     var voiceIntroSeen: Boolean
         get() = prefs.getBoolean(KEY_VOICE_INTRO_SEEN, false)
@@ -147,5 +155,6 @@ class PrivacySettings(context: Context) {
         const val KEY_SYMPTOMS = "targeted_symptoms"
         const val KEY_INSIGHTS = "insights"
         const val KEY_PURCHASE_PROMPTS = "purchase_prompts"
+        const val KEY_FOLDER_SYNC = "folder_sync"
     }
 }

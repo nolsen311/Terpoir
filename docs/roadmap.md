@@ -129,6 +129,10 @@ without it.
 - [x] Purchase prompts on Re-up Spots: dwell-then-exit geofence, discreet
       "Quick log?", no visit log; "Show me" banner alternative.
 - [ ] Bring-your-own-storage sync backends and direct device pairing.
+  - [x] First backend: a folder chosen through the system file picker
+        (Syncthing, or cloud drives through their apps); no INTERNET.
+  - [ ] WebDAV / S3-compatible backends (need INTERNET through the gateway).
+  - [ ] Direct device pairing (QR code, local transfer).
 - [ ] Privacy Center readability pass (maintainer, 2026-10-12): the screen
       is visually dense and hard to scan. Review it and try a few layout
       options for the maintainer to pick from. After the main
