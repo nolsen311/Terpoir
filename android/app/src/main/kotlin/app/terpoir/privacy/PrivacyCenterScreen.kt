@@ -53,6 +53,7 @@ fun PrivacyCenterScreen(
     onChanged: () -> Unit,
     onClose: () -> Unit,
     tour: Boolean = false,
+    footer: @Composable () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     // Toggle state lives in settings, not Compose; bumped after each action.
@@ -123,6 +124,7 @@ fun PrivacyCenterScreen(
                 Card(toggle.card)
             }
         }
+        footer()
         if (tour) {
             Button(onClick = onClose) { Text(stringResource(R.string.privacy_tour_finish)) }
         } else {

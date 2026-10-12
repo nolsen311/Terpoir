@@ -15,8 +15,9 @@ import app.terpoir.core.SessionData
 import app.terpoir.core.SnippetData
 import app.terpoir.core.SpotData
 import app.terpoir.core.StrainData
-import app.terpoir.core.TagSuggestion
 import app.terpoir.core.TagData
+import app.terpoir.core.TagSuggestion
+import app.terpoir.core.readExportArchive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -127,6 +128,18 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
 
     /** Deletes a record (crypto-erasure in the core). */
     suspend fun delete(id: String): Boolean = io { journal.deleteRecord(id) }
+
+    /** The whole journal as an encrypted export (only the recovery key opens it). */
+    suspend fun exportArchive(masterWrappedByRecovery: ByteArray): ByteArray = io { journal.exportArchive(masterWrappedByRecovery) }
+
+    /**
+     * Merges an export of this same journal (for example from before a
+     * reset) into it; returns how many records were added or updated.
+     */
+    suspend fun importArchive(bytes: ByteArray): Long = io {
+        val archive = readExportArchive(bytes)
+        archive.blobs.sumOf { journal.importSyncBlob(it, now()).records.toLong() }
+    }
 
     private fun <T> load(type: RecordType, get: (String) -> T?): List<Entry<T>> =
         journal.list(type).mapNotNull { id -> get(id)?.let { Entry(id, it) } }
