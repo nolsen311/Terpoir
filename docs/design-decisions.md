@@ -1121,6 +1121,7 @@ Each journal entry records one consumption session, not a product review. Produc
 - Universal links / associated domains cause Apple and Google to fetch a verification file from the domain; note this in disclosure docs.
 - DNS hardening in place (Cloudflare): DNSSEC, CAA restricting issuance (Let's Encrypt plus Cloudflare's automatic Universal SSL CAs), null MX, SPF `-all`, DMARC reject, empty DKIM.
 - Website: no analytics or third-party scripts; disclose that Cloudflare terminates TLS and can see visitors.
+- **Website implementation (decided, `site/`):** one static page, hosted free on Cloudflare Pages from `site/` on `main`. System fonts only and no external requests; `_headers` sets a CSP that allows nothing beyond inline styles. Cloudflare Web Analytics stays off. Voice follows the in-app tone: candid about AI authorship, trademark and money. No AI-made logo, icon or illustration: the page is type-led, with `ARTIST:` slots for commissioned human artwork.
 - **Infrastructure as code (decided 2026-10-12, maintainer):** the zone's DNS, DNSSEC, the website's Cloudflare Pages project and this repository's settings (merge methods, Dependabot, the `protect-main` ruleset) are managed with Terraform in the private repository `nolsen311/Terpoir-infra`. Changes go through a PR there, with a plan reviewed before a manual apply. Dashboard edits show up as drift. Its state sits in the maintainer's own Azure storage. None of it is a server for the app.
 
 ## Licensing, trademark, and anti-clone protection

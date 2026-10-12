@@ -15,6 +15,7 @@ Items waiting on the maintainer. See CLAUDE.md, "Workflow".
 | The default map depends on OpenFreeMap's public instance, run by one person on donations with no SLA. | Accepted risk (maintainer); a user-entered tile server URL is a possible later addition. | 2026-10-12, accepted |
 | F-Droid anti-features for the map: OpenFreeMap is free software and MapTiler needs the user's own key, so no NonFreeNet is expected. | Confirmed in the F-Droid recipe review. | 2026-10-12, open |
 | The Google Maps key (`GOOGLE_MAPS_API_KEY`) is restricted to Maps SDK for Android only, not yet to the package and signing-certificate SHA-1s. | Restricted to `app.terpoir` plus the CI debug, local debug, release (YubiKey) and Play App Signing SHA-1s. | 2026-10-12, open (maintainer) |
+| The website's tip jar (`site/index.html`, `#tip`) shows "Tip jar opens soon" instead of a donation link; no donation account exists yet. | The maintainer sets up GitHub Sponsors and/or Liberapay and the placeholder is replaced with the real link(s). | 2026-10-12, open (maintainer) |
 | No device test yet that the app opens no network connection with the default settings (`docs/design-decisions.md`, "Android project"). The gateway's unit tests cover the refusal logic. | An instrumented test drives the app with the defaults (opening the spot editor included) and finds no traffic from its UID. | 2026-10-12, open |
 
 ## Blocked network sources
