@@ -95,10 +95,37 @@ jobs:
         working-directory: .
         run: .github/scripts/setup-android-core.sh
 
+      # The throwaway debug signing key, kept between runs so each test
+      # build installs over the last one. It signs debug builds only and is
+      # never a release key; saved only from main, like the dependencies.
+      - name: Restore debug signing key
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.android/debug.keystore
+          key: debug-keystore-v1
+
       - name: Build, test, lint and verify
         run: |
           export JAVA_HOME="$JAVA_HOME_21_X64"
           ./gradlew --no-daemon --no-build-cache assemble check lintFossRelease lintPlayRelease
+
+      # Debug builds to install for testing (debug-signed, logging kept).
+      # Use the foss one: the Play debug build lacks text recognition,
+      # which only Google Play can install for it.
+      - name: Upload test builds
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: terpoir-debug-apks
+          path: android/app/build/outputs/apk/*/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Save debug signing key
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.android/debug.keystore
+          key: debug-keystore-v1
 
       # This job resolves every dependency, so its cache is the complete one.
       - name: Save dependency cache
