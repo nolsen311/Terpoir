@@ -100,6 +100,12 @@
     <string name="export_button">Export</string>
     <string name="import_button">Import</string>
     <string name="export_saved">Saved. Only your recovery key opens it.</string>
+    <string name="plaintext_button">Export as plain files (unencrypted)…</string>
+    <string name="plaintext_title">Export without encryption?</string>
+    <string name="plaintext_warning">This saves your whole journal as readable files (JSON and spreadsheet-friendly CSV, in one ZIP), to move it to another app or keep your own copy. Unlike everything else in Terpoir, they are not encrypted: anyone or any app that gets the file can read every session, note, product and spot in it.</string>
+    <string name="plaintext_cloud">If you save it in a cloud-synced folder (Google Drive, Dropbox and the like), it will be uploaded. Keep it somewhere private, and delete it when you\'re done.</string>
+    <string name="plaintext_confirm">Export unencrypted</string>
+    <string name="plaintext_saved">Saved, unencrypted. Keep it private and delete it when you\'re done.</string>
     <string name="export_failed">The export couldn\'t be saved. Try another place.</string>
     <string name="import_not_this_journal">That file isn\'t an export of this journal.</string>
     <string name="import_failed">The file couldn\'t be read.</string>

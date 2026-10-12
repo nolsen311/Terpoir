@@ -5,6 +5,7 @@
 package app.terpoir.journal
 
 import app.terpoir.core.BrandData
+import app.terpoir.core.ExportFile
 import app.terpoir.core.Journal
 import app.terpoir.core.NearbySpot
 import app.terpoir.core.ProductData
@@ -137,6 +138,9 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
 
     /** The whole journal as an encrypted export (only the recovery key opens it). */
     suspend fun exportArchive(masterWrappedByRecovery: ByteArray): ByteArray = io { journal.exportArchive(masterWrappedByRecovery) }
+
+    /** The whole journal in plaintext (JSON and CSV files); see [DataCard]. */
+    suspend fun exportPlaintext(): List<ExportFile> = io { journal.exportPlaintext(now()) }
 
     /**
      * Merges an export of this same journal (for example from before a

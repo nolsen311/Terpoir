@@ -1036,6 +1036,7 @@ dependencies = [
 name = "terpoir-ffi"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
  "terpoir-crypto",
  "terpoir-model",
  "terpoir-scan",

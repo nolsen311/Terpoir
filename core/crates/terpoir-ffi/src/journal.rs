@@ -18,6 +18,7 @@ use terpoir_tagging::CustomTag;
 use zeroize::Zeroizing;
 
 use crate::keys::RotatedKeys;
+use crate::plaintext::{self, ExportFile};
 use crate::records::{
     BrandData, ProductData, PurchaseData, SessionData, SnippetData, SpotData, StrainData, TagData,
     TagRefData, parse_id,
@@ -145,6 +146,20 @@ struct Unlocked {
     master: MasterKey,
     clock: Clock,
     wrapped_database_key: WrappedKey,
+}
+
+impl plaintext::Source for Unlocked {
+    fn ids(&self, kind: RecordKind) -> Result<Vec<RecordId>> {
+        Ok(self.store.ids_of_kind(kind)?)
+    }
+
+    fn document(&self, id: &RecordId) -> Result<Option<Document>> {
+        self.store
+            .get(&self.master, id)?
+            .map(migrate)
+            .transpose()
+            .map_err(Into::into)
+    }
 }
 
 impl Unlocked {
@@ -698,6 +713,18 @@ impl Journal {
     pub fn delete_record(&self, id: String) -> Result<bool> {
         let id = parse_id(&id)?;
         self.with(|u| Ok(u.store.delete(&id)?))
+    }
+
+    /// The whole journal in plaintext: `terpoir.json` with every record,
+    /// and `sessions.csv`, `products.csv` and `purchases.csv`. Unencrypted:
+    /// the app offers it only behind a strong warning, saved where the user
+    /// picks.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn export_plaintext(&self, now_ms: u64) -> Result<Vec<ExportFile>> {
+        self.with(|u| plaintext::export(&*u, now_ms))
     }
 
     /// IDs of all records of a type.

@@ -119,7 +119,7 @@ without it.
 - [ ] Targeted symptoms (opt-in).
 - [x] Encrypted export; import; restore on a new phone from an export
       and the recovery key.
-- [ ] Sharing cards and plaintext export.
+- [x] Sharing cards and plaintext export.
 - [ ] Insights engine (opt-in, evidence thresholds, confounder flags).
 - [ ] Shop insights: per-shop rating and hit rate, selection vs. shop
       effect, freshness by package date.
