@@ -19,6 +19,7 @@ import app.terpoir.core.TagRefData
 import app.terpoir.core.createKeys
 import app.terpoir.core.defaultMethodForForm
 import app.terpoir.core.doseUnitsForMethod
+import app.terpoir.core.readExportArchive
 import app.terpoir.core.vocabulary
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -32,10 +33,9 @@ import org.junit.runner.RunWith
 class JournalRepositoryTest {
     private val dir = InstrumentationRegistry.getInstrumentation().targetContext.cacheDir
         .resolve("repository-test").apply { deleteRecursively(); mkdirs() }
-    private val journal = createKeys().let { keys ->
-        Journal.open(dir.resolve("journal.db").path, dir.resolve("files").path, keys.masterKey, keys.wrappedDatabaseKey)
-            .also { keys.masterKey.fill(0) }
-    }
+    private val keys = createKeys()
+    private val journal = Journal.open(dir.resolve("journal.db").path, dir.resolve("files").path, keys.masterKey, keys.wrappedDatabaseKey)
+        .also { keys.masterKey.fill(0) }
     private val repo = JournalRepository(journal)
 
     @After
@@ -43,6 +43,16 @@ class JournalRepositoryTest {
         journal.lock()
         journal.close()
         dir.deleteRecursively()
+    }
+
+    @Test
+    fun anExportCarriesTheRecoveryWrappedKeyAndImportsBack() = runBlocking {
+        repo.saveBrand(null, BrandData("Acme"))
+        val archive = repo.exportArchive(keys.masterWrappedByRecovery)
+        assertTrue(readExportArchive(archive).masterWrappedByRecovery.contentEquals(keys.masterWrappedByRecovery))
+        // Importing an export of the same journal merges cleanly.
+        repo.importArchive(archive)
+        assertEquals(listOf("Acme"), repo.brands().map { it.data.name })
     }
 
     @Test

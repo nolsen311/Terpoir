@@ -8,8 +8,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import app.terpoir.core.CoreException
+import app.terpoir.core.ExportArchive
 import app.terpoir.core.Journal
 import app.terpoir.core.createKeys
+import app.terpoir.core.keysForRestore
 import app.terpoir.core.masterKeyFromRecovery
 import app.terpoir.security.MasterKeyVault
 import java.io.File
@@ -103,11 +105,43 @@ class JournalSession(private val files: JournalFiles) {
     }
 
     /**
+     * Restores a journal from an encrypted export on this (new) device:
+     * unwraps the master key with the typed [recoveryKey], wraps it with
+     * an [MasterKeyVault.encryptCipher] the user has just authenticated,
+     * opens a new database and imports every blob. Returns how many records
+     * were restored.
+     */
+    fun restore(authenticated: Cipher, recoveryKey: String, archive: ExportArchive): Long {
+        val keys = keysForRestore(recoveryKey, archive.masterWrappedByRecovery)
+        try {
+            files.masterWrappedByRecovery.parentFile?.mkdirs()
+            files.masterWrappedByRecovery.writeBytes(archive.masterWrappedByRecovery)
+            files.wrappedDatabaseKey.writeBytes(keys.wrappedDatabaseKey)
+            vault.store(authenticated, keys.masterKey)
+            open(keys.masterKey.copyOf())
+        } finally {
+            keys.masterKey.fill(0)
+        }
+        val journal = (state as State.Unlocked).journal
+        val now = System.currentTimeMillis().toULong()
+        return archive.blobs.sumOf { journal.importSyncBlob(it, now).records.toLong() }
+    }
+
+    /**
+     * The master key wrapped by the recovery key, as stored on this device;
+     * an export carries it so only the recovery key opens the export.
+     */
+    fun masterWrappedByRecovery(): ByteArray = files.masterWrappedByRecovery.readBytes()
+
+    /**
      * Checks a typed recovery key against this journal: the core unwraps
      * the master key with it, and the result is wiped at once.
      */
-    fun checkRecoveryKey(typed: String): RecoveryCheck = try {
-        masterKeyFromRecovery(typed, files.masterWrappedByRecovery.readBytes()).fill(0)
+    fun checkRecoveryKey(typed: String): RecoveryCheck = checkRecoveryKey(typed, files.masterWrappedByRecovery.readBytes())
+
+    /** Checks a typed recovery key against a master key it should unwrap (this journal's or an export's). */
+    fun checkRecoveryKey(typed: String, masterWrappedByRecovery: ByteArray): RecoveryCheck = try {
+        masterKeyFromRecovery(typed, masterWrappedByRecovery).fill(0)
         RecoveryCheck.MATCHES
     } catch (_: CoreException.RecoveryKeyLength) {
         RecoveryCheck.INCOMPLETE

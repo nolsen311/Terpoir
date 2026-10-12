@@ -14,7 +14,8 @@ use terpoir_ffi::{
     BrandData, CoreError, IdentifierData, Journal, LocalTimeData, NewKeys, ProductData,
     ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData, SnippetData,
     SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance, TagRefData,
-    check_recovery_key, create_keys, master_key_from_recovery,
+    check_recovery_key, create_keys, keys_for_restore, master_key_from_recovery,
+    read_export_archive,
 };
 
 struct Device {
@@ -632,4 +633,65 @@ fn passphrase_wraps_the_master_key() {
         terpoir_ffi::master_key_from_passphrase("wrong".into(), wrapped).err(),
         Some(CoreError::WrongKey)
     );
+}
+
+#[test]
+fn an_export_restores_on_a_new_device() {
+    let keys = create_keys().unwrap();
+    let phone_dir = Device::new();
+    let phone = phone_dir.open(&keys).unwrap();
+    let id = phone.save_session(None, session(None), 10).unwrap();
+    let archive = phone
+        .export_archive(keys.master_wrapped_by_recovery.clone())
+        .unwrap();
+
+    // Truncated, padded or foreign files are refused before any decryption.
+    for bad in [
+        archive[..archive.len() - 1].to_vec(),
+        [archive.clone(), vec![0]].concat(),
+        b"not an export".to_vec(),
+    ] {
+        assert_eq!(
+            read_export_archive(bad).err(),
+            Some(CoreError::InvalidSyncData)
+        );
+    }
+
+    // The new phone needs the recovery key; another journal's is refused.
+    let parsed = read_export_archive(archive).unwrap();
+    assert_eq!(
+        parsed.master_wrapped_by_recovery,
+        keys.master_wrapped_by_recovery
+    );
+    let other = create_keys().unwrap();
+    assert!(
+        keys_for_restore(
+            other.recovery_key.clone(),
+            parsed.master_wrapped_by_recovery.clone()
+        )
+        .is_err()
+    );
+    let restored = keys_for_restore(
+        keys.recovery_key.clone(),
+        parsed.master_wrapped_by_recovery.clone(),
+    )
+    .unwrap();
+    assert_eq!(restored.master_key, keys.master_key);
+
+    let new_dir = Device::new();
+    let new_phone = Journal::open(
+        new_dir
+            .dir
+            .join("journal.db")
+            .to_string_lossy()
+            .into_owned(),
+        new_dir.dir.join("files").to_string_lossy().into_owned(),
+        restored.master_key,
+        restored.wrapped_database_key,
+    )
+    .unwrap();
+    for blob in parsed.blobs {
+        assert_eq!(new_phone.import_sync_blob(blob, 20).unwrap().deferred, 0);
+    }
+    assert!(new_phone.get_session(id.clone()).unwrap() == phone.get_session(id).unwrap());
 }

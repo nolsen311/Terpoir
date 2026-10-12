@@ -170,7 +170,7 @@ private fun ConfirmRecoveryKey(check: (String) -> RecoveryCheck, onConfirmed: ()
     }
 }
 
-private val RecoveryCheck.message: Int
+internal val RecoveryCheck.message: Int
     get() = when (this) {
         RecoveryCheck.MATCHES -> R.string.confirm_matches
         RecoveryCheck.INCOMPLETE -> R.string.confirm_incomplete
