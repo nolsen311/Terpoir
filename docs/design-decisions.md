@@ -14,7 +14,9 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Voice and tone.** Playful and warm inside the app: cannabis can be fun, and people are sharing something personal, so laughing is allowed. Neutral wording on discreet surfaces (Discreet-tier notifications, discreet-icon mode). Humor never pressures a privacy choice: any playful nudge is one tap to dismiss with no extra step and no repeat nagging.
 - **The user's threat model, the user's choice.** Privacy options are as granular as practical, so each person can match the app to what they actually fear. Someone in a jurisdiction where they have little to fear can trade privacy for convenience, one toggle at a time or through YOLO Mode (see Privacy Center), with every trade disclosed. The default is still the most private option.
 - **A lean app.** The base app carries only the essentials; heavy components (text-recognition engines, language data, models) are optional downloads where the store allows it (see Optional components).
-- **Recorded exceptions to "most private default":** keyboard choice. The keyboard is the user's own configured tool; the app defaults to it unchanged, keeps only zero-cost protections, and discloses the risks (see Keyboards and voice input).
+- **Recorded exceptions to "most private default":**
+  - **Keyboard choice.** The keyboard is the user's own configured tool; the app defaults to it unchanged, keeps only zero-cost protections, and discloses the risks (see Keyboards and voice input).
+  - **Auto-lock timing (2026-10-12, maintainer).** The app locks with the device by default, like the user's other apps, instead of on its own timer; shorter in-app timeouts are opt-in (see Memory hygiene and app unlock).
 
 ## Platforms and architecture
 - Native apps on both Android and iOS. **Android first, iOS second.**
@@ -225,6 +227,26 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Voice engine:** OS on-device or bundled. Off-action deletes the bundled model.
 - **Keep voice clips.** Off-action: delete stored clips (with confirmation) or keep existing ones.
 
+## Quick capture (decided 2026-10-12)
+Making a new note should take one tap from outside the app. Every entry point opens the same capture sheet in the user's default mode (voice or text, the "New notes start with voice" setting).
+
+### Entry points
+| Entry point | Default | Notes |
+|---|---|---|
+| App shortcut (long-press the icon): "New note" | On | Static, no content, like "Lock now". Optional pair "Voice note" / "Text note", the user's default listed first. Android can pin it to the home screen. |
+| Android Quick Settings tile | Off | One swipe from anywhere. |
+| Home-screen widget | Off | One "New note" button and nothing else: no last session, ratings or other journal content. |
+| iOS Control Center / Lock Screen control, Action Button | Off | Same rules as the widget. |
+| Voice assistants (App Actions, App Intents / Siri) | Off | The trigger phrase goes through Google's or Apple's assistant, revealing that Terpoir is used (not note content). Conflicts with "donate no activities", so it sits behind its own toggle and card. |
+
+- **Discreet consistency:** every surface follows the discreet name and icon setting ("New note" with the neutral icon) and never shows journal content, so it reveals no more than the app icon already does.
+- **Write-only capture (decided 2026-10-12, maintainer):** a quick capture works while the journal is locked, with no unlock step, and nothing it writes can be read until the journal is unlocked.
+  - **Design:** the core keeps a capture key pair. The public key is stored in app storage (it is not secret); the private key is wrapped by the master key like a record key. A capture is transcribed on-device and sealed to the public key with a vetted public-key construction (HPKE or a sealed box, chosen at implementation), then written to a pending-captures inbox. On the next unlock the core opens the inbox, adds each capture as a stream snippet, and securely deletes the sealed files.
+  - **Review before merge:** someone holding an unlocked phone could add notes they cannot read, so inbox captures are marked "added while locked" and the user keeps or discards them.
+  - **Known costs:** a new crypto path in the core (key pair, versioned inbox format, re-keyed with master-key rotation); the inbox's file count and sizes are visible on disk while pending, inside the app's protected storage; tag suggestions wait for unlock. Audio is discarded after transcription as usual, or sealed with the note if the user keeps voice clips.
+  - **Scope:** works while the device is unlocked and the journal is locked. Capture from the device lock screen is a further opt-in with its own card.
+- **Privacy Center entries:** Quick Settings tile, home-screen widget, lock-screen/Control Center control, voice assistant. Off-actions remove the tile, widget or control (or ask the user to, where the OS requires) and, for assistants, delete any donated intents. The app shortcut is covered by the existing quick-lock shortcuts and needs no toggle; it can be hidden in settings.
+
 ## Visual design (decided)
 - **Theme: Terroir**, Material 3, in light and dark following the system setting:
   - colors: moss green (primary), sage (secondary), amber resin (tertiary) on linen by day; the same hues lifted on a forest-floor dark by night;
@@ -333,9 +355,10 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 ## Memory hygiene and app unlock (decided)
 - **Key material (Rust core):** held in self-zeroing types (`zeroize`, `secrecy`); avoid copies; lock key pages against swap/compression where the platform allows (best effort).
 - **Decrypted content:** decrypt on demand, hold only what is on screen, drop promptly. Known limit: Kotlin and Swift strings cannot be reliably wiped, so the UI briefly holds plaintext; view state is cleared whenever the app goes to the background.
-- **Auto-lock:** journal content cleared from view immediately on background; after the timeout, the master key is wiped from memory and reopening requires authentication.
-  - Timeout options: immediately, 1, 5, or 15 minutes. **Default: 1 minute.**
-  - Locking the device locks the app immediately, regardless of timeout.
+- **Auto-lock:** journal content cleared from view immediately on background (the app-switcher blur is unchanged); when the app locks, the master key is wiped from memory and reopening requires authentication.
+  - **Default: lock with the device (decided 2026-10-12, maintainer).** No in-app timer: the app locks when the device locks or the screen turns off, and when its process ends. This matches how the user's other apps behave; a 1-minute default made every return a second unlock.
+  - **Stricter timers, opt-in:** immediately, 1, 5, or 15 minutes after leaving the app, each with a short card. Locking the device still locks the app at once, whatever the setting.
+  - **Disclosure (on the setting's card):** with the default, an unlocked phone handed to someone can open the journal if it was unlocked recently; the master key stays in memory while the phone is unlocked and the app is in the background. Users who share their phone can pick "Immediately" or an app passphrase.
 - **Biometric unlock (crypto-bound):** the master-key wrapping key lives in Android Keystore / iOS Keychain and is usable only after OS-verified authentication, so a patched app cannot skip the prompt.
   - Default: **biometric or device passcode** (strong biometrics on Android; Face ID / Touch ID on iOS), which survives new biometric enrollments.
   - Optional strict mode: key bound to the currently enrolled biometric set; enrolling a new face or fingerprint invalidates it (re-unlock with passcode or recovery key).
@@ -343,7 +366,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - The wrapping key is an AES-256-GCM Android Keystore key, StrongBox-backed where the device has StrongBox (falls back to the TEE otherwise). It requires user authentication **on every use** (`setUserAuthenticationParameters(0, AUTH_BIOMETRIC_STRONG | AUTH_DEVICE_CREDENTIAL)`; strict mode: `AUTH_BIOMETRIC_STRONG` only and invalidated by new enrollments) and works only while the device is unlocked (`setUnlockedDeviceRequired`). Unwrapping happens through the system BiometricPrompt with a `CryptoObject`, so the OS, not the app, gates the key.
   - The platform BiometricPrompt is used directly (Android 11+ has everything needed), so there is no androidx.biometric dependency; the app holds the normal `USE_BIOMETRIC` permission.
   - The unwrapped master key goes straight into the core (`Journal.open`) and the Kotlin array is wiped; Kotlin never keeps it. Wrapped keys live in no-backup app storage.
-  - Auto-lock: leaving the app hides journal content at once; the master key is wiped after the timeout (default 1 minute) by a timer, and the elapsed time is checked again on return because Android may freeze or kill a backgrounded app before the timer fires. Screen-off locks immediately, and returning to a locked device locks too.
+  - Auto-lock: leaving the app hides journal content at once; with an opt-in timeout, the master key is wiped after it by a timer, and the elapsed time is checked again on return because Android may freeze or kill a backgrounded app before the timer fires. Screen-off locks immediately, and returning to a locked device locks too.
   - Known limit: while a backgrounded process is frozen, the master key stays in its memory until the process resumes or is killed; device lock and screen-off are the reliable triggers.
 
 ## Age gating (decided)
@@ -1165,7 +1188,8 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - Storage: per-record encryption inside SQLCipher; minimal indexes; no on-disk free-text index; secure delete; separate notification cache for Named/Rich tiers.
 - Logs: none in release; redacted types in debug; no crash SDKs or analytics; opt-in reviewed diagnostics.
 - Sharing: field-picked share cards with preview, never via the gallery, discreet brand mark on by default; encrypted export by default, opt-in plaintext export.
-- Memory and unlock: zeroizing key types; clear view state on background; 1-minute default auto-lock; crypto-bound biometric-or-passcode unlock.
+- Memory and unlock: zeroizing key types; clear view state on background; lock with the device by default, stricter timers opt-in; crypto-bound biometric-or-passcode unlock.
+- Quick capture: "New note" app shortcut on by default; Quick Settings tile, widget, lock-screen controls and voice assistants opt-in; all open the capture sheet in the user's default mode and show no content; write-only capture lets them work while the journal is locked.
 - Age gating: top-tier store rating; on-device platform age signals; self-attestation without date of birth.
 - Device security: passcode-only and app-passphrase options; quick-lock; two-level panic wipe; no duress passcode; neutral discreet icon/name.
 - Privacy presets: granular toggles first; "Most private" default; opt-in YOLO Mode for platform features; hard lines (no OS backups, no cloud model on content, no analytics or crash SDKs, no terpoir.app contact, no server) in every mode.

@@ -130,6 +130,18 @@ without it.
       and the recovery key.
 - [x] Sharing cards and plaintext export.
 - [x] Insights engine (opt-in, evidence thresholds, confounder flags).
+- [ ] Auto-lock default: lock with the device (no in-app timer); opt-in
+      timeouts of immediately, 1, 5 or 15 minutes, with the setting's
+      disclosure card.
+- [ ] Quick capture: "New note" app shortcut (optional voice/text pair),
+      opening the capture sheet in the user's default mode; opt-in Quick
+      Settings tile and home-screen widget, each a Privacy Center toggle
+      with an off-action. No journal content on any surface.
+- [ ] Write-only capture: capture key pair in the core (private key
+      wrapped by the master key, re-keyed on rotation), sealed captures in
+      a versioned inbox, merged on unlock with "added while locked" review,
+      secure deletion of merged captures. Property tests; FFI; capture
+      sheet works while the journal is locked.
 - [x] Shop insights: per-shop rating and hit rate, selection vs. shop
       effect, freshness by package date.
 - [x] Purchase prompts on Re-up Spots: dwell-then-exit geofence, discreet
