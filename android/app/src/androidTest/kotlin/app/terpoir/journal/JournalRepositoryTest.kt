@@ -69,13 +69,13 @@ class JournalRepositoryTest {
         val brand = repo.saveBrand(null, BrandData("Acme"))
         val product = repo.saveProduct(
             null,
-            ProductData("Blue Dream", "flower", brand, emptyList(), 22_400, "percent", null, null, emptyList(), null, null, emptyList()),
+            ProductData("Blue Dream", "flower", brand, emptyList(), 22_400, "percent", null, null, emptyList(), null, null, emptyList(), emptyList()),
         )
         val custom = repo.saveTag(null, TagData("Chatty", EFFECT_CATEGORY))
         repo.saveTag(null, TagData("Pine", "flavor"))
         fun session(ms: Long) = SessionData(
             LocalTimeData(ms, 0),
-            listOf(ProductLineData(null, product, "smoked", 2000, "hits", null, null)),
+            listOf(ProductLineData(null, product, "smoked", 2000, "hits", null, null, null)),
             null, null, null, null,
             listOf(TagIntensity(TagRefData.Builtin("relaxed"), 4), TagIntensity(TagRefData.Custom(custom), 2)),
             null, null, null, null, 5u, null, null, emptyList(), emptyList(),

@@ -124,7 +124,7 @@ without it.
       and the recovery key.
 - [x] Sharing cards and plaintext export.
 - [x] Insights engine (opt-in, evidence thresholds, confounder flags).
-- [ ] Shop insights: per-shop rating and hit rate, selection vs. shop
+- [x] Shop insights: per-shop rating and hit rate, selection vs. shop
       effect, freshness by package date.
 - [x] Purchase prompts on Re-up Spots: dwell-then-exit geofence, discreet
       "Quick log?", no visit log; "Show me" banner alternative.
@@ -173,3 +173,12 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       are offered. Still to design: how it is stored (its own record or a
       tag kind), and how it shows in shares (excluded by default) and the
       plaintext export.
+- [ ] Richer strains (maintainer, 2026-10-12): two ways to describe a
+      strain, the user's choice. Simple: indica / sativa / hybrid, as now.
+      Detailed: lineage as links to parent strains, and a terpene profile
+      as rough proportions (such as dominant, secondary, trace), never
+      exact percentages, which stay on products where a label states them.
+      Insights could then use a strain's profile when a product's label
+      lists no terpenes, and group related strains,
+      and the shop effect (which compares by strain record for now) could
+      compare by lineage or terpene profile.

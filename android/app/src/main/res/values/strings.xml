@@ -219,6 +219,7 @@
     <string name="session_change_time">Change time</string>
     <string name="session_products">What you had</string>
     <string name="session_product">Product</string>
+    <string name="session_line_from">From</string>
     <string name="session_no_product">No product</string>
     <string name="session_method">How</string>
     <string name="session_dose">Amount</string>
@@ -265,6 +266,26 @@
     </plurals>
     <string name="insights_confounders">These sessions also differ in %1$s, which could explain it.</string>
     <string name="insights_sessions">Sessions</string>
+    <string name="insights_shops">Shops</string>
+    <string name="insights_shops_explainer">Sessions grouped by the Re-up Spot each product came from: the shop picked on the session (From), the receipt it names, or the product\'s only shop in Where I buy it. A shop shows once it has 5 rated sessions.</string>
+    <string name="insights_shop_rating">%1$s★ average</string>
+    <string name="insights_shop_hits">%1$d%% hits</string>
+    <plurals name="insights_shop_sessions">
+        <item quantity="one">%1$d session</item>
+        <item quantity="other">%1$d sessions</item>
+    </plurals>
+    <plurals name="insights_shop_age">
+        <item quantity="one">Products from here were %1$d day old on average when bought.</item>
+        <item quantity="other">Products from here were %1$d days old on average when bought.</item>
+    </plurals>
+    <string name="insights_shop_effect">%1$s rated %2$s★ when bought here vs %3$s★ elsewhere (%4$s): the shop may make the difference, not just what you pick.</string>
+    <plurals name="insights_shop_effect_evidence">
+        <item quantity="one">%1$d session here, %2$d elsewhere</item>
+        <item quantity="other">%1$d sessions here, %2$d elsewhere</item>
+    </plurals>
+    <string name="insights_shop_level_brand">The brand %1$s</string>
+    <string name="insights_shop_level_product">%1$s</string>
+    <string name="insights_shop_level_strain">The strain %1$s</string>
     <string name="insights_dismiss">Dismiss</string>
     <string name="insights_wrong">Seems wrong</string>
     <string name="insights_mute">Hide %1$s insights</string>
@@ -402,6 +423,7 @@
     <string name="product_terpenes">Terpenes</string>
     <string name="product_package_date">Package date</string>
     <string name="product_identifiers">Scanned codes</string>
+    <string name="product_shops">Where I buy it</string>
     <string name="product_purchases">Purchases</string>
     <string name="product_known_title">Already in your products</string>
     <string name="product_known_body">That code belongs to %1$s. Open it instead?</string>

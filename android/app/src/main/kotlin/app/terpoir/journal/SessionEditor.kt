@@ -147,6 +147,7 @@ fun SessionEditor(
                 line = line,
                 products = products,
                 productLabels = productLabels,
+                spotNames = spots.associate { it.id to it.data.name },
                 vocab = vocab,
                 onChange = { changed -> draft = current.copy(lines = current.lines.toMutableList().also { it[index] = changed }) },
                 onRemove = { draft = current.copy(lines = current.lines.toMutableList().also { it.removeAt(index) }) },
@@ -292,11 +293,13 @@ fun SessionEditor(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun LineEditor(
     line: LineDraft,
     products: List<Entry<ProductData>>,
     productLabels: Map<String, String>,
+    spotNames: Map<String, String>,
     vocab: Vocabulary,
     onChange: (LineDraft) -> Unit,
     onRemove: () -> Unit,
@@ -319,10 +322,27 @@ private fun LineEditor(
                             // A purchase line belongs to one product.
                             purchaseId = line.purchaseId.takeIf { productId == line.product },
                             purchaseLineId = line.purchaseLineId.takeIf { productId == line.product },
+                            shop = line.shop.takeIf { productId == line.product },
                         ),
                     )
                 },
             )
+            // "From:" only when the product is bought at more than one shop;
+            // with one, insights already know where it came from.
+            val shops = products.firstOrNull { it.id == line.product }?.data?.shops.orEmpty().filter { it in spotNames }
+            if (shops.size > 1) {
+                Text(stringResource(R.string.session_line_from), style = MaterialTheme.typography.labelLarge)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (shop in shops) {
+                        val selected = line.shop == shop
+                        FilterChip(
+                            selected = selected,
+                            onClick = { onChange(line.copy(shop = if (selected) null else shop)) },
+                            label = { Text(spotNames.getValue(shop)) },
+                        )
+                    }
+                }
+            }
             Dropdown(
                 label = stringResource(R.string.session_method),
                 options = vocab.methods.map { it to label(it) },

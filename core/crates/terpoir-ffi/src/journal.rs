@@ -4,6 +4,7 @@
 
 //! The unlocked journal.
 
+use std::collections::BTreeSet;
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 use terpoir_crypto::{MasterKey, RecoveryKey, WrappedKey};
@@ -17,7 +18,7 @@ use terpoir_sync::{Clock, export_blobs, import_blob};
 use terpoir_tagging::CustomTag;
 use zeroize::Zeroizing;
 
-use crate::insights::{self, InsightData, InsightFeedback};
+use crate::insights::{self, InsightData, InsightFeedback, ShopInsightData};
 use crate::keys::RotatedKeys;
 use crate::plaintext::{self, ExportFile};
 use crate::records::{
@@ -201,6 +202,27 @@ impl insights::Source for Unlocked {
             .store
             .get_record::<Tag>(&self.master, id)?
             .map(|t| t.name))
+    }
+
+    fn purchases(&self) -> Result<Vec<(RecordId, Purchase)>> {
+        let mut out = Vec::new();
+        for id in self.store.ids_of_kind(RecordKind::Purchase)? {
+            if let Some(purchase) = self.store.get_record::<Purchase>(&self.master, &id)? {
+                out.push((id, purchase));
+            }
+        }
+        Ok(out)
+    }
+
+    fn spot(&self, id: &RecordId) -> Result<Option<Spot>> {
+        Ok(self.store.get_record::<Spot>(&self.master, id)?)
+    }
+
+    fn brand_name(&self, id: &RecordId) -> Result<Option<String>> {
+        Ok(self
+            .store
+            .get_record::<Brand>(&self.master, id)?
+            .map(|b| b.name))
     }
 
     fn feedback(&self) -> Result<Vec<u8>> {
@@ -453,7 +475,8 @@ impl Journal {
         self.with(|u| Ok(u.get::<Spot>(&id)?.as_ref().map(SpotData::from_model)))
     }
 
-    /// Creates or updates a purchase. Returns its ID.
+    /// Creates or updates a purchase. Returns its ID. When it has a Re-up
+    /// Spot, the spot is added to each listed product's shops.
     ///
     /// # Errors
     ///
@@ -465,7 +488,26 @@ impl Journal {
         now_ms: u64,
     ) -> Result<String> {
         let record = purchase.to_model()?;
-        self.with(|u| u.save(id, &record, now_ms))
+        self.with(|u| {
+            let saved = u.save(id, &record, now_ms)?;
+            // The receipt's shop joins each product's "Where I buy it".
+            if let Some(spot) = record.spot {
+                let products: BTreeSet<RecordId> =
+                    record.lines.values().filter_map(|l| l.product).collect();
+                for product_id in products {
+                    // A line naming a missing or non-product record is skipped.
+                    let Ok(Some(mut product)) =
+                        u.store.get_record::<Product>(&u.master, &product_id)
+                    else {
+                        continue;
+                    };
+                    if product.shops.insert(spot) {
+                        u.save(Some(product_id.to_hex()), &product, now_ms)?;
+                    }
+                }
+            }
+            Ok(saved)
+        })
     }
 
     /// A purchase, if it exists.
@@ -848,6 +890,17 @@ impl Journal {
     /// `Locked` or `Storage`.
     pub fn insights(&self) -> Result<Vec<InsightData>> {
         self.with(|u| insights::current(&*u))
+    }
+
+    /// Shop insights: per Re-up Spot, the average rating, hit rate and
+    /// freshness of what was bought there, and products rated differently
+    /// there than elsewhere. Opt-in like all insights; computed when called.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn shop_insights(&self) -> Result<Vec<ShopInsightData>> {
+        self.with(|u| insights::shops(&*u))
     }
 
     /// Records the user's feedback on an insight (`key` is the insight's
