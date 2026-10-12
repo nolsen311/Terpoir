@@ -112,7 +112,7 @@ fun SessionEditor(
     LaunchedEffect(id, openNote) { if (id != null && openNote == null) notes = repo.sessionSnippets(id) }
     val current = draft ?: return
     if (sharing && id != null) {
-        SessionShare(repo, id) { sharing = false }
+        SessionShare(repo, id, settings.targetedSymptoms) { sharing = false }
         return
     }
     openNote?.let { target ->
