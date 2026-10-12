@@ -91,6 +91,15 @@ class PrivacySettings(context: Context) {
         get() = prefs.getBoolean(KEY_CHECK_INS, false)
         set(value) = prefs.edit().putBoolean(KEY_CHECK_INS, value).apply()
 
+    /**
+     * The online map for picking a spot's location (builds with a MapTiler
+     * key only). Off by default: MapTiler sees the areas viewed and the IP
+     * address.
+     */
+    var onlineMap: Boolean
+        get() = prefs.getBoolean(KEY_ONLINE_MAP, false)
+        set(value) = prefs.edit().putBoolean(KEY_ONLINE_MAP, value).apply()
+
     /** Whether the voice first-use card has been shown and answered. */
     var voiceIntroSeen: Boolean
         get() = prefs.getBoolean(KEY_VOICE_INTRO_SEEN, false)
@@ -107,5 +116,6 @@ class PrivacySettings(context: Context) {
         const val KEY_ALERT_NAMES = "alert_names"
         const val KEY_ALERT_DETAILS = "alert_details"
         const val KEY_CHECK_INS = "follow_up_check_ins"
+        const val KEY_ONLINE_MAP = "online_map"
     }
 }

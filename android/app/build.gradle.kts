@@ -11,6 +11,18 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+/**
+ * The MapTiler key for the opt-in online map (docs/design-decisions.md,
+ * "Map picker"), from the environment (CI reads a repository secret) or the
+ * `terpoir.maptilerKey` Gradle property. Never committed. A build without
+ * one has no map and no INTERNET permission.
+ */
+val mapTilerKey: String = providers.environmentVariable("TERPOIR_MAPTILER_KEY")
+    .orElse(providers.gradleProperty("terpoir.maptilerKey"))
+    .getOrElse("")
+    .trim()
+require(mapTilerKey.matches(Regex("[A-Za-z0-9]*"))) { "The MapTiler key may contain only letters and digits." }
+
 android {
     namespace = "app.terpoir"
     compileSdk = 37
@@ -28,6 +40,7 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "MAPTILER_KEY", "\"$mapTilerKey\"")
 
         ndk {
             // 64-bit only. buildRustCore builds the core for exactly these.
@@ -62,7 +75,8 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = false
+        // The MapTiler key, and nothing else.
+        buildConfig = true
     }
 
     compileOptions {
@@ -112,6 +126,8 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.compose)
     implementation(libs.zxing.core)
+    implementation(libs.maplibre)
+    implementation(libs.okhttp)
 
     implementation(libs.jna) {
         artifact { type = "aar" }
@@ -367,7 +383,14 @@ val allowedPermissions = setOf(
     // The "Notify me" alert (Android 13+). Runtime permission, asked with
     // the location permissions above.
     "android.permission.POST_NOTIFICATIONS",
-)
+) + if (mapTilerKey.isEmpty()) {
+    emptySet()
+} else {
+    // The opt-in online map, only in builds with a MapTiler key. Normal
+    // permission (Android grants it at install), so the map gateway
+    // refuses every request while the map's toggle is off.
+    setOf("android.permission.INTERNET")
+}
 
 /**
  * Permissions only the play flavor may add, each from a Google Play library
@@ -380,8 +403,9 @@ val playOnlyPermissions = setOf(
     "android.permission.FOREGROUND_SERVICE",
     "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
     // ML Kit's Google Data Transport schedules its metrics uploads as jobs
-    // that wait for a network, which needs this to read connectivity. The
-    // uploads themselves fail: the play manifest removes INTERNET.
+    // that wait for a network, which needs this to read connectivity. It
+    // sends them only while "Google text recognition" is on, and only in
+    // builds with INTERNET.
     "android.permission.ACCESS_NETWORK_STATE",
 )
 
@@ -421,6 +445,9 @@ androidComponents {
     onVariants { variant ->
         variant.sources.jniLibs?.addGeneratedSourceDirectory(buildRustCore, CargoNdkBuild::outputDir)
         variant.sources.kotlin?.addGeneratedSourceDirectory(generateCoreBindings, UniffiBindgen::outputDir)
+        // No key, no map: the build drops the INTERNET permission that
+        // MapLibre and ML Kit add.
+        if (mapTilerKey.isEmpty()) variant.sources.manifests.addStaticManifestFile("src/offline/AndroidManifest.xml")
 
         val name = variant.name.replaceFirstChar { it.uppercase() }
         val manifest = variant.artifacts.get(SingleArtifact.MERGED_MANIFEST)

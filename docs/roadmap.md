@@ -116,6 +116,9 @@ without it.
 - [x] Stream snippets; keyword tag suggestions with human confirmation.
 - [x] Spots with purpose types; "Show me" mode first, then "Notify me"
       geofencing; notification tiers and check-ins.
+- [x] Map picker for spot locations: an opt-in online map (MapTiler
+      through MapLibre, builds with a key only), every request through one
+      gateway that refuses all of them while the toggle is off.
 - [ ] Targeted symptoms (opt-in).
 - [x] Encrypted export; import; restore on a new phone from an export
       and the recovery key.

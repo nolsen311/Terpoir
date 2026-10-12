@@ -10,6 +10,9 @@ Items waiting on the maintainer. See CLAUDE.md, "Workflow".
 | Exception | Closes when | Recorded |
 |---|---|---|
 | Tesseract4Android's JitPack native libraries log fixed status lines (no content) in release builds, which R8 cannot strip. See `docs/design-decisions.md`, "Logs and crash reports". | Every release build uses the from-source libraries (`android/ocr-native/`, logging compiled out). Done for the `foss` flavor with `-Pterpoir.ocr.aar` (F-Droid); still open for Play and GitHub Releases builds, which use JitPack. | 2026-10-11, accepted by the maintainer |
+| ML Kit's usage metrics on Play leave from the app, not through the network gateway, while "Google text recognition" is on (builds with a MapTiler key). Disclosed on its card. | Accepted as permanent by the maintainer; reopen if ML Kit offers an opt-out. | 2026-10-12, maintainer decision |
+| The online map uses MapTiler's Free plan, which allows "non-commercial use and research & development for commercial products" and expects the MapTiler logo on the map. Fine for test builds; a release with the paid unlock is commercial. | Before the first release with the map: a paid plan (Flex or above), or a written arrangement with MapTiler, and the logo if the plan still requires it. | 2026-10-12, open (maintainer) |
+| No device test yet that the app opens no network connection with the default settings (`docs/design-decisions.md`, "Android project"). The gateway's unit tests cover the refusal logic. | An instrumented test drives the app with the defaults (opening the spot editor included) and finds no traffic from its UID. | 2026-10-12, open |
 
 ## Blocked network sources
 
@@ -25,9 +28,10 @@ an item by moving it to "Resolved" with the decision and date.
 
 ### Resolved
 
-| Host | Needed for | Decision (2026-10-11) |
+| Host | Needed for | Decision |
 |---|---|---|
-| `jitpack.io` | Tesseract4Android, the only published build of it | Domain allowed. The placeholder "no text engine" stub was replaced with Tesseract. |
-| `huggingface.co` | The license of the `ocrs` OCR model weights | Alternative accepted: Tesseract instead of `ocrs`, so the weights are not used. |
-| `developers.google.com` | Google's ML Kit data disclosure page | Domain allowed. Read directly: ML Kit's Android SDKs collect device information, app information and performance metrics for diagnostics and usage analytics, as the search summaries said. ML Kit is not in the scanner yet; per #33 it becomes a Play-only opt-in through Play services, with that disclosure. |
-| `www.ijg.org` | libjpeg 9f release, for the IJG license notice | Domain allowed. `jpegsrc.v9f.tar.gz` from `www.ijg.org` is byte-identical to the copy from `ijg.org` (SHA-256 `04705c110cb2469caa79fb71fba3d7bf834914706e9641a4589485c1f832565b`). |
+| `api.maptiler.com`, `docs.maptiler.com`, `www.maptiler.com` | MapTiler's style URL, key restrictions and terms, for the online map | Domains allowed. The style URL form is confirmed (the API answers "Missing key" / "Invalid key" without a valid one). Key restriction: "Allowed User-Agent header" is a case-sensitive substring match, so `Terpoir` works; no HTTP origins for an app. Terms: the map must always show "© MapTiler © OpenStreetMap contributors" (now drawn on the map), and the Free plan is for non-commercial use and R&D only and shows MapTiler's logo (see "Recorded exceptions"). (2026-10-12) |
+| `jitpack.io` | Tesseract4Android, the only published build of it | Domain allowed. The placeholder "no text engine" stub was replaced with Tesseract. (2026-10-11) |
+| `huggingface.co` | The license of the `ocrs` OCR model weights | Alternative accepted: Tesseract instead of `ocrs`, so the weights are not used. (2026-10-11) |
+| `developers.google.com` | Google's ML Kit data disclosure page | Domain allowed. Read directly: ML Kit's Android SDKs collect device information, app information and performance metrics for diagnostics and usage analytics, as the search summaries said. ML Kit is not in the scanner yet; per #33 it becomes a Play-only opt-in through Play services, with that disclosure. (2026-10-11) |
+| `www.ijg.org` | libjpeg 9f release, for the IJG license notice | Domain allowed. `jpegsrc.v9f.tar.gz` from `www.ijg.org` is byte-identical to the copy from `ijg.org` (SHA-256 `04705c110cb2469caa79fb71fba3d7bf834914706e9641a4589485c1f832565b`). (2026-10-11) |

@@ -8,10 +8,12 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -35,6 +37,9 @@ import app.terpoir.core.TagData
 import app.terpoir.core.TagRefData
 import app.terpoir.location.CurrentLocation
 import app.terpoir.location.Fix
+import app.terpoir.map.MapPicker
+import app.terpoir.map.OnlineMap
+import app.terpoir.privacy.PrivacyToggle
 import kotlinx.coroutines.launch
 
 /** Built-in spot purposes, in display order. */
@@ -51,12 +56,13 @@ fun nextSpotName(existing: List<String>, prefix: String): String {
 /**
  * Creates or edits a spot: a name the user picks (a neutral "Spot N" by
  * default; never looked up from an address), what it's for, and optional
- * coordinates, approximate unless the user asks for precise. Fields not
- * shown here (geofence radius, purchase prompts) are kept as saved.
+ * coordinates, approximate unless the user asks for precise, or picked on
+ * the online map when this build has one ([mapToggle]). Fields not shown
+ * here (geofence radius, purchase prompts) are kept as saved.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SpotEditor(repo: JournalRepository, id: String?, onDone: () -> Unit) {
+fun SpotEditor(repo: JournalRepository, id: String?, mapToggle: PrivacyToggle?, onDone: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var original by remember { mutableStateOf<SpotData?>(null) }
@@ -68,6 +74,8 @@ fun SpotEditor(repo: JournalRepository, id: String?, onDone: () -> Unit) {
     var locating by remember { mutableStateOf(false) }
     var locationProblem by remember { mutableStateOf<Int?>(null) }
     var newPurpose by remember { mutableStateOf(false) }
+    var picking by remember { mutableStateOf(false) }
+    var askMap by remember { mutableStateOf(false) }
     val defaultPrefix = stringResource(R.string.spot_default_prefix)
 
     fun locate() {
@@ -100,6 +108,24 @@ fun SpotEditor(repo: JournalRepository, id: String?, onDone: () -> Unit) {
         loaded = true
     }
     if (!loaded) return
+
+    // MapLibre must be set up before the picker creates its view.
+    fun openMap(toggle: PrivacyToggle) {
+        OnlineMap.start(context) { toggle.isOn() }
+        picking = true
+    }
+
+    if (picking && mapToggle != null) {
+        MapPicker(
+            start = fix,
+            onPick = {
+                fix = it
+                picking = false
+            },
+            onClose = { picking = false },
+        )
+        return
+    }
 
     EditorScaffold(
         title = stringResource(if (id == null) R.string.spot_new else R.string.spot_edit),
@@ -159,12 +185,46 @@ fun SpotEditor(repo: JournalRepository, id: String?, onDone: () -> Unit) {
                 },
             ) { Text(stringResource(R.string.spot_location_precise)) }
         }
+        if (mapToggle != null) {
+            OutlinedButton(
+                enabled = !locating,
+                onClick = { if (mapToggle.isOn()) openMap(mapToggle) else askMap = true },
+            ) { Text(stringResource(R.string.spot_location_map)) }
+        }
         if (current != null) TextButton(onClick = { fix = null }) { Text(stringResource(R.string.spot_location_clear)) }
         if (locating) Text(stringResource(R.string.spot_locating))
         locationProblem?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
         Text(stringResource(R.string.spot_location_note), style = MaterialTheme.typography.bodySmall)
 
         if (id != null) DeleteButton(R.string.spot_delete, R.string.spot_delete_body) { scope.launch { repo.delete(id); onDone() } }
+    }
+
+    // The map is off by default: turning it on from here shows what its
+    // Privacy Center card says leaves the phone, as the Privacy Center does.
+    if (askMap && mapToggle != null) {
+        AlertDialog(
+            onDismissRequest = { askMap = false },
+            title = { Text(stringResource(mapToggle.card.title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(mapToggle.card.whatItDoes))
+                    Text(stringResource(mapToggle.card.whatLeaves))
+                    Text(stringResource(mapToggle.card.whoCanSee))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    askMap = false
+                    scope.launch {
+                        mapToggle.set(true)
+                        openMap(mapToggle)
+                    }
+                }) { Text(stringResource(R.string.map_turn_on)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { askMap = false }) { Text(stringResource(R.string.privacy_keep)) }
+            },
+        )
     }
 
     if (newPurpose) {
