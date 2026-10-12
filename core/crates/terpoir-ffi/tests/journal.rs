@@ -341,6 +341,8 @@ fn full_lifecycle() {
     let near = journal.spots_near(377_010_000, -1_224_000_000, 20).unwrap();
     assert_eq!(near.len(), 1);
     assert!(near[0].id == spot && near[0].name == "Spot 1");
+    // Not opted in to purchase prompts: nothing to watch for them.
+    assert!(journal.purchase_prompt_fences().unwrap().is_empty());
     assert!(
         (105..=118).contains(&near[0].distance_m),
         "{}",

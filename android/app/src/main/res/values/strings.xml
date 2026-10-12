@@ -33,6 +33,11 @@
     <string name="insights_leaves">Nothing leaves your phone. Insights are worked out from your encrypted journal each time and never stored; only what you dismiss or hide is remembered, encrypted, on this phone.</string>
     <string name="insights_who">No one else. Insights describe your own sessions; they are never advice.</string>
     <string name="insights_undo">Turn it off here. Insights disappear, and what you dismissed or hid is forgotten.</string>
+    <string name="purchase_prompts">Purchase reminders</string>
+    <string name="purchase_prompts_does">Lets you mark Re-up Spots where you want a reminder. When you leave one after a stop of a few minutes, Terpoir asks \"Quick log?\" and opens receipt scan. At most once a day per spot.</string>
+    <string name="purchase_prompts_leaves">Android\'s location service watches those spots, so it holds their coordinates, as with \"Notify me\". It needs location \"all the time\". The reminder never names the spot, and no record of your visits is kept: only that you are inside one of the spots, until you leave.</string>
+    <string name="purchase_prompts_who">Android\'s location service (and on Google Play builds, Google Play services) knows the watched areas. Anyone who sees your notifications sees only \"Quick log?\".</string>
+    <string name="purchase_prompts_undo">Turn it off here. The watched areas are removed at once, and any pending reminder is cleared.</string>
     <string name="symptoms">Targeted symptoms</string>
     <string name="symptoms_does">Adds a section to each session for symptoms you were hoping to ease, such as sleep or pain, and whether the session helped. This is self-tracking, never medical advice.</string>
     <string name="symptoms_leaves">Nothing leaves your phone. Symptoms are stored only in your encrypted journal.</string>
@@ -454,6 +459,13 @@
     <string name="show_nearby_allow">Allow location</string>
     <string name="show_nearby_at">You\'re near %1$s</string>
     <string name="show_nearby_log_here">Log a session here</string>
+    <string name="show_nearby_log_purchase">Log a purchase</string>
+    <string name="spot_purchase_prompts">Remind me to log purchases here</string>
+    <string name="spot_purchase_prompts_note">When you leave after a stop of a few minutes, Terpoir asks \"Quick log?\" once a day at most. The reminder never names this spot.</string>
+    <string name="prompt_channel">Purchase reminders</string>
+    <string name="prompt_channel_description">\"Quick log?\" after leaving a Re-up Spot you chose. Never names the place.</string>
+    <string name="prompt_title">Quick log?</string>
+    <string name="prompt_text">Tap to scan the receipt.</string>
     <string name="session_notes">Notes</string>
     <string name="session_notes_after_save">Save the session first to add notes to it.</string>
     <string name="voice_on_device">Speech is turned into text on your phone. Nothing is sent anywhere, and the recording isn\'t kept.</string>

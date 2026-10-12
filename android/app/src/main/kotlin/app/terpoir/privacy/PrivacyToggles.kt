@@ -156,6 +156,30 @@ fun buildPrivacyCenter(
                 alerts.clear()
             },
         ),
+        // On lets Re-up Spots opt in (spot editor) and registers their fences
+        // with the next refresh, once the journal asks for the permissions.
+        // Off removes the prompt fences and any pending state.
+        PrivacyToggle(
+            id = "purchase_prompts",
+            group = PrivacyGroup.LOCATION,
+            card = PrivacyCard(
+                title = R.string.purchase_prompts,
+                whatItDoes = R.string.purchase_prompts_does,
+                whatLeaves = R.string.purchase_prompts_leaves,
+                whoCanSee = R.string.purchase_prompts_who,
+                howToUndo = R.string.purchase_prompts_undo,
+            ),
+            privateState = false,
+            isOn = { settings.purchasePrompts },
+            onAction = {
+                settings.purchasePrompts = true
+                alerts.refresh(journal())
+            },
+            offAction = {
+                settings.purchasePrompts = false
+                alerts.refresh(journal())
+            },
+        ),
         // The Named tier. On writes spot names to the notification cache
         // (now if the journal is open, else at the next unlock); off drops
         // them, unless the Rich tier still shows them.

@@ -62,6 +62,20 @@ pub struct NearbySpot {
     pub name: String,
     /// Distance from the fix, in whole metres.
     pub distance_m: u32,
+    /// Whether it is a Re-up Spot, so "Show me" can offer logging a
+    /// purchase.
+    pub re_up: bool,
+}
+
+/// A Re-up Spot to watch for purchase prompts: where, and nothing else.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PromptFence {
+    /// Latitude in units of 1e-7 degrees.
+    pub lat_e7: i32,
+    /// Longitude in units of 1e-7 degrees.
+    pub lon_e7: i32,
+    /// Geofence radius in metres (the spot's own, at least the minimum).
+    pub radius_m: u32,
 }
 
 /// A spot with coordinates, to watch for "Notify me", and what an alert
@@ -579,20 +593,51 @@ impl Journal {
                     continue;
                 };
                 if let Some(d) = spot.nearness_m(&here) {
-                    near.push((d, id, spot.name));
+                    let re_up = spot.is_re_up();
+                    near.push((d, id, spot.name, re_up));
                 }
             }
             near.sort_by(|a, b| a.0.total_cmp(&b.0));
             Ok(near
                 .into_iter()
-                .map(|(d, id, name)| NearbySpot {
+                .map(|(d, id, name, re_up)| NearbySpot {
                     id: id.to_hex(),
                     name,
+                    re_up,
                     // Rounded; nearness is bounded by a radius, far below u32::MAX.
                     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                     distance_m: d.round() as u32,
                 })
                 .collect())
+        })
+    }
+
+    /// The Re-up Spots that prompt "Quick log?" when the user leaves after a
+    /// stop: opted in, with coordinates. Only where they are; the prompt
+    /// never names the spot.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn purchase_prompt_fences(&self) -> Result<Vec<PromptFence>> {
+        self.with(|u| {
+            let mut fences = Vec::new();
+            for id in u.store.ids_of_kind(RecordKind::Spot)? {
+                let Some(spot) = u.store.get_record::<Spot>(&u.master, &id)? else {
+                    continue;
+                };
+                if !spot.prompts_purchases() {
+                    continue;
+                }
+                if let Some(at) = spot.location {
+                    fences.push(PromptFence {
+                        lat_e7: at.lat_e7,
+                        lon_e7: at.lon_e7,
+                        radius_m: spot.effective_radius_m(),
+                    });
+                }
+            }
+            Ok(fences)
         })
     }
 
