@@ -135,6 +135,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - The key is restricted on MapTiler's side to the User-Agent `Terpoir`, which the app sends instead of MapLibre's own (that names the phone model and Android version). Anyone can extract a key from an app, so a usage cap on MapTiler's side is the real limit.
 - **The gateway** (`MapGateway`, the "one gateway" under "Android project"): MapLibre's only HTTP client. Before any connection it refuses every request unless the toggle is on and the request goes over HTTPS to `api.maptiler.com`. It follows no redirects, keeps no cache or cookies, and replaces the User-Agent.
 - **Permissions:** MapLibre's ACCESS_WIFI_STATE is removed everywhere, and its ACCESS_NETWORK_STATE in foss (Play keeps it for ML Kit); the app tells MapLibre it is online instead. Its native code logs only through MapLibre's Java logger, which the app silences.
+- **MapTiler's terms:** the map always shows "© MapTiler © OpenStreetMap contributors" (drawn over the map, not behind MapLibre's info button). The Free plan covers non-commercial use and development only; a release with the paid unlock needs a paid plan (`docs/follow-ups.md`).
 - **Accuracy:** a pick records the ground the crosshair covers at that zoom (5 m to 50 km), so a pick made zoomed out is as vague as it looks.
 - **Size:** MapLibre adds about 13 MB of native code per ABI, in every build, so one codebase is compiled and tested with or without a key.
 

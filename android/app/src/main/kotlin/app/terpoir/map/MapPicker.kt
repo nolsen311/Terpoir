@@ -6,6 +6,7 @@ package app.terpoir.map
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -91,6 +92,15 @@ fun MapPicker(start: Fix?, onPick: (Fix) -> Unit, onClose: () -> Unit) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 MapLibreView(start) { map = it }
                 Crosshair()
+                // MapTiler's terms: the credit always shows on the map.
+                Text(
+                    stringResource(R.string.map_attribution),
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                )
             }
             Button(
                 enabled = map != null,

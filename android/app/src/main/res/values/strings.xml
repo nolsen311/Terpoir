@@ -343,6 +343,7 @@
     <string name="map_pick_title">Pick on map</string>
     <string name="map_pick_hint">Move the map until the circle is on the spot. Zoom in for a more exact point: the circle\'s size is how exact it is.</string>
     <string name="map_pick_use">Use this point</string>
+    <string name="map_attribution" translatable="false">© MapTiler © OpenStreetMap contributors</string>
     <string name="spot_location_clear">Remove location</string>
     <string name="spot_locating">Getting your location…</string>
     <string name="spot_location_failed">Couldn\'t get a location. Check that location is on, or save the spot without one.</string>
