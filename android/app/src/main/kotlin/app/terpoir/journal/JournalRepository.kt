@@ -6,6 +6,8 @@ package app.terpoir.journal
 
 import app.terpoir.core.BrandData
 import app.terpoir.core.ExportFile
+import app.terpoir.core.InsightData
+import app.terpoir.core.InsightFeedback
 import app.terpoir.core.Journal
 import app.terpoir.core.NearbySpot
 import app.terpoir.core.ProductData
@@ -138,6 +140,12 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
 
     /** The whole journal as an encrypted export (only the recovery key opens it). */
     suspend fun exportArchive(masterWrappedByRecovery: ByteArray): ByteArray = io { journal.exportArchive(masterWrappedByRecovery) }
+
+    /** Insights over the rated sessions; see [InsightsScreen]. Call only while insights are on. */
+    suspend fun insights(): List<InsightData> = io { journal.insights() }
+
+    /** Records the user's feedback on an insight (or a category, for muting). */
+    suspend fun setInsightFeedback(key: String, feedback: InsightFeedback) = io { journal.setInsightFeedback(key, feedback) }
 
     /** The whole journal in plaintext (JSON and CSV files); see [DataCard]. */
     suspend fun exportPlaintext(): List<ExportFile> = io { journal.exportPlaintext(now()) }

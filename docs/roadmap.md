@@ -123,7 +123,7 @@ without it.
 - [x] Encrypted export; import; restore on a new phone from an export
       and the recovery key.
 - [x] Sharing cards and plaintext export.
-- [ ] Insights engine (opt-in, evidence thresholds, confounder flags).
+- [x] Insights engine (opt-in, evidence thresholds, confounder flags).
 - [ ] Shop insights: per-shop rating and hit rate, selection vs. shop
       effect, freshness by package date.
 - [ ] Purchase prompts on Re-up Spots: dwell-then-exit geofence, discreet

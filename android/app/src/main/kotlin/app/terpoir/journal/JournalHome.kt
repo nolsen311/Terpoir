@@ -92,6 +92,8 @@ private sealed interface Screen {
 
     /** The follow-up check-in on a session. */
     data class CheckIn(val session: String) : Screen
+
+    data object Insights : Screen
 }
 
 private enum class Tab { JOURNAL, PRODUCTS, PRIVACY }
@@ -149,6 +151,7 @@ fun JournalHome(
             onDone = pop,
         )
         Screen.Receipt -> ReceiptScreen(repo, scan, pop)
+        Screen.Insights -> InsightsScreen(repo, onOpenSession = { stack.add(Screen.Session(it)) }, onClose = pop)
         is Screen.Note -> NoteScreen(repo, settings, vocab, screen.id, pop)
         is Screen.Strain -> StrainEditor(repo, vocab, screen.id, pop)
         is Screen.Brand -> BrandEditor(repo, screen.id, pop)
@@ -188,6 +191,7 @@ fun JournalHome(
                     onLock,
                     onOpenNote = { stack.add(Screen.Note(it)) },
                     onSessionAt = { stack.add(Screen.Session(null, spot = it)) },
+                    onInsights = { stack.add(Screen.Insights) },
                 ) {
                     stack.add(Screen.Session(it))
                 }
@@ -220,6 +224,7 @@ private fun JournalList(
     onLock: () -> Unit,
     onOpenNote: (String) -> Unit,
     onSessionAt: (String) -> Unit,
+    onInsights: () -> Unit,
     onOpen: (String) -> Unit,
 ) {
     var sessions by remember { mutableStateOf<List<Entry<SessionData>>?>(null) }
@@ -251,6 +256,14 @@ private fun JournalList(
         if (settings.notifyNearSpots) item { NotifySetupCard(alerts, onPermissions) }
         // "Show me", or the tap on a "Notify me" alert: which spot is near.
         if (settings.showNearbySpots || checkNearby) item { NearbyBanner(repo, onSessionAt) }
+        // Insights are computed only when opened, and only while turned on.
+        if (settings.insights) {
+            item {
+                androidx.compose.material3.OutlinedButton(onClick = onInsights, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.insights_open))
+                }
+            }
+        }
         val list = sessions
         // One timeline: sessions and standalone notes, newest first.
         val timeline: List<Pair<Long, Entry<*>>> = (

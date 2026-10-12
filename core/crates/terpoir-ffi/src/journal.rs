@@ -17,6 +17,7 @@ use terpoir_sync::{Clock, export_blobs, import_blob};
 use terpoir_tagging::CustomTag;
 use zeroize::Zeroizing;
 
+use crate::insights::{self, InsightData, InsightFeedback};
 use crate::keys::RotatedKeys;
 use crate::plaintext::{self, ExportFile};
 use crate::records::{
@@ -159,6 +160,40 @@ impl plaintext::Source for Unlocked {
             .map(migrate)
             .transpose()
             .map_err(Into::into)
+    }
+}
+
+impl insights::Source for Unlocked {
+    fn sessions(&self) -> Result<Vec<(RecordId, Session)>> {
+        let mut out = Vec::new();
+        for id in self.store.ids_of_kind(RecordKind::Session)? {
+            if let Some(session) = self.store.get_record::<Session>(&self.master, &id)? {
+                out.push((id, session));
+            }
+        }
+        Ok(out)
+    }
+
+    fn product(&self, id: &RecordId) -> Result<Option<Product>> {
+        Ok(self.store.get_record::<Product>(&self.master, id)?)
+    }
+
+    fn strain(&self, id: &RecordId) -> Result<Option<Strain>> {
+        Ok(self.store.get_record::<Strain>(&self.master, id)?)
+    }
+
+    fn tag_name(&self, id: &RecordId) -> Result<Option<String>> {
+        Ok(self
+            .store
+            .get_record::<Tag>(&self.master, id)?
+            .map(|t| t.name))
+    }
+
+    fn feedback(&self) -> Result<Vec<u8>> {
+        Ok(self
+            .store
+            .meta(insights::META_FEEDBACK)?
+            .unwrap_or_default())
     }
 }
 
@@ -757,6 +792,42 @@ impl Journal {
             }
             Ok(changed)
         })
+    }
+
+    /// Insights over the user's rated sessions (opt-in: the app calls this
+    /// only while insights are on), strongest first, minus those the user
+    /// dismissed, marked wrong, or muted by category.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn insights(&self) -> Result<Vec<InsightData>> {
+        self.with(|u| insights::current(&*u))
+    }
+
+    /// Records the user's feedback on an insight (`key` is the insight's
+    /// key, or its category for [`InsightFeedback::Muted`]). Kept in the
+    /// encrypted store, on this device only.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn set_insight_feedback(&self, key: String, feedback: InsightFeedback) -> Result<()> {
+        self.with(|u| {
+            let current = u.store.meta(insights::META_FEEDBACK)?.unwrap_or_default();
+            let next = insights::with_feedback(&current, &key, feedback);
+            u.store.set_meta(insights::META_FEEDBACK, &next)?;
+            Ok(())
+        })
+    }
+
+    /// Forgets all insight feedback (the insights toggle's off-action).
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn forget_insight_feedback(&self) -> Result<()> {
+        self.with(|u| Ok(u.store.set_meta(insights::META_FEEDBACK, b"")?))
     }
 
     /// IDs of all records of a type.

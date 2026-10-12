@@ -11,10 +11,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use terpoir_ffi::{
-    BrandData, CoreError, IdentifierData, Journal, LocalTimeData, NewKeys, ProductData,
-    ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData, SnippetData,
-    SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance, TagRefData,
-    check_recovery_key, create_keys, keys_for_restore, master_key_from_recovery,
+    BrandData, CoreError, IdentifierData, InsightFeedback, Journal, LocalTimeData, NewKeys,
+    ProductData, ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData,
+    SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance,
+    TagRefData, check_recovery_key, create_keys, keys_for_restore, master_key_from_recovery,
     read_export_archive,
 };
 
@@ -814,4 +814,91 @@ fn deleting_symptoms_keeps_the_rest_of_each_session() {
     assert!(journal.get_tag(effect).unwrap().is_some());
     // Nothing left to delete.
     assert_eq!(journal.delete_symptoms(30).unwrap(), 0);
+}
+
+#[test]
+fn insights_need_evidence_and_respect_feedback() {
+    let keys = create_keys().unwrap();
+    let dir = Device::new();
+    let journal = dir.open(&keys).unwrap();
+    let product = |name: &str, terpene: &str| ProductData {
+        name: name.into(),
+        form: Some("flower".into()),
+        brand: None,
+        strains: vec![],
+        thc_milli: None,
+        thc_unit: None,
+        cbd_milli: None,
+        cbd_unit: None,
+        terpenes: vec![TagIntensity {
+            tag: builtin(terpene),
+            value: 800,
+        }],
+        batch: None,
+        package_date_day: None,
+        identifiers: vec![],
+    };
+    let heavy = journal
+        .save_product(None, product("Heavy", "myrcene"), 1)
+        .unwrap();
+    let bright = journal
+        .save_product(None, product("Bright", "limonene"), 2)
+        .unwrap();
+    let rated = |product: &String, rating: u8| {
+        let mut s = session(Some(product.clone()));
+        s.rating = Some(rating);
+        s
+    };
+    // Four a side is not enough evidence.
+    let mut heavy_sessions = Vec::new();
+    for i in 0..4 {
+        heavy_sessions.push(
+            journal
+                .save_session(None, rated(&heavy, 2), 10 + i)
+                .unwrap(),
+        );
+        journal
+            .save_session(None, rated(&bright, 4), 20 + i)
+            .unwrap();
+    }
+    assert!(journal.insights().unwrap().is_empty());
+
+    heavy_sessions.push(journal.save_session(None, rated(&heavy, 2), 30).unwrap());
+    journal.save_session(None, rated(&bright, 4), 31).unwrap();
+    let found = journal.insights().unwrap();
+    let myrcene = found.iter().find(|i| i.key == "terpene:myrcene").unwrap();
+    assert_eq!(myrcene.category, "terpene");
+    assert_eq!(myrcene.subject, "myrcene");
+    assert_eq!(myrcene.with_avg_milli, 2_000);
+    assert_eq!(myrcene.without_avg_milli, 4_000);
+    assert_eq!(myrcene.without_count, 5);
+    let mut with = myrcene.with_sessions.clone();
+    with.sort();
+    heavy_sessions.sort();
+    assert_eq!(with, heavy_sessions);
+
+    journal
+        .set_insight_feedback("terpene:myrcene".into(), InsightFeedback::Dismissed)
+        .unwrap();
+    let after = journal.insights().unwrap();
+    assert!(after.iter().all(|i| i.key != "terpene:myrcene"));
+    assert!(after.iter().any(|i| i.key == "terpene:limonene"));
+    journal
+        .set_insight_feedback("terpene".into(), InsightFeedback::Muted)
+        .unwrap();
+    assert!(
+        journal
+            .insights()
+            .unwrap()
+            .iter()
+            .all(|i| i.category != "terpene")
+    );
+    journal.forget_insight_feedback().unwrap();
+    assert!(
+        journal
+            .insights()
+            .unwrap()
+            .iter()
+            .any(|i| i.key == "terpene:myrcene")
+    );
 }

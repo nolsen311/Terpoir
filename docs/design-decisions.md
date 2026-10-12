@@ -566,6 +566,11 @@ Each journal entry records one consumption session, not a product review. Produc
 - Wording: "your sessions suggest," never medical claims.
 - User can dismiss, mute a category, or mark an insight wrong.
 
+- **Implementation (2026-10-12):**
+  - **Core:** the `terpoir-insights` crate compares the average rating of rated sessions with and without each feature. Features are a product's dominant terpene, the method, the form, the strain type, and the time of day (morning, afternoon, evening, night). An insight needs 5 sessions on each side and a 1-star difference (maintainer's thresholds), lists its sessions, and flags likely confounders. Method or time of day is flagged when a value's share differs by 50 points or more between the groups; dose when the average mg dose differs by 50% or more. Strongest first, at most 12.
+  - **Feedback** (dismissed, wrong, category muted) lives in the encrypted store's metadata, on this device only. Insights themselves are never stored: `Journal::insights` computes them when called.
+  - **Android:** the Privacy Center toggle "Insights" (Journal group, off by default, in neither preset). While it is on, an Insights button on the journal opens the screen. Each card reads "Your sessions suggest: …", with its evidence, its confounders, and the sessions behind it, plus Dismiss, "Seems wrong" and "Hide … insights". The off-action forgets all feedback.
+
 ### Shop insights (decided)
 - Sessions grouped by the Re-up Spot where each product was bought: average rating and **hit rate** (share of sessions rated 4★+ or marked "would repeat") per shop.
 - **Selection vs. shop effect:** separates "you tend to buy better-suited products here" from "the same product rated higher when bought at this shop." The shop effect surfaces only when the same product was bought at two or more shops.

@@ -1038,6 +1038,7 @@ version = "0.1.0"
 dependencies = [
  "serde_json",
  "terpoir-crypto",
+ "terpoir-insights",
  "terpoir-model",
  "terpoir-scan",
  "terpoir-store",
@@ -1046,6 +1047,10 @@ dependencies = [
  "uniffi",
  "zeroize",
 ]
+
+[[package]]
+name = "terpoir-insights"
+version = "0.1.0"
 
 [[package]]
 name = "terpoir-model"
