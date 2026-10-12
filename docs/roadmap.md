@@ -136,6 +136,8 @@ without it.
 
 ## Phase 4: Release
 
+- [x] Development builds: main's debug APKs as a rolling `dev-build`
+      pre-release on GitHub Releases, replaced on every push.
 - [ ] Reproducible Android builds verified in CI; SBOM; signed release
       hashes published on terpoir.app; signing fingerprints in README.
 - [ ] Google Play, F-Droid, GitHub Releases.
