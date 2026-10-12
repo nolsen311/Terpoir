@@ -169,3 +169,10 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       are offered. Still to design: how it is stored (its own record or a
       tag kind), and how it shows in shares (excluded by default) and the
       plaintext export.
+- [ ] Richer strains (maintainer, 2026-10-12): two ways to describe a
+      strain, the user's choice. Simple: indica / sativa / hybrid, as now.
+      Detailed: lineage as links to parent strains, and a terpene profile
+      as rough proportions (such as dominant, secondary, trace), never
+      exact percentages, which stay on products where a label states them.
+      Insights could then use a strain's profile when a product's label
+      lists no terpenes, and group related strains.
