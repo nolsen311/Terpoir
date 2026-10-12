@@ -161,6 +161,9 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       users name their own pieces (a favorite bong, a favorite pipe, a
       particular vaporizer) and pick one on a session's product line, so
       sessions can be compared piece against piece, as with any other
-      insight. Needs a design decision first: gear as its own record kind
-      or as tags under each method, how it shows in shares (excluded by
-      default) and in the plaintext export.
+      insight. Decided: gear is an optional detail of a method, never a
+      replacement for it. A line stays "smoked" and can add "the green
+      bong"; each piece belongs to a method, and only that method's pieces
+      are offered. Still to design: how it is stored (its own record or a
+      tag kind), and how it shows in shares (excluded by default) and the
+      plaintext export.
