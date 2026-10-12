@@ -242,6 +242,19 @@
     </plurals>
     <string name="insights_confounders">These sessions also differ in %1$s, which could explain it.</string>
     <string name="insights_sessions">Sessions</string>
+    <string name="insights_shops">Shops</string>
+    <string name="insights_shops_explainer">Sessions grouped by the Re-up Spot each product was bought at: when a session names its purchase, or the product was only ever bought at one shop. A shop shows once it has 5 rated sessions.</string>
+    <string name="insights_shop_rating">%1$s★ average</string>
+    <string name="insights_shop_hits">%1$d%% hits</string>
+    <plurals name="insights_shop_sessions">
+        <item quantity="one">%1$d session</item>
+        <item quantity="other">%1$d sessions</item>
+    </plurals>
+    <plurals name="insights_shop_age">
+        <item quantity="one">Products from here were %1$d day old on average when bought.</item>
+        <item quantity="other">Products from here were %1$d days old on average when bought.</item>
+    </plurals>
+    <string name="insights_shop_effect">%1$s rated %2$s★ when bought here vs %3$s★ elsewhere (%4$d vs %5$d sessions): the shop may make the difference, not just what you pick.</string>
     <string name="insights_dismiss">Dismiss</string>
     <string name="insights_wrong">Seems wrong</string>
     <string name="insights_mute">Hide %1$s insights</string>

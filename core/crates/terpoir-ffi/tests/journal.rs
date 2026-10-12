@@ -902,3 +902,130 @@ fn insights_need_evidence_and_respect_feedback() {
             .any(|i| i.key == "terpene:myrcene")
     );
 }
+
+#[test]
+fn shop_insights_attribute_sessions_to_where_products_were_bought() {
+    let keys = create_keys().unwrap();
+    let dir = Device::new();
+    let journal = dir.open(&keys).unwrap();
+    let shop = |name: &str| {
+        journal
+            .save_spot(
+                None,
+                SpotData {
+                    name: name.into(),
+                    purposes: vec![builtin("re_up")],
+                    lat_e7: None,
+                    lon_e7: None,
+                    accuracy_m: None,
+                    radius_m: None,
+                    purchase_prompts: false,
+                },
+                1,
+            )
+            .unwrap()
+    };
+    let (a, b) = (shop("Shop A"), shop("Shop B"));
+    let product = |name: &str| {
+        journal
+            .save_product(
+                None,
+                ProductData {
+                    name: name.into(),
+                    form: None,
+                    brand: None,
+                    strains: vec![],
+                    thc_milli: None,
+                    thc_unit: None,
+                    cbd_milli: None,
+                    cbd_unit: None,
+                    terpenes: vec![],
+                    batch: None,
+                    // 30 days before the purchases below.
+                    package_date_day: Some(20_340),
+                    identifiers: vec![],
+                },
+                2,
+            )
+            .unwrap()
+    };
+    let (gummies, cart) = (product("Gummies"), product("Cart"));
+    let buy = |spot: &String, product: &String| {
+        let id = journal
+            .save_purchase(
+                None,
+                PurchaseData {
+                    when: LocalTimeData {
+                        unix_ms: 1_760_000_000_000,
+                        utc_offset_min: -420,
+                    },
+                    spot: Some(spot.clone()),
+                    lines: vec![PurchaseLineData {
+                        line_id: None,
+                        product: Some(product.clone()),
+                        batch: None,
+                        price_minor_units: None,
+                        price_currency: None,
+                    }],
+                },
+                3,
+            )
+            .unwrap();
+        let line = journal.get_purchase(id.clone()).unwrap().unwrap().lines[0]
+            .line_id
+            .clone();
+        (id, line)
+    };
+    // Gummies only ever come from Shop A: their sessions count there
+    // without naming the purchase.
+    buy(&a, &gummies);
+    // The cart comes from both shops; its sessions name their purchase.
+    let cart_a = buy(&a, &cart);
+    let cart_b = buy(&b, &cart);
+    let rated = |product: &String, purchase: Option<&(String, Option<String>)>, rating: u8| {
+        let mut s = session(Some(product.clone()));
+        s.rating = Some(rating);
+        s.would_repeat = None;
+        if let Some((id, line)) = purchase {
+            s.lines[0].purchase_id = Some(id.clone());
+            s.lines[0].purchase_line_id = line.clone();
+        }
+        s
+    };
+    for i in 0..5 {
+        journal
+            .save_session(None, rated(&gummies, None, 2), 10 + i)
+            .unwrap();
+        journal
+            .save_session(None, rated(&cart, Some(&cart_a), 5), 20 + i)
+            .unwrap();
+        journal
+            .save_session(None, rated(&cart, Some(&cart_b), 3), 30 + i)
+            .unwrap();
+    }
+    // A cart session that names no purchase has no known shop: left out.
+    journal
+        .save_session(None, rated(&cart, None, 1), 40)
+        .unwrap();
+
+    let found = journal.shop_insights().unwrap();
+    let shop_a = found.iter().find(|s| s.spot == a).unwrap();
+    assert_eq!(shop_a.name, "Shop A");
+    assert_eq!(shop_a.sessions.len(), 10);
+    // Five 2★ gummies and five 5★ carts.
+    assert_eq!(shop_a.avg_rating_milli, Some(3_500));
+    assert_eq!(shop_a.hit_rate_percent, Some(50));
+    // Freshness: only the purchases a session names, or a product's only
+    // purchase, give an age.
+    assert_eq!(shop_a.avg_age_days, Some(30));
+    assert_eq!(shop_a.same_product.len(), 1);
+    let effect = &shop_a.same_product[0];
+    assert!(effect.product == cart && effect.label == "Cart");
+    assert_eq!(
+        (effect.here_avg_milli, effect.elsewhere_avg_milli),
+        (5_000, 3_000)
+    );
+    let shop_b = found.iter().find(|s| s.spot == b).unwrap();
+    assert_eq!(shop_b.sessions.len(), 5);
+    assert_eq!(shop_b.avg_rating_milli, Some(3_000));
+}

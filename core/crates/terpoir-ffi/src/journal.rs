@@ -17,7 +17,7 @@ use terpoir_sync::{Clock, export_blobs, import_blob};
 use terpoir_tagging::CustomTag;
 use zeroize::Zeroizing;
 
-use crate::insights::{self, InsightData, InsightFeedback};
+use crate::insights::{self, InsightData, InsightFeedback, ShopInsightData};
 use crate::keys::RotatedKeys;
 use crate::plaintext::{self, ExportFile};
 use crate::records::{
@@ -187,6 +187,27 @@ impl insights::Source for Unlocked {
             .store
             .get_record::<Tag>(&self.master, id)?
             .map(|t| t.name))
+    }
+
+    fn purchases(&self) -> Result<Vec<(RecordId, Purchase)>> {
+        let mut out = Vec::new();
+        for id in self.store.ids_of_kind(RecordKind::Purchase)? {
+            if let Some(purchase) = self.store.get_record::<Purchase>(&self.master, &id)? {
+                out.push((id, purchase));
+            }
+        }
+        Ok(out)
+    }
+
+    fn spot(&self, id: &RecordId) -> Result<Option<Spot>> {
+        Ok(self.store.get_record::<Spot>(&self.master, id)?)
+    }
+
+    fn brand_name(&self, id: &RecordId) -> Result<Option<String>> {
+        Ok(self
+            .store
+            .get_record::<Brand>(&self.master, id)?
+            .map(|b| b.name))
     }
 
     fn feedback(&self) -> Result<Vec<u8>> {
@@ -803,6 +824,17 @@ impl Journal {
     /// `Locked` or `Storage`.
     pub fn insights(&self) -> Result<Vec<InsightData>> {
         self.with(|u| insights::current(&*u))
+    }
+
+    /// Shop insights: per Re-up Spot, the average rating, hit rate and
+    /// freshness of what was bought there, and products rated differently
+    /// there than elsewhere. Opt-in like all insights; computed when called.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn shop_insights(&self) -> Result<Vec<ShopInsightData>> {
+        self.with(|u| insights::shops(&*u))
     }
 
     /// Records the user's feedback on an insight (`key` is the insight's

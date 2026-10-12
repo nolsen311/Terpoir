@@ -578,6 +578,11 @@ Each journal entry records one consumption session, not a product review. Produc
 - **Selection vs. shop effect:** separates "you tend to buy better-suited products here" from "the same product rated higher when bought at this shop." The shop effect surfaces only when the same product was bought at two or more shops.
 - **Freshness:** from label package dates, product age at purchase per shop ("products from Shop B were four months older on average").
 - Same evidence thresholds and tap-through as all insights.
+- **Implementation (2026-10-12):**
+  - **Core** (`terpoir_insights::shop_insights`, `Journal::shop_insights`): a session line counts for a shop when it names the purchase it came from, or when its product was only ever bought at one shop. Lines whose shop is unknown are left out, never guessed.
+  - **A shop shows** once it has 5 rated sessions. It shows the average rating, the hit rate (among sessions rated, or marked would-repeat or not), and freshness: the average days from package date to purchase, once 5 are known. A product's age counts only when the session names its purchase, or the product has one purchase.
+  - **Shop effect:** for each product bought at two or more shops, its rated sessions bought here vs elsewhere, needing 5 on each side and a 1-star difference. A product only ever bought at one shop is selection, so it is never reported as a shop effect.
+  - **Android:** a "Shops" section on the Insights screen, behind the same toggle, with each shop's numbers, its shop effects, and its sessions.
 
 ### Privacy Center entries
 - **Tag suggestions** (choose tier). Off-action: discard unconfirmed suggestions; optionally delete the downloaded model.
