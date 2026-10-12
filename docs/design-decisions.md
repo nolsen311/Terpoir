@@ -267,6 +267,11 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - Copy to clipboard marks content sensitive and sets it to expire.
 - **Small, tasteful "made with Terpoir" mark included by default**, with a one-tap toggle in the share preview to remove it. Toggle label: **"C'mon, be cool, bud!"** Turning it off is instant and gets a friendly "No worries, we get it ✌️" — no extra step, no repeat nag. Rationale: the user is already sharing cannabis content, and word of mouth is how a no-ads, no-tracking app gets discovered.
 - Notice: "Once shared, this is outside Terpoir's protection."
+- **Android implementation (2026-10-12):** a Share button on saved sessions and products opens the share screen. It shares what is saved, not unsaved edits.
+  - **Fields:** sessions offer product, strain, rating and effects (on), plus method and dose, intention, timeline, spot and notes (off). The date is a separate choice of none (the default), date only, or date and time. Products offer strain, form, THC and CBD, and terpenes (on), and batch (off). Targeted symptoms join the session fields once that section exists (excluded by default), and insights once there are insights.
+  - **Formats:** a card image or plain text, with a live preview of exactly what goes out. The "Made with Terpoir" mark and its toggle work as described above.
+  - **The card is never written to storage.** Instead of a temporary file, an in-app content provider (`ShareProvider`, not exported) serves the PNG from memory to the app the user picks, with a one-URI read grant. The card is dropped when the share screen closes, so there is nothing to delete and nothing reaches the gallery.
+  - **Copy text** uses the sensitive clipboard (hidden from previews on Android 13+, cleared after a minute).
 
 ### Full export
 - **Encrypted export (default):** whole journal as an archive encrypted under the recovery key; same format as export/import sync.

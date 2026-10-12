@@ -42,6 +42,7 @@ import app.terpoir.core.parseLabel
 import app.terpoir.scan.CameraScreen
 import app.terpoir.scan.CaptureMode
 import app.terpoir.scan.DecodedCode
+import app.terpoir.share.ProductShare
 import kotlinx.coroutines.launch
 
 /**
@@ -87,6 +88,7 @@ fun ProductEditor(
     var scanNote by remember { mutableStateOf<Int?>(null) }
     var known by remember { mutableStateOf<Pair<ProductMatch, String>?>(null) }
     var duplicate by remember { mutableStateOf<Pair<ProductMatch, ProductData>?>(null) }
+    var sharing by remember { mutableStateOf(false) }
 
     LaunchedEffect(id) {
         brands = repo.brands()
@@ -113,6 +115,10 @@ fun ProductEditor(
         loaded = true
     }
     if (!loaded) return
+    if (sharing && id != null) {
+        ProductShare(repo, id) { sharing = false }
+        return
+    }
 
     /** Adds a scanned code; a code already on another product offers to open it. */
     suspend fun addCode(code: DecodedCode) {
@@ -285,7 +291,11 @@ fun ProductEditor(
                 )
             }
         }
-        if (id != null) DeleteButton(R.string.product_delete, R.string.product_delete_body) { scope.launch { repo.delete(id); onDone() } }
+        if (id != null) {
+            // Shares what is saved, not unsaved edits.
+            OutlinedButton(onClick = { sharing = true }) { Text(stringResource(R.string.share)) }
+            DeleteButton(R.string.product_delete, R.string.product_delete_body) { scope.launch { repo.delete(id); onDone() } }
+        }
     }
 
     known?.let { (match, knownName) ->
