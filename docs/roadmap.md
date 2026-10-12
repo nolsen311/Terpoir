@@ -109,7 +109,7 @@ without it.
       Gradle property that switches the `foss` flavor to the from-source
       AAR (JitPack repository declared only without it); check the foss
       build with it in the OCR workflow.
-- [ ] On-device smoke test of the from-source OCR AAR (built and verified,
+- [x] On-device smoke test of the from-source OCR AAR (built and verified,
       never run): the instrumented emulator job, built with the property,
       loads the libraries and recognizes text in a bundled test image.
 - [x] Voice-first FAB with on-device speech recognition (never cloud).

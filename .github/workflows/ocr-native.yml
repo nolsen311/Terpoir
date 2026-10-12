@@ -34,11 +34,16 @@ on:
       # terpoir.ocr.aar switch lives here and in settings.gradle.kts.
       - "android/app/build.gradle.kts"
       - "android/settings.gradle.kts"
+      - "android/ocr-tesseract/**"
+      - "android/app/src/androidTestFoss/**"
   pull_request:
     paths:
       - "android/ocr-native/**"
       - ".github/workflows/ocr-native.yml"
       - "android/settings.gradle.kts"
+      # The wrapper and the device test of the from-source libraries.
+      - "android/ocr-tesseract/**"
+      - "android/app/src/androidTestFoss/**"
 
 permissions:
   contents: read
@@ -220,3 +225,88 @@ jobs:
           done
           [ "$found" -eq 8 ] || { echo "::error::expected 8 OCR libraries in the APK, found $found"; exit 1; }
           echo "The foss release ships the from-source OCR libraries, none of which logs."
+
+  # The from-source libraries on a device: the foss debug build with them
+  # loads Tesseract and reads rendered text (BundledTextEngineTest) on the
+  # same Android 11 emulator as app CI.
+  foss-device:
+    needs: compare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SYSTEM_IMAGE: "system-images;android-30;default;x86_64"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Downloaded dependencies only; see android.yml, which saves it.
+      - name: Restore dependency cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/bin/cargo-ndk
+          key: deps-${{ runner.os }}-${{ hashFiles('android/gradle/verification-metadata.xml', 'android/gradle/wrapper/gradle-wrapper.properties', 'core/Cargo.lock', '.github/scripts/setup-android-core.sh') }}
+          restore-keys: deps-${{ runner.os }}-
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ocr-native-first
+          path: ${{ runner.temp }}/ocr-native
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Set up Rust core toolchain
+        run: .github/scripts/setup-android-core.sh
+
+      - name: Build the foss debug app and tests with the from-source libraries
+        working-directory: android
+        run: |
+          set -euo pipefail
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          ./gradlew --no-daemon --no-build-cache \
+            -Pterpoir.ocr.aar="$RUNNER_TEMP/ocr-native/tesseract4android-4.9.0.aar" \
+            assembleFossDebug assembleFossDebugAndroidTest
+
+      - name: Start emulator
+        run: |
+          set -euo pipefail
+          sdk="$ANDROID_HOME/cmdline-tools/latest/bin"
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          { yes || true; } | "$sdk/sdkmanager" --licenses >/dev/null
+          "$sdk/sdkmanager" emulator platform-tools "$SYSTEM_IMAGE" >/dev/null
+          echo no | "$sdk/avdmanager" create avd -n ci -k "$SYSTEM_IMAGE"
+          nohup "$ANDROID_HOME/emulator/emulator" -avd ci -no-window -no-audio \
+            -no-boot-anim -no-snapshot -gpu swiftshader_indirect >"$RUNNER_TEMP/emulator.log" 2>&1 &
+          adb="$ANDROID_HOME/platform-tools/adb"
+          timeout 300 "$adb" wait-for-device
+          timeout 600 sh -c "until [ \"\$($adb shell getprop sys.boot_completed | tr -d '\r')\" = 1 ]; do sleep 5; done"
+
+      - name: Run the text recognition test
+        working-directory: android
+        run: |
+          set -euo pipefail
+          adb="$ANDROID_HOME/platform-tools/adb"
+          "$adb" install -r app/build/outputs/apk/foss/debug/app-foss-debug.apk
+          "$adb" install -r app/build/outputs/apk/androidTest/foss/debug/app-foss-debug-androidTest.apk
+          timeout 600 "$adb" shell am instrument -w -e class app.terpoir.scan.BundledTextEngineTest \
+            app.terpoir.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/instrument.txt"
+          grep -q "^OK (1 test)" "$RUNNER_TEMP/instrument.txt"
+
+      # Test data is synthetic, so the emulator log and logcat are safe to
+      # print.
+      - name: Emulator diagnostics
+        if: failure()
+        run: |
+          tail -n 100 "$RUNNER_TEMP/emulator.log" || true
+          timeout 30 "$ANDROID_HOME/platform-tools/adb" logcat -d -t 300 || true
