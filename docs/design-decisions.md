@@ -129,7 +129,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Pick a spot's location on a map,** as well as from the phone's location. No location permission is needed, and the phone's position is never read for it.
 - **The map is online and opt-in.**
   - **Provider (maintainer's choice):** MapTiler's street map, drawn by MapLibre Native (BSD-2-Clause, no telemetry; its OpenGL build, since the default requires Vulkan). An offline map download and handing off to a map app were considered; an in-app online map was chosen.
-  - **Toggle:** "Online map" (Location, off by default, not in either preset). Its card says that MapTiler sees the IP address and the areas viewed, and that looking around a spot shows roughly where it is. Turning it on from the spot editor shows the same card first. Off stops every map request and deletes what MapLibre stored (its tile database and settings file). Picked locations stay with their spots.
+  - **Toggle:** "Online map" (Location, off by default; in YOLO Mode by the maintainer's decision). Its card says that MapTiler sees the IP address and the areas viewed, and that looking around a spot shows roughly where it is. Turning it on from the spot editor shows the same card first. Off stops every map request and deletes what MapLibre stored (its tile database and settings file). Picked locations stay with their spots.
   - **Nothing is cached:** MapLibre's tile cache is set to zero, since cached tiles would show which areas were viewed.
 - **The key:** MapTiler needs an API key, which is never committed. Builds read it from `TERPOIR_MAPTILER_KEY` (a CI repository secret) or the `terpoir.maptilerKey` Gradle property. A build without a key, including F-Droid's own build, has no map and no INTERNET permission: `src/offline/AndroidManifest.xml` removes it.
   - The key is restricted on MapTiler's side to the User-Agent `Terpoir`, which the app sends instead of MapLibre's own (that names the phone model and Android version). Anyone can extract a key from an app, so a usage cap on MapTiler's side is the real limit.
@@ -524,7 +524,7 @@ Each journal entry records one consumption session, not a product review. Produc
   - **Receipts never offer personal or payment lines** (cardholder, loyalty, patient or member numbers, totals, tax) on their own; the user can still tap one in. The checklist is saved as one Purchase. The shop becomes an existing spot, a new Re-up Spot with no location, or nothing, as the user chooses.
   - **Built-in terpene vocabulary** (myrcene, limonene, …) in the core, so label terpenes are tags like any other.
   - **Lab-results links** are saved with the product either way. Opening one is behind the Privacy Center toggle "Open lab-results links" (Catalogs, off by default).
-  - **Online code lookups are not built yet:** they need a catalog provider (see "Open decisions").
+  - **Online code lookups are not planned** (maintainer, 2026-10-12; see "Settled 2026-10-12").
 - On-device model tiers can improve parsing (messy receipts) but are not required; pattern parsing works without them.
 
 ## Stream journaling, tagging, and insights
@@ -620,6 +620,7 @@ Each journal entry records one consumption session, not a product review. Produc
   - **YOLO Mode** (working name; it amuses us): uses the platform's features for the best experience. Examples: ML Kit text recognition, OS on-device models for tagging, OS indexing and shortcuts, rich notifications, address lookup, online catalogs. Leaving it runs every off-action it caused.
   - A middle preset may come later if users ask for one.
   - **YOLO Mode's toggles (decided by the maintainer, 2026-10-12):** Google text recognition (Play only), open lab-results links, "Show me", spot names in alerts, details in alerts, and follow-up check-ins. Screen protection stays on, and "Notify me" stays its own choice because it needs location "all the time". New toggles join YOLO Mode only by a recorded decision.
+    - **Added 2026-10-12 (maintainer):** the online map (builds with a MapTiler key).
 - **Android implementation (2026-10-12):** a preset is a full set of toggle states (`PrivacyPreset`): its listed toggles relaxed, every other toggle at its most private state; IDs a build doesn't register are ignored. Applying one runs every toggle's own action, including toggles already in place, so leaving YOLO Mode runs every off-action it caused. The Privacy Center shows "Preset: Most private", "Preset: YOLO Mode" or "Preset: Custom", and a button per preset opens one combined confirmation listing each toggle it turns on or off, with the card of each one it relaxes.
 - **Threat model at onboarding:** one optional question ("What are you protecting this journal from?") suggests a preset. Skipping it, or any answer, leaves the defaults at most private until the user confirms a preset.
   - **Android:** asked at the top of the onboarding Privacy Center tour, never stored. "People who might pick up my phone", "Legal trouble where I live" and "Companies and apps tracking me" suggest Most private (already set). "Not much, I just want it to work well" suggests YOLO Mode, with a Review button that opens its confirmation.
@@ -715,4 +716,9 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - IP: trademark is the priority (file intent-to-use soon); copyright registration not planned given AI authorship; monetization paths unchanged.
 
 ## Open decisions
-- **Catalog provider for online code lookups.** Rapid product entry stores scanned codes locally, and online lookups are opt-in by design. No provider has been chosen, and the app has no network access. Choosing one means deciding on the provider, its terms (caching, redistribution), and the network permission behind its toggle.
+- None at the moment.
+
+## Settled 2026-10-12 (maintainer)
+- **Online code lookups are not planned.** The maintainer doubts barcodes are worth as much as reading the label's text, so no catalog provider will be chosen for now. Scanned codes still work locally (re-buys are recognized); label text parsing is where scanning effort goes.
+- **First sync backend: a folder through the system file picker.** Encrypted blobs go into any folder the Android file picker offers (a Syncthing folder, or Google Drive, Nextcloud or Dropbox through their apps' document providers). Terpoir needs no INTERNET permission and holds no credentials for it; sync runs while the app is open. WebDAV, S3 and direct device pairing come later.
+- **Insight thresholds:** at least 5 sessions on each side of a comparison and a difference of at least 1.0 star in average rating before an insight surfaces.

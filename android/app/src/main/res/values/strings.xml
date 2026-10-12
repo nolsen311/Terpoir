@@ -139,7 +139,7 @@
     <string name="preset_most_private">Most private</string>
     <string name="preset_most_private_does">Every protection on and every optional feature off. This is the default.</string>
     <string name="preset_yolo">YOLO Mode</string>
-    <string name="preset_yolo_does">Turns on the conveniences that lean on your phone\'s platform: Google text recognition (on Google Play builds), opening lab-results links, the nearby-spot banner, spot names and details in alerts, and follow-up check-ins. Screen protection stays on, and \"Notify me\" stays your own choice. Some lines hold in every mode: no phone backups of your journal, no cloud model reading it, no analytics, and no Terpoir server.</string>
+    <string name="preset_yolo_does">Turns on the conveniences that lean on your phone\'s platform: Google text recognition (on Google Play builds), opening lab-results links, the nearby-spot banner, spot names and details in alerts, follow-up check-ins, and the online map (where your version has one). Screen protection stays on, and \"Notify me\" stays your own choice. Some lines hold in every mode: no phone backups of your journal, no cloud model reading it, no analytics, and no Terpoir server.</string>
     <string name="preset_confirm_title">Switch to %1$s?</string>
     <string name="preset_turns_on">Turns on: %1$s</string>
     <string name="preset_turns_off">Turns off: %1$s</string>

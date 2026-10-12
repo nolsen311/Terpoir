@@ -259,5 +259,7 @@ val YOLO_MODE = PrivacyPreset(
         "alert_names",
         "alert_details",
         "follow_up_check_ins",
+        // Added by the maintainer, 2026-10-12. Builds without a map ignore it.
+        ONLINE_MAP,
     ),
 )
