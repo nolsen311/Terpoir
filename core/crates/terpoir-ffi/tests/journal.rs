@@ -695,3 +695,76 @@ fn an_export_restores_on_a_new_device() {
     }
     assert!(new_phone.get_session(id.clone()).unwrap() == phone.get_session(id).unwrap());
 }
+
+#[test]
+fn the_plaintext_export_has_every_record_readably() {
+    let keys = create_keys().unwrap();
+    let dir = Device::new();
+    let journal = dir.open(&keys).unwrap();
+    let brand = journal
+        .save_brand(
+            None,
+            BrandData {
+                name: "Fire Bros".into(),
+            },
+            1,
+        )
+        .unwrap();
+    let product = journal
+        .save_product(
+            None,
+            ProductData {
+                name: "Block Berry, \"live\" cart".into(),
+                form: Some("vape_cart".into()),
+                brand: Some(brand),
+                strains: vec![],
+                thc_milli: Some(85_500),
+                thc_unit: Some("percent".into()),
+                cbd_milli: None,
+                cbd_unit: None,
+                terpenes: vec![],
+                batch: Some("=1+1".into()),
+                package_date_day: Some(20_737),
+                identifiers: vec![],
+            },
+            2,
+        )
+        .unwrap();
+    let session_id = journal
+        .save_session(None, session(Some(product.clone())), 3)
+        .unwrap();
+
+    let files = journal.export_plaintext(10).unwrap();
+    let names: Vec<&str> = files.iter().map(|f| f.name.as_str()).collect();
+    assert_eq!(
+        names,
+        [
+            "terpoir.json",
+            "sessions.csv",
+            "products.csv",
+            "purchases.csv"
+        ]
+    );
+
+    let json: serde_json::Value = serde_json::from_slice(&files[0].bytes).unwrap();
+    assert_eq!(json["format"], "terpoir-plaintext");
+    let sessions = json["records"]["sessions"].as_array().unwrap();
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(sessions[0]["id"], session_id);
+    assert_eq!(sessions[0]["fields"]["effects"]["relaxed"], 4);
+    assert_eq!(json["records"]["products"][0]["id"], product);
+
+    let sessions_csv = String::from_utf8(files[1].bytes.clone()).unwrap();
+    let mut rows = sessions_csv.split("\r\n");
+    assert!(rows.next().unwrap().starts_with("id,date,time,"));
+    let row = rows.next().unwrap();
+    assert!(row.contains(&session_id));
+    // The product's label carries its brand, quoted for its comma and quotes.
+    assert!(row.contains("\"Fire Bros Block Berry, \"\"live\"\" cart\""));
+    assert!(row.contains("relaxed=4"));
+
+    let products_csv = String::from_utf8(files[2].bytes.clone()).unwrap();
+    // A batch that looks like a formula is defused; the date is ISO.
+    assert!(products_csv.contains(",'=1+1,2026-10-11"));
+    assert!(products_csv.contains(",85.5,percent,"));
+}

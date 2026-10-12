@@ -31,6 +31,7 @@ mod archive;
 mod error;
 mod journal;
 mod keys;
+mod plaintext;
 mod records;
 mod scan;
 mod vocabulary;
@@ -44,6 +45,7 @@ pub use keys::{
     NewKeys, PassphraseWrapped, RotatedKeys, check_recovery_key, create_keys,
     master_key_from_passphrase, master_key_from_recovery, wrap_master_key_with_passphrase,
 };
+pub use plaintext::ExportFile;
 pub use records::{
     BrandData, IdentifierData, LocalTimeData, ProductData, ProductLineData, PurchaseData,
     PurchaseLineData, SessionData, SnippetData, SpotData, StrainData, SymptomData, TagData,

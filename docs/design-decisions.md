@@ -290,6 +290,8 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 ### Full export
 - **Encrypted export (default):** whole journal as an archive encrypted under the recovery key; same format as export/import sync.
 - **Plaintext export (opt-in):** JSON + CSV + photos for portability, with a strong warning; saved only through the system file picker, noting that cloud-synced folders will upload it.
+  - **Implementation (2026-10-12):** built in the core (`Journal::export_plaintext`). `terpoir.json` holds every record with every field, read generically from the stored documents so nothing is left out as the model grows. `sessions.csv`, `products.csv` and `purchases.csv` use names instead of record IDs. CSV cells that a spreadsheet would run as a formula get a leading `'`. JSON goes through `serde_json`, already in the dependency graph.
+  - **Android:** "Export as plain files (unencrypted)…" in the Privacy Center's data card. A warning dialog comes first; the ZIP is then saved where the user picks, and the plaintext buffers are zeroed after writing. Photos join the export once the app has photos.
 
 ### Import
 - From Terpoir encrypted exports. CSV import from other apps later.
