@@ -6,7 +6,10 @@
 //! barcode decoding on the device and pass the results here; everything
 //! below is plain pattern matching, with no network and no models.
 //!
-//! - [`parse_receipt`]: shop, date, total and line items from receipt text.
+//! - [`group_rows`]: printed rows from recognized pieces of text and where
+//!   they sit on the photo.
+//! - [`parse_receipt`]: shop, date, total and line items from receipt text;
+//!   [`parse_receipt_line`] for one line the user picked.
 //! - [`parse_label`]: THC, CBD, terpenes, batch, package date and package
 //!   tags from a compliance label.
 //! - [`classify_code`]: what kind of identifier a decoded barcode or QR
@@ -19,6 +22,7 @@
 mod code;
 mod date;
 mod label;
+mod layout;
 mod name;
 mod number;
 mod receipt;
@@ -26,5 +30,6 @@ mod receipt;
 pub use code::{ScannedCode, classify_code, is_package_tag};
 pub use date::Date;
 pub use label::{LabelAmountGuess, LabelScan, parse_label};
+pub use layout::{TextPiece, TextRow, group_rows};
 pub use name::{names_match, normalize_name};
-pub use receipt::{Receipt, ReceiptItem, parse_receipt};
+pub use receipt::{Receipt, ReceiptItem, ReceiptLine, parse_receipt, parse_receipt_line};

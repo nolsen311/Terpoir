@@ -8,6 +8,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.util.Size
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,6 +20,8 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.core.SurfaceRequest
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,6 +56,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.terpoir.R
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+
+/** The largest photo taken: 12 megapixels, 4:3. */
+private val PHOTO_SIZE = Size(4000, 3000)
 
 /** What the camera is for. */
 enum class CaptureMode {
@@ -132,7 +138,18 @@ private fun Viewfinder(
     val lifecycleOwner = LocalLifecycleOwner.current
     var surface by remember { mutableStateOf<SurfaceRequest?>(null) }
     var busy by remember { mutableStateOf(false) }
-    val capture = remember { ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build() }
+    val capture = remember {
+        // Small print needs a sharp photo; the size cap keeps 50-megapixel
+        // sensors from filling memory.
+        ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+            .setResolutionSelector(
+                ResolutionSelector.Builder()
+                    .setResolutionStrategy(ResolutionStrategy(PHOTO_SIZE, ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER))
+                    .build(),
+            )
+            .build()
+    }
     val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
     val done = remember { AtomicBoolean(false) }
 

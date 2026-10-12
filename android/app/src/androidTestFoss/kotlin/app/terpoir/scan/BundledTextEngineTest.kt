@@ -8,6 +8,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.Typeface
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -27,7 +28,7 @@ class BundledTextEngineTest {
     fun readsPrintedText() = runBlocking {
         val engine = BundledTextEngine(context)
         assertEquals(EngineStatus.Ready, engine.status())
-        val image = Bitmap.createBitmap(900, 220, Bitmap.Config.ARGB_8888)
+        val image = Bitmap.createBitmap(1400, 220, Bitmap.Config.ARGB_8888)
         val paint = Paint().apply {
             color = Color.BLACK
             textSize = 72f
@@ -36,16 +37,22 @@ class BundledTextEngineTest {
         }
         Canvas(image).apply {
             drawColor(Color.WHITE)
+            // A receipt row: the name, a wide gap, the price.
             drawText("BLUE DREAM 3.5G", 40f, 140f, paint)
+            drawText("35.00", 1100f, 140f, paint)
         }
         val recognizer = engine.open()
         assertNotNull("Tesseract did not start", recognizer)
-        val text = try {
-            recognizer!!.recognize(image)
+        try {
+            for (layout in TextLayout.entries) {
+                val lines = recognizer!!.recognize(image, layout)
+                val text = lines.joinToString("\n") { it.text }
+                assertTrue("$layout recognized: $text", "BLUE DREAM" in text.uppercase() && "35.00" in text)
+                assertTrue("$layout boxes", lines.all { !it.box.isEmpty && Rect(0, 0, image.width, image.height).contains(it.box) })
+            }
         } finally {
             recognizer?.close()
             image.recycle()
         }
-        assertTrue("recognized: $text", "BLUE DREAM" in text.uppercase())
     }
 }

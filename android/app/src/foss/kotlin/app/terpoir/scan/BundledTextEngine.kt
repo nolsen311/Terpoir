@@ -28,7 +28,8 @@ class BundledTextEngine(private val context: Context) : TextEngine {
     override suspend fun open(): TextRecognizer? {
         val reader = modelRoot()?.let(TesseractReader::open) ?: return null
         return object : TextRecognizer {
-            override suspend fun recognize(image: Bitmap): String = reader.read(image)
+            override suspend fun recognize(image: Bitmap, layout: TextLayout): List<TextLine> =
+                reader.read(image, column = layout == TextLayout.COLUMN).map { TextLine(it.text, it.box) }
 
             override fun close() = reader.close()
         }

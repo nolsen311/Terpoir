@@ -88,8 +88,11 @@ class GoogleTextEngine(context: Context) : TextEngine {
     override suspend fun open(): TextRecognizer {
         val client = newClient()
         return object : TextRecognizer {
-            override suspend fun recognize(image: Bitmap): String =
-                client.process(InputImage.fromBitmap(image, 0)).await().text
+            // ML Kit has no layout setting; the scanner regroups its lines into rows.
+            override suspend fun recognize(image: Bitmap, layout: TextLayout): List<TextLine> =
+                client.process(InputImage.fromBitmap(image, 0)).await().textBlocks
+                    .flatMap { it.lines }
+                    .mapNotNull { line -> line.boundingBox?.let { TextLine(line.text, it) } }
 
             override fun close() = client.close()
         }

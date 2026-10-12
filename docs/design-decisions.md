@@ -491,7 +491,8 @@ Each journal entry records one consumption session, not a product review. Produc
     - **`ocrs` (pure-Rust OCR) was considered** and not used: the license of its model weights could not be confirmed.
   - Extracted lines appear as a checklist to confirm, fix, or drop.
   - Header text suggests the shop name, matched on-device against existing spots.
-  - **The receipt image is discarded after parsing by default** (receipts can carry the user's name, loyalty numbers, or medical card numbers). Only confirmed fields are kept.
+  - **The receipt image is never saved** (receipts can carry the user's name, loyalty numbers, or medical card numbers). Only confirmed fields are kept.
+    - **Changed (2026-10-12):** a small copy (at most 1600 pixels on its longest side) stays in memory while the user checks the receipt, so they can tap the lines to keep. It is recycled when the review screen closes and is never written to storage. The capture screen says so. Previously the photo was recycled as soon as it was read.
 - **Label scan:** on-device text recognition of the compliance label pre-fills name, brand, THC/CBD, terpenes, batch, and package date. Optionally keep the photo as the product picture (EXIF-stripped, never written to the gallery).
 - **Barcodes and QR codes:** decoded on-device; stored locally as identifiers so re-buys are recognized instantly.
   - **Online lookups of a scanned code are opt-in** via the catalog toggles; a package tag is a precise identifier.
@@ -500,8 +501,12 @@ Each journal entry records one consumption session, not a product review. Produc
 - **Implementation (decided):**
   - **Parsing lives in the core** (`terpoir-scan`): receipt lines, shop, date and total; label THC/CBD, terpenes, batch, package date and package tags; code classification (barcode, QR, package tag, link). Platforms only capture and recognize.
   - **Duplicate detection and shop matching run in the core** over decrypted records (`Journal::find_products`, `Journal::match_spot`). Matching is by scanned code first, then by normalized name and brand. Codes are never put in the plaintext index.
-  - **Android capture:** a CameraX viewfinder in the app. Photos are taken into memory, read, and recycled at once; nothing is written to storage or the gallery. Code scanning decodes live frames with ZXing, so nothing is photographed. The camera permission is asked on first use.
-  - **Receipts never offer personal or payment lines** (cardholder, loyalty, patient or member numbers, totals, tax). The checklist is saved as one Purchase. The shop becomes an existing spot, a new Re-up Spot with no location, or nothing, as the user chooses.
+  - **Android capture:** a CameraX viewfinder in the app. Photos are taken into memory at full quality (capped at 12 megapixels) and read; a label photo is recycled at once, and a receipt's small review copy when its review screen closes. Nothing is written to storage or the gallery. Code scanning decodes live frames with ZXing, so nothing is photographed. The camera permission is asked on first use.
+  - **Reading receipts (2026-10-12):** the first version read receipts poorly, because recognizers report a photo as blocks, and on a receipt the names and prices land in different blocks.
+    - **Rows in the core:** engines report lines with their boxes, and `terpoir-scan` groups them into printed rows by position (`group_rows`) before parsing, for labels too. The parser reports which rows each item and the shop came from.
+    - **Before reading:** the app makes a gray copy with its contrast stretched (1st to 99th percentile of brightness). Tesseract reads a receipt as one column of rows (`PSM_SINGLE_COLUMN`, with local Sauvola thresholding for shadows); labels keep automatic layout.
+    - **Tap to tag:** the review screen shows the photo with a box on each row. Tapping a row adds it as an item (read with `parse_receipt_line`, which filters nothing, since the user chose it) or removes it; holding a row makes it the shop.
+  - **Receipts never offer personal or payment lines** (cardholder, loyalty, patient or member numbers, totals, tax) on their own; the user can still tap one in. The checklist is saved as one Purchase. The shop becomes an existing spot, a new Re-up Spot with no location, or nothing, as the user chooses.
   - **Built-in terpene vocabulary** (myrcene, limonene, …) in the core, so label terpenes are tags like any other.
   - **Lab-results links** are saved with the product either way. Opening one is behind the Privacy Center toggle "Open lab-results links" (Catalogs, off by default).
   - **Online code lookups are not built yet:** they need a catalog provider (see "Open decisions").
