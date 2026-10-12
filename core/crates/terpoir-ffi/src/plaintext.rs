@@ -286,6 +286,7 @@ fn products_csv(docs: &[Document], names: &Names) -> String {
         "terpenes_percent",
         "batch",
         "package_date",
+        "shops",
     ]);
     for doc in docs {
         let Ok(p) = Product::from_document(doc) else {
@@ -309,6 +310,7 @@ fn products_csv(docs: &[Document], names: &Names) -> String {
             ),
             p.batch.clone().unwrap_or_default(),
             opt(p.package_date.map(iso_date)),
+            join(p.shops.iter().map(|s| names.of(s))),
         ]);
     }
     out.finish()

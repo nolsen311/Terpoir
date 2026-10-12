@@ -26,6 +26,7 @@ class ScanHelpersTest {
         batch = "OLD-1",
         packageDateDay = 20_000,
         identifiers = listOf(IdentifierData("0123456789012", "barcode")),
+        shops = listOf("ee".repeat(16)),
     )
 
     @Test

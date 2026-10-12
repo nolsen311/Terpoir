@@ -227,6 +227,10 @@ pub struct ProductLine {
     pub dose: Option<Dose>,
     /// The purchase line this came from, if recorded.
     pub purchase: Option<PurchaseRef>,
+    /// The Re-up Spot it was bought at, when the user picked one (for a
+    /// product bought at several). Stored in the session's `line_shops`
+    /// map, so apps that predate it keep it untouched.
+    pub shop: Option<RecordId>,
 }
 
 impl ProductLine {
@@ -285,6 +289,7 @@ impl ProductLine {
             method: Method::from_slug(method),
             dose,
             purchase,
+            shop: None,
         })
     }
 }
@@ -374,7 +379,7 @@ const SCALARS: &[&str] = &[
     "would_repeat",
     "spot",
 ];
-const MAPS: &[&str] = &["lines", "effects", "symptoms", "attachments"];
+const MAPS: &[&str] = &["lines", "line_shops", "effects", "symptoms", "attachments"];
 
 impl Record for Session {
     const KIND: RecordKind = RecordKind::Session;
@@ -400,6 +405,14 @@ impl Record for Session {
             .opt("would_repeat", self.would_repeat, Value::Bool)
             .opt("spot", self.spot, Value::Id)
             .map("lines", &self.lines, |id| id.to_hex(), |l| l.to_value())
+            .map(
+                "line_shops",
+                self.lines
+                    .iter()
+                    .filter_map(|(id, l)| l.shop.map(|shop| (id, shop))),
+                |id| id.to_hex(),
+                Value::Id,
+            )
             .map("effects", &self.effects, |t| t.to_key(), |v| small(*v))
             .map(
                 "symptoms",
@@ -413,7 +426,7 @@ impl Record for Session {
 
     fn from_document(doc: &Document) -> Result<Self> {
         let r = Reader::new::<Self>(doc)?;
-        let lines = r
+        let mut lines: BTreeMap<RecordId, ProductLine> = r
             .entries("lines")
             .map(|(k, v)| {
                 Ok((
@@ -422,6 +435,16 @@ impl Record for Session {
                 ))
             })
             .collect::<Result<_>>()?;
+        // A shop for a line that is gone (removed on another device) is
+        // ignored.
+        for (k, v) in r.entries("line_shops") {
+            let (Ok(id), Value::Id(shop)) = (RecordId::from_hex(k), v) else {
+                return Err(Error::InvalidField("line_shops"));
+            };
+            if let Some(line) = lines.get_mut(&id) {
+                line.shop = Some(*shop);
+            }
+        }
         Ok(Self {
             when: LocalTime::from_value(r.value("when"), "when")?,
             lines,
@@ -534,6 +557,7 @@ mod tests {
                     purchase: id(4),
                     line: id(5),
                 }),
+                shop: Some(id(6)),
             },
         );
         s.lines.insert(
@@ -543,6 +567,7 @@ mod tests {
                 method: Method::Unknown("future_method".into()),
                 dose: None,
                 purchase: None,
+                shop: None,
             },
         );
         s.activity = Some("hiking".into());

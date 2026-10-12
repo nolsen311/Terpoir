@@ -21,6 +21,8 @@ data class LineDraft(
     /** The purchase this unit came from; not edited here yet, so carried over. */
     val purchaseId: String? = null,
     val purchaseLineId: String? = null,
+    /** The shop it came from, picked when the product is bought at several. */
+    val shop: String? = null,
 )
 
 /** What is wrong with a draft, if anything. */
@@ -70,6 +72,7 @@ data class SessionDraft(
                 line.doseUnit.takeIf { dose != null },
                 line.purchaseId,
                 line.purchaseLineId,
+                line.shop,
             )
         }
         val minutes = listOf(onset, peak, duration).map {
@@ -126,6 +129,7 @@ data class SessionDraft(
                     it.doseUnit,
                     it.purchaseId,
                     it.purchaseLineId,
+                    it.shop,
                 )
             },
             intention = data.intention,

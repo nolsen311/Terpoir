@@ -22,7 +22,7 @@ fun main() {
     check(journal.getBrand(id) == BrandData("Acme"))
     val session = SessionData(
         `when` = LocalTimeData(1_760_000_000_000, -420),
-        lines = listOf(ProductLineData(null, null, "edible", 5000, "mg", null, null)),
+        lines = listOf(ProductLineData(null, null, "edible", 5000, "mg", null, null, null)),
         activity = "kt", intention = "relax", moodBefore = 3u, social = null,
         effects = listOf(TagIntensity(TagRefData.Builtin("relaxed"), 4)),
         onsetMin = null, peakMin = null, durationMin = null, moodAfter = null,

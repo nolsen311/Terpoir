@@ -12,6 +12,7 @@ import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.SpotAlerts
 import app.terpoir.core.Journal
 import app.terpoir.map.OnlineMap
+import app.terpoir.sync.FolderSync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -21,6 +22,7 @@ fun buildPrivacyCenter(
     settings: PrivacySettings,
     alerts: SpotAlerts,
     checkIns: CheckIns,
+    folderSync: FolderSync,
     journal: () -> Journal?,
 ): PrivacyCenter = PrivacyCenter(
     listOfNotNull(
@@ -289,6 +291,27 @@ fun buildPrivacyCenter(
         } else {
             null
         },
+        // On only enables the sync card (choose a folder, sync now); syncing
+        // runs while the app is open. Off gives up the folder permission and
+        // forgets what was synced; files already there stay, encrypted.
+        PrivacyToggle(
+            id = "folder_sync",
+            group = PrivacyGroup.SYNC_AND_KEYS,
+            card = PrivacyCard(
+                title = R.string.folder_sync,
+                whatItDoes = R.string.folder_sync_does,
+                whatLeaves = R.string.folder_sync_leaves,
+                whoCanSee = R.string.folder_sync_who,
+                howToUndo = R.string.folder_sync_undo,
+            ),
+            privateState = false,
+            isOn = { settings.folderSync },
+            onAction = { settings.folderSync = true },
+            offAction = {
+                settings.folderSync = false
+                folderSync.forget()
+            },
+        ),
         // Which input the new-note button opens. Voice is on-device only,
         // so neither side creates anything to clean up.
         PrivacyToggle(

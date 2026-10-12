@@ -173,6 +173,9 @@ pub struct Product {
     /// Scanned codes (barcode, QR, package tag), by their value. Where and
     /// for how much it was bought lives on [`crate::Purchase`] records.
     pub identifiers: BTreeMap<String, IdentifierKind>,
+    /// Re-up Spots the user buys it at ("Where I buy it"): added when a
+    /// receipt from a spot lists it, and editable at any time.
+    pub shops: BTreeSet<RecordId>,
 }
 
 impl Product {
@@ -190,6 +193,7 @@ impl Product {
             batch: None,
             package_date: None,
             identifiers: BTreeMap::new(),
+            shops: BTreeSet::new(),
         }
     }
 }
@@ -220,7 +224,8 @@ impl Record for Product {
                 &self.identifiers,
                 |code| (*code).clone(),
                 |kind| Value::Text(kind.slug().to_owned()),
-            );
+            )
+            .id_set("shops", &self.shops);
         f.finish()
     }
 
@@ -247,6 +252,7 @@ impl Record for Product {
             batch: r.text("batch")?,
             package_date: r.int_in("package_date", i64::MIN..=i64::MAX)?,
             identifiers,
+            shops: r.id_set("shops")?,
         })
     }
 
@@ -262,7 +268,7 @@ impl Record for Product {
                 "batch",
                 "package_date",
             ],
-            &["strains", "terpenes", "identifiers"],
+            &["strains", "terpenes", "identifiers", "shops"],
         )
     }
 }
@@ -386,6 +392,7 @@ mod tests {
         p.terpenes.insert(TagRef::Builtin("myrcene".into()), 1_200);
         p.batch = Some("LOT-7".into());
         p.package_date = Some(20_370);
+        p.shops.insert(RecordId::from_bytes([3; 16]));
         p.identifiers
             .insert("0850012345678".into(), IdentifierKind::Barcode);
         p.identifiers.insert(
