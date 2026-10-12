@@ -659,6 +659,7 @@ Each journal entry records one consumption session, not a product review. Produc
 - Universal links / associated domains cause Apple and Google to fetch a verification file from the domain; note this in disclosure docs.
 - DNS hardening in place (Cloudflare): DNSSEC, CAA restricting issuance (Let's Encrypt plus Cloudflare's automatic Universal SSL CAs), null MX, SPF `-all`, DMARC reject, empty DKIM.
 - Website: no analytics or third-party scripts; disclose that Cloudflare terminates TLS and can see visitors.
+- **Website implementation (decided, `site/`):** one static page, hosted free on Cloudflare Pages from `site/` on `main`. System fonts only and no external requests; `_headers` sets a CSP that allows nothing beyond inline styles. Cloudflare Web Analytics stays off. Voice follows the in-app tone: candid about AI authorship, trademark and money. No AI-made logo, icon or illustration: the page is type-led, with `ARTIST:` slots for commissioned human artwork.
 
 ## Licensing, trademark, and anti-clone protection
 - **License: GPL-3.0-or-later with an additional permission (GPLv3 §7) allowing app store distribution**, provided source stays available under the GPL elsewhere. See `LICENSING.md`.
