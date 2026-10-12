@@ -10,6 +10,9 @@ import app.terpoir.Distribution
 import app.terpoir.R
 import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.SpotAlerts
+import app.terpoir.capture.NewNoteTileService
+import app.terpoir.capture.NewNoteWidget
+import app.terpoir.capture.QuickCapture
 import app.terpoir.core.Journal
 import app.terpoir.map.OnlineMap
 import app.terpoir.sync.FolderSync
@@ -26,6 +29,52 @@ fun buildPrivacyCenter(
     journal: () -> Journal?,
 ): PrivacyCenter = PrivacyCenter(
     listOfNotNull(
+        // Quick capture entry points (docs/design-decisions.md, "Quick
+        // capture"): each enables its component on, and disables it off,
+        // which takes the tile out of Quick Settings and the widget out of
+        // the widget list. Neither shows journal content.
+        PrivacyToggle(
+            id = "quick_settings_tile",
+            group = PrivacyGroup.OS_INTEGRATION,
+            card = PrivacyCard(
+                title = R.string.capture_tile,
+                whatItDoes = R.string.capture_tile_does,
+                whatLeaves = R.string.capture_tile_leaves,
+                whoCanSee = R.string.capture_tile_who,
+                howToUndo = R.string.capture_tile_undo,
+            ),
+            privateState = false,
+            isOn = { settings.quickSettingsTile },
+            onAction = {
+                settings.quickSettingsTile = true
+                QuickCapture.setComponent(context, NewNoteTileService::class.java, true)
+            },
+            offAction = {
+                settings.quickSettingsTile = false
+                QuickCapture.setComponent(context, NewNoteTileService::class.java, false)
+            },
+        ),
+        PrivacyToggle(
+            id = "home_widget",
+            group = PrivacyGroup.OS_INTEGRATION,
+            card = PrivacyCard(
+                title = R.string.capture_widget,
+                whatItDoes = R.string.capture_widget_does,
+                whatLeaves = R.string.capture_widget_leaves,
+                whoCanSee = R.string.capture_widget_who,
+                howToUndo = R.string.capture_widget_undo,
+            ),
+            privateState = false,
+            isOn = { settings.homeWidget },
+            onAction = {
+                settings.homeWidget = true
+                QuickCapture.setComponent(context, NewNoteWidget::class.java, true)
+            },
+            offAction = {
+                settings.homeWidget = false
+                QuickCapture.setComponent(context, NewNoteWidget::class.java, false)
+            },
+        ),
         // Applied to the window on the next resume, and at once by the
         // Privacy Center screen. Off only clears FLAG_SECURE.
         PrivacyToggle(

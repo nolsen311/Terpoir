@@ -118,6 +118,8 @@ fun JournalHome(
     onCheckInOpened: () -> Unit,
     quickLog: Boolean,
     onQuickLogOpened: () -> Unit,
+    newNote: Boolean,
+    onNewNoteOpened: () -> Unit,
     onEdited: () -> Unit,
     onLock: () -> Unit,
     privacyCenter: @Composable (onClose: () -> Unit) -> Unit,
@@ -135,6 +137,14 @@ fun JournalHome(
         if (quickLog) {
             stack.add(Screen.Receipt)
             onQuickLogOpened()
+        }
+    }
+    // Opened from a quick-capture shortcut, tile or widget: a new note, in
+    // the user's default mode (the note screen applies voice-first).
+    LaunchedEffect(newNote) {
+        if (newNote) {
+            stack.add(Screen.Note(null))
+            onNewNoteOpened()
         }
     }
     // Opened from a "Quick check-in?" reminder.
