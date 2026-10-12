@@ -92,7 +92,9 @@ module `:ocr`, with the language data as an asset pack
 is unset, so a from-source build never contacts JitPack. App CI builds
 without the property. The workflow's `foss-app` job builds the `foss`
 release with it and checks that the APK ships these libraries, none of which
-calls Android's logger.
+calls Android's logger. Its `foss-device` job builds the `foss` debug app
+with them and runs `BundledTextEngineTest` on an Android 11 emulator: the
+libraries load and Tesseract reads rendered text.
 
 ### F-Droid recipe (outline)
 
