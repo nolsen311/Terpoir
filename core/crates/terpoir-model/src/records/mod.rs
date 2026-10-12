@@ -23,7 +23,7 @@ pub use catalog::{
 pub use purchase::{Price, Purchase, PurchaseLine};
 pub use session::{
     CoreEffect, Dose, DoseUnit, Intention, Method, ProductLine, PurchaseRef, Session, Social,
-    SymptomResult, Timeline,
+    SymptomResult, TargetedSymptom, Timeline,
 };
 pub use snippet::{Provenance, Snippet};
 pub use spot::{DEFAULT_SPOT_RADIUS_M, Location, MIN_SPOT_RADIUS_M, Spot, SpotPurpose};

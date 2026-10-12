@@ -727,6 +727,38 @@ impl Journal {
         self.with(|u| plaintext::export(&*u, now_ms))
     }
 
+    /// Deletes every targeted symptom: each session's symptom ratings and
+    /// the user's own symptom tags (the off-action's "delete" choice for
+    /// targeted symptoms). The removals sync like edits. Returns how many
+    /// sessions changed.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn delete_symptoms(&self, now_ms: u64) -> Result<u32> {
+        self.with(|u| {
+            let mut changed = 0u32;
+            for id in u.store.ids_of_kind(RecordKind::Session)? {
+                let Some(mut session) = u.store.get_record::<Session>(&u.master, &id)? else {
+                    continue;
+                };
+                if session.symptoms.is_empty() {
+                    continue;
+                }
+                session.symptoms.clear();
+                u.save(Some(id.to_hex()), &session, now_ms)?;
+                changed += 1;
+            }
+            for id in u.store.ids_of_kind(RecordKind::Tag)? {
+                let tag = u.store.get_record::<Tag>(&u.master, &id)?;
+                if tag.is_some_and(|t| t.category == TagCategory::Symptom) {
+                    u.store.delete(&id)?;
+                }
+            }
+            Ok(changed)
+        })
+    }
+
     /// IDs of all records of a type.
     ///
     /// # Errors

@@ -84,6 +84,7 @@ fun SessionEditor(
     var products by remember { mutableStateOf<List<Entry<ProductData>>>(emptyList()) }
     var productLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var customEffects by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
+    var customSymptoms by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
     var error by remember { mutableStateOf<DraftError?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     var notes by remember { mutableStateOf<List<Entry<SnippetData>>>(emptyList()) }
@@ -101,6 +102,7 @@ fun SessionEditor(
         productLabels = repo.productLabels()
         spots = repo.spots()
         customEffects = repo.tags(EFFECT_CATEGORY)
+        customSymptoms = repo.tags(SYMPTOM_CATEGORY)
         draft = id?.let { repo.session(it) }?.let(SessionDraft::of) ?: SessionDraft.new(
             System.currentTimeMillis(),
             currentOffsetMin(System.currentTimeMillis()),
@@ -175,6 +177,25 @@ fun SessionEditor(
                 }
             },
         )
+
+        // Hidden unless turned on in the Privacy Center; while hidden, the
+        // draft carries any saved symptoms unchanged.
+        if (settings.targetedSymptoms) {
+            SectionTitle(stringResource(R.string.session_symptoms))
+            SymptomsEditor(
+                vocab = vocab,
+                custom = customSymptoms,
+                symptoms = current.symptoms,
+                onChange = { draft = current.copy(symptoms = it) },
+                onNewSymptom = { name ->
+                    scope.launch {
+                        val tagId = repo.saveTag(null, TagData(name, SYMPTOM_CATEGORY))
+                        customSymptoms = repo.tags(SYMPTOM_CATEGORY)
+                        draft = draft?.let { d -> d.copy(symptoms = d.symptoms + (TagRefData.Custom(tagId) to NOT_RATED)) }
+                    }
+                },
+            )
+        }
 
         SectionTitle(stringResource(R.string.session_timeline))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -352,6 +373,76 @@ private fun NotificationPermission() {
     Text(stringResource(R.string.check_in_needs_notifications), style = MaterialTheme.typography.bodySmall)
     OutlinedButton(onClick = { ask.launch(Manifest.permission.POST_NOTIFICATIONS) }) {
         Text(stringResource(R.string.notify_setup_allow))
+    }
+}
+
+/** The tag category of the user's own targeted symptoms. */
+private const val SYMPTOM_CATEGORY = "symptom"
+
+/** A targeted symptom the user hasn't rated (unsure, or not yet). */
+private const val NOT_RATED = "not_rated"
+
+/** Results in display order, with their labels. */
+private val SYMPTOM_RESULTS = listOf(
+    "helped" to R.string.symptom_helped,
+    "did_not_help" to R.string.symptom_did_not_help,
+    NOT_RATED to R.string.symptom_not_rated,
+)
+
+/**
+ * Targeted symptoms: symptoms, never conditions. Picking one targets it;
+ * each is then rated helped or didn't help, or left "not sure".
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SymptomsEditor(
+    vocab: Vocabulary,
+    custom: List<Entry<TagData>>,
+    symptoms: Map<TagRefData, String>,
+    onChange: (Map<TagRefData, String>) -> Unit,
+    onNewSymptom: (String) -> Unit,
+) {
+    val names = custom.associate { it.id to it.data.name }
+    Text(stringResource(R.string.session_symptoms_hint), style = MaterialTheme.typography.bodySmall)
+    val all = vocab.symptoms.map { TagRefData.Builtin(it) } + custom.map { TagRefData.Custom(it.id) }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (tag in all) {
+            val selected = tag in symptoms
+            FilterChip(
+                selected = selected,
+                onClick = { onChange(if (selected) symptoms - tag else symptoms + (tag to NOT_RATED)) },
+                label = { Text(tagLabel(tag, names)) },
+            )
+        }
+    }
+    for ((tag, result) in symptoms) {
+        Text(tagLabel(tag, names), style = MaterialTheme.typography.labelLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for ((slug, label) in SYMPTOM_RESULTS) {
+                FilterChip(
+                    selected = result == slug,
+                    onClick = { onChange(symptoms + (tag to slug)) },
+                    label = { Text(stringResource(label)) },
+                )
+            }
+        }
+    }
+    var newSymptom by remember { mutableStateOf("") }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            value = newSymptom,
+            onValueChange = { newSymptom = it },
+            label = { Text(stringResource(R.string.symptom_new)) },
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(
+            onClick = {
+                onNewSymptom(newSymptom.trim())
+                newSymptom = ""
+            },
+            enabled = newSymptom.isNotBlank(),
+        ) { Text(stringResource(R.string.add)) }
     }
 }
 

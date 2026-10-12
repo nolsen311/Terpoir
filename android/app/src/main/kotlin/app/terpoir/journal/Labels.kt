@@ -100,6 +100,12 @@ private val LABELS: Map<String, Int> = mapOf(
     "irritable" to R.string.mood_irritable,
     "sad" to R.string.mood_sad,
     "tired" to R.string.mood_tired,
+    // Targeted symptoms; "sleep" shares the intention's label.
+    "pain" to R.string.symptom_pain,
+    "anxiety" to R.string.symptom_anxiety,
+    "appetite" to R.string.symptom_appetite,
+    "nausea" to R.string.symptom_nausea,
+    "focus" to R.string.symptom_focus,
     // Spot purposes
     "blaze" to R.string.purpose_blaze,
     "munch" to R.string.purpose_munch,

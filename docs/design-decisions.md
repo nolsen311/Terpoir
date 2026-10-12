@@ -461,6 +461,10 @@ Each journal entry records one consumption session, not a product review. Produc
 - Each targeted symptom rated **👍 helped / 👎 didn't help**, skippable when unsure.
 - Off-action asks whether to hide or delete existing symptom data.
 - Framed as self-tracking, never advice.
+- **Implementation (2026-10-12):**
+  - **Core:** built-in symptoms are `TargetedSymptom` (sleep, pain, anxiety, appetite, nausea, focus; custom ones are tags of category `symptom`). Results are helped, did not help, or `not_rated` ("Not sure", the skip). Built-in tag slugs are tested to be unique across every vocabulary. `Journal::delete_symptoms` clears every session's symptoms (the removals sync like edits) and deletes the custom symptom tags.
+  - **Android:** the Privacy Center toggle "Targeted symptoms" (new group: Journal; off by default; not in either preset). While on, the session editor shows the section after Effects; while off, saved symptoms are carried unchanged and nothing shows them.
+  - **Turning it off by hand** asks "Keep, hidden" or "Delete". Presets and "Restore maximum privacy" only hide, so data is never deleted without asking. Toggles can now carry such a choice (`OffChoice`).
 
 ### Structural rules
 - **Per-record keys for every record type**, not just sessions (spots and products are sensitive too). Deleting a session leaves its products; deleting a spot detaches it from sessions.

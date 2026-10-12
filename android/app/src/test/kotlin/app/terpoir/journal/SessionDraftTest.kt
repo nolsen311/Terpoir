@@ -52,6 +52,19 @@ class SessionDraftTest {
     }
 
     @Test
+    fun symptomsCanBeRatedAndRemoved() {
+        val draft = SessionDraft.of(saved)
+        val pain = TagRefData.Builtin("pain")
+        val rated = draft.copy(symptoms = draft.symptoms + (pain to "not_rated")).toData() as SessionDraft.Result.Valid
+        assertEquals(
+            listOf(SymptomData(TagRefData.Builtin("sleep"), "helped"), SymptomData(pain, "not_rated")),
+            rated.data.symptoms,
+        )
+        val removed = draft.copy(symptoms = emptyMap()).toData() as SessionDraft.Result.Valid
+        assertEquals(emptyList<SymptomData>(), removed.data.symptoms)
+    }
+
+    @Test
     fun aBadDoseOrTimelineIsReported() {
         val draft = SessionDraft.new(0, 0)
         val badDose = draft.copy(lines = listOf(LineDraft(method = "smoked", dose = "two", doseUnit = "hits")))
