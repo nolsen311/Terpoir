@@ -16,7 +16,11 @@ import app.terpoir.TerpoirApplication
 class GeofenceReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val app = context.applicationContext as TerpoirApplication
-        val fences = app.spotAlerts.geofencer.entered(intent) ?: return
-        app.spotAlerts.onEntered(fences)
+        val events = app.spotAlerts.geofencer.events(intent) ?: return
+        val (prompts, spots) = events.partition { it.id.startsWith(PurchasePrompts.FENCE_PREFIX) }
+        app.spotAlerts.onEntered(spots.filter { it.arrived }.map { it.id })
+        for (event in prompts) {
+            if (event.arrived) app.purchasePrompts.onArrived(event.id, event.stopped) else app.purchasePrompts.onLeft(event.id)
+        }
     }
 }

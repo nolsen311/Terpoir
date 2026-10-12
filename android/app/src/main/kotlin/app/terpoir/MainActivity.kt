@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.terpoir.alerts.CheckIns
+import app.terpoir.alerts.PurchasePrompts
 import app.terpoir.alerts.SpotAlerts
 import app.terpoir.core.ExportArchive
 import app.terpoir.core.coreVersion
@@ -74,10 +75,14 @@ class MainActivity : ComponentActivity() {
     /** Opened from a "Quick check-in?" reminder: after unlock, open the check-in. */
     private var checkInRequested by mutableStateOf(false)
 
+    /** Opened from a "Quick log?" purchase prompt: after unlock, open receipt scan. */
+    private var quickLogRequested by mutableStateOf(false)
+
     private fun fromAlert(intent: Intent?) {
         when (intent?.action) {
             SpotAlerts.ACTION_NEAR_SPOT -> nearbyRequested = true
             CheckIns.ACTION_CHECK_IN -> checkInRequested = true
+            PurchasePrompts.ACTION_QUICK_LOG -> quickLogRequested = true
         }
     }
 
@@ -174,6 +179,8 @@ class MainActivity : ComponentActivity() {
                         checkInRequested = false
                         app.checkIns.done()
                     },
+                    quickLog = quickLogRequested,
+                    onQuickLogOpened = { quickLogRequested = false },
                     onEdited = { scope.launch { app.spotAlerts.refresh(state.journal) } },
                     onLock = session::lock,
                 ) { onClose ->

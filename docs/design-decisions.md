@@ -146,6 +146,14 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **No visit log:** the entry time is held only until exit (in the encrypted store if the app is killed meanwhile), then discarded. Dismissed prompts leave no trace. At most one prompt per spot per day.
 - **"Show me" alternative** (no "Always" permission): a banner when the app is opened while at a Re-up Spot; nothing registered with the OS.
 - **Off-action:** removes purchase-prompt geofences and clears pending state.
+- **Android implementation (2026-10-12):**
+  - **Toggle:** "Purchase reminders" (Location, off by default, in neither preset). While it is on, the spot editor offers "Remind me to log purchases here" on Re-up Spots with a location. The core lists the opted-in spots (`Journal::purchase_prompt_fences`: coordinates and radius only).
+  - **Fences:** prompt fences ("p0", "p1", …, at most 20) share one registration with "Notify me" fences ("s…", the rest of the 90). They need the same permissions, so the journal's setup card shows for either feature.
+  - **Dwell, then exit:** on Play, Play services reports a 3-minute dwell and the exit. With proximity alerts (foss, or no Play services) the app times entry to exit: 3 minutes inside counts as a stop.
+  - **No visit log (changed from the above):** the encrypted store is locked when the OS reports an event, so while inside a fence the app keeps only its opaque ID and the monotonic time of entry, in app-private storage, dropped on leaving. To keep to one prompt per spot per day, it keeps the opaque IDs prompted today until the day changes.
+  - **The prompt:** "Quick log?" / "Tap to scan the receipt.", the same at every tier and public on the lock screen. Tapping it opens receipt scan after unlock.
+  - **Off with the journal locked:** turning the toggle off removes every fence at once; "Notify me" fences return at the next unlock.
+  - **"Show me" alternative:** at a Re-up Spot, the nearby banner also offers "Log a purchase".
 
 ## Notifications
 - Local notifications only; nothing via APNs or FCM.

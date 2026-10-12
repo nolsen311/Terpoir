@@ -47,6 +47,7 @@ class SpotAlerts(
     private val context: Context,
     private val settings: PrivacySettings,
     val geofencer: Geofencer,
+    private val prompts: PurchasePrompts,
 ) {
     private val cache = AlertCache(File(context.noBackupFilesDir, "alerts/spots.tsv"))
     private val state = context.getSharedPreferences("alerts", Context.MODE_PRIVATE)
@@ -71,39 +72,62 @@ class SpotAlerts(
 
     /**
      * Brings the fences and the cache in line with the settings and the
-     * journal. Without the journal (locked) it changes nothing but can still
-     * remove: with "Notify me" off, everything is cleared.
+     * journal: "Notify me" fences ("s…") and purchase-prompt fences ("p…")
+     * share one registration. Without the journal (locked) nothing can be
+     * rebuilt, but turning either feature off still removes every fence;
+     * the other's fences come back at the next unlock.
      */
     suspend fun refresh(journal: Journal?) = lock.withLock {
-        if (!settings.notifyNearSpots) {
+        val notify = settings.notifyNearSpots
+        val prompting = settings.purchasePrompts
+        if (!notify && !prompting) {
             clearLocked()
             return@withLock
         }
-        if (journal == null) return@withLock
+        if (!notify) clearNotifyState()
+        if (!prompting) prompts.forget()
+        if (journal == null) {
+            if (!notify || !prompting) geofencer.clear()
+            return@withLock
+        }
         val needs = needs()
         if (AlertNeed.PRECISE_LOCATION in needs || AlertNeed.BACKGROUND_LOCATION in needs) {
             geofencer.clear()
-            cache.delete()
+            withContext(Dispatchers.IO) { cache.delete() }
             return@withLock
         }
-        val spots = withContext(Dispatchers.IO) { journal.spotAlerts() }
-            .sortedByDescending { it.sessions }
-            .take(MAX_FENCES)
-        val fences = spots.mapIndexed { index, spot -> Fence("s$index", spot.latE7, spot.lonE7, spot.radiusM.toInt()) }
-        val tier = tier
-        withContext(Dispatchers.IO) {
-            cache.write(
-                tier,
-                fences.zip(spots).associate { (fence, spot) ->
-                    fence.id to CachedSpot(
-                        name = spot.name,
-                        sessions = spot.sessions.toInt(),
-                        ratingTenths = spot.averageRatingTenths?.toInt(),
-                        lastProduct = spot.lastProduct,
-                    )
-                },
-            )
+        val promptFences = if (!prompting) {
+            emptyList()
+        } else {
+            withContext(Dispatchers.IO) { journal.purchasePromptFences() }
+                .take(PurchasePrompts.MAX_FENCES)
+                .mapIndexed { index, f -> Fence("${PurchasePrompts.FENCE_PREFIX}$index", f.latE7, f.lonE7, f.radiusM.toInt(), prompt = true) }
         }
+        val spots = if (!notify) {
+            emptyList()
+        } else {
+            withContext(Dispatchers.IO) { journal.spotAlerts() }
+                .sortedByDescending { it.sessions }
+                .take(MAX_FENCES - promptFences.size)
+        }
+        val spotFences = spots.mapIndexed { index, spot -> Fence("s$index", spot.latE7, spot.lonE7, spot.radiusM.toInt()) }
+        if (notify) {
+            val tier = tier
+            withContext(Dispatchers.IO) {
+                cache.write(
+                    tier,
+                    spotFences.zip(spots).associate { (fence, spot) ->
+                        fence.id to CachedSpot(
+                            name = spot.name,
+                            sessions = spot.sessions.toInt(),
+                            ratingTenths = spot.averageRatingTenths?.toInt(),
+                            lastProduct = spot.lastProduct,
+                        )
+                    },
+                )
+            }
+        }
+        val fences = spotFences + promptFences
         if (fences.isEmpty()) geofencer.clear() else geofencer.register(fences)
     }
 
@@ -117,6 +141,12 @@ class SpotAlerts(
 
     private suspend fun clearLocked() {
         geofencer.clear()
+        clearNotifyState()
+        prompts.forget()
+    }
+
+    /** "Notify me"'s own leftovers: the cache, the quiet period, an alert showing. */
+    private suspend fun clearNotifyState() {
         withContext(Dispatchers.IO) { cache.delete() }
         state.edit().clear().apply()
         context.getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID)
@@ -186,7 +216,7 @@ class SpotAlerts(
         /** The action of an alert's tap: the journal checks which spot after unlock. */
         const val ACTION_NEAR_SPOT = "app.terpoir.NEAR_SPOT"
 
-        /** Geofences per app are limited (100 with Play services); the most-used spots win. */
+        /** Geofences per app are limited (100 with Play services); prompt fences first, then the most-used spots. */
         const val MAX_FENCES = 90
 
         /** One alert at most per this many milliseconds, whichever spot. */

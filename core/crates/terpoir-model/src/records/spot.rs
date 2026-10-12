@@ -86,6 +86,19 @@ impl Spot {
             .map_or(DEFAULT_SPOT_RADIUS_M, |r| r.max(MIN_SPOT_RADIUS_M))
     }
 
+    /// Whether it is a Re-up Spot (where the user buys).
+    #[must_use]
+    pub fn is_re_up(&self) -> bool {
+        self.purposes.contains(&SpotPurpose::ReUp.into())
+    }
+
+    /// Whether leaving it should prompt "Quick log?": the user opted in on
+    /// a Re-up Spot that has coordinates.
+    #[must_use]
+    pub fn prompts_purchases(&self) -> bool {
+        self.purchase_prompts && self.location.is_some() && self.is_re_up()
+    }
+
     /// The distance to `here` in metres when `here` is near this spot: within
     /// its radius, plus the two fixes' accuracy capped at that radius, so a
     /// coarse fix never makes far-away spots "near". `None` otherwise, or
@@ -214,6 +227,26 @@ mod tests {
         };
         let doc = Document::create(&spot, stamp()).unwrap();
         assert_eq!(Spot::from_document(&doc).unwrap(), spot);
+    }
+
+    #[test]
+    fn only_opted_in_re_up_spots_with_coordinates_prompt() {
+        let mut spot = Spot {
+            name: "Spot 2".into(),
+            purposes: [SpotPurpose::ReUp.into()].into(),
+            location: Some(at(1, 1, 10)),
+            radius_m: None,
+            purchase_prompts: true,
+        };
+        assert!(spot.is_re_up() && spot.prompts_purchases());
+        spot.location = None;
+        assert!(!spot.prompts_purchases());
+        spot.location = Some(at(1, 1, 10));
+        spot.purposes = [SpotPurpose::Chill.into()].into();
+        assert!(!spot.is_re_up() && !spot.prompts_purchases());
+        spot.purposes = [SpotPurpose::ReUp.into()].into();
+        spot.purchase_prompts = false;
+        assert!(!spot.prompts_purchases());
     }
 
     fn at(lat_e7: i32, lon_e7: i32, accuracy_m: u32) -> Location {

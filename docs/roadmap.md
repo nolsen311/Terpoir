@@ -126,7 +126,7 @@ without it.
 - [x] Insights engine (opt-in, evidence thresholds, confounder flags).
 - [ ] Shop insights: per-shop rating and hit rate, selection vs. shop
       effect, freshness by package date.
-- [ ] Purchase prompts on Re-up Spots: dwell-then-exit geofence, discreet
+- [x] Purchase prompts on Re-up Spots: dwell-then-exit geofence, discreet
       "Quick log?", no visit log; "Show me" banner alternative.
 - [ ] Bring-your-own-storage sync backends and direct device pairing.
 - [ ] Privacy Center readability pass (maintainer, 2026-10-12): the screen

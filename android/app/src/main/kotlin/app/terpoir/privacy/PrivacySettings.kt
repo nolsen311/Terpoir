@@ -117,6 +117,16 @@ class PrivacySettings(context: Context) {
         get() = prefs.getBoolean(KEY_INSIGHTS, false)
         set(value) = prefs.edit().putBoolean(KEY_INSIGHTS, value).apply()
 
+    /**
+     * Purchase prompts: leaving an opted-in Re-up Spot after a stop shows
+     * "Quick log?". Off by default: like "Notify me", it needs location
+     * "all the time", and the OS location service holds those spots'
+     * coordinates.
+     */
+    var purchasePrompts: Boolean
+        get() = prefs.getBoolean(KEY_PURCHASE_PROMPTS, false)
+        set(value) = prefs.edit().putBoolean(KEY_PURCHASE_PROMPTS, value).apply()
+
     /** Whether the voice first-use card has been shown and answered. */
     var voiceIntroSeen: Boolean
         get() = prefs.getBoolean(KEY_VOICE_INTRO_SEEN, false)
@@ -136,5 +146,6 @@ class PrivacySettings(context: Context) {
         const val KEY_ONLINE_MAP = "online_map"
         const val KEY_SYMPTOMS = "targeted_symptoms"
         const val KEY_INSIGHTS = "insights"
+        const val KEY_PURCHASE_PROMPTS = "purchase_prompts"
     }
 }

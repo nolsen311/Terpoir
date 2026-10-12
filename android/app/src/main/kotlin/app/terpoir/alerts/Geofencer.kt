@@ -11,10 +11,17 @@ import android.content.Intent
 import android.location.LocationManager
 
 /**
- * A circle the OS location service watches. [id] is opaque ("s0", "s1",
- * ...): never a spot's record ID or name.
+ * A circle the OS location service watches. [id] is opaque ("s0", "s1"
+ * for "Notify me", "p0", "p1" for purchase prompts): never a spot's record
+ * ID or name. A [prompt] fence also reports leaving.
  */
-data class Fence(val id: String, val latE7: Int, val lonE7: Int, val radiusM: Int)
+data class Fence(val id: String, val latE7: Int, val lonE7: Int, val radiusM: Int, val prompt: Boolean = false)
+
+/**
+ * What the OS reported about a fence: the phone [arrived] (after a stop
+ * when [stopped], or merely entering) or left.
+ */
+data class FenceEvent(val id: String, val arrived: Boolean, val stopped: Boolean)
 
 /**
  * Registers "Notify me" geofences with the OS. The OS location service
@@ -28,8 +35,8 @@ interface Geofencer {
     /** Removes every fence this app registered. */
     suspend fun clear()
 
-    /** The fence IDs an alert intent reports entering, or `null` if it reports none. */
-    fun entered(intent: Intent): List<String>?
+    /** The fence events an intent reports, or `null` if it reports none. */
+    fun events(intent: Intent): List<FenceEvent>?
 }
 
 /**
@@ -77,10 +84,13 @@ class AospGeofencer(private val context: Context) : Geofencer {
         prefs.edit().remove(KEY_COUNT).apply()
     }
 
-    override fun entered(intent: Intent): List<String>? {
+    // Proximity alerts report entering and leaving, never a stop: the
+    // caller times entry to exit where that matters (purchase prompts).
+    override fun events(intent: Intent): List<FenceEvent>? {
         if (intent.action != ACTION) return null
-        if (!intent.getBooleanExtra(LocationManager.KEY_PROXIMITY_ENTERING, false)) return null
-        return listOfNotNull(intent.getStringExtra(EXTRA_FENCE))
+        val id = intent.getStringExtra(EXTRA_FENCE) ?: return null
+        val entering = intent.getBooleanExtra(LocationManager.KEY_PROXIMITY_ENTERING, false)
+        return listOf(FenceEvent(id, arrived = entering, stopped = false))
     }
 
     /**
