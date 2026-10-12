@@ -91,7 +91,8 @@ play-mlkit-text-recognition = { module = "com.google.android.gms:play-services-m
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
 # The opt-in online map for picking a spot's location (docs/design-decisions.md,
 # "Map picker"). MapLibre Native, BSD-2-Clause, with its geojson, turf and
-# gestures helpers (MIT, BSD-2-Clause). No telemetry (MapLibre removed
+# gestures helpers (MIT, BSD-2-Clause), Gson (Apache-2.0, for GeoJSON) and
+# Timber (Apache-2.0; no logging tree is planted). No telemetry (MapLibre removed
 # Mapbox's). The OpenGL build: the default one requires Vulkan, which would
 # hide the app from phones without it. Its manifest adds INTERNET (kept only
 # in builds with a MapTiler key), ACCESS_NETWORK_STATE and ACCESS_WIFI_STATE
