@@ -32,6 +32,14 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - Device pairing is direct (QR code or local transfer); no third party involved.
 - Account sign-in (Google, Apple), if offered at all, is transport only. Keys are never derived from or escrowed with the account provider.
 
+### Folder sync: Android implementation (2026-10-12)
+- **Toggle:** "Sync through a folder" (Sync and keys, off by default, in neither preset). While it is on, the Privacy Center's data card offers "Choose folder" (the system folder picker; the app keeps a persisted permission for that folder only) and "Sync now".
+- **When:** on unlock, after edits, and on "Sync now", only while the app is open. No background sync, and no INTERNET permission: whatever syncs the folder (Syncthing, or a cloud drive app's document provider) moves the files.
+- **Each sync (`FolderSync`):** imports every `<32 hex>.terpoir` blob not seen before, then writes this device's full state as new blobs. Each blob is written under a `.partial` name and renamed when complete; on providers that cannot rename, it is written directly and a reader that catches it half-written retries next time. Then this device's previous blobs are deleted, since the new ones supersede them. Merging is the core's (`import_sync_blob`, idempotent).
+- **Local state:** the folder URI, the names of blobs already imported, and this device's own current blob names, in app-private storage. Names are random and carry nothing.
+- **Off-action:** gives up the folder permission and forgets that state. Files already in the folder stay there, encrypted; the card says so.
+- **Not yet:** a sync blob from a newer app version is left unread until this app updates. A reinstall forgets this device's own blob names, so its old blobs stay in the folder until deleted by hand.
+
 ### Merge strategy (decided)
 - **Per-field last-writer-wins.** Each field carries a hybrid logical clock (HLC) timestamp plus device ID; on conflict the later write wins, ties broken by device ID. Every device reaches the same result independently.
 - **New entries merge as a set union.**

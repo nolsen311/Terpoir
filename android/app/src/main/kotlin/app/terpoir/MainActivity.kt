@@ -50,6 +50,7 @@ import app.terpoir.onboarding.RecoveryBackup
 import app.terpoir.onboarding.RecoveryKeyBackup
 import app.terpoir.onboarding.RestoreScreen
 import app.terpoir.privacy.ONLINE_MAP
+import app.terpoir.sync.FolderSyncCard
 import app.terpoir.privacy.PrivacyCenterScreen
 import app.terpoir.privacy.PrivateTextInput
 import app.terpoir.privacy.ScreenPrivacy
@@ -164,7 +165,11 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
                 // Each unlock re-registers "Notify me" geofences: they need the
                 // spots' coordinates, which only the open journal has.
-                LaunchedEffect(state.journal) { app.spotAlerts.refresh(state.journal) }
+                LaunchedEffect(state.journal) {
+                    app.spotAlerts.refresh(state.journal)
+                    // Folder sync, on unlock: it runs only while the app is open.
+                    if (app.privacySettings.folderSync) runCatching { app.folderSync.sync(state.journal) }
+                }
                 JournalHome(
                     repo,
                     vocab,
@@ -181,7 +186,12 @@ class MainActivity : ComponentActivity() {
                     },
                     quickLog = quickLogRequested,
                     onQuickLogOpened = { quickLogRequested = false },
-                    onEdited = { scope.launch { app.spotAlerts.refresh(state.journal) } },
+                    onEdited = {
+                        scope.launch {
+                            app.spotAlerts.refresh(state.journal)
+                            if (app.privacySettings.folderSync) runCatching { app.folderSync.sync(state.journal) }
+                        }
+                    },
                     onLock = session::lock,
                 ) { onClose ->
                     PrivacyCenterScreen(
@@ -190,6 +200,7 @@ class MainActivity : ComponentActivity() {
                         onClose = onClose,
                     ) {
                         DataCard(repo, session::masterWrappedByRecovery)
+                        if (app.privacySettings.folderSync) FolderSyncCard(app.folderSync, state.journal)
                     }
                 }
                 return

@@ -38,6 +38,24 @@
     <string name="purchase_prompts_leaves">Android\'s location service watches those spots, so it holds their coordinates, as with \"Notify me\". It needs location \"all the time\". The reminder never names the spot, and no record of your visits is kept: only that you are inside one of the spots, until you leave.</string>
     <string name="purchase_prompts_who">Android\'s location service (and on Google Play builds, Google Play services) knows the watched areas. Anyone who sees your notifications sees only \"Quick log?\".</string>
     <string name="purchase_prompts_undo">Turn it off here. The watched areas are removed at once, and any pending reminder is cleared.</string>
+    <string name="folder_sync">Sync through a folder</string>
+    <string name="folder_sync_does">Keeps your journal in step across your devices through a folder you choose: a Syncthing folder, or Google Drive, Nextcloud or Dropbox through their apps. Terpoir writes encrypted sync files there and reads the ones your other devices wrote. It syncs while Terpoir is open.</string>
+    <string name="folder_sync_leaves">Only encrypted files, which only your journal\'s keys open. They are padded and randomly named, so their contents, size and number of entries stay hidden. Terpoir itself still has no internet access for this.</string>
+    <string name="folder_sync_who">Whatever syncs that folder (your cloud drive provider, or your own devices with Syncthing) stores the encrypted files and can see when you sync and roughly how much data there is. No one can read them without your keys.</string>
+    <string name="folder_sync_undo">Turn it off here. Terpoir stops syncing and gives up access to the folder. Files already written stay there, encrypted; delete them in your files app if you want.</string>
+    <string name="sync_title">Folder sync</string>
+    <string name="sync_no_folder">Choose the folder to sync through. Use the same folder on each device.</string>
+    <string name="sync_choose">Choose folder</string>
+    <string name="sync_change">Change folder</string>
+    <string name="sync_now">Sync now</string>
+    <string name="sync_never">Not synced yet.</string>
+    <string name="sync_last">Last synced %1$s.</string>
+    <string name="sync_done">Synced.</string>
+    <string name="sync_failed">Couldn\'t sync. Check that the folder is still there and you can write to it.</string>
+    <plurals name="sync_imported">
+        <item quantity="one">Brought in %1$d file from your other devices.</item>
+        <item quantity="other">Brought in %1$d files from your other devices.</item>
+    </plurals>
     <string name="symptoms">Targeted symptoms</string>
     <string name="symptoms_does">Adds a section to each session for symptoms you were hoping to ease, such as sleep or pain, and whether the session helped. This is self-tracking, never medical advice.</string>
     <string name="symptoms_leaves">Nothing leaves your phone. Symptoms are stored only in your encrypted journal.</string>
