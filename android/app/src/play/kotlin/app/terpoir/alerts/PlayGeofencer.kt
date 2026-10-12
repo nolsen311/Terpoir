@@ -43,7 +43,9 @@ class PlayGeofencer(private val context: Context) : Geofencer {
                         .setRequestId(fence.id)
                         .setCircularRegion(fence.latE7 / 1e7, fence.lonE7 / 1e7, fence.radiusM.toFloat())
                         .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                        .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_DWELL)
+                        .setTransitionTypes(
+                            if (fence.prompt) Geofence.GEOFENCE_TRANSITION_DWELL or Geofence.GEOFENCE_TRANSITION_EXIT else Geofence.GEOFENCE_TRANSITION_DWELL,
+                        )
                         .setLoiteringDelay(LOITERING_MS)
                         .build()
                 },
@@ -62,11 +64,16 @@ class PlayGeofencer(private val context: Context) : Geofencer {
         fallback.clear()
     }
 
-    override fun entered(intent: Intent): List<String>? {
-        if (intent.action != ACTION) return fallback.entered(intent)
+    override fun events(intent: Intent): List<FenceEvent>? {
+        if (intent.action != ACTION) return fallback.events(intent)
         val event = GeofencingEvent.fromIntent(intent) ?: return null
-        if (event.hasError() || event.geofenceTransition != Geofence.GEOFENCE_TRANSITION_DWELL) return null
-        return event.triggeringGeofences?.map { it.requestId }
+        if (event.hasError()) return null
+        val arrived = when (event.geofenceTransition) {
+            Geofence.GEOFENCE_TRANSITION_DWELL -> true
+            Geofence.GEOFENCE_TRANSITION_EXIT -> false
+            else -> return null
+        }
+        return event.triggeringGeofences?.map { FenceEvent(it.requestId, arrived, stopped = arrived) }
     }
 
     /** Mutable, because Play services adds the event to it. */

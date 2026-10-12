@@ -116,6 +116,8 @@ fun JournalHome(
     checkNearby: Boolean,
     checkInSession: String?,
     onCheckInOpened: () -> Unit,
+    quickLog: Boolean,
+    onQuickLogOpened: () -> Unit,
     onEdited: () -> Unit,
     onLock: () -> Unit,
     privacyCenter: @Composable (onClose: () -> Unit) -> Unit,
@@ -127,6 +129,13 @@ fun JournalHome(
     val pop: () -> Unit = {
         if (stack.size > 1) stack.removeAt(stack.lastIndex)
         revision++
+    }
+    // Opened from a "Quick log?" purchase prompt: receipt scan first.
+    LaunchedEffect(quickLog) {
+        if (quickLog) {
+            stack.add(Screen.Receipt)
+            onQuickLogOpened()
+        }
     }
     // Opened from a "Quick check-in?" reminder.
     LaunchedEffect(checkInSession) {
@@ -141,7 +150,7 @@ fun JournalHome(
     when (val screen = stack.last()) {
         is Screen.Session -> SessionEditor(repo, vocab, settings, checkIns, screen.id, pop, spotForNew = screen.spot)
         is Screen.CheckIn -> CheckInScreen(repo, vocab, screen.session, pop)
-        is Screen.Spot -> SpotEditor(repo, screen.id, mapToggle, pop)
+        is Screen.Spot -> SpotEditor(repo, screen.id, mapToggle, settings.purchasePrompts, pop)
         is Screen.Product -> ProductEditor(
             repo,
             vocab,
@@ -192,6 +201,7 @@ fun JournalHome(
                     onOpenNote = { stack.add(Screen.Note(it)) },
                     onSessionAt = { stack.add(Screen.Session(null, spot = it)) },
                     onInsights = { stack.add(Screen.Insights) },
+                    onPurchase = { stack.add(Screen.Receipt) },
                 ) {
                     stack.add(Screen.Session(it))
                 }
@@ -225,6 +235,7 @@ private fun JournalList(
     onOpenNote: (String) -> Unit,
     onSessionAt: (String) -> Unit,
     onInsights: () -> Unit,
+    onPurchase: () -> Unit,
     onOpen: (String) -> Unit,
 ) {
     var sessions by remember { mutableStateOf<List<Entry<SessionData>>?>(null) }
@@ -253,9 +264,10 @@ private fun JournalList(
                 }
             }
         }
-        if (settings.notifyNearSpots) item { NotifySetupCard(alerts, onPermissions) }
+        // Purchase prompts use the same geofencing, so they need the same permissions.
+        if (settings.notifyNearSpots || settings.purchasePrompts) item { NotifySetupCard(alerts, onPermissions) }
         // "Show me", or the tap on a "Notify me" alert: which spot is near.
-        if (settings.showNearbySpots || checkNearby) item { NearbyBanner(repo, onSessionAt) }
+        if (settings.showNearbySpots || checkNearby) item { NearbyBanner(repo, onSessionAt, onPurchase) }
         // Insights are computed only when opened, and only while turned on.
         if (settings.insights) {
             item {
@@ -468,7 +480,7 @@ private fun CatalogLists(
  * the fix is not kept.
  */
 @Composable
-private fun NearbyBanner(repo: JournalRepository, onSessionAt: (String) -> Unit) {
+private fun NearbyBanner(repo: JournalRepository, onSessionAt: (String) -> Unit, onPurchase: () -> Unit) {
     val context = LocalContext.current
     var access by remember { mutableStateOf(CurrentLocation.access(context)) }
     var near by remember { mutableStateOf<List<NearbySpot>>(emptyList()) }
@@ -500,6 +512,12 @@ private fun NearbyBanner(repo: JournalRepository, onSessionAt: (String) -> Unit)
             Text(stringResource(R.string.show_nearby_at, spot.name), style = MaterialTheme.typography.titleMedium)
             androidx.compose.material3.OutlinedButton(onClick = { onSessionAt(spot.id) }) {
                 Text(stringResource(R.string.show_nearby_log_here))
+            }
+            // "Show me" stands in for purchase prompts at a Re-up Spot.
+            if (spot.reUp) {
+                androidx.compose.material3.OutlinedButton(onClick = onPurchase) {
+                    Text(stringResource(R.string.show_nearby_log_purchase))
+                }
             }
         }
     }

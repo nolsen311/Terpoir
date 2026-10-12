@@ -8,7 +8,9 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import app.terpoir.alerts.CheckIns
+import app.terpoir.alerts.PurchasePrompts
 import app.terpoir.alerts.SpotAlerts
+import app.terpoir.sync.FolderSync
 import app.terpoir.core.init as initCore
 import app.terpoir.onboarding.Onboarding
 import app.terpoir.privacy.PrivacyCenter
@@ -41,6 +43,13 @@ class TerpoirApplication : Application() {
 
     /** Follow-up check-in reminders. */
     lateinit var checkIns: CheckIns
+
+    /** Purchase prompts on Re-up Spots ("Quick log?"). */
+    lateinit var purchasePrompts: PurchasePrompts
+        private set
+
+    /** Sync through a folder the user picks. */
+    lateinit var folderSync: FolderSync
         private set
 
     /** Every privacy toggle, each with its on- and off-action. */
@@ -63,9 +72,11 @@ class TerpoirApplication : Application() {
         initCore()
         lockSettings = LockSettings(this)
         privacySettings = PrivacySettings(this)
-        spotAlerts = SpotAlerts(this, privacySettings, Distribution.geofencer(this))
+        purchasePrompts = PurchasePrompts(this, privacySettings)
+        spotAlerts = SpotAlerts(this, privacySettings, Distribution.geofencer(this), purchasePrompts)
         checkIns = CheckIns(this, privacySettings)
-        privacyCenter = buildPrivacyCenter(this, privacySettings, spotAlerts, checkIns) {
+        folderSync = FolderSync(this)
+        privacyCenter = buildPrivacyCenter(this, privacySettings, spotAlerts, checkIns, folderSync) {
             (session.state as? JournalSession.State.Unlocked)?.journal
         }
         session = JournalSession(JournalFiles(noBackupFilesDir))

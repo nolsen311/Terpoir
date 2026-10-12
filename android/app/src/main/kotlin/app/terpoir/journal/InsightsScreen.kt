@@ -30,6 +30,7 @@ import app.terpoir.R
 import app.terpoir.core.InsightData
 import app.terpoir.core.InsightFeedback
 import app.terpoir.core.SessionData
+import app.terpoir.core.ShopInsightData
 import java.util.Locale
 import kotlinx.coroutines.launch
 
@@ -44,11 +45,13 @@ import kotlinx.coroutines.launch
 fun InsightsScreen(repo: JournalRepository, onOpenSession: (String) -> Unit, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
     var insights by remember { mutableStateOf<List<InsightData>?>(null) }
+    var shops by remember { mutableStateOf<List<ShopInsightData>>(emptyList()) }
     var sessions by remember { mutableStateOf<Map<String, SessionData>>(emptyMap()) }
     var expanded by remember { mutableStateOf<String?>(null) }
     var revision by remember { mutableIntStateOf(0) }
     LaunchedEffect(revision) {
         insights = repo.insights()
+        shops = repo.shopInsights()
         sessions = repo.sessions().associate { it.id to it.data }
     }
     fun feedback(key: String, kind: InsightFeedback) {
@@ -100,6 +103,62 @@ fun InsightsScreen(repo: JournalRepository, onOpenSession: (String) -> Unit, onC
                     }
                     if (expanded == insight.key) {
                         for (id in insight.withSessions) {
+                            val s = sessions[id] ?: continue
+                            TextButton(onClick = { onOpenSession(id) }) {
+                                Text(listOfNotNull(formatWhen(s.`when`.unixMs, s.`when`.utcOffsetMin), s.rating?.let { "${it}★" }).joinToString(" · "))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (shops.isNotEmpty()) {
+            SectionTitle(stringResource(R.string.insights_shops))
+            Text(stringResource(R.string.insights_shops_explainer), style = MaterialTheme.typography.bodySmall)
+        }
+        for (shop in shops) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(shop.name, style = MaterialTheme.typography.titleSmall)
+                    val parts = listOfNotNull(
+                        shop.avgRatingMilli?.let { stringResource(R.string.insights_shop_rating, stars(it)) },
+                        shop.hitRatePercent?.let { stringResource(R.string.insights_shop_hits, it.toInt()) },
+                    )
+                    Text(
+                        (parts + pluralStringResource(R.plurals.insights_shop_sessions, shop.sessions.size, shop.sessions.size)).joinToString(" · "),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    shop.avgAgeDays?.let {
+                        Text(pluralStringResource(R.plurals.insights_shop_age, it.toInt(), it.toInt()), style = MaterialTheme.typography.bodySmall)
+                    }
+                    for (effect in shop.effects) {
+                        val subject = when (effect.level) {
+                            "brand" -> R.string.insights_shop_level_brand
+                            "strain" -> R.string.insights_shop_level_strain
+                            else -> R.string.insights_shop_level_product
+                        }
+                        Text(
+                            stringResource(
+                                R.string.insights_shop_effect,
+                                stringResource(subject, effect.label),
+                                stars(effect.hereAvgMilli),
+                                stars(effect.elsewhereAvgMilli),
+                                pluralStringResource(
+                                    R.plurals.insights_shop_effect_evidence,
+                                    effect.hereSessions.toInt(),
+                                    effect.hereSessions.toInt(),
+                                    effect.elsewhereSessions.toInt(),
+                                ),
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
+                    TextButton(onClick = { expanded = if (expanded == shop.spot) null else shop.spot }) {
+                        Text(stringResource(R.string.insights_sessions))
+                    }
+                    if (expanded == shop.spot) {
+                        for (id in shop.sessions) {
                             val s = sessions[id] ?: continue
                             TextButton(onClick = { onOpenSession(id) }) {
                                 Text(listOfNotNull(formatWhen(s.`when`.unixMs, s.`when`.utcOffsetMin), s.rating?.let { "${it}★" }).joinToString(" · "))

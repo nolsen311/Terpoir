@@ -204,6 +204,7 @@ fn index_queries_follow_updates() {
             method: Method::Edible,
             dose: None,
             purchase: None,
+            shop: None,
         },
     );
     session.effects.insert(CoreEffect::Sleepy.into(), 4);
@@ -358,6 +359,7 @@ fn delete_erases_record_index_and_files() {
             method: Method::Smoked,
             dose: None,
             purchase: None,
+            shop: None,
         },
     );
     session.effects.insert(CoreEffect::Relaxed.into(), 2);

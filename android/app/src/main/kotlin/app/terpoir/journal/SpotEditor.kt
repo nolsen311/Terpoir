@@ -18,6 +18,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -41,6 +43,9 @@ import app.terpoir.map.MapPicker
 import app.terpoir.map.OnlineMap
 import app.terpoir.privacy.PrivacyToggle
 import kotlinx.coroutines.launch
+
+/** The Re-up Spot purpose, which purchase prompts need. */
+private val reUp = TagRefData.Builtin("re_up")
 
 /** Built-in spot purposes, in display order. */
 val SPOT_PURPOSES = listOf("blaze", "munch", "re_up", "chill")
@@ -62,7 +67,7 @@ fun nextSpotName(existing: List<String>, prefix: String): String {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SpotEditor(repo: JournalRepository, id: String?, mapToggle: PrivacyToggle?, onDone: () -> Unit) {
+fun SpotEditor(repo: JournalRepository, id: String?, mapToggle: PrivacyToggle?, promptsOn: Boolean, onDone: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var original by remember { mutableStateOf<SpotData?>(null) }
@@ -75,6 +80,7 @@ fun SpotEditor(repo: JournalRepository, id: String?, mapToggle: PrivacyToggle?, 
     var locationProblem by remember { mutableStateOf<Int?>(null) }
     var newPurpose by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
+    var purchasePrompts by remember { mutableStateOf(false) }
     var askMap by remember { mutableStateOf(false) }
     val defaultPrefix = stringResource(R.string.spot_default_prefix)
 
@@ -98,6 +104,7 @@ fun SpotEditor(repo: JournalRepository, id: String?, mapToggle: PrivacyToggle?, 
             original = spot
             name = spot.name
             purposes = spot.purposes
+            purchasePrompts = spot.purchasePrompts
             val lat = spot.latE7
             val lon = spot.lonE7
             val accuracy = spot.accuracyM
@@ -140,7 +147,8 @@ fun SpotEditor(repo: JournalRepository, id: String?, mapToggle: PrivacyToggle?, 
                 lonE7 = f?.lonE7,
                 accuracyM = f?.accuracyM?.toUInt(),
                 radiusM = original?.radiusM,
-                purchasePrompts = original?.purchasePrompts ?: false,
+                // Kept as saved while the feature is off, so turning it back on restores it.
+                purchasePrompts = if (promptsOn) purchasePrompts && f != null && reUp in purposes else original?.purchasePrompts ?: false,
             )
             scope.launch {
                 repo.saveSpot(id, data)
@@ -195,6 +203,15 @@ fun SpotEditor(repo: JournalRepository, id: String?, mapToggle: PrivacyToggle?, 
         if (locating) Text(stringResource(R.string.spot_locating))
         locationProblem?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
         Text(stringResource(R.string.spot_location_note), style = MaterialTheme.typography.bodySmall)
+
+        // Purchase prompts: Re-up Spots with a location, while the feature is on.
+        if (promptsOn && reUp in purposes && current != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Switch(checked = purchasePrompts, onCheckedChange = { purchasePrompts = it })
+                Text(stringResource(R.string.spot_purchase_prompts), modifier = Modifier.weight(1f))
+            }
+            Text(stringResource(R.string.spot_purchase_prompts_note), style = MaterialTheme.typography.bodySmall)
+        }
 
         if (id != null) DeleteButton(R.string.spot_delete, R.string.spot_delete_body) { scope.launch { repo.delete(id); onDone() } }
     }

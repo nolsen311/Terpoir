@@ -156,6 +156,8 @@ pub struct ProductLineData {
     pub purchase_id: Option<String>,
     /// The line within that purchase.
     pub purchase_line_id: Option<String>,
+    /// The Re-up Spot it was bought at, when the user picked one.
+    pub shop: Option<String>,
 }
 
 /// A session (journal entry).
@@ -224,6 +226,7 @@ impl SessionData {
                 method: Method::from_slug(&line.method),
                 dose,
                 purchase,
+                shop: opt_id(line.shop.as_ref())?,
             };
             if lines.insert(id, line).is_some() {
                 return Err(CoreError::InvalidInput);
@@ -281,6 +284,7 @@ impl SessionData {
                     dose_unit: line.dose.as_ref().map(|d| d.unit.slug().to_owned()),
                     purchase_id: line.purchase.map(|r| r.purchase.to_hex()),
                     purchase_line_id: line.purchase.map(|r| r.line.to_hex()),
+                    shop: line.shop.map(|s| s.to_hex()),
                 })
                 .collect(),
             activity: s.activity.clone(),
@@ -342,6 +346,8 @@ pub struct ProductData {
     pub package_date_day: Option<i64>,
     /// Barcodes, QR payloads and package tags read from the packaging.
     pub identifiers: Vec<IdentifierData>,
+    /// Re-up Spot IDs it is bought at ("Where I buy it").
+    pub shops: Vec<String>,
 }
 
 /// A code read from a product's packaging.
@@ -388,6 +394,7 @@ impl ProductData {
             batch: self.batch.clone(),
             package_date: self.package_date_day,
             identifiers,
+            shops: parse_ids(&self.shops)?,
         })
     }
 
@@ -419,6 +426,7 @@ impl ProductData {
                     kind: kind.slug().to_owned(),
                 })
                 .collect(),
+            shops: ids_to_strings(&p.shops),
         }
     }
 }

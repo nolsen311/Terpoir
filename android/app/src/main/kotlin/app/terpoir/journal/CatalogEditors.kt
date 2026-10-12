@@ -34,8 +34,10 @@ import app.terpoir.core.IdentifierData
 import app.terpoir.core.ProductData
 import app.terpoir.core.ProductMatch
 import app.terpoir.core.PurchaseData
+import app.terpoir.core.SpotData
 import app.terpoir.core.StrainData
 import app.terpoir.core.TagIntensity
+import app.terpoir.core.TagRefData
 import app.terpoir.core.Vocabulary
 import app.terpoir.core.classifyCode
 import app.terpoir.core.parseLabel
@@ -77,6 +79,8 @@ fun ProductEditor(
     var packageDay by remember { mutableStateOf<Long?>(null) }
     var terpenes by remember { mutableStateOf<List<TagIntensity>>(emptyList()) }
     var identifiers by remember { mutableStateOf<List<IdentifierData>>(emptyList()) }
+    var shops by remember { mutableStateOf<List<String>>(emptyList()) }
+    var reUpSpots by remember { mutableStateOf<List<Entry<SpotData>>>(emptyList()) }
     var purchases by remember { mutableStateOf<List<Entry<PurchaseData>>>(emptyList()) }
     var spotNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var brands by remember { mutableStateOf<List<Entry<BrandData>>>(emptyList()) }
@@ -107,11 +111,12 @@ fun ProductEditor(
             packageDay = p.packageDateDay
             terpenes = p.terpenes
             identifiers = p.identifiers
+            shops = p.shops
         }
-        if (id != null) {
-            purchases = repo.purchasesOf(id)
-            spotNames = repo.spots().associate { it.id to it.data.name }
-        }
+        val spots = repo.spots()
+        spotNames = spots.associate { it.id to it.data.name }
+        reUpSpots = spots.filter { s -> s.data.purposes.any { it == TagRefData.Builtin("re_up") } || s.id in shops }
+        if (id != null) purchases = repo.purchasesOf(id)
         loaded = true
     }
     if (!loaded) return
@@ -200,6 +205,7 @@ fun ProductEditor(
             batch = batch.trim().ifEmpty { null },
             packageDateDay = packageDay,
             identifiers = identifiers,
+            shops = shops,
         )
     }
 
@@ -276,6 +282,22 @@ fun ProductEditor(
         if (identifiers.isNotEmpty()) {
             SectionTitle(stringResource(R.string.product_identifiers))
             IdentifierList(identifiers, scan.linksAllowed()) { i -> identifiers = identifiers - i }
+        }
+
+        // Where it is bought: receipts add their shop; the user can add or
+        // remove one at any time.
+        if (reUpSpots.isNotEmpty()) {
+            SectionTitle(stringResource(R.string.product_shops))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (spot in reUpSpots) {
+                    val selected = spot.id in shops
+                    FilterChip(
+                        selected = selected,
+                        onClick = { shops = if (selected) shops - spot.id else shops + spot.id },
+                        label = { Text(spot.data.name) },
+                    )
+                }
+            }
         }
 
         if (purchases.isNotEmpty()) {
@@ -378,6 +400,7 @@ fun mergeBatch(existing: ProductData, new: ProductData): ProductData = existing.
     batch = new.batch ?: existing.batch,
     packageDateDay = new.packageDateDay ?: existing.packageDateDay,
     identifiers = existing.identifiers + new.identifiers.filter { n -> existing.identifiers.none { it.code == n.code } },
+    shops = (existing.shops + new.shops).distinct(),
 )
 
 private enum class NewKind { BRAND, STRAIN }

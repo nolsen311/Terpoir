@@ -9,7 +9,7 @@ use std::collections::BTreeSet;
 use terpoir_model::{Document, RecordId, RecordKind, Value};
 
 /// Map fields whose entry keys are record IDs.
-const ID_KEYED_MAPS: &[&str] = &["strains"];
+const ID_KEYED_MAPS: &[&str] = &["strains", "shops"];
 /// Map fields whose entry keys are tag references.
 const TAG_KEYED_MAPS: &[&str] = &["effects", "symptoms", "tags", "purposes", "terpenes"];
 const CUSTOM_TAG_PREFIX: &str = "custom:";
@@ -115,6 +115,7 @@ mod tests {
                 method: Method::Edible,
                 dose: None,
                 purchase: None,
+                shop: Some(id(5)),
             },
         );
         s.spot = Some(id(3));
@@ -123,7 +124,7 @@ mod tests {
         s.activity = Some("secret free text".into());
         let doc = Document::create(&s, stamp()).unwrap();
         let entries = IndexEntries::from_document(&doc);
-        assert_eq!(entries.refs, [id(2), id(3), id(4)].into());
+        assert_eq!(entries.refs, [id(2), id(3), id(4), id(5)].into());
         assert_eq!(entries.day, Some(1_760_148_000_000 / MS_PER_DAY - 1));
         assert_eq!(
             entries.tags,
@@ -136,9 +137,10 @@ mod tests {
         let mut p = Product::new("x".into());
         p.strains.insert(id(7));
         p.brand = Some(id(8));
+        p.shops.insert(id(9));
         let doc = Document::create(&p, stamp()).unwrap();
         let entries = IndexEntries::from_document(&doc);
-        assert_eq!(entries.refs, [id(7), id(8)].into());
+        assert_eq!(entries.refs, [id(7), id(8), id(9)].into());
         assert_eq!(entries.day, None);
     }
 
