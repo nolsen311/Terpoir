@@ -8,8 +8,10 @@ import android.content.Intent
 import android.os.Bundle
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +21,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,14 +35,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.SpotAlerts
+import app.terpoir.core.ExportArchive
 import app.terpoir.core.coreVersion
+import app.terpoir.core.readExportArchive
 import app.terpoir.core.vocabulary
+import app.terpoir.journal.DataCard
 import app.terpoir.journal.JournalHome
 import app.terpoir.journal.JournalRepository
 import app.terpoir.journal.ScanServices
 import app.terpoir.onboarding.AgeGate
 import app.terpoir.onboarding.OnboardingStep
+import app.terpoir.onboarding.RecoveryBackup
 import app.terpoir.onboarding.RecoveryKeyBackup
+import app.terpoir.onboarding.RestoreScreen
 import app.terpoir.privacy.PrivacyCenterScreen
 import app.terpoir.privacy.PrivateTextInput
 import app.terpoir.privacy.ScreenPrivacy
@@ -103,6 +111,18 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun Screen(session: JournalSession, core: String) {
         var message by remember { mutableStateOf<Int?>(null) }
+        // An export chosen for restoring, waiting for its recovery key.
+        var restoring by remember { mutableStateOf<ExportArchive?>(null) }
+        val pickExport = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                restoring = try {
+                    readExportArchive(checkNotNull(contentResolver.openInputStream(uri)).use { it.readBytes() })
+                } catch (_: Exception) {
+                    message = R.string.restore_not_export
+                    null
+                }
+            }
+        }
         val onboarding = app.onboarding
         val state = session.state
         val unlocked = state is JournalSession.State.Unlocked
@@ -159,8 +179,25 @@ class MainActivity : ComponentActivity() {
                         center = app.privacyCenter,
                         onChanged = { ScreenPrivacy.onResume(this, app.privacySettings.screenProtection) },
                         onClose = onClose,
-                    )
+                    ) {
+                        DataCard(repo, session::masterWrappedByRecovery)
+                    }
                 }
+                return
+            }
+        }
+        restoring?.let { archive ->
+            if (state == JournalSession.State.NoJournal) {
+                RestoreScreen(
+                    check = { typed -> session.checkRecoveryKey(typed, archive.masterWrappedByRecovery) },
+                    onRestore = { typed ->
+                        message = restoreJournal(typed, archive) {
+                            message = it
+                            restoring = null
+                        }
+                    },
+                    onCancel = { restoring = null },
+                )
                 return
             }
         }
@@ -174,6 +211,9 @@ class MainActivity : ComponentActivity() {
                     Text(stringResource(R.string.setup_explainer))
                     Button(onClick = { message = createJournal { message = it } }) {
                         Text(stringResource(R.string.setup))
+                    }
+                    TextButton(onClick = { pickExport.launch(arrayOf("*/*")) }) {
+                        Text(stringResource(R.string.restore_start))
                     }
                 }
                 JournalSession.State.Locked -> {
@@ -209,6 +249,34 @@ class MainActivity : ComponentActivity() {
                 app.session.reset()
                 app.onboarding.discarded()
                 onError(R.string.error_keystore)
+            }
+        }
+        return null
+    }
+
+    /**
+     * Restores a journal from [archive] with the recovery key [typed] (already
+     * checked against it), after the user authenticates; returns an error
+     * message to show, if any. [onError] gets one if restoring fails after
+     * authentication, which leaves no journal behind.
+     */
+    private fun restoreJournal(typed: String, archive: ExportArchive, onError: (Int) -> Unit): Int? {
+        val strict = app.lockSettings.strictBiometrics
+        if (!UserAuthentication.isAvailable(this, strict)) return R.string.error_no_lock_screen
+        val cipher = try {
+            app.session.vault.createWrappingKey(strict)
+            app.session.vault.encryptCipher()
+        } catch (_: Exception) {
+            return R.string.error_keystore
+        }
+        authenticate(cipher, getString(R.string.setup_prompt)) { authorized ->
+            try {
+                app.session.restore(authorized, typed, archive)
+                // The user just proved they hold the recovery key.
+                app.onboarding.backupResolved(RecoveryBackup.CONFIRMED)
+            } catch (_: Exception) {
+                app.session.reset()
+                onError(R.string.restore_failed)
             }
         }
         return null

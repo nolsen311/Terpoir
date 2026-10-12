@@ -89,6 +89,24 @@
     <string name="age_signal_disclosure">Google Play may tell Terpoir an age range for your account. Terpoir only checks it on this phone, to keep out under-18s, and never stores or sends it.</string>
     <string name="age_adults_only">Terpoir is for adults</string>
     <string name="age_adults_only_body">Come back when you\'re of legal age where you live.</string>
+    <string name="restore_start">Restore from an export</string>
+    <string name="restore_title">Restore your journal</string>
+    <string name="restore_explainer">Type the recovery key of the journal you exported. It opens the export on this phone; capitals and dashes don\'t matter.</string>
+    <string name="restore_button">Restore</string>
+    <string name="restore_not_export">That file isn\'t a Terpoir export.</string>
+    <string name="restore_failed">The journal couldn\'t be restored. Nothing was kept; try again.</string>
+    <string name="data_title">Your data</string>
+    <string name="data_explainer">Export saves your whole journal as one encrypted file, and only your recovery key opens it, so keep the two apart. Use it to move to a new phone: choose \"Restore from an export\" when setting Terpoir up there. Import merges an export of this same journal back in.</string>
+    <string name="export_button">Export</string>
+    <string name="import_button">Import</string>
+    <string name="export_saved">Saved. Only your recovery key opens it.</string>
+    <string name="export_failed">The export couldn\'t be saved. Try another place.</string>
+    <string name="import_not_this_journal">That file isn\'t an export of this journal.</string>
+    <string name="import_failed">The file couldn\'t be read.</string>
+    <plurals name="import_done">
+        <item quantity="one">Imported: %d record added or updated.</item>
+        <item quantity="other">Imported: %d records added or updated.</item>
+    </plurals>
     <string name="recovery_title">Your recovery key</string>
     <string name="recovery_explainer">This key is the only way back into your journal if you lose or reset this phone. There\'s no reset link and no backdoor, and nobody, not even us, can recover your journal without it.</string>
     <string name="recovery_paper">Write it down and keep the paper somewhere safe, or keep it in a password manager. Not next to wherever you sync your journal: a key kept with the data it locks is no protection.</string>

@@ -275,6 +275,13 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 ### Import
 - From Terpoir encrypted exports. CSV import from other apps later.
 
+### Encrypted export, import and restore: implementation (decided 2026-10-12)
+- **Archive** (`terpoir-ffi`, `archive.rs`): the 8-byte magic `TERPOIR1`, then the master key wrapped by the recovery key (as the device already stores it), then the journal's full set of sync blobs, each length-prefixed. It adds no cryptography: the blobs are the sync blobs, encrypted under a key derived from the master key, so only the recovery key opens an export. Malformed, truncated or padded files are refused before any decryption.
+- **Export** (Privacy tab, "Your data"): saved only where the user picks in the system file picker, as `terpoir-<date>.terpoir`. The card tells the user to keep the file and the recovery key apart.
+- **Import** merges an export of the same journal back in (sync merge rules). An export of another journal is refused.
+- **Restore** ("Restore from an export" on the first-run screen): the user picks the file and types the recovery key, which is checked against the export first. After the user authenticates, the master key is unwrapped (`keys_for_restore`), wrapped with a new Keystore key, and paired with a new database key for this device; then every blob is imported. Onboarding counts the recovery key as confirmed. A failure leaves no journal behind.
+- **Not yet:** photos and voice clips (no attachments exist yet), share cards and the plaintext export.
+
 ### Future enhancement (approved, post-launch)
 - Terpoir-to-Terpoir sharing: a product or strain record travels as a small file or QR code that a friend imports into their own journal. No server.
 
