@@ -96,7 +96,7 @@ without it.
 - [x] OCR native libraries built from pinned source for F-Droid
       (`android/ocr-native/`, asynchronous `OCR native libraries`
       workflow, reproducible on two runners).
-- [ ] Privacy presets: "Most private" and YOLO Mode as sets of toggle
+- [x] Privacy presets: "Most private" and YOLO Mode as sets of toggle
       states with one combined confirmation; "Custom" status; the
       optional threat-model question at onboarding. YOLO Mode includes
       "Google text recognition" on Play.

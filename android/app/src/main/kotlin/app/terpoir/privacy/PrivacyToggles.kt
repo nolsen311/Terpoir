@@ -208,4 +208,27 @@ fun buildPrivacyCenter(
             offAction = { settings.voiceFirst = false },
         ),
     ),
+    presets = listOf(MOST_PRIVATE, YOLO_MODE),
+)
+
+/** The default: every protection on, every optional feature off. */
+val MOST_PRIVATE = PrivacyPreset("most_private", R.string.preset_most_private, R.string.preset_most_private_does, emptySet())
+
+/**
+ * The platform's conveniences, chosen by the maintainer (2026-10-12).
+ * Screen protection stays on, and "Notify me" stays its own choice
+ * (location "all the time"). The hard lines hold in every preset.
+ */
+val YOLO_MODE = PrivacyPreset(
+    "yolo",
+    R.string.preset_yolo,
+    R.string.preset_yolo_does,
+    setOf(
+        "google_text_recognition",
+        "coa_links",
+        "show_nearby_spots",
+        "alert_names",
+        "alert_details",
+        "follow_up_check_ins",
+    ),
 )

@@ -111,6 +111,25 @@
     <string name="confirm_invalid_character">There\'s a character that never appears in a recovery key.</string>
     <string name="confirm_typo">That doesn\'t match. Check your copy for a typo.</string>
     <string name="confirm_wrong_key">That\'s a recovery key, but not this journal\'s.</string>
+    <string name="preset_status">Preset: %1$s</string>
+    <string name="preset_custom">Custom</string>
+    <string name="preset_most_private">Most private</string>
+    <string name="preset_most_private_does">Every protection on and every optional feature off. This is the default.</string>
+    <string name="preset_yolo">YOLO Mode</string>
+    <string name="preset_yolo_does">Turns on the conveniences that lean on your phone\'s platform: Google text recognition (on Google Play builds), opening lab-results links, the nearby-spot banner, spot names and details in alerts, and follow-up check-ins. Screen protection stays on, and \"Notify me\" stays your own choice. Some lines hold in every mode: no phone backups of your journal, no cloud model reading it, no analytics, and no Terpoir server.</string>
+    <string name="preset_confirm_title">Switch to %1$s?</string>
+    <string name="preset_turns_on">Turns on: %1$s</string>
+    <string name="preset_turns_off">Turns off: %1$s</string>
+    <string name="preset_nothing">Already set: nothing changes.</string>
+    <string name="preset_apply">Switch</string>
+    <string name="preset_review">Review</string>
+    <string name="threat_question">What are you protecting this journal from? (Optional, and never saved.)</string>
+    <string name="threat_people">People who might pick up my phone</string>
+    <string name="threat_legal">Legal trouble where I live</string>
+    <string name="threat_companies">Companies and apps tracking me</string>
+    <string name="threat_little">Not much, I just want it to work well</string>
+    <string name="threat_suggest_default">Then \"Most private\" fits, and it\'s already set. Relax anything below one switch at a time if you like.</string>
+    <string name="threat_suggest_yolo">YOLO Mode might suit you. Nothing changes until you review it.</string>
     <string name="privacy_tour_intro">This is your Privacy Center. Everything starts at its most private, and nothing changes unless you change it, here, whenever you like.</string>
     <string name="privacy_tour_finish">Finish setup</string>
 
