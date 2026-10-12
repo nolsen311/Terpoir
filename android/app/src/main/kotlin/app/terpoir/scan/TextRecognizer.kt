@@ -5,14 +5,27 @@
 package app.terpoir.scan
 
 import android.graphics.Bitmap
+import android.graphics.Rect
+
+/** How the text on a photo is laid out, so an engine can read it best. */
+enum class TextLayout {
+    /** Blocks of text anywhere, such as a product label. */
+    BLOCKS,
+
+    /** One column of printed rows, such as a receipt. */
+    COLUMN,
+}
+
+/** A recognized line of text and its box on the image, in pixels. */
+class TextLine(val text: String, val box: Rect)
 
 /**
  * On-device text recognition. Implementations never touch the network and
  * never keep the image; the caller recycles it.
  */
 interface TextRecognizer {
-    /** The text in [image], one printed line per text line. */
-    suspend fun recognize(image: Bitmap): String
+    /** The lines of text in [image], laid out as [layout]. */
+    suspend fun recognize(image: Bitmap, layout: TextLayout): List<TextLine>
 
     /** Frees native resources. */
     fun close() = Unit

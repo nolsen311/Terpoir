@@ -20,6 +20,22 @@ pub struct ReceiptItem {
     pub quantity: u32,
     /// The line's price in minor units.
     pub price_minor: i64,
+    /// The input lines it was read from (counting every line, blank ones
+    /// included): the price's line, after the name's when it was printed
+    /// above.
+    pub lines: Vec<usize>,
+}
+
+/// One line the user picked as an item. Unlike [`parse_receipt`], nothing
+/// is filtered out: the user chose it.
+#[derive(Clone, PartialEq, Eq)]
+pub struct ReceiptLine {
+    /// The text before the price, without a leading quantity.
+    pub name: String,
+    /// Units bought; 1 when not printed.
+    pub quantity: u32,
+    /// The price at the end of the line, in minor units.
+    pub price_minor: Option<i64>,
 }
 
 /// What a receipt seems to say. Every field is a suggestion to confirm.
@@ -27,6 +43,8 @@ pub struct ReceiptItem {
 pub struct Receipt {
     /// The shop name from the header, to match against saved spots.
     pub shop: Option<String>,
+    /// The input line the shop name was read from.
+    pub shop_line: Option<usize>,
     /// The purchase date.
     pub date: Option<Date>,
     /// The printed total, in minor units.
@@ -150,40 +168,42 @@ fn looks_like_shop(line: &str) -> bool {
 /// Parses recognized receipt text (one printed line per text line).
 #[must_use]
 pub fn parse_receipt(text: &str) -> Receipt {
-    let lines: Vec<&str> = text
+    let lines: Vec<(usize, &str)> = text
         .lines()
         .map(str::trim)
-        .filter(|l| !l.is_empty())
+        .enumerate()
+        .filter(|(_, l)| !l.is_empty())
         .collect();
+    let shop = lines.iter().take(4).find(|(_, l)| looks_like_shop(l));
     let mut receipt = Receipt {
-        shop: lines
-            .iter()
-            .take(4)
-            .find(|l| looks_like_shop(l))
-            .map(|l| (*l).to_owned()),
-        date: lines.iter().find_map(|l| find_date(l)),
+        shop: shop.map(|(_, l)| (*l).to_owned()),
+        shop_line: shop.map(|(n, _)| *n),
+        date: lines.iter().find_map(|(_, l)| find_date(l)),
         ..Receipt::default()
     };
     // A name on one line with its price alone on the next.
-    let mut pending: Option<&str> = None;
-    for line in &lines {
+    let mut pending: Option<(usize, &str)> = None;
+    for &(number, line) in &lines {
         let chars: Vec<char> = line.chars().collect();
         let lower = line.to_lowercase();
         let Some((price, start)) = trailing_price(&chars) else {
             let candidate = letters(line) >= 2
                 && !mentions(&lower, NOT_ITEMS)
                 && find_date(line).is_none()
-                && receipt.shop.as_deref() != Some(*line);
-            pending = candidate.then_some(*line);
+                && receipt.shop.as_deref() != Some(line);
+            pending = candidate.then_some((number, line));
             continue;
         };
         let before: String = chars[..start].iter().collect();
         let before = before.trim();
-        let name = if before.is_empty() {
-            pending.take().unwrap_or_default()
+        let (name, source) = if before.is_empty() {
+            match pending.take() {
+                Some((above, name)) => (name, vec![above, number]),
+                None => ("", vec![number]),
+            }
         } else {
             pending = None;
-            before
+            (before, vec![number])
         };
         let name_lower = name.to_lowercase();
         if is_total(&name_lower) {
@@ -198,9 +218,28 @@ pub fn parse_receipt(text: &str) -> Receipt {
             name: name.to_owned(),
             quantity,
             price_minor: price,
+            lines: source,
         });
     }
     receipt
+}
+
+/// Reads one line the user picked as an item: a name, a leading quantity,
+/// and a price at the end, each when printed.
+#[must_use]
+pub fn parse_receipt_line(line: &str) -> ReceiptLine {
+    let line = line.trim();
+    let chars: Vec<char> = line.chars().collect();
+    let (price, name) = match trailing_price(&chars) {
+        Some((price, start)) => (Some(price), chars[..start].iter().collect::<String>()),
+        None => (None, line.to_owned()),
+    };
+    let (quantity, name) = quantity(name.trim());
+    ReceiptLine {
+        name: name.trim().to_owned(),
+        quantity,
+        price_minor: price,
+    }
 }
 
 #[cfg(test)]
@@ -230,6 +269,8 @@ mod tests {
     fn reads_a_dispensary_receipt() {
         let r = parse_receipt(RECEIPT);
         assert_eq!(r.shop.as_deref(), Some("GREEN LEAF DISPENSARY"));
+        // The constant starts with a newline.
+        assert_eq!(r.shop_line, Some(1));
         assert_eq!(r.date, Date::new(2026, 10, 11));
         assert_eq!(r.total_minor, Some(12_765));
         let items: Vec<(&str, u32, i64)> = r
@@ -245,6 +286,26 @@ mod tests {
                 ("Live Resin Cart", 1, 4_500),
             ]
         );
+    }
+
+    #[test]
+    fn reports_the_lines_items_came_from() {
+        let r = parse_receipt("Shop\n\nPre-roll 1g 12.00\nLive Resin Cart\n45.00");
+        let lines: Vec<&[usize]> = r.items.iter().map(|i| i.lines.as_slice()).collect();
+        assert_eq!(lines, [&[2][..], &[3, 4][..]]);
+        assert_eq!(r.shop_line, Some(0));
+    }
+
+    #[test]
+    fn reads_a_picked_line_whatever_it_says() {
+        let line = parse_receipt_line(" 2 x Member gummies  $24.00 T ");
+        assert_eq!(line.name, "Member gummies");
+        assert_eq!(line.quantity, 2);
+        assert_eq!(line.price_minor, Some(2_400));
+        let line = parse_receipt_line("Blue Dream");
+        assert_eq!((line.name.as_str(), line.price_minor), ("Blue Dream", None));
+        let line = parse_receipt_line("12.00");
+        assert_eq!((line.name.as_str(), line.price_minor), ("", Some(1_200)));
     }
 
     #[test]

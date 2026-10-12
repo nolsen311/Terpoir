@@ -21,6 +21,49 @@ pub struct ReceiptItemData {
     pub quantity: u32,
     /// The line's price in minor units.
     pub price_minor: i64,
+    /// The input lines it was read from (counting blank ones).
+    pub lines: Vec<u32>,
+}
+
+/// One line the user picked as a receipt item.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ReceiptLineData {
+    /// The text before the price, without a leading quantity.
+    pub name: String,
+    /// Units bought; 1 when not printed.
+    pub quantity: u32,
+    /// The price at the end of the line, in minor units.
+    pub price_minor: Option<i64>,
+}
+
+/// A piece of recognized text and its box on the photo, in pixels.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct TextPieceData {
+    /// The recognized text.
+    pub text: String,
+    /// Left edge.
+    pub left: i32,
+    /// Top edge.
+    pub top: i32,
+    /// Right edge.
+    pub right: i32,
+    /// Bottom edge.
+    pub bottom: i32,
+}
+
+/// One printed row of recognized text.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct TextRowData {
+    /// The pieces' text, left to right.
+    pub text: String,
+    /// Left edge of the row's box.
+    pub left: i32,
+    /// Top edge.
+    pub top: i32,
+    /// Right edge.
+    pub right: i32,
+    /// Bottom edge.
+    pub bottom: i32,
 }
 
 /// What a receipt seems to say; every field is a suggestion to confirm.
@@ -28,6 +71,8 @@ pub struct ReceiptItemData {
 pub struct ReceiptScan {
     /// Shop name from the header.
     pub shop: Option<String>,
+    /// The input line the shop name was read from.
+    pub shop_line: Option<u32>,
     /// Purchase date, in days since 1970-01-01.
     pub date_day: Option<i64>,
     /// Printed total, in minor units.
@@ -76,6 +121,7 @@ pub fn parse_receipt(text: String) -> ReceiptScan {
     let r = terpoir_scan::parse_receipt(&text);
     ReceiptScan {
         shop: r.shop,
+        shop_line: r.shop_line.map(line_number),
         date_day: r.date.map(terpoir_scan::Date::days_since_epoch),
         total_minor: r.total_minor,
         items: r
@@ -85,9 +131,53 @@ pub fn parse_receipt(text: String) -> ReceiptScan {
                 name: i.name,
                 quantity: i.quantity,
                 price_minor: i.price_minor,
+                lines: i.lines.into_iter().map(line_number).collect(),
             })
             .collect(),
     }
+}
+
+fn line_number(n: usize) -> u32 {
+    u32::try_from(n).unwrap_or(u32::MAX)
+}
+
+/// Reads one receipt line the user picked as an item.
+#[uniffi::export]
+#[must_use]
+pub fn parse_receipt_line(line: String) -> ReceiptLineData {
+    let l = terpoir_scan::parse_receipt_line(&line);
+    ReceiptLineData {
+        name: l.name,
+        quantity: l.quantity,
+        price_minor: l.price_minor,
+    }
+}
+
+/// Groups recognized pieces of text into printed rows, top to bottom, by
+/// where they sit on the photo.
+#[uniffi::export]
+#[must_use]
+pub fn group_text_rows(pieces: Vec<TextPieceData>) -> Vec<TextRowData> {
+    let pieces: Vec<terpoir_scan::TextPiece> = pieces
+        .into_iter()
+        .map(|p| terpoir_scan::TextPiece {
+            text: p.text,
+            left: p.left,
+            top: p.top,
+            right: p.right,
+            bottom: p.bottom,
+        })
+        .collect();
+    terpoir_scan::group_rows(&pieces)
+        .into_iter()
+        .map(|r| TextRowData {
+            text: r.text,
+            left: r.left,
+            top: r.top,
+            right: r.right,
+            bottom: r.bottom,
+        })
+        .collect()
 }
 
 /// Parses text recognized from a product label photo.
@@ -137,6 +227,22 @@ mod tests {
         assert_eq!(r.date_day, Some(20_737));
         assert_eq!(r.items.len(), 1);
         assert_eq!(r.total_minor, Some(1_200));
+        assert_eq!(r.items[0].lines, [2]);
+        assert_eq!(r.shop_line, Some(0));
+
+        let line = parse_receipt_line("Pre-roll 1g 12.00".into());
+        assert_eq!(line.price_minor, Some(1_200));
+
+        let piece = |text: &str, left, right| TextPieceData {
+            text: text.into(),
+            left,
+            top: 0,
+            right,
+            bottom: 20,
+        };
+        let rows = group_text_rows(vec![piece("12.00", 300, 360), piece("Pre-roll", 0, 100)]);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].text, "Pre-roll 12.00");
 
         let l = parse_label("THC 22.4%\nLimonene 0.5%".into());
         assert_eq!(l.thc_unit.as_deref(), Some("percent"));

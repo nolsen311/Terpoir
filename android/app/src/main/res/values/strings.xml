@@ -232,7 +232,7 @@
     <string name="scan_code">Scan code</string>
     <string name="scan_code_hint">Point at a barcode, QR code or package tag. It is read on your phone; nothing is photographed.</string>
     <string name="scan_receipt">Scan receipt</string>
-    <string name="scan_receipt_hint">Fit the whole receipt in the frame. It is read on your phone and discarded right away; only the lines you confirm are saved.</string>
+    <string name="scan_receipt_hint">Fit the whole receipt in the frame. It is read on your phone and never saved: you check it on screen, and it is gone when you leave. Only the lines you confirm are saved.</string>
     <string name="scan_take_photo">Take photo</string>
     <string name="scan_reading">Reading…</string>
     <string name="alert_channel">Spot alerts</string>
@@ -289,6 +289,8 @@
     <string name="coa_no_browser">No app can open this link.</string>
     <string name="coa_off">Opening lab-results links is off. You can turn it on in the Privacy Center.</string>
     <string name="receipt_check">Check each line. Untick anything that isn\'t a product you want to record.</string>
+    <string name="receipt_tap_hint">Tap a line on the photo to add it as an item, or tap it again to remove it. Press and hold a line to use it as the shop. The photo is never saved.</string>
+    <string name="receipt_photo">Receipt photo with the lines that were read</string>
     <string name="receipt_shop">Shop</string>
     <string name="receipt_no_shop">Don\'t record the shop</string>
     <string name="receipt_new_spot">New Re-up Spot: %1$s</string>
