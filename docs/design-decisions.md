@@ -2,7 +2,7 @@
 
 Working name: **Terpoir** (terpene + terroir). Domain: **terpoir.app**.
 Repository: https://github.com/nolsen311/Terpoir
-Status: pre-development, high-level design. Last updated 2026-10-11.
+Status: pre-development, high-level design. Last updated 2026-10-12.
 
 ## Purpose
 A mobile app for cannabis consumers to journal experiences with strains, products, brands, delivery methods, and anything cannabis-related, and to understand how those affect them personally.
@@ -125,19 +125,27 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - Playful type names stay inside the app. Discreet-tier notifications and the discreet-icon mode use neutral wording ("a saved spot").
 - **Coordinates are optional on every spot.** A Re-up Spot can be just a name (from a receipt or typed in); plenty of users won't want shop locations stored at all.
 
-### Map picker (decided 2026-10-12)
+### Map picker (decided 2026-10-12, map providers revised the same day)
 - **Pick a spot's location on a map,** as well as from the phone's location. No location permission is needed, and the phone's position is never read for it.
-- **The map is online and opt-in.**
-  - **Provider (maintainer's choice):** MapTiler's street map, drawn by MapLibre Native (BSD-2-Clause, no telemetry; its OpenGL build, since the default requires Vulkan). An offline map download and handing off to a map app were considered; an in-app online map was chosen.
-  - **Toggle:** "Online map" (Location, off by default; in YOLO Mode by the maintainer's decision). Its card says that MapTiler sees the IP address and the areas viewed, and that looking around a spot shows roughly where it is. Turning it on from the spot editor shows the same card first. Off stops every map request and deletes what MapLibre stored (its tile database and settings file). Picked locations stay with their spots.
-  - **Nothing is cached:** MapLibre's tile cache is set to zero, since cached tiles would show which areas were viewed.
-- **The key:** MapTiler needs an API key, which is never committed. Builds read it from `TERPOIR_MAPTILER_KEY` (a CI repository secret) or the `terpoir.maptilerKey` Gradle property. A build without a key, including F-Droid's own build, has no map and no INTERNET permission: `src/offline/AndroidManifest.xml` removes it.
-  - The key is restricted on MapTiler's side to the User-Agent `Terpoir`, which the app sends instead of MapLibre's own (that names the phone model and Android version). Anyone can extract a key from an app, so a usage cap on MapTiler's side is the real limit.
-- **The gateway** (`MapGateway`, the "one gateway" under "Android project"): MapLibre's only HTTP client. Before any connection it refuses every request unless the toggle is on and the request goes over HTTPS to `api.maptiler.com`. It follows no redirects, keeps no cache or cookies, and replaces the User-Agent.
+- **The map is online and opt-in.** An offline map download and handing off to a map app were considered; an in-app online map was chosen.
+- **Toggle:** "Online map" (Location, off by default; in YOLO Mode). Turning it on, from the Privacy Center or the spot editor, shows the chosen provider's card first. Off stops every map request and deletes what the map stored. Picked locations stay with their spots.
+- **Providers (maintainer, 2026-10-12): one choice among three, never combined.** The toggle says whether there is a map; the provider says whose. No project-held key is shared in the default path.
+  - **OpenFreeMap (default, every build):** OpenStreetMap vector tiles from OpenFreeMap's public instance (`tiles.openfreemap.org`), drawn by MapLibre Native (BSD-2-Clause, no telemetry; its OpenGL build, since the default requires Vulkan). No API key, registration or cookies, and commercial use is allowed. Its card says that OpenFreeMap sees the IP address and the areas viewed, and that looking around a spot shows roughly where it is.
+    - **Accepted risk:** the public instance is run by one person on donations, with no SLA. If it goes away, the default map stops working until the app changes provider. A user-entered tile server URL (for self-hosting) is a possible later addition; the project itself never runs one, under the "no project-run endpoint" hard line.
+    - **Attribution:** always shows "© OpenMapTiles, data from © OpenStreetMap contributors", drawn over the map, not behind MapLibre's info button.
+  - **MapTiler, with the user's own key:** the user pastes a MapTiler API key in the Privacy Center (Location). The key is kept in the encrypted store's metadata, on this device only, and never syncs. With it, the gateway also allows `api.maptiler.com` and MapLibre draws MapTiler's street map. Removing the key deletes it and switches back to OpenFreeMap. Its card names MapTiler as seeing the IP address, the areas viewed and the key (which identifies the user's MapTiler account). Attribution: "© MapTiler © OpenStreetMap contributors". Each user is on their own MapTiler plan, so the project needs no paid plan.
+  - **Google Maps (Play only, an active choice):** the Maps SDK for Android, through Play services. The foss build never offers it (`verifyFossDependencies`; the existing §7 permission for Google Play libraries covers `com.google.android.gms` in the Play flavor).
+    - **Offered early in onboarding** on Play builds that carry a Google key, as a choice with neither option preselected (like Speak/Type), with Google's card shown. Also a provider option in the Privacy Center and part of YOLO Mode on Play.
+    - **Card:** Google sees the IP address and the areas viewed, through Play services, which is tied more closely to the device and Google account than the other providers. The SDK does its own networking, outside the gateway. Map styling stays basic (no map ID).
+    - **Enforcement:** no Google map view is ever created unless the map is on and Google is the provider; the gateway cannot apply to it. Off stops creating map views, but cannot clear what Play services cached in its own process; the card says so, as ML Kit's does.
+    - **The key:** a project-held Google Maps Platform key, restricted to Maps SDK for Android, the package `app.terpoir` and the SHA-1 fingerprints of the signing certificates (CI debug, local debug, the maintainer's release key and Play App Signing). Never committed: builds read it from `GOOGLE_MAPS_API_KEY` (a CI repository secret) or the `terpoir.googleMapsKey` Gradle property, into the manifest's `com.google.android.geo.API_KEY` in the Play flavor only. A Play build without it doesn't offer Google. Mobile map loads without a map ID are not billed, so a leaked key restricted to the SDK carries little cost.
+- **Nothing is cached** for the MapLibre providers: MapLibre's tile cache is set to zero, since cached tiles would show which areas were viewed. Off deletes what MapLibre stored (its tile database and settings file).
+- **The gateway** (`MapGateway`, the "one gateway" under "Android project"): MapLibre's only HTTP client. Before any connection it refuses every request unless the map is on and the request goes over HTTPS to the current provider's hosts: `tiles.openfreemap.org` for OpenFreeMap (plus any other host its style loads fonts or sprites from; to be checked), and `api.maptiler.com` only while a user's MapTiler key is set and chosen. It follows no redirects, keeps no cache or cookies, and sends the User-Agent `Terpoir` instead of MapLibre's own (which names the phone model and Android version).
 - **Permissions:** MapLibre's ACCESS_WIFI_STATE is removed everywhere, and its ACCESS_NETWORK_STATE in foss (Play keeps it for ML Kit); the app tells MapLibre it is online instead. Its native code logs only through MapLibre's Java logger, which the app silences.
-- **MapTiler's terms:** the map always shows "© MapTiler © OpenStreetMap contributors" (drawn over the map, not behind MapLibre's info button). The Free plan covers non-commercial use and development only; a release with the paid unlock needs a paid plan (`docs/follow-ups.md`).
 - **Accuracy:** a pick records the ground the crosshair covers at that zoom (5 m to 50 km), so a pick made zoomed out is as vague as it looks.
-- **Size:** MapLibre adds about 13 MB of native code per ABI, in every build, so one codebase is compiled and tested with or without a key.
+- **Size:** MapLibre adds about 13 MB of native code per ABI, in every build.
+- **Superseded the same day:** the earlier plan of a project-held MapTiler key in every build with a map (`TERPOIR_MAPTILER_KEY`, `terpoir.maptilerKey`, the offline manifest for keyless builds, and a paid MapTiler plan for a release with the paid unlock).
+- **F-Droid:** OpenFreeMap is free software end to end and MapTiler is opt-in with the user's own key, so the foss build should carry no NonFreeNet anti-feature; confirm in the F-Droid recipe review.
 
 ### Purchase prompts (decided)
 - **Per-spot opt-in** on a Re-up Spot: "Remind me to log purchases here." Requires that spot to have coordinates; uses "Notify me" geofencing.
@@ -340,7 +348,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - **The platform signal (`AgeSignals`) comes first, and it can only block.** An upper age bound under 18 shows only "Terpoir is for adults".
   - **It never passes anyone.** Google's top range is 18+, and the legal age for cannabis is often higher (21 in most US states, 19 in most Canadian provinces). Everyone not blocked answers the self-attestation.
   - **Stored:** only the pass, never the signal's range or a "no", so a "no" is asked again next launch.
-  - **Play flavor:** Google Play Age Signals (`checkAgeSignals`), through IPC to the Play Store. The app still has no INTERNET permission. A disclosure on the age screen says the range comes from Google and is checked on the phone only.
+  - **Play flavor:** Google Play Age Signals (`checkAgeSignals`), through IPC to the Play Store; the app opens no network connection of its own for it. A disclosure on the age screen says the range comes from Google and is checked on the phone only.
     - Terpoir never calls `requestAgeSignalsAccess`, which would prompt the user to share their age with the app.
     - Re-check before launch whether state laws require that prompt.
   - **FOSS flavor:** no signal; self-attestation only.
@@ -364,7 +372,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 
 ### Distribution channels
 - **Google Play** (mainstream Android).
-- **F-Droid** (de-Googled users; builds from source and can publish the maintainer-signed APK when builds match byte for byte). Requires a **FOSS build flavor** without Play services: AOSP location fallback, no Gemini Nano tier, no Play age signals, no Play Billing.
+- **F-Droid** (de-Googled users; builds from source and can publish the maintainer-signed APK when builds match byte for byte). Requires a **FOSS build flavor** without Play services: AOSP location fallback, no Gemini Nano tier, no Play age signals, no Play Billing, no Google Maps.
 - **GitHub Releases:** maintainer-signed APKs (works with update tools such as Obtainium).
 - **App Store** (iOS).
 
@@ -373,11 +381,12 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **SDK levels (decided):** `minSdk 30` (Android 11), `targetSdk`/`compileSdk 37`.
   - Android 11 is the oldest release where a Keystore key can require a strong biometric **or** the device credential on every use (`setUserAuthenticationParameters` with `AUTH_BIOMETRIC_STRONG | AUTH_DEVICE_CREDENTIAL`), and where the unlock prompt can offer both for a crypto-bound operation. That is exactly the crypto-bound "biometric or device passcode" unlock; on Android 10 it would need a weaker time-window key or a separate passcode path. Accepted cost: Android 10 devices are not supported.
   - Newer hardening is used at runtime where the device has it, with a safe fallback, rather than by raising the minimum: hiding other apps' overlays on sensitive screens (12+), approximate-location choice (12+), sensitive clipboard flag (13+), accessibility-data-sensitive marking (14+), screenshot and screen-recording callbacks (14+/15+).
-- **Flavors:** `play` and `foss` (dimension `distribution`), same application ID `app.terpoir`. Google-dependent features are listed as `Capability` values; only `play` may offer them. `verifyFossDependencies` fails the build if the FOSS release classpath contains Play services, Firebase, Play Billing, Play Core/age signals, ML Kit or on-device Gemini libraries.
-- **Permissions:** every variant's merged manifest is checked against an allowlist in `app/build.gradle.kts`, so a library cannot add one silently. INTERNET is allowed only in builds with a MapTiler key.
-  - **INTERNET arrives with the first feature that needs it (decided),** not earlier. That feature is the opt-in online map (2026-10-12, "Map picker"), so builds without a MapTiler key still have no INTERNET permission. Other downloads still go through the store (Play Feature Delivery and Play Asset Delivery run in the Play Store app, over IPC). With INTERNET:
+- **Flavors:** `play` and `foss` (dimension `distribution`), same application ID `app.terpoir`. Google-dependent features are listed as `Capability` values; only `play` may offer them. `verifyFossDependencies` fails the build if the FOSS release classpath contains Play services, Firebase, Play Billing, Play Core/age signals, ML Kit, Google Maps or on-device Gemini libraries.
+- **Permissions:** every variant's merged manifest is checked against an allowlist in `app/build.gradle.kts`, so a library cannot add one silently. INTERNET is allowed in every build, for the opt-in online map (OpenFreeMap needs no key).
+  - **INTERNET arrives with the first feature that needs it (decided),** not earlier. That feature is the opt-in online map (2026-10-12, "Map picker"). Other downloads still go through the store (Play Feature Delivery and Play Asset Delivery run in the Play Store app, over IPC). With INTERNET:
     - All network access goes through one gateway that refuses any request whose Privacy Center toggle is off, so with the defaults the app opens no connection at all. Today that is `MapGateway`, MapLibre's only client; unit tests check it. A device test that the app opens no connection with the defaults is still to come (`docs/follow-ups.md`).
     - **Exception: ML Kit's usage metrics on Play (maintainer decision, 2026-10-12).** Google Data Transport sends them itself, not through the gateway, and only while "Google text recognition" is on; ML Kit is not used otherwise. Its card discloses this.
+    - **Exception: Google Maps on Play (maintainer decision, 2026-10-12).** The Maps SDK and Play services do their own networking, not through the gateway, and only while the map is on with Google as its provider. Its card discloses this.
     - Android does not let users revoke INTERNET (some systems, such as GrapheneOS, do); the permission's card says so and points to the per-toggle controls.
     - Syncthing folders and Google Drive through the system file picker need no INTERNET permission in the app.
 - **Backups:** `allowBackup=false`, plus full-backup and data-extraction rules that exclude every domain from cloud backup and device-to-device transfer.
@@ -409,7 +418,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - Pull requests skip the jobs that check nothing they change (`.github/scripts/changes.sh`): Android and CodeQL run for `android/`, `core/` or `.github/` changes; Rust, Reproducible build and Supply chain for `core/` or `.github/`. Markdown-only changes run none of them. Pushes to `main` and scheduled runs always run everything. A skipped job still reports, so it can be a required check.
 - **Test builds (decided 2026-10-12):** the Android job uploads its debug APKs (`terpoir-debug-apks`, kept 14 days) so the maintainer can install the app before releases exist. They are debug-signed and keep logging, so they are for testing only. The foss build is the one to install, because the Play debug build lacks text recognition, which only Google Play can install for it. The throwaway debug signing key is cached between runs (saved only from `main`) so each build installs over the last. It is never a release key: release signing stays offline on the maintainer's hardware key. A release-signed build will not install over a debug one (uninstall first, which deletes the test journal).
   - **Development builds on GitHub Releases (maintainer, 2026-10-12):** each push to `main` also publishes the two debug APKs as one rolling pre-release tagged `dev-build`, titled "Development build <commit> (unstable)" and never marked latest. Its notes warn that it is buggy, say which APK to install, and give the commit; a `SHA256SUMS` file lists the APKs' hashes. Each push replaces it, so it is always at the same address. A separate job publishes it, the only one allowed to write releases; it downloads the APKs the Android job built and checks out no code.
-    - These public APKs carry the MapTiler key, as every build with the map does. The key's User-Agent restriction and a usage cap on MapTiler's side are what limit misuse.
+    - The default map needs no key. The Play APK carries the Google Maps key, which is restricted to Maps SDK for Android, the package and the signing certificates' SHA-1s; mobile map loads are not billed, so extracting it gains little.
   - Downloaded dependencies (Gradle modules and wrapper, the Cargo registry, cargo-ndk) are cached. Only the Android job on `main` saves the cache, so a pull request cannot seed it, and dependency verification and `Cargo.lock` checksums still apply to cached files. Build outputs are never cached, and the reproducible-build jobs use no cache.
 - SBOM published with each release.
 
@@ -476,6 +485,21 @@ Each journal entry records one consumption session, not a product review. Produc
   - **Android:** the Privacy Center toggle "Targeted symptoms" (new group: Journal; off by default; not in either preset). While on, the session editor shows the section after Effects; while off, saved symptoms are carried unchanged and nothing shows them.
   - **Turning it off by hand** asks "Keep, hidden" or "Delete". Presets and "Restore maximum privacy" only hide, so data is never deleted without asking. Toggles can now carry such a choice (`OffChoice`).
 
+### What I track (decided 2026-10-12)
+- **The user decides which data points their journal has.** Someone with no interest in brands, prices or strains can hide them, and the app stops asking. A field nobody fills in is data that never exists.
+- **Where:** a "What I track" screen in Settings, not the Privacy Center (maintainer, 2026-10-12). The Privacy Center covers what leaves the app or relaxes a protection; this is the journal's own scope. Targeted symptoms stays in the Privacy Center because it is health-adjacent. Not an onboarding step: everything starts shown.
+- **Can be hidden:** brand; strain (and strain type); price and shop, or purchases as a whole; THC/CBD; terpenes; batch and package date; dose; timeline; mood before and after; intention; solo / with others.
+- **Always shown (the minimum for a useful journal and for insights):** when, product, method, effects and rating.
+- **Turning one off** asks "Keep, hidden" or "Delete", as targeted symptoms does. Hidden data is carried unchanged by every editor (they already keep fields they don't show). Delete clears that field on every record through a core function, and the removals sync like edits.
+- **Synced (maintainer, 2026-10-12):** the choices live in one tracking-preferences record, encrypted and synced like any other, so every paired device shows the same fields. Its ID is derived from the master key (HKDF, a fixed purpose label) rather than random, so devices that each create it address the same record and its per-field stamps merge (last writer wins per field). Field names a device doesn't know (from a newer app) are kept.
+- **Effects elsewhere:**
+  - Insights skip features built on a hidden field (strain type when strain is hidden; shop insights when price or shop is hidden).
+  - Scans skip what is hidden: no prices from receipts when price is hidden, no brand or strain from labels when those are hidden.
+  - Share cards don't offer hidden fields.
+  - A product shows without its brand when brand is hidden ("Product names").
+  - The plaintext export still includes data kept hidden, because it exports what is stored.
+- **Not yet built.**
+
 ### Structural rules
 - **Per-record keys for every record type**, not just sessions (spots and products are sensitive too). Deleting a session leaves its products; deleting a spot detaches it from sessions.
 - **Merge-friendly shapes:** maps (effects, product lines, stream snippets) so each element merges independently under per-field LWW.
@@ -522,7 +546,7 @@ Each journal entry records one consumption session, not a product review. Produc
       - **foss:** `BundledTextEngine`, with Tesseract and the model in the APK (the model from the `:ocr-model` module's files).
       - **Play, default:** `PlayTesseractEngine`. Tesseract is the on-demand feature module `:ocr` and the model the on-demand asset pack `ocr_model` (`:ocr-model`); the Play base app carries neither. Before a label or receipt scan, the app asks once to download them from Google Play ("a few megabytes", progress shown, the Store's own confirmation when it asks for one); "Not now" closes the scan, and nothing is fetched unasked. The base app loads the module's entry point by name (SplitCompat makes it usable without a restart). A build check verifies the Play bundle: Tesseract only in `:ocr`, the model only in the pack, no logging after R8 in any module.
       - **Play, opt-in:** `GoogleTextEngine`, behind the Privacy Center toggle "Google text recognition" (new group: Scanning; off by default; not offered in foss). On only switches the engine; the scan asks before Play services downloads the model. Off switches back and releases the model (`ModuleInstallClient.releaseModules`), so Play services can remove it. Joining YOLO Mode waits for the privacy presets.
-    - **Network and permissions on Play (decided 2026-10-11, changed 2026-10-12):** ML Kit's Google Data Transport dependency requests INTERNET to send usage metrics. Until the online map, the play manifest removed INTERNET, so the metrics were never sent from the app. Builds with a MapTiler key now have INTERNET, so while "Google text recognition" is on ML Kit can send its usage metrics (never scanned text) from the app; its card says so (maintainer decision, 2026-10-12). Builds without a key still remove INTERNET. Play services downloads the model in its own process. Three normal permissions (no prompt) are allowed on Play only: FOREGROUND_SERVICE and FOREGROUND_SERVICE_DATA_SYNC, which Play Asset Delivery needs to copy a downloaded pack into the app's storage, and ACCESS_NETWORK_STATE, which Data Transport's upload jobs need to be scheduled. The foss allowlist is unchanged. Play Asset Delivery stays on 2.2.x, because 2.3.0 adds WorkManager and its permissions.
+    - **Network and permissions on Play (decided 2026-10-11, changed 2026-10-12):** ML Kit's Google Data Transport dependency requests INTERNET to send usage metrics. Until the online map, the play manifest removed INTERNET, so the metrics were never sent from the app. Every build now has INTERNET for the online map, so while "Google text recognition" is on ML Kit can send its usage metrics (never scanned text) from the app; its card says so (maintainer decision, 2026-10-12). Play services downloads the model in its own process. Three normal permissions (no prompt) are allowed on Play only: FOREGROUND_SERVICE and FOREGROUND_SERVICE_DATA_SYNC, which Play Asset Delivery needs to copy a downloaded pack into the app's storage, and ACCESS_NETWORK_STATE, which Data Transport's upload jobs need to be scheduled. The foss allowlist is unchanged apart from INTERNET. Play Asset Delivery stays on 2.2.x, because 2.3.0 adds WorkManager and its permissions.
     - **ML Kit's form:** the Play opt-in uses the Play services variant of ML Kit text recognition, which the "Google Play libraries" licensing permission covers. The bundled `com.google.mlkit` artifacts, which that permission does not clearly cover, are not used.
     - **`ocrs` (pure-Rust OCR) was considered** and not used: the license of its model weights could not be confirmed.
   - Extracted lines appear as a checklist to confirm, fix, or drop.
@@ -598,6 +622,8 @@ Each journal entry records one consumption session, not a product review. Produc
 - **Notify me at my spots.** Off-action: remove every geofence; delete the notification cache and the quiet period; clear a showing alert.
 - **Spot names in alerts / Details in alerts** (notification tiers). Off-action: narrow the notification cache to what the remaining tier shows, or delete it.
 - **Google text recognition** (Play only). Off-action: scans go back to the open engine; release ML Kit's model so Play services can remove it.
+- **Online map** (with its provider: OpenFreeMap, MapTiler with the user's key, or Google Maps on Play). Off-action: stop every map request; delete MapLibre's stored files; the provider returns to OpenFreeMap. A saved MapTiler key stays until the user removes it.
+- **MapTiler key.** Removing it deletes the key and switches the provider back to OpenFreeMap.
 
 ## Photos
 - In-app capture writes directly into the encrypted sandbox, never the camera roll.
@@ -646,7 +672,7 @@ Each journal entry records one consumption session, not a product review. Produc
   - **YOLO Mode** (working name; it amuses us): uses the platform's features for the best experience. Examples: ML Kit text recognition, OS on-device models for tagging, OS indexing and shortcuts, rich notifications, address lookup, online catalogs. Leaving it runs every off-action it caused.
   - A middle preset may come later if users ask for one.
   - **YOLO Mode's toggles (decided by the maintainer, 2026-10-12):** Google text recognition (Play only), open lab-results links, "Show me", spot names in alerts, details in alerts, and follow-up check-ins. Screen protection stays on, and "Notify me" stays its own choice because it needs location "all the time". New toggles join YOLO Mode only by a recorded decision.
-    - **Added 2026-10-12 (maintainer):** the online map (builds with a MapTiler key).
+    - **Added 2026-10-12 (maintainer):** the online map. On Play builds with a Google key, YOLO Mode sets Google Maps as its provider (maintainer, 2026-10-12); elsewhere it uses OpenFreeMap, or the user's own MapTiler key if one is set. Leaving YOLO Mode turns the map off and returns the provider to OpenFreeMap.
 - **Android implementation (2026-10-12):** a preset is a full set of toggle states (`PrivacyPreset`): its listed toggles relaxed, every other toggle at its most private state; IDs a build doesn't register are ignored. Applying one runs every toggle's own action, including toggles already in place, so leaving YOLO Mode runs every off-action it caused. The Privacy Center shows "Preset: Most private", "Preset: YOLO Mode" or "Preset: Custom", and a button per preset opens one combined confirmation listing each toggle it turns on or off, with the card of each one it relaxes.
 - **Threat model at onboarding:** one optional question ("What are you protecting this journal from?") suggests a preset. Skipping it, or any answer, leaves the defaults at most private until the user confirms a preset.
   - **Android:** asked at the top of the onboarding Privacy Center tour, never stored. "People who might pick up my phone", "Legal trouble where I live" and "Companies and apps tracking me" suggest Most private (already set). "Not much, I just want it to work well" suggests YOLO Mode, with a Review button that opens its confirmation.
@@ -702,6 +728,7 @@ Assets: journal entries, photos, saved spots, ratings, keys, and metadata (frequ
 | User-chosen storage provider | Ciphertext, sizes, timing, version history | Client-side encryption, padding, batching, opaque names, per-entry crypto-erasure, master-key rotation | Metadata only |
 | Network observers | DNS, SNI, traffic patterns | TLS, encrypted DNS / VPN / Tor options | Traffic analysis can reveal app use |
 | Catalog providers | Query content, IP, timing | Toggles, disclosure, offline catalogs | Per user choice |
+| Map providers | IP, areas viewed (OpenFreeMap, MapTiler, Google) | Map off by default, one provider at a time, gateway allowlist, no tile cache, disclosure | Per user choice; Google outside the gateway |
 | Casual physical access | Unlocked phone, glances | App lock, discreet icon/name, notification tiers, switcher blur | App presence visible unless disguised |
 | Compelled access | Device under legal compulsion | Passcode-only option, app passphrase, quick-lock, deliberate panic wipe (no duress code), user-initiated deletion with crypto-erasure | Forensic extraction of unlocked device |
 | Loss or theft | Device at rest | Data protection class complete, StrongBox / Secure Enclave keys | No remote wipe (no server) |
@@ -719,11 +746,13 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - License: GPL-3.0-or-later with app store additional permission; trademark policy; DCO sign-off.
 - Data model: session-centric entries; per-record keys; map-shaped fields for merging.
 - Spots: purpose types only, no relational labels, no automatic reverse geocoding.
+- Map picker: opt-in online map; keyless OpenFreeMap by default, MapTiler with the user's own key, Google Maps as an active Play-only choice (onboarding and YOLO Mode); no shared key in the default path.
 - Stream journaling with on-device tag suggestions (keyword / OS model / bundled model), human-confirmed; never a cloud model.
 - Insights: opt-in, statistical, evidence-backed.
 - Follow-up check-ins and targeted symptoms (👍/👎), both opt-in.
 - Purchases as their own records; rapid entry by on-device receipt, label, and barcode scanning; shop insights; opt-in discreet purchase prompts.
 - Effects vocabulary: fixed core list plus custom tags.
+- What I track: the user can hide data points they don't care about (brand, price, strain and more) in Settings; choices sync; hide or delete when turned off.
 - Ownership: personal (no LLC for now); trademark and copyright registration plans recorded above.
 - Keyboards: user's keyboard by default with zero-cost Android protections; opt-in iOS protections; voice-first FAB with on-device recognition only.
 - Screen capture: protection on by default (FLAG_SECURE / capture blur); Android accessibility-sensitive marking always on; screen readers unaffected.
@@ -749,3 +778,5 @@ Explicitly out of scope: jailbroken or malware-infected devices; direct coercion
 - **First sync backend: a folder through the system file picker.** Encrypted blobs go into any folder the Android file picker offers (a Syncthing folder, or Google Drive, Nextcloud or Dropbox through their apps' document providers). Terpoir needs no INTERNET permission and holds no credentials for it; sync runs while the app is open. WebDAV, S3 and direct device pairing come later.
 - **Personal gear (backlog):** an optional detail of a consumption method, never a replacement for it. A product line keeps its method ("smoked") and can name the piece used ("the green bong"); each piece belongs to one method, and only that method's pieces are offered. Storage and sharing are designed when it is scheduled.
 - **Insight thresholds:** at least 5 sessions on each side of a comparison and a difference of at least 1.0 star in average rating before an insight surfaces.
+- **Map providers:** keyless OpenFreeMap for the basic map, with no shared key; MapTiler only with the user's own key; Google Maps as an active choice on Play, offered early in onboarding and part of YOLO Mode. The project's MapTiler key and its paid-plan follow-up are dropped. Details under "Map picker".
+- **What I track:** users can hide data points they have no interest in, in Settings rather than the Privacy Center, with the choices synced across devices. Details under "What I track".
