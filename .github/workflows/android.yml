@@ -104,7 +104,12 @@ jobs:
           path: ~/.android/debug.keystore
           key: debug-keystore-v1
 
+      # The online map's MapTiler key (docs/design-decisions.md, "Map
+      # picker"): the test builds get the map. Without the secret (forks)
+      # the build simply has no map and no INTERNET permission.
       - name: Build, test, lint and verify
+        env:
+          TERPOIR_MAPTILER_KEY: ${{ secrets.TERPOIR_MAPTILER_KEY }}
         run: |
           export JAVA_HOME="$JAVA_HOME_21_X64"
           ./gradlew --no-daemon --no-build-cache assemble check lintFossRelease lintPlayRelease

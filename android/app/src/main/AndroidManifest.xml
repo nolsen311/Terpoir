@@ -3,13 +3,22 @@
 <!-- Copyright (C) 2026 The Terpoir Authors -->
 <!-- See LICENSING.md for the additional permission under GPLv3 section 7. -->
 <!--
-  No INTERNET permission: the app does not touch the network until a
-  feature that needs it is added behind its own toggle. Every requested
-  permission must be on the allowlist in app/build.gradle.kts.
+  INTERNET only in builds with a MapTiler key, for the opt-in online map
+  (MapLibre adds it; src/offline/AndroidManifest.xml removes it otherwise).
+  Every request goes through the map gateway, which refuses all of them
+  while the map's toggle is off. Every requested permission must be on the
+  allowlist in app/build.gradle.kts.
   Backups and device-to-device transfers carry nothing (allowBackup for
   Android 11 and below, dataExtractionRules for 12 and up).
 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- MapLibre asks for this to check Wi-Fi; the app tells it it is
+         online instead (app.terpoir.map.OnlineMap). -->
+    <uses-permission
+        android:name="android.permission.ACCESS_WIFI_STATE"
+        tools:node="remove" />
 
     <!-- Normal (install-time) permission for the system BiometricPrompt,
          which also covers the device-credential fallback. -->
