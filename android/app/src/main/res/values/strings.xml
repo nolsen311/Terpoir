@@ -616,4 +616,12 @@
     <string name="intention_relief">Relief</string>
     <string name="social_solo">Solo</string>
     <string name="social_with_others">With others</string>
+    <string name="app_lock">App lock</string>
+    <string name="app_lock_with_device">When my phone locks (default)</string>
+    <string name="app_lock_immediately">As soon as I leave Terpoir</string>
+    <string name="app_lock_one_minute">1 minute after I leave</string>
+    <string name="app_lock_five_minutes">5 minutes after I leave</string>
+    <string name="app_lock_fifteen_minutes">15 minutes after I leave</string>
+    <string name="app_lock_screen_off">Turning off the screen or locking your phone always locks Terpoir at once. Leaving the app always hides your journal from the app switcher.</string>
+    <string name="app_lock_with_device_disclosure">With this setting, Terpoir behaves like your other apps: while your phone is unlocked, anyone you hand it to can open your journal if you used it recently, and its key stays in memory while the app is in the background. If you share your phone, choose \"As soon as I leave Terpoir\" or a short timer.</string>
 </resources>

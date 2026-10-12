@@ -367,6 +367,7 @@ Making a new note should take one tap from outside the app. Every entry point op
   - The platform BiometricPrompt is used directly (Android 11+ has everything needed), so there is no androidx.biometric dependency; the app holds the normal `USE_BIOMETRIC` permission.
   - The unwrapped master key goes straight into the core (`Journal.open`) and the Kotlin array is wiped; Kotlin never keeps it. Wrapped keys live in no-backup app storage.
   - Auto-lock: leaving the app hides journal content at once; with an opt-in timeout, the master key is wiped after it by a timer, and the elapsed time is checked again on return because Android may freeze or kill a backgrounded app before the timer fires. Screen-off locks immediately, and returning to a locked device locks too.
+  - The choice is an **App lock** card in the Privacy Center (implemented 2026-10-12): "When my phone locks (default)", "As soon as I leave Terpoir", or 1, 5 or 15 minutes, with the default's disclosure shown while it is selected. It is a setting, not a privacy toggle: presets and "Restore maximum privacy" leave it alone, as the recorded exception allows.
   - Known limit: while a backgrounded process is frozen, the master key stays in its memory until the process resumes or is killed; device lock and screen-off are the reliable triggers.
 
 ## Age gating (decided)

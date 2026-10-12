@@ -6,16 +6,27 @@ package app.terpoir.session
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AutoLockPolicyTest {
     @Test
-    fun defaultIsOneMinute() {
-        assertEquals(LockTimeout.ONE_MINUTE, LockTimeout.DEFAULT)
-        assertEquals(LockTimeout.ONE_MINUTE, LockTimeout.fromName(null))
-        assertEquals(LockTimeout.ONE_MINUTE, LockTimeout.fromName("garbage"))
+    fun defaultIsLockWithDevice() {
+        assertEquals(LockTimeout.WITH_DEVICE, LockTimeout.DEFAULT)
+        assertEquals(LockTimeout.WITH_DEVICE, LockTimeout.fromName(null))
+        assertEquals(LockTimeout.WITH_DEVICE, LockTimeout.fromName("garbage"))
         assertEquals(LockTimeout.FIVE_MINUTES, LockTimeout.fromName("FIVE_MINUTES"))
+    }
+
+    @Test
+    fun withDeviceHasNoTimerAndLocksOnlyWithTheDevice() {
+        val policy = AutoLockPolicy(LockTimeout.WITH_DEVICE)
+        assertFalse(policy.lockOnBackground())
+        assertNull(policy.backgroundDelayMillis())
+        // Away for a day, device never locked: still unlocked.
+        assertFalse(policy.lockOnReturn(backgroundedAt = 1_000, now = 86_400_000, deviceLocked = false))
+        assertTrue(policy.lockOnReturn(backgroundedAt = 1_000, now = 2_000, deviceLocked = true))
     }
 
     @Test

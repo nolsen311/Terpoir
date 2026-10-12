@@ -130,7 +130,7 @@ without it.
       and the recovery key.
 - [x] Sharing cards and plaintext export.
 - [x] Insights engine (opt-in, evidence thresholds, confounder flags).
-- [ ] Auto-lock default: lock with the device (no in-app timer); opt-in
+- [x] Auto-lock default: lock with the device (no in-app timer); opt-in
       timeouts of immediately, 1, 5 or 15 minutes, with the setting's
       disclosure card.
 - [ ] Quick capture: "New note" app shortcut (optional voice/text pair),

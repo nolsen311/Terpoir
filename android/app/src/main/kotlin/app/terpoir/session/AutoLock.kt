@@ -19,8 +19,9 @@ import androidx.lifecycle.ProcessLifecycleOwner
 
 /**
  * Applies [AutoLockPolicy] to the whole app process: hides content when the
- * app leaves the foreground, wipes the master key after the timeout, and
- * locks immediately when the screen turns off or the device is locked.
+ * app leaves the foreground, wipes the master key after an opt-in timeout,
+ * and locks immediately when the screen turns off or the device is locked
+ * (the only trigger with the default, [LockTimeout.WITH_DEVICE]).
  */
 class AutoLock(
     private val context: Context,
@@ -60,7 +61,7 @@ class AutoLock(
         if (policy.lockOnBackground()) {
             session.lock()
         } else {
-            handler.postDelayed(lockNow, policy.backgroundDelayMillis())
+            policy.backgroundDelayMillis()?.let { handler.postDelayed(lockNow, it) }
         }
     }
 

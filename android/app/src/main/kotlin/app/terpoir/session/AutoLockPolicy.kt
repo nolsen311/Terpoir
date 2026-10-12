@@ -4,12 +4,22 @@
 
 package app.terpoir.session
 
-/** How long after leaving the app the master key is wiped. */
-enum class LockTimeout(val millis: Long) {
+/**
+ * When the master key is wiped after leaving the app. [millis] is `null` for
+ * [WITH_DEVICE], which has no timer of its own.
+ */
+enum class LockTimeout(val millis: Long?) {
+    /**
+     * The default (decided 2026-10-12): no in-app timer. The journal locks
+     * when the device locks or the screen turns off, and when the process
+     * ends, like the user's other apps.
+     */
+    WITH_DEVICE(null),
+
     /** As soon as the app leaves the foreground. */
     IMMEDIATELY(0),
 
-    /** The default. */
+    /** One minute. */
     ONE_MINUTE(60_000),
 
     /** Five minutes. */
@@ -21,7 +31,7 @@ enum class LockTimeout(val millis: Long) {
 
     companion object {
         /** The default timeout (docs/design-decisions.md, "Memory hygiene and app unlock"). */
-        val DEFAULT = ONE_MINUTE
+        val DEFAULT = WITH_DEVICE
 
         /** Parses a stored name, falling back to [DEFAULT]. */
         fun fromName(name: String?): LockTimeout = entries.firstOrNull { it.name == name } ?: DEFAULT
@@ -32,19 +42,20 @@ enum class LockTimeout(val millis: Long) {
  * When to lock. Pure logic, so it is unit-tested; [AutoLock] applies it.
  *
  * - Leaving the app hides journal content at once.
- * - The master key is wiped when the timeout passes. A timer does this
- *   while the process runs; because Android may freeze or kill a
- *   backgrounded app before the timer fires, the elapsed time is also
- *   checked on return.
+ * - With an opt-in timeout, the master key is wiped when it passes. A
+ *   timer does this while the process runs; because Android may freeze or
+ *   kill a backgrounded app before the timer fires, the elapsed time is
+ *   also checked on return.
+ * - With [LockTimeout.WITH_DEVICE] (the default) there is no timer.
  * - Locking the device locks the journal immediately, whatever the
- *   timeout.
+ *   setting.
  */
 class AutoLockPolicy(private val timeout: LockTimeout) {
     /** Whether to lock right away when the app goes to the background. */
     fun lockOnBackground(): Boolean = timeout == LockTimeout.IMMEDIATELY
 
-    /** Delay before the background timer locks the journal. */
-    fun backgroundDelayMillis(): Long = timeout.millis
+    /** Delay before the background timer locks the journal, or `null` for no timer. */
+    fun backgroundDelayMillis(): Long? = timeout.millis
 
     /**
      * Whether to lock when the app returns to the foreground.
@@ -57,10 +68,11 @@ class AutoLockPolicy(private val timeout: LockTimeout) {
      */
     fun lockOnReturn(backgroundedAt: Long?, now: Long, deviceLocked: Boolean): Boolean {
         if (deviceLocked) return true
+        val limit = timeout.millis ?: return false
         if (backgroundedAt == null) return false
         // A clock that went backwards (it should not: elapsed-realtime is
         // monotonic) is treated as expired, the safe side.
         val away = now - backgroundedAt
-        return away < 0 || away >= timeout.millis
+        return away < 0 || away >= limit
     }
 }

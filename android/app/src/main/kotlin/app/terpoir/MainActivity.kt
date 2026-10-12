@@ -56,6 +56,7 @@ import app.terpoir.privacy.PrivateTextInput
 import app.terpoir.privacy.ScreenPrivacy
 import app.terpoir.scan.Scanner
 import app.terpoir.security.UserAuthentication
+import app.terpoir.session.AutoLockCard
 import app.terpoir.session.JournalSession
 import app.terpoir.ui.theme.TerpoirTheme
 import javax.crypto.Cipher
@@ -199,6 +200,7 @@ class MainActivity : ComponentActivity() {
                         onChanged = { ScreenPrivacy.onResume(this, app.privacySettings.screenProtection) },
                         onClose = onClose,
                     ) {
+                        AutoLockCard(app.lockSettings)
                         DataCard(repo, session::masterWrappedByRecovery)
                         if (app.privacySettings.folderSync) FolderSyncCard(app.folderSync, state.journal)
                     }
