@@ -129,3 +129,19 @@ fun tagLabel(tag: TagRefData, customNames: Map<String, String>): String = when (
 fun formatWhen(unixMs: Long, utcOffsetMin: Short): String =
     DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
         .format(Instant.ofEpochMilli(unixMs).atOffset(ZoneOffset.ofTotalSeconds(utcOffsetMin * 60)))
+
+/**
+ * How a product is shown everywhere: its brand, then its own name ("Fire
+ * Bros Block Berry Cart"), so the name needn't repeat the brand. A name that
+ * already starts with the brand is shown as it is.
+ */
+fun productLabel(name: String, brand: String?): String {
+    val b = brand?.trim().orEmpty()
+    val n = name.trim()
+    return when {
+        b.isEmpty() -> n
+        n.isEmpty() -> b
+        n.startsWith(b, ignoreCase = true) -> n
+        else -> "$b $n"
+    }
+}

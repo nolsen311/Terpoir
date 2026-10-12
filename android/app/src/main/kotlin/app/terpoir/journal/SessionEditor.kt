@@ -81,6 +81,7 @@ fun SessionEditor(
     val scope = rememberCoroutineScope()
     var draft by remember { mutableStateOf<SessionDraft?>(null) }
     var products by remember { mutableStateOf<List<Entry<ProductData>>>(emptyList()) }
+    var productLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var customEffects by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
     var error by remember { mutableStateOf<DraftError?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -95,6 +96,7 @@ fun SessionEditor(
 
     LaunchedEffect(id) {
         products = repo.products()
+        productLabels = repo.productLabels()
         spots = repo.spots()
         customEffects = repo.tags(EFFECT_CATEGORY)
         draft = id?.let { repo.session(it) }?.let(SessionDraft::of) ?: SessionDraft.new(
@@ -136,6 +138,7 @@ fun SessionEditor(
             LineEditor(
                 line = line,
                 products = products,
+                productLabels = productLabels,
                 vocab = vocab,
                 onChange = { changed -> draft = current.copy(lines = current.lines.toMutableList().also { it[index] = changed }) },
                 onRemove = { draft = current.copy(lines = current.lines.toMutableList().also { it.removeAt(index) }) },
@@ -264,6 +267,7 @@ fun SessionEditor(
 private fun LineEditor(
     line: LineDraft,
     products: List<Entry<ProductData>>,
+    productLabels: Map<String, String>,
     vocab: Vocabulary,
     onChange: (LineDraft) -> Unit,
     onRemove: () -> Unit,
@@ -273,7 +277,7 @@ private fun LineEditor(
             val none = stringResource(R.string.session_no_product)
             Dropdown(
                 label = stringResource(R.string.session_product),
-                options = listOf<Pair<String?, String>>(null to none) + products.map { it.id to it.data.name },
+                options = listOf<Pair<String?, String>>(null to none) + products.map { it.id to (productLabels[it.id] ?: it.data.name) }.sortedBy { it.second.lowercase() },
                 selected = line.product,
                 onSelect = { productId ->
                     val form = products.firstOrNull { it.id == productId }?.data?.form

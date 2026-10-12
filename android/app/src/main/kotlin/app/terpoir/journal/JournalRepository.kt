@@ -35,6 +35,12 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
         load(RecordType.SESSION, journal::getSession).sortedByDescending { it.data.`when`.unixMs }
     }
 
+    /** Each product's display label (brand, then name; see [productLabel]), by ID. */
+    suspend fun productLabels(): Map<String, String> {
+        val brands = brands().associate { it.id to it.data.name }
+        return products().associate { it.id to productLabel(it.data.name, it.data.brand?.let(brands::get)) }
+    }
+
     /** Products, by name. */
     suspend fun products(): List<Entry<ProductData>> = io {
         load(RecordType.PRODUCT, journal::getProduct).sortedBy { it.data.name.lowercase() }

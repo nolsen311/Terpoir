@@ -471,6 +471,9 @@ Each journal entry records one consumption session, not a product review. Produc
   - **Lock clears everything:** locking replaces the whole UI, open editors included.
 - `Debug` output of documents, values and records is redacted; decrypted text is wiped when a document is dropped.
 
+## Product names (decided 2026-10-12)
+- A product is shown as its brand followed by its own name ("Fire Bros Block Berry Cart") everywhere it appears: the catalog, the timeline, and the product pickers. The stored name stays the product's own, so it needn't repeat the brand. A name that already starts with its brand is shown as it is, never doubled. Display only: the model keeps name and brand as separate fields.
+
 ## Rapid product entry (decided)
 - **Receipt scan:** one photo fills in several products with prices, the date, and the shop.
   - On-device text recognition only. **Engine (decided):** the open engine, Tesseract (through Tesseract4Android), is the default everywhere on Android; ML Kit is a Play-only opt-in.
