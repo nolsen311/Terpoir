@@ -110,6 +110,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
     var noText by remember { mutableStateOf(false) }
     val items = remember { mutableStateListOf<ItemDraft>() }
     var products by remember { mutableStateOf<List<Entry<ProductData>>>(emptyList()) }
+    var productLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var spots by remember { mutableStateOf<List<Entry<SpotData>>>(emptyList()) }
     var invalid by remember { mutableStateOf(false) }
 
@@ -125,6 +126,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                     scope.launch {
                         val text = scan.scanner.read(photo).text
                         products = repo.products()
+                        productLabels = repo.productLabels()
                         spots = repo.spots()
                         if (text == null) {
                             noText = true
@@ -222,7 +224,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                         )
                         Dropdown(
                             label = stringResource(R.string.receipt_product),
-                            options = listOf<Pair<String?, String>>(null to newProduct) + products.map { it.id to it.data.name },
+                            options = listOf<Pair<String?, String>>(null to newProduct) + products.map { it.id to (productLabels[it.id] ?: it.data.name) }.sortedBy { it.second.lowercase() },
                             selected = item.product,
                             onSelect = { item.product = it },
                         )

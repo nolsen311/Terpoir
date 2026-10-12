@@ -226,7 +226,7 @@ private fun JournalList(
     var effectNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var tagNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     LaunchedEffect(revision) {
-        productNames = repo.products().associate { it.id to it.data.name }
+        productNames = repo.productLabels()
         effectNames = repo.tags(EFFECT_CATEGORY).associate { it.id to it.data.name }
         tagNames = (repo.tags(EFFECT_CATEGORY) + repo.tags("flavor") + repo.tags("mood") + repo.tags("terpene"))
             .associate { it.id to it.data.name }
@@ -372,6 +372,9 @@ private fun CatalogLists(
                         selected = catalog == c,
                         onClick = { catalog = c },
                         shape = SegmentedButtonDefaults.itemShape(index, Catalog.entries.size),
+                        // No checkmark: the fill already marks the selection, and
+                        // the icon squeezed "Products" onto two lines.
+                        icon = {},
                         label = {
                             Text(
                                 stringResource(
@@ -382,6 +385,10 @@ private fun CatalogLists(
                                         Catalog.SPOTS -> R.string.catalog_spots
                                     },
                                 ),
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.labelMedium,
                             )
                         },
                     )
@@ -419,9 +426,12 @@ private fun CatalogLists(
             }
         }
         when (catalog) {
-            Catalog.PRODUCTS -> items(products, key = { it.id }) { p ->
-                val detail = listOfNotNull(p.data.form?.let { label(it) }, p.data.brand?.let(brandNames::get)).joinToString(" · ")
-                CatalogRow(p.data.name, detail) { onOpen(Screen.Product(p.id)) }
+            Catalog.PRODUCTS -> items(
+                products.sortedBy { productLabel(it.data.name, it.data.brand?.let(brandNames::get)).lowercase() },
+                key = { it.id },
+            ) { p ->
+                val detail = p.data.form?.let { label(it) }.orEmpty()
+                CatalogRow(productLabel(p.data.name, p.data.brand?.let(brandNames::get)), detail) { onOpen(Screen.Product(p.id)) }
             }
             Catalog.STRAINS -> items(strains, key = { it.id }) { s ->
                 CatalogRow(s.data.name, s.data.strainType?.let { label(it) }.orEmpty()) { onOpen(Screen.Strain(s.id)) }
