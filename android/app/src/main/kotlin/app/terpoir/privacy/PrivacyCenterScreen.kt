@@ -7,6 +7,8 @@ package app.terpoir.privacy
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,7 +16,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,6 +58,9 @@ fun PrivacyCenterScreen(
     // Toggle state lives in settings, not Compose; bumped after each action.
     var revision by remember { mutableIntStateOf(0) }
     var confirming by remember { mutableStateOf<PrivacyToggle?>(null) }
+    var choosing by remember { mutableStateOf<PrivacyPreset?>(null) }
+    // The tour's optional question; never stored.
+    var threat by remember { mutableStateOf<Threat?>(null) }
     fun run(action: suspend () -> Unit) {
         scope.launch {
             action()
@@ -78,6 +85,17 @@ fun PrivacyCenterScreen(
                 pluralStringResource(R.plurals.privacy_relaxed, relaxed, relaxed)
             },
         )
+        val preset = revision.let { center.currentPreset() }
+        Text(
+            stringResource(R.string.preset_status, preset?.let { stringResource(it.title) } ?: stringResource(R.string.preset_custom)),
+            style = MaterialTheme.typography.labelLarge,
+        )
+        if (tour) ThreatQuestion(threat, onAnswer = { threat = it }) { suggested -> center.presets.firstOrNull { it.id == suggested }?.let { choosing = it } }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (option in center.presets) {
+                OutlinedButton(onClick = { choosing = option }) { Text(stringResource(option.title)) }
+            }
+        }
         Button(onClick = { run { center.restoreMaximumPrivacy() } }) {
             Text(stringResource(R.string.privacy_restore))
         }
@@ -112,6 +130,44 @@ fun PrivacyCenterScreen(
         }
     }
 
+    // One combined confirmation for a preset: every toggle it changes, with
+    // the card of each one it relaxes.
+    choosing?.let { option ->
+        val changes = remember(option, revision) { center.changes(option) }
+        AlertDialog(
+            onDismissRequest = { choosing = null },
+            title = { Text(stringResource(R.string.preset_confirm_title, stringResource(option.title))) },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(stringResource(option.description))
+                    if (changes.isEmpty()) Text(stringResource(R.string.preset_nothing))
+                    for ((toggle, on) in changes) {
+                        Text(
+                            stringResource(if (on) R.string.preset_turns_on else R.string.preset_turns_off, stringResource(toggle.card.title)),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        if (on != toggle.privateState) {
+                            Text(stringResource(toggle.card.whatLeaves), style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(toggle.card.whoCanSee), style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    choosing = null
+                    run { center.apply(option) }
+                }) { Text(stringResource(R.string.preset_apply)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { choosing = null }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+
     confirming?.let { toggle ->
         AlertDialog(
             onDismissRequest = { confirming = null },
@@ -132,6 +188,39 @@ fun PrivacyCenterScreen(
                 TextButton(onClick = { confirming = null }) { Text(stringResource(R.string.privacy_keep)) }
             },
         )
+    }
+}
+
+/** Answers to the tour's optional question, each suggesting a preset by ID. */
+private enum class Threat(val label: Int, val suggests: String) {
+    PEOPLE(R.string.threat_people, "most_private"),
+    LEGAL(R.string.threat_legal, "most_private"),
+    COMPANIES(R.string.threat_companies, "most_private"),
+    LITTLE(R.string.threat_little, "yolo"),
+}
+
+/**
+ * "What are you protecting this journal from?": optional, never stored. An
+ * answer only suggests a preset; nothing changes until the user reviews and
+ * confirms it.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ThreatQuestion(answer: Threat?, onAnswer: (Threat) -> Unit, onReview: (String) -> Unit) {
+    Text(stringResource(R.string.threat_question), style = MaterialTheme.typography.titleSmall)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (option in Threat.entries) {
+            FilterChip(selected = answer == option, onClick = { onAnswer(option) }, label = { Text(stringResource(option.label)) })
+        }
+    }
+    val suggested = answer?.suggests
+    when (suggested) {
+        null -> Unit
+        "most_private" -> Text(stringResource(R.string.threat_suggest_default), style = MaterialTheme.typography.bodySmall)
+        else -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.threat_suggest_yolo), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+            OutlinedButton(onClick = { onReview(suggested) }) { Text(stringResource(R.string.preset_review)) }
+        }
     }
 }
 

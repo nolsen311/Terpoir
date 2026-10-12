@@ -29,6 +29,21 @@ class PrivacyTogglesTest {
     }
 
     @Test
+    fun everyPresetAppliesAndMatches() = runBlocking {
+        val center = app.privacyCenter
+        center.restoreMaximumPrivacy()
+        assertEquals("most_private", center.currentPreset()?.id)
+        for (preset in center.presets) {
+            center.apply(preset)
+            assertEquals(preset.id, center.currentPreset()?.id)
+            assertTrue(center.changes(preset).isEmpty())
+        }
+        // Leaving YOLO Mode runs the off-action of everything it turned on.
+        center.apply(center.presets.first { it.id == "most_private" })
+        assertEquals(0, center.relaxedCount())
+    }
+
+    @Test
     fun everyToggleRelaxesAndRestores() = runBlocking {
         val center = app.privacyCenter
         center.restoreMaximumPrivacy()
