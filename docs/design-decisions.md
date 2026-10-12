@@ -1072,6 +1072,7 @@ Each journal entry records one consumption session, not a product review. Produc
 - Universal links / associated domains cause Apple and Google to fetch a verification file from the domain; note this in disclosure docs.
 - DNS hardening in place (Cloudflare): DNSSEC, CAA restricting issuance (Let's Encrypt plus Cloudflare's automatic Universal SSL CAs), null MX, SPF `-all`, DMARC reject, empty DKIM.
 - Website: no analytics or third-party scripts; disclose that Cloudflare terminates TLS and can see visitors.
+- **Infrastructure as code (decided 2026-10-12, maintainer):** the zone's DNS, DNSSEC, the website's Cloudflare Pages project and this repository's settings (merge methods, Dependabot, the `protect-main` ruleset) are managed with Terraform in the private repository `nolsen311/Terpoir-infra`. Changes go through a PR there, with a plan reviewed before a manual apply. Dashboard edits show up as drift. Its state sits in the maintainer's own Azure storage. None of it is a server for the app.
 
 ## Licensing, trademark, and anti-clone protection
 - **License: GPL-3.0-or-later with an additional permission (GPLv3 §7) allowing app store distribution**, provided source stays available under the GPL elsewhere. See `LICENSING.md`.
