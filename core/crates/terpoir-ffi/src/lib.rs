@@ -42,7 +42,7 @@ mod vocabulary;
 
 pub use archive::{
     ArchiveCheck, ExportArchive, RestoredKeys, check_export_archive, keys_for_restore,
-    read_export_archive,
+    read_export_archive, readable_blobs, sync_folder_key_file,
 };
 pub use capture::{capture_ready, seal_capture};
 pub use error::{CoreError, Result};

@@ -11,6 +11,8 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import app.terpoir.core.CoreException
 import app.terpoir.core.Journal
+import app.terpoir.core.syncFolderKeyFile
+import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -29,9 +31,13 @@ import kotlinx.coroutines.withContext
  * 1. imports every blob not seen before (another device's, or a retry);
  * 2. writes this device's full state as new blobs, each under a temporary
  *    name renamed when complete, so no device reads half a file;
- * 3. deletes this device's previous blobs, which the new ones supersede.
+ * 3. deletes this device's previous blobs, which the new ones supersede;
+ * 4. writes `terpoir.key` (the master key wrapped by the recovery key, from
+ *    [masterWrappedByRecovery]) if the folder has none, or replaces the one
+ *    this device wrote if its own copy changed. A new device restores from
+ *    the folder with the recovery key ([readForRestore]).
  */
-class FolderSync(private val context: Context) {
+class FolderSync(private val context: Context, private val masterWrappedByRecovery: () -> ByteArray?) {
     private val prefs = context.getSharedPreferences("folder_sync", Context.MODE_PRIVATE)
     private val lock = Mutex()
 
@@ -119,6 +125,8 @@ class FolderSync(private val context: Context) {
                     runCatching { DocumentsContract.deleteDocument(resolver, doc) }
                 }
             }
+            writeKeyFile(resolver, tree, dir)
+
             // Seen names that are gone from the folder need not be kept.
             val present = blobs(resolver, tree).map { it.first }.toSet()
             prefs.edit()
@@ -129,6 +137,68 @@ class FolderSync(private val context: Context) {
             Outcome(imported, written.size, needsUpdate)
         }
     }
+
+    /** What a folder holds for restoring: its key file and every sync blob. */
+    class Contents(val keyFile: ByteArray, val blobs: List<ByteArray>)
+
+    /**
+     * Reads the folder [tree] the user picked to restore from; `null` if it
+     * has no key file. Blobs that can't be read are skipped (the core also
+     * leaves out those that don't open).
+     */
+    suspend fun readForRestore(tree: Uri): Contents? = withContext(Dispatchers.IO) {
+        val resolver = context.contentResolver
+        val key = child(resolver, tree, KEY_FILE)?.let { doc ->
+            runCatching { resolver.openInputStream(doc)?.use { it.readBytes() } }.getOrNull()
+        } ?: return@withContext null
+        val blobs = blobs(resolver, tree).mapNotNull { (_, doc) ->
+            runCatching { resolver.openInputStream(doc)?.use { it.readBytes() } }.getOrNull()
+        }
+        Contents(key, blobs)
+    }
+
+    /**
+     * After restoring from [tree]: keeps syncing through it. Every blob is
+     * imported again at the first sync, which changes nothing already there.
+     */
+    fun adopt(tree: Uri) = choose(tree)
+
+    /** Step 4 of [sync]: the folder's key file. */
+    private fun writeKeyFile(resolver: ContentResolver, tree: Uri, dir: Uri) {
+        val wrapped = masterWrappedByRecovery() ?: return
+        val bytes = runCatching { syncFolderKeyFile(wrapped) }.getOrNull() ?: return
+        val digest = sha256(bytes)
+        val existing = child(resolver, tree, KEY_FILE)
+        if (existing != null) {
+            // Another device's copy (the same key, wrapped separately) stays;
+            // this device replaces only its own, and only when it changed.
+            val current = runCatching { resolver.openInputStream(existing)?.use { it.readBytes() } }.getOrNull() ?: return
+            val ours = prefs.getString(KEY_KEY_WRITTEN, null)
+            if (ours != sha256(current) || ours == digest) return
+            resolver.openOutputStream(existing, "wt")?.use { it.write(bytes) } ?: return
+        } else {
+            val doc = DocumentsContract.createDocument(resolver, dir, MIME, KEY_FILE) ?: return
+            resolver.openOutputStream(doc, "wt")?.use { it.write(bytes) } ?: return
+        }
+        prefs.edit().putString(KEY_KEY_WRITTEN, digest).apply()
+    }
+
+    /** The document named [name] in the folder, if any. */
+    private fun child(resolver: ContentResolver, tree: Uri, name: String): Uri? {
+        val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+        val columns = arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+        resolver.query(children, columns, null, null, null)?.use { cursor ->
+            while (cursor.moveToNext()) {
+                if (cursor.getString(1) == name) {
+                    return cursor.getString(0)?.let { DocumentsContract.buildDocumentUriUsingTree(tree, it) }
+                }
+            }
+        }
+        return null
+    }
+
+    private fun sha256(bytes: ByteArray): String =
+        MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
     /** The sync blobs in the folder, as (file name, document URI). */
     private fun blobs(resolver: ContentResolver, tree: Uri, includePartial: Boolean = false): List<Pair<String, Uri>> {
@@ -151,6 +221,8 @@ class FolderSync(private val context: Context) {
         const val KEY_SEEN = "seen"
         const val KEY_OWN = "own"
         const val KEY_LAST = "last"
+        const val KEY_KEY_WRITTEN = "key_written"
+        const val KEY_FILE = "terpoir.key"
         const val SUFFIX = ".terpoir"
         const val PARTIAL = ".partial"
         const val MIME = "application/octet-stream"

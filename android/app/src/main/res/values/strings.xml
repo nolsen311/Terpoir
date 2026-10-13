@@ -5,7 +5,6 @@
     <string name="app_name" translatable="false">Terpoir</string>
     <string name="core_version">Core %1$s</string>
     <string name="setup_explainer">Your journal is encrypted on this device and unlocks with your fingerprint, face or screen lock.</string>
-    <string name="setup">Create journal</string>
     <string name="setup_prompt">Protect your journal</string>
     <string name="locked">Your journal is locked.</string>
     <string name="unlock">Unlock</string>
@@ -40,7 +39,7 @@
     <string name="purchase_prompts_undo">Turn it off here. The watched areas are removed at once, and any pending reminder is cleared.</string>
     <string name="folder_sync">Sync through a folder</string>
     <string name="folder_sync_does">Keeps your journal in step across your devices through a folder you choose: a Syncthing folder, or Google Drive, Nextcloud or Dropbox through their apps. Terpoir writes encrypted sync files there and reads the ones your other devices wrote. It syncs while Terpoir is open.</string>
-    <string name="folder_sync_leaves">Only encrypted files, which only your journal\'s keys open. They are padded and randomly named, so their contents, size and number of entries stay hidden. Terpoir itself still has no internet access for this.</string>
+    <string name="folder_sync_leaves">Only encrypted files. The sync files open only with your journal\'s keys; they are padded and randomly named, so their contents, size and number of entries stay hidden. One more file, terpoir.key, holds your journal\'s key locked by your recovery key, so a new phone can restore from the folder with that recovery key. Terpoir itself still has no internet access for this.</string>
     <string name="folder_sync_who">Whatever syncs that folder (your cloud drive provider, or your own devices with Syncthing) stores the encrypted files and can see when you sync and roughly how much data there is. No one can read them without your keys.</string>
     <string name="folder_sync_undo">Turn it off here. Terpoir stops syncing and gives up access to the folder. Files already written stay there, encrypted; delete them in your files app if you want.</string>
     <string name="sync_title">Folder sync</string>
@@ -132,13 +131,27 @@
     <string name="age_signal_disclosure">Google Play may tell Terpoir an age range for your account. Terpoir only checks it on this phone, to keep out under-18s, and never stores or sends it.</string>
     <string name="age_adults_only">Terpoir is for adults</string>
     <string name="age_adults_only_body">Come back when you\'re of legal age where you live.</string>
-    <string name="restore_start">Restore from an export</string>
     <string name="restore_title">Restore your journal</string>
     <string name="restore_explainer">Type the recovery key of the journal you exported. It opens the export on this phone; capitals and dashes don\'t matter.</string>
     <string name="restore_button">Restore</string>
     <string name="restore_not_export">That file isn\'t a Terpoir export.</string>
     <string name="newer_version_needed">This was made by a newer version of Terpoir. Update the app, then try again. Nothing was changed.</string>
     <string name="restore_failed">The journal couldn\'t be restored. Nothing was kept; try again.</string>
+    <string name="journal_choice_title">Do you already have a Terpoir journal?</string>
+    <string name="journal_choice_new">Start a new journal</string>
+    <string name="journal_choice_existing">I have a journal</string>
+    <string name="existing_title">Bring your journal to this phone</string>
+    <string name="existing_explainer">Where is it? You\'ll need its recovery key.</string>
+    <string name="existing_from_export">From an export file</string>
+    <string name="existing_from_export_hint">A file you saved with \"Export\" in the Privacy Center.</string>
+    <string name="existing_from_folder">From a sync folder</string>
+    <string name="existing_from_folder_hint">The folder your other device syncs through: a Syncthing folder, or Google Drive, Nextcloud or Dropbox.</string>
+    <string name="existing_from_phone">From my other phone</string>
+    <string name="existing_from_phone_hint">Coming soon.</string>
+    <string name="back">Back</string>
+    <string name="restore_folder_explainer">Type your journal\'s recovery key. It opens the journal in this folder; capitals and dashes don\'t matter. Terpoir then keeps syncing through this folder, which you can turn off in the Privacy Center.</string>
+    <string name="restore_not_folder">That folder has no Terpoir journal key. Open Terpoir on a device that syncs through it, sync once, then try again.</string>
+    <string name="restore_folder_out_of_date">None of the files in that folder open with its key. Sync once from a device that has the journal, then try again.</string>
     <string name="data_title">Your data</string>
     <string name="data_explainer">Export saves your whole journal as one encrypted file, and only your recovery key opens it, so keep the two apart. Use it to move to a new phone: choose \"Restore from an export\" when setting Terpoir up there. Import merges an export of this same journal back in.</string>
     <string name="export_button">Export</string>

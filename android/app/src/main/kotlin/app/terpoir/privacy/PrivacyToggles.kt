@@ -358,7 +358,7 @@ fun buildPrivacyCenter(
         // runs while the app is open. Off gives up the folder permission and
         // forgets what was synced; files already there stay, encrypted.
         PrivacyToggle(
-            id = "folder_sync",
+            id = FOLDER_SYNC,
             group = PrivacyGroup.SYNC_AND_KEYS,
             card = PrivacyCard(
                 title = R.string.folder_sync,
@@ -398,6 +398,9 @@ fun buildPrivacyCenter(
 
 /** The online map's toggle ID, for the spot editor to find it. */
 const val ONLINE_MAP = "online_map"
+
+/** The folder sync toggle's ID. */
+const val FOLDER_SYNC = "folder_sync"
 
 /** The default: every protection on, every optional feature off. */
 val MOST_PRIVATE = PrivacyPreset("most_private", R.string.preset_most_private, R.string.preset_most_private_does, emptySet())
