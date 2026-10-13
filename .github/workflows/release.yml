@@ -95,6 +95,11 @@ jobs:
           cp app/build/outputs/apk/play/release/app-play-release-unsigned.apk "$out/terpoir-play-$version-unsigned.apk"
           cp app/build/outputs/bundle/playRelease/app-play-release.aab "$out/terpoir-play-$version-unsigned.aab"
           (cd "$out" && sha256sum terpoir-* > UNSIGNED-SHA256SUMS && cat UNSIGNED-SHA256SUMS)
+          # R8's maps from obfuscated names back to the source, to read a
+          # release build's crash stack traces. Not secret (the source is
+          # public); they stay on the release when it's published.
+          cp app/build/outputs/mapping/fossRelease/mapping.txt "$out/terpoir-foss-$version-mapping.txt"
+          cp app/build/outputs/mapping/playRelease/mapping.txt "$out/terpoir-play-$version-mapping.txt"
           {
             echo "### Unsigned release builds"
             echo '```'
