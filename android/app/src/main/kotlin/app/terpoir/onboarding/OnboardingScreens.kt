@@ -197,3 +197,42 @@ fun GoogleMapChoice(onUseGoogle: () -> Unit, onNotNow: () -> Unit) {
         OutlinedButton(onClick = onNotNow) { Text(stringResource(R.string.map_choice_not_now)) }
     }
 }
+
+/**
+ * Right after the age gate: a new journal, or one the user already has.
+ * Both answers carry the same weight. There is nowhere to look a journal
+ * up (no account, no server, and app data is left out of phone backups),
+ * so the app asks.
+ */
+@Composable
+fun JournalChoice(onNew: () -> Unit, onExisting: () -> Unit) {
+    Text(stringResource(R.string.journal_choice_title), style = MaterialTheme.typography.headlineSmall)
+    Text(stringResource(R.string.setup_explainer))
+    OutlinedButton(onClick = onNew, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.journal_choice_new)) }
+    OutlinedButton(onClick = onExisting, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.journal_choice_existing)) }
+}
+
+/**
+ * Where the existing journal is: an export file or a sync folder, each
+ * opened with the recovery key. Pairing with another phone isn't built
+ * yet, so it is shown but can't be chosen.
+ */
+@Composable
+fun ExistingJournal(onExport: () -> Unit, onFolder: () -> Unit, onBack: () -> Unit) {
+    Text(stringResource(R.string.existing_title), style = MaterialTheme.typography.headlineSmall)
+    Text(stringResource(R.string.existing_explainer))
+    Source(R.string.existing_from_export, R.string.existing_from_export_hint, onClick = onExport)
+    Source(R.string.existing_from_folder, R.string.existing_from_folder_hint, onClick = onFolder)
+    Source(R.string.existing_from_phone, R.string.existing_from_phone_hint, onClick = null)
+    TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+}
+
+@Composable
+private fun Source(title: Int, hint: Int, onClick: (() -> Unit)?) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        OutlinedButton(onClick = { onClick?.invoke() }, enabled = onClick != null, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(title))
+        }
+        Text(stringResource(hint), style = MaterialTheme.typography.bodySmall)
+    }
+}

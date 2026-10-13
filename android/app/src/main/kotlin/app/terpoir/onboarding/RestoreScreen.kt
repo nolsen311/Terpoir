@@ -25,17 +25,22 @@ import app.terpoir.R
 import app.terpoir.session.JournalSession.RecoveryCheck
 
 /**
- * Restoring a journal from an encrypted export on a new device: the
- * recovery key opens it. The key is checked against the export before
+ * Restoring a journal on a new device from an encrypted export or a sync
+ * folder: the recovery key opens it. The key is checked against the export before
  * anything is written; [onRestore] then sets up the journal.
  */
 @Composable
-fun RestoreScreen(check: (String) -> RecoveryCheck, onRestore: (String) -> Unit, onCancel: () -> Unit) {
+fun RestoreScreen(
+    explainer: Int,
+    check: (String) -> RecoveryCheck,
+    onRestore: (String) -> Unit,
+    onCancel: () -> Unit,
+) {
     var typed by remember { mutableStateOf("") }
     var result by remember { mutableStateOf<RecoveryCheck?>(null) }
     Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(stringResource(R.string.restore_title), style = MaterialTheme.typography.headlineSmall)
-        Text(stringResource(R.string.restore_explainer))
+        Text(stringResource(explainer))
         OutlinedTextField(
             value = typed,
             onValueChange = {

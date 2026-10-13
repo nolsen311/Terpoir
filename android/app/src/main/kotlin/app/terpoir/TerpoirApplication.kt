@@ -79,7 +79,9 @@ class TerpoirApplication : Application() {
         // the older version; the next unlock rebuilds it.
         spotAlerts.dropOutdated()
         checkIns = CheckIns(this, privacySettings)
-        folderSync = FolderSync(this)
+        // The key file it writes comes from the journal's own copy, once
+        // there is a journal.
+        folderSync = FolderSync(this) { runCatching { session.masterWrappedByRecovery() }.getOrNull() }
         privacyCenter = buildPrivacyCenter(this, privacySettings, spotAlerts, checkIns, folderSync) {
             (session.state as? JournalSession.State.Unlocked)?.journal
         }

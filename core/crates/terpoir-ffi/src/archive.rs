@@ -92,6 +92,53 @@ pub fn check_export_archive(recovery_key: String, archive: ExportArchive) -> Res
     check(&master, &archive)
 }
 
+/// The key file a sync folder holds (docs/design-decisions.md, "Restore
+/// from a sync folder"): an archive with the master key wrapped by the
+/// recovery key and no blobs. With the folder's sync blobs it makes an
+/// export, so a new device restores from the folder with the recovery key.
+///
+/// # Errors
+///
+/// `InvalidInput` if `master_wrapped_by_recovery` is not a wrapped key.
+#[uniffi::export]
+pub fn sync_folder_key_file(master_wrapped_by_recovery: Vec<u8>) -> Result<Vec<u8>> {
+    WrappedKey::from_slice(&master_wrapped_by_recovery)?;
+    write(&master_wrapped_by_recovery, &[])
+}
+
+/// For restoring from a sync folder: `archive` (the folder's key file and
+/// every blob in it) without the blobs that don't open under its master
+/// key, such as one another device is still writing or one from before a
+/// master-key rotation. Folder sync retries those later. Blobs in a newer
+/// app's format are kept, so `check_export_archive` still asks for an
+/// update.
+///
+/// # Errors
+///
+/// The recovery key's parse errors, or `WrongKey` if it is not this
+/// folder's.
+#[uniffi::export]
+pub fn readable_blobs(recovery_key: String, archive: ExportArchive) -> Result<ExportArchive> {
+    let text = Zeroizing::new(recovery_key);
+    let recovery = RecoveryKey::parse(&text)?;
+    let wrapped = WrappedKey::from_slice(&archive.master_wrapped_by_recovery)?;
+    let master = recovery.key_encryption_key()?.unwrap_master_key(&wrapped)?;
+    let blobs = archive
+        .blobs
+        .into_iter()
+        .filter(|blob| {
+            matches!(
+                inspect_blob(&master, blob),
+                Ok(_) | Err(terpoir_sync::Error::NewerFormat)
+            )
+        })
+        .collect();
+    Ok(ExportArchive {
+        master_wrapped_by_recovery: archive.master_wrapped_by_recovery,
+        blobs,
+    })
+}
+
 /// Builds an archive from the wrapped master key and the blobs.
 pub(crate) fn write(master_wrapped_by_recovery: &[u8], blobs: &[Vec<u8>]) -> Result<Vec<u8>> {
     let len = |n: usize| u32::try_from(n).map_err(|_| CoreError::Internal);

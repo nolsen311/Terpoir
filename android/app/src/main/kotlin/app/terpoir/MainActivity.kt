@@ -5,6 +5,7 @@
 package app.terpoir
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import androidx.activity.ComponentActivity
@@ -21,13 +22,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +44,7 @@ import app.terpoir.core.ExportArchive
 import app.terpoir.core.checkExportArchive
 import app.terpoir.core.coreVersion
 import app.terpoir.core.readExportArchive
+import app.terpoir.core.readableBlobs
 import app.terpoir.core.vocabulary
 import app.terpoir.journal.DataCard
 import app.terpoir.journal.JournalHome
@@ -51,11 +53,14 @@ import app.terpoir.journal.ScanServices
 import app.terpoir.map.MapProvider
 import app.terpoir.map.MapProviderCard
 import app.terpoir.onboarding.AgeGate
+import app.terpoir.onboarding.ExistingJournal
 import app.terpoir.onboarding.GoogleMapChoice
+import app.terpoir.onboarding.JournalChoice
 import app.terpoir.onboarding.OnboardingStep
 import app.terpoir.onboarding.RecoveryBackup
 import app.terpoir.onboarding.RecoveryKeyBackup
 import app.terpoir.onboarding.RestoreScreen
+import app.terpoir.privacy.FOLDER_SYNC
 import app.terpoir.privacy.ONLINE_MAP
 import app.terpoir.privacy.PrivacyCenterScreen
 import app.terpoir.privacy.PrivateTextInput
@@ -148,6 +153,25 @@ class MainActivity : ComponentActivity() {
                 } catch (_: Exception) {
                     message = R.string.restore_not_export
                     null
+                }
+            }
+        }
+        // A sync folder chosen for restoring; its contents are in [restoring].
+        var restoringFolder by remember { mutableStateOf<Uri?>(null) }
+        // After the age gate: "I have a journal" was chosen.
+        var existing by rememberSaveable { mutableStateOf(false) }
+        val screenScope = rememberCoroutineScope()
+        val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            if (uri != null) {
+                screenScope.launch {
+                    val contents = runCatching { app.folderSync.readForRestore(uri) }.getOrNull()
+                    val key = contents?.let { runCatching { readExportArchive(it.keyFile) }.getOrNull() }
+                    if (contents == null || key == null) {
+                        message = R.string.restore_not_folder
+                    } else {
+                        restoring = ExportArchive(key.masterWrappedByRecovery, contents.blobs)
+                        restoringFolder = uri
+                    }
                 }
             }
         }
@@ -268,23 +292,48 @@ class MainActivity : ComponentActivity() {
         }
         restoring?.let { archive ->
             if (state == JournalSession.State.NoJournal) {
+                val folder = restoringFolder
                 RestoreScreen(
+                    explainer = if (folder == null) R.string.restore_explainer else R.string.restore_folder_explainer,
                     check = { typed -> session.checkRecoveryKey(typed, archive.masterWrappedByRecovery) },
                     onRestore = { typed ->
+                        // From a folder: leave out blobs that don't open (one
+                        // still being written, say); folder sync retries them.
+                        val usable = if (folder == null) archive else runCatching { readableBlobs(typed, archive) }.getOrNull()
                         // Checked before anything changes: an export a newer
                         // app wrote is refused whole, never restored partly.
-                        val check = runCatching { checkExportArchive(typed, archive) }.getOrNull()
-                        if (check == null || check.newerFormatBlobs > 0uL) {
-                            message = if (check == null) R.string.restore_failed else R.string.newer_version_needed
+                        val check = usable?.let { runCatching { checkExportArchive(typed, it) }.getOrNull() }
+                        message = when {
+                            usable == null || check == null -> R.string.restore_failed
+                            folder != null && usable.blobs.isEmpty() && archive.blobs.isNotEmpty() -> R.string.restore_folder_out_of_date
+                            check.newerFormatBlobs > 0uL -> R.string.newer_version_needed
+                            else -> null
+                        }
+                        if (usable == null || message != null) {
                             restoring = null
+                            restoringFolder = null
                         } else {
-                            message = restoreJournal(typed, archive) {
+                            message = restoreJournal(
+                                typed,
+                                usable,
+                                onRestored = {
+                                    // Keep syncing through the folder the user restored from.
+                                    if (folder != null) {
+                                        app.folderSync.adopt(folder)
+                                        screenScope.launch { app.privacyCenter.toggles.firstOrNull { it.id == FOLDER_SYNC }?.set(true) }
+                                    }
+                                },
+                            ) {
                                 message = it
                                 restoring = null
+                                restoringFolder = null
                             }
                         }
                     },
-                    onCancel = { restoring = null },
+                    onCancel = {
+                        restoring = null
+                        restoringFolder = null
+                    },
                 )
                 return
             }
@@ -295,14 +344,23 @@ class MainActivity : ComponentActivity() {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             when (state) {
-                JournalSession.State.NoJournal -> {
-                    Text(stringResource(R.string.setup_explainer))
-                    Button(onClick = { message = createJournal { message = it } }) {
-                        Text(stringResource(R.string.setup))
-                    }
-                    TextButton(onClick = { pickExport.launch(arrayOf("*/*")) }) {
-                        Text(stringResource(R.string.restore_start))
-                    }
+                JournalSession.State.NoJournal -> if (!existing) {
+                    JournalChoice(
+                        onNew = { message = createJournal { message = it } },
+                        onExisting = {
+                            message = null
+                            existing = true
+                        },
+                    )
+                } else {
+                    ExistingJournal(
+                        onExport = { pickExport.launch(arrayOf("*/*")) },
+                        onFolder = { pickFolder.launch(null) },
+                        onBack = {
+                            message = null
+                            existing = false
+                        },
+                    )
                 }
                 JournalSession.State.Locked -> {
                     Text(stringResource(R.string.locked))
@@ -349,7 +407,7 @@ class MainActivity : ComponentActivity() {
      * message to show, if any. [onError] gets one if restoring fails after
      * authentication, which leaves no journal behind.
      */
-    private fun restoreJournal(typed: String, archive: ExportArchive, onError: (Int) -> Unit): Int? {
+    private fun restoreJournal(typed: String, archive: ExportArchive, onRestored: () -> Unit, onError: (Int) -> Unit): Int? {
         val strict = app.lockSettings.strictBiometrics
         if (!UserAuthentication.isAvailable(this, strict)) return R.string.error_no_lock_screen
         val cipher = try {
@@ -366,7 +424,9 @@ class MainActivity : ComponentActivity() {
             } catch (_: Exception) {
                 app.session.reset()
                 onError(R.string.restore_failed)
+                return@authenticate
             }
+            onRestored()
         }
         return null
     }

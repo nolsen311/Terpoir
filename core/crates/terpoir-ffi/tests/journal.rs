@@ -15,7 +15,8 @@ use terpoir_ffi::{
     NewKeys, ProductData, ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData,
     SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance,
     TagRefData, check_export_archive, check_recovery_key, create_keys, keys_for_restore,
-    master_key_from_recovery, read_export_archive, trackable_data_points,
+    master_key_from_recovery, read_export_archive, readable_blobs, sync_folder_key_file,
+    trackable_data_points,
 };
 
 struct Device {
@@ -1728,4 +1729,78 @@ fn unlocking_rebuilds_an_index_built_by_an_older_app() {
         store().derived_version("index").unwrap(),
         Some(terpoir_store::INDEX_VERSION)
     );
+}
+
+#[test]
+fn a_sync_folder_restores_on_a_new_device() {
+    let keys = create_keys().unwrap();
+    let phone_dir = Device::new();
+    let phone = phone_dir.open(&keys).unwrap();
+    let id = phone.save_session(None, session(None), 10).unwrap();
+
+    // What the folder holds: the key file, the phone's blobs, a blob still
+    // being written, and one from another journal.
+    assert_eq!(
+        sync_folder_key_file(b"not a key".to_vec()).err(),
+        Some(CoreError::InvalidInput)
+    );
+    let key_file = sync_folder_key_file(keys.master_wrapped_by_recovery.clone()).unwrap();
+    let own: Vec<Vec<u8>> = phone
+        .export_sync_blobs()
+        .unwrap()
+        .into_iter()
+        .map(|b| b.bytes)
+        .collect();
+    let half = own[0][..own[0].len() / 2].to_vec();
+    let other_keys = create_keys().unwrap();
+    let other_dir = Device::new();
+    let other = other_dir.open(&other_keys).unwrap();
+    other.save_session(None, session(None), 10).unwrap();
+    let foreign = other.export_sync_blobs().unwrap().remove(0).bytes;
+
+    // The key file reads as an export with no blobs.
+    let parsed = read_export_archive(key_file).unwrap();
+    assert!(parsed.blobs.is_empty());
+    let folder = ExportArchive {
+        master_wrapped_by_recovery: parsed.master_wrapped_by_recovery,
+        blobs: [own.clone(), vec![half, foreign]].concat(),
+    };
+
+    // Only this journal's recovery key opens it.
+    let wrong = ExportArchive {
+        master_wrapped_by_recovery: folder.master_wrapped_by_recovery.clone(),
+        blobs: Vec::new(),
+    };
+    assert!(readable_blobs(other_keys.recovery_key.clone(), wrong).is_err());
+
+    // Unreadable blobs are left out; what remains restores like an export.
+    let usable = readable_blobs(keys.recovery_key.clone(), folder).unwrap();
+    assert_eq!(usable.blobs, own);
+    let check = check_export_archive(
+        keys.recovery_key.clone(),
+        ExportArchive {
+            master_wrapped_by_recovery: usable.master_wrapped_by_recovery.clone(),
+            blobs: usable.blobs.clone(),
+        },
+    )
+    .unwrap();
+    assert_eq!((check.records, check.newer_format_blobs), (1, 0));
+    let restored =
+        keys_for_restore(keys.recovery_key.clone(), usable.master_wrapped_by_recovery).unwrap();
+    let new_dir = Device::new();
+    let new_phone = Journal::open(
+        new_dir
+            .dir
+            .join("journal.db")
+            .to_string_lossy()
+            .into_owned(),
+        new_dir.dir.join("files").to_string_lossy().into_owned(),
+        restored.master_key,
+        restored.wrapped_database_key,
+    )
+    .unwrap();
+    for blob in usable.blobs {
+        new_phone.import_sync_blob(blob, 20).unwrap();
+    }
+    assert!(new_phone.get_session(id.clone()).unwrap() == phone.get_session(id).unwrap());
 }
