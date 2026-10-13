@@ -158,7 +158,7 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
     suspend fun shopInsights(): List<ShopInsightData> = io { journal.shopInsights() }
 
     /** Records the user's feedback on an insight (or a category, for muting). */
-    suspend fun setInsightFeedback(key: String, feedback: InsightFeedback) = io { journal.setInsightFeedback(key, feedback) }
+    suspend fun setInsightFeedback(key: String, feedback: InsightFeedback) = io { journal.setInsightFeedback(key, feedback, now()) }
 
     /** The whole journal in plaintext (JSON and CSV files); see [DataCard]. */
     suspend fun exportPlaintext(): List<ExportFile> = io { journal.exportPlaintext(now()) }

@@ -30,9 +30,9 @@
     <string name="privacy_group_location">Location</string>
     <string name="insights_toggle">Insights</string>
     <string name="insights_does">Looks for patterns in your own ratings, such as which terpenes or methods you tend to rate higher, and shows the sessions behind each one. Plain averages, computed on this phone when you open Insights.</string>
-    <string name="insights_leaves">Nothing leaves your phone. Insights are worked out from your encrypted journal each time and never stored; only what you dismiss or hide is remembered, encrypted, on this phone.</string>
+    <string name="insights_leaves">Nothing leaves your phone. Insights are worked out from your encrypted journal each time and never stored. What you dismiss or hide is remembered in your encrypted journal, so it syncs to your other devices and comes back with an export.</string>
     <string name="insights_who">No one else. Insights describe your own sessions; they are never advice.</string>
-    <string name="insights_undo">Turn it off here. Insights disappear, and what you dismissed or hid is forgotten.</string>
+    <string name="insights_undo">Turn it off here. Insights disappear, and what you dismissed or hid is forgotten on every device you sync with.</string>
     <string name="purchase_prompts">Purchase reminders</string>
     <string name="purchase_prompts_does">Lets you mark Re-up Spots where you want a reminder. When you leave one after a stop of a few minutes, Terpoir asks \"Quick log?\" and opens receipt scan. At most once a day per spot.</string>
     <string name="purchase_prompts_leaves">Android\'s location service watches those spots, so it holds their coordinates, as with \"Notify me\". It needs location \"all the time\". The reminder never names the spot, and no record of your visits is kept: only that you are inside one of the spots, until you leave.</string>

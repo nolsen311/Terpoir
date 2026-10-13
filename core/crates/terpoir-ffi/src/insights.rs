@@ -56,7 +56,7 @@ pub enum InsightFeedback {
 }
 
 impl InsightFeedback {
-    const fn slug(self) -> &'static str {
+    pub(crate) const fn slug(self) -> &'static str {
         match self {
             Self::Dismissed => "dismissed",
             Self::Wrong => "wrong",
@@ -65,16 +65,14 @@ impl InsightFeedback {
     }
 }
 
-/// The store key of the feedback list (`key\tstate` lines).
-pub(crate) const META_FEEDBACK: &str = "insight_feedback";
-
 /// What the insights read from the journal.
 pub(crate) trait Source {
     fn sessions(&self) -> Result<Vec<(RecordId, Session)>>;
     fn product(&self, id: &RecordId) -> Result<Option<Product>>;
     fn strain(&self, id: &RecordId) -> Result<Option<Strain>>;
     fn tag_name(&self, id: &RecordId) -> Result<Option<String>>;
-    fn feedback(&self) -> Result<Vec<u8>>;
+    /// Feedback state by insight key or category.
+    fn feedback(&self) -> Result<BTreeMap<String, String>>;
     fn purchases(&self) -> Result<Vec<(RecordId, Purchase)>>;
     fn spot(&self, id: &RecordId) -> Result<Option<Spot>>;
     fn brand_name(&self, id: &RecordId) -> Result<Option<String>>;
@@ -363,7 +361,7 @@ pub(crate) fn current(source: &dyn Source) -> Result<Vec<InsightData>> {
         });
     }
 
-    let feedback = parse_feedback(&source.feedback()?);
+    let feedback = source.feedback()?;
     let mut out = Vec::new();
     for insight in insights(&facts) {
         let category = insight.category().to_owned();
@@ -403,49 +401,5 @@ fn tag_key(tag: &TagRef) -> String {
     match tag {
         TagRef::Builtin(slug) => slug.clone(),
         TagRef::Custom(id) => format!("custom:{}", id.to_hex()),
-    }
-}
-
-fn parse_feedback(bytes: &[u8]) -> BTreeMap<String, String> {
-    String::from_utf8_lossy(bytes)
-        .lines()
-        .filter_map(|l| l.split_once('\t'))
-        .map(|(k, v)| (k.to_owned(), v.to_owned()))
-        .collect()
-}
-
-/// The feedback list with `key` set to `feedback`.
-pub(crate) fn with_feedback(current: &[u8], key: &str, feedback: InsightFeedback) -> Vec<u8> {
-    let mut all = parse_feedback(current);
-    // Keys never hold tabs or newlines; refuse to corrupt the list if one does.
-    if key.contains(['\t', '\n']) {
-        return current.to_vec();
-    }
-    all.insert(key.to_owned(), feedback.slug().to_owned());
-    all.iter()
-        .map(|(k, v)| format!("{k}\t{v}\n"))
-        .collect::<String>()
-        .into_bytes()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn feedback_round_trips() {
-        let list = with_feedback(b"", "terpene:myrcene", InsightFeedback::Dismissed);
-        let list = with_feedback(&list, "time", InsightFeedback::Muted);
-        let list = with_feedback(&list, "terpene:myrcene", InsightFeedback::Wrong);
-        let parsed = parse_feedback(&list);
-        assert_eq!(
-            parsed.get("terpene:myrcene").map(String::as_str),
-            Some("wrong")
-        );
-        assert_eq!(parsed.get("time").map(String::as_str), Some("muted"));
-        assert_eq!(
-            with_feedback(&list, "bad\tkey", InsightFeedback::Dismissed),
-            list
-        );
     }
 }

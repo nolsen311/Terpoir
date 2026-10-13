@@ -21,12 +21,19 @@ use crate::{CoreError, Result};
 
 const ID_PURPOSE: &str = "tracking-preferences";
 
-/// The tracking-preferences record's ID under `master`.
-pub(crate) fn record_id(master: &MasterKey) -> Result<RecordId> {
-    let key = master.derive_subkey(ID_PURPOSE)?;
+/// The ID of a one-per-journal record under `master`: derived from the
+/// master key with a fixed `purpose`, so every device addresses the same
+/// record.
+pub(crate) fn singleton_id(master: &MasterKey, purpose: &str) -> Result<RecordId> {
+    let key = master.derive_subkey(purpose)?;
     let mut bytes = [0u8; 16];
     bytes.copy_from_slice(&key.expose_secret()[..16]);
     Ok(RecordId::from_bytes(bytes))
+}
+
+/// The tracking-preferences record's ID under `master`.
+pub(crate) fn record_id(master: &MasterKey) -> Result<RecordId> {
+    singleton_id(master, ID_PURPOSE)
 }
 
 fn load(u: &Unlocked) -> Result<Option<Document>> {
@@ -47,11 +54,20 @@ pub(crate) fn preferences(u: &Unlocked) -> Result<TrackingPreferences> {
 /// derived from the new key, fields and stamps unchanged, and the old ID is
 /// deleted.
 pub(crate) fn rotate(u: &mut Unlocked, new_master: &MasterKey) -> Result<()> {
-    let old_id = record_id(&u.master)?;
+    rotate_singleton(u, new_master, ID_PURPOSE)
+}
+
+/// [`rotate`] for any one-per-journal record (see [`singleton_id`]).
+pub(crate) fn rotate_singleton(
+    u: &mut Unlocked,
+    new_master: &MasterKey,
+    purpose: &str,
+) -> Result<()> {
+    let old_id = singleton_id(&u.master, purpose)?;
     let Some(old) = u.store.get(new_master, &old_id)?.map(migrate).transpose()? else {
         return Ok(());
     };
-    let mut moved = Document::new(record_id(new_master)?, old.kind());
+    let mut moved = Document::new(singleton_id(new_master, purpose)?, old.kind());
     for (key, field) in old.fields() {
         moved.insert_field(key.clone(), field.clone());
     }
