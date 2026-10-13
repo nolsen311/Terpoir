@@ -616,6 +616,10 @@ pub struct SnippetData {
     pub text: String,
     /// Confirmed tags.
     pub tags: Vec<TagProvenance>,
+    /// Written while the journal was locked and not yet kept: show it for
+    /// review. Save it with `false` to keep it; delete it to discard it.
+    #[uniffi(default = false)]
+    pub added_while_locked: bool,
 }
 
 impl SnippetData {
@@ -629,6 +633,7 @@ impl SnippetData {
                 .iter()
                 .map(|t| Ok((t.tag.to_model()?, Provenance::from_slug(&t.provenance))))
                 .collect::<Result<_>>()?,
+            added_while_locked: self.added_while_locked,
         })
     }
 
@@ -645,6 +650,7 @@ impl SnippetData {
                     provenance: p.slug().to_owned(),
                 })
                 .collect(),
+            added_while_locked: s.added_while_locked,
         }
     }
 }

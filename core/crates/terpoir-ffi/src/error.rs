@@ -60,6 +60,12 @@ impl fmt::Display for CoreError {
 
 impl std::error::Error for CoreError {}
 
+impl From<std::io::Error> for CoreError {
+    fn from(_: std::io::Error) -> Self {
+        Self::Storage
+    }
+}
+
 impl From<terpoir_crypto::Error> for CoreError {
     fn from(e: terpoir_crypto::Error) -> Self {
         use terpoir_crypto::{Error, RecoveryKeyError};

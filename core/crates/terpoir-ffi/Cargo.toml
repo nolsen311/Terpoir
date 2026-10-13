@@ -30,6 +30,7 @@ uniffi.workspace = true
 zeroize.workspace = true
 
 [dev-dependencies]
+proptest.workspace = true
 terpoir-crypto.workspace = true
 
 [lints]
