@@ -135,6 +135,25 @@ class PrivacySettings(context: Context) {
         get() = prefs.getBoolean(KEY_FOLDER_SYNC, false)
         set(value) = prefs.edit().putBoolean(KEY_FOLDER_SYNC, value).apply()
 
+    /**
+     * The "New note" app shortcut (long-press the icon). On by default: it
+     * holds no content and reveals no more than the icon does
+     * (docs/design-decisions.md, "Quick capture").
+     */
+    var newNoteShortcut: Boolean
+        get() = prefs.getBoolean(KEY_NEW_NOTE_SHORTCUT, true)
+        set(value) = prefs.edit().putBoolean(KEY_NEW_NOTE_SHORTCUT, value).apply()
+
+    /** The "New note" Quick Settings tile. Off by default. */
+    var quickSettingsTile: Boolean
+        get() = prefs.getBoolean(KEY_QS_TILE, false)
+        set(value) = prefs.edit().putBoolean(KEY_QS_TILE, value).apply()
+
+    /** The "New note" home-screen widget. Off by default. */
+    var homeWidget: Boolean
+        get() = prefs.getBoolean(KEY_HOME_WIDGET, false)
+        set(value) = prefs.edit().putBoolean(KEY_HOME_WIDGET, value).apply()
+
     /** Whether the voice first-use card has been shown and answered. */
     var voiceIntroSeen: Boolean
         get() = prefs.getBoolean(KEY_VOICE_INTRO_SEEN, false)
@@ -156,5 +175,8 @@ class PrivacySettings(context: Context) {
         const val KEY_INSIGHTS = "insights"
         const val KEY_PURCHASE_PROMPTS = "purchase_prompts"
         const val KEY_FOLDER_SYNC = "folder_sync"
+        const val KEY_NEW_NOTE_SHORTCUT = "new_note_shortcut"
+        const val KEY_QS_TILE = "quick_settings_tile"
+        const val KEY_HOME_WIDGET = "home_widget"
     }
 }

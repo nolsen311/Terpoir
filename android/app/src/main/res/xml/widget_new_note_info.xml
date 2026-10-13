@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception -->
+<!-- Copyright (C) 2026 The Terpoir Authors -->
+<!-- previewLayout and target cells are Android 12+; Android 11 ignores them. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:description="@string/capture_widget_description"
+    android:initialLayout="@layout/widget_new_note"
+    android:minWidth="110dp"
+    android:minHeight="40dp"
+    android:previewLayout="@layout/widget_new_note"
+    android:resizeMode="horizontal"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen"
+    tools:targetApi="31" />

@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.PurchasePrompts
 import app.terpoir.alerts.SpotAlerts
+import app.terpoir.capture.QuickCapture
+import app.terpoir.capture.ShortcutCard
 import app.terpoir.core.ExportArchive
 import app.terpoir.core.coreVersion
 import app.terpoir.core.readExportArchive
@@ -80,11 +82,15 @@ class MainActivity : ComponentActivity() {
     /** Opened from a "Quick log?" purchase prompt: after unlock, open receipt scan. */
     private var quickLogRequested by mutableStateOf(false)
 
+    /** Opened from a quick-capture shortcut, tile or widget: after unlock, a new note. */
+    private var newNoteRequested by mutableStateOf(false)
+
     private fun fromAlert(intent: Intent?) {
         when (intent?.action) {
             SpotAlerts.ACTION_NEAR_SPOT -> nearbyRequested = true
             CheckIns.ACTION_CHECK_IN -> checkInRequested = true
             PurchasePrompts.ACTION_QUICK_LOG -> quickLogRequested = true
+            QuickCapture.ACTION_NEW_NOTE -> newNoteRequested = true
         }
     }
 
@@ -187,6 +193,8 @@ class MainActivity : ComponentActivity() {
                     },
                     quickLog = quickLogRequested,
                     onQuickLogOpened = { quickLogRequested = false },
+                    newNote = newNoteRequested,
+                    onNewNoteOpened = { newNoteRequested = false },
                     onEdited = {
                         scope.launch {
                             app.spotAlerts.refresh(state.journal)
@@ -201,6 +209,7 @@ class MainActivity : ComponentActivity() {
                         onClose = onClose,
                     ) {
                         AutoLockCard(app.lockSettings)
+                        ShortcutCard(app.privacySettings)
                         DataCard(repo, session::masterWrappedByRecovery)
                         if (app.privacySettings.folderSync) FolderSyncCard(app.folderSync, state.journal)
                     }

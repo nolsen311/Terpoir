@@ -133,7 +133,7 @@ without it.
 - [x] Auto-lock default: lock with the device (no in-app timer); opt-in
       timeouts of immediately, 1, 5 or 15 minutes, with the setting's
       disclosure card.
-- [ ] Quick capture: "New note" app shortcut (optional voice/text pair),
+- [x] Quick capture: "New note" app shortcut (optional voice/text pair),
       opening the capture sheet in the user's default mode; opt-in Quick
       Settings tile and home-screen widget, each a Privacy Center toggle
       with an off-action. No journal content on any surface.

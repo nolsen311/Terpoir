@@ -10,6 +10,7 @@ import android.content.pm.ApplicationInfo
 import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.PurchasePrompts
 import app.terpoir.alerts.SpotAlerts
+import app.terpoir.capture.QuickCapture
 import app.terpoir.sync.FolderSync
 import app.terpoir.core.init as initCore
 import app.terpoir.onboarding.Onboarding
@@ -79,6 +80,9 @@ class TerpoirApplication : Application() {
         privacyCenter = buildPrivacyCenter(this, privacySettings, spotAlerts, checkIns, folderSync) {
             (session.state as? JournalSession.State.Unlocked)?.journal
         }
+        // Shortcut, tile and widget follow the settings (after a restore or
+        // an update, as well as on first launch).
+        QuickCapture.sync(this, privacySettings)
         session = JournalSession(JournalFiles(noBackupFilesDir))
         onboarding = Onboarding(this)
         // The process died after the journal was created but before its

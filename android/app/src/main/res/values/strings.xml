@@ -624,4 +624,20 @@
     <string name="app_lock_fifteen_minutes">15 minutes after I leave</string>
     <string name="app_lock_screen_off">Turning off the screen or locking your phone always locks Terpoir at once. Leaving the app always hides your journal from the app switcher.</string>
     <string name="app_lock_with_device_disclosure">With this setting, Terpoir behaves like your other apps: while your phone is unlocked, anyone you hand it to can open your journal if you used it recently, and its key stays in memory while the app is in the background. If you share your phone, choose \"As soon as I leave Terpoir\" or a short timer.</string>
+    <string name="capture_new_note">New note</string>
+    <string name="capture_shortcut_hidden">This shortcut was turned off in Terpoir.</string>
+    <string name="capture_widget_description">One button that opens a new note. Shows nothing from your journal.</string>
+    <string name="capture_shortcut_title">Shortcuts</string>
+    <string name="capture_shortcut_switch">\"New note\" when you long-press the app icon</string>
+    <string name="capture_shortcut_note">It shows only \"New note\", never anything from your journal. Your journal still unlocks as usual first.</string>
+    <string name="capture_tile">Quick Settings tile</string>
+    <string name="capture_tile_does">Adds a \"New note\" tile you can place in Quick Settings: one swipe from anywhere to a new note. Your journal unlocks as usual first.</string>
+    <string name="capture_tile_leaves">Nothing from your journal. The tile shows only \"New note\" and a neutral icon.</string>
+    <string name="capture_tile_who">Anyone who pulls down your Quick Settings can see that the tile is there, as they could see the app icon.</string>
+    <string name="capture_tile_undo">Turn it off here. The tile is removed from Quick Settings.</string>
+    <string name="capture_widget">Home-screen widget</string>
+    <string name="capture_widget_does">Adds a \"New note\" widget you can place on your home screen: one button and nothing else. Your journal unlocks as usual first.</string>
+    <string name="capture_widget_leaves">Nothing from your journal: no last session, ratings or names, only \"New note\".</string>
+    <string name="capture_widget_who">Anyone who sees your home screen sees the button, as they could see the app icon.</string>
+    <string name="capture_widget_undo">Turn it off here. The widget stops working and leaves the widget list; remove one already placed by long-pressing it.</string>
 </resources>

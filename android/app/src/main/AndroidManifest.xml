@@ -72,6 +72,34 @@
             </intent-filter>
         </activity>
 
+        <!-- Quick capture (opt-in Privacy Center toggles): both ship
+             disabled and are enabled only while their toggle is on. They
+             show "New note" and nothing from the journal. -->
+        <service
+            android:name=".capture.NewNoteTileService"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@drawable/ic_add"
+            android:label="@string/capture_new_note"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <receiver
+            android:name=".capture.NewNoteWidget"
+            android:enabled="false"
+            android:exported="true"
+            android:label="@string/capture_new_note">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_new_note_info" />
+        </receiver>
+
         <!-- Geofence events for "Notify me", from this app's own pending
              intents only. -->
         <receiver
