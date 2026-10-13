@@ -4,7 +4,7 @@
 
 //! The unlocked journal.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 use terpoir_crypto::{MasterKey, RecoveryKey, WrappedKey};
@@ -233,11 +233,8 @@ impl insights::Source for Unlocked {
         crate::tracking::preferences(self)
     }
 
-    fn feedback(&self) -> Result<Vec<u8>> {
-        Ok(self
-            .store
-            .meta(insights::META_FEEDBACK)?
-            .unwrap_or_default())
+    fn feedback(&self) -> Result<BTreeMap<String, String>> {
+        crate::feedback::current(self)
     }
 }
 
@@ -354,14 +351,19 @@ impl Journal {
             },
             _ => Hlc::default(),
         };
-        Ok(Arc::new(Self {
+        let journal = Arc::new(Self {
             state: Mutex::new(Some(Unlocked {
                 store,
                 master,
                 clock: Clock::new(device, last),
                 wrapped_database_key,
             })),
-        }))
+        });
+        // Feedback earlier versions kept on this device joins the synced
+        // record. A failure must not keep the journal locked: it is retried
+        // on the next unlock, and the feedback applies meanwhile.
+        let _ = journal.with(crate::feedback::migrate_local);
+        Ok(journal)
     }
 
     /// Locks the journal: wipes the master key from memory and closes the
@@ -917,28 +919,29 @@ impl Journal {
     }
 
     /// Records the user's feedback on an insight (`key` is the insight's
-    /// key, or its category for [`InsightFeedback::Muted`]). Kept in the
-    /// encrypted store, on this device only.
+    /// key, or its category for [`InsightFeedback::Muted`]). Kept in a
+    /// synced record, so it holds on every device and in exports.
     ///
     /// # Errors
     ///
     /// `Locked` or `Storage`.
-    pub fn set_insight_feedback(&self, key: String, feedback: InsightFeedback) -> Result<()> {
-        self.with(|u| {
-            let current = u.store.meta(insights::META_FEEDBACK)?.unwrap_or_default();
-            let next = insights::with_feedback(&current, &key, feedback);
-            u.store.set_meta(insights::META_FEEDBACK, &next)?;
-            Ok(())
-        })
+    pub fn set_insight_feedback(
+        &self,
+        key: String,
+        feedback: InsightFeedback,
+        now_ms: u64,
+    ) -> Result<()> {
+        self.with(|u| crate::feedback::set(u, &key, feedback.slug(), now_ms))
     }
 
-    /// Forgets all insight feedback (the insights toggle's off-action).
+    /// Forgets all insight feedback (the insights toggle's off-action), on
+    /// every device: the removals sync.
     ///
     /// # Errors
     ///
     /// `Locked` or `Storage`.
-    pub fn forget_insight_feedback(&self) -> Result<()> {
-        self.with(|u| Ok(u.store.set_meta(insights::META_FEEDBACK, b"")?))
+    pub fn forget_insight_feedback(&self, now_ms: u64) -> Result<()> {
+        self.with(|u| crate::feedback::forget(u, now_ms))
     }
 
     /// IDs of all records of a type.
@@ -1221,6 +1224,7 @@ impl Journal {
             u.store.rewrap_all(&u.master, &new_master)?;
             crate::capture::rotate(u, &new_master)?;
             crate::tracking::rotate(u, &new_master)?;
+            crate::feedback::rotate(u, &new_master)?;
             let rotated = RotatedKeys {
                 master_key: new_master.expose_secret().to_vec(),
                 master_wrapped_by_recovery: kek.wrap_master_key(&new_master)?.as_bytes().to_vec(),

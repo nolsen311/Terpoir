@@ -30,6 +30,7 @@ use std::sync::Once;
 mod archive;
 mod capture;
 mod error;
+mod feedback;
 mod insights;
 mod journal;
 mod keys;

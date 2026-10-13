@@ -938,13 +938,13 @@ fn insights_need_evidence_and_respect_feedback() {
     assert_eq!(with, heavy_sessions);
 
     journal
-        .set_insight_feedback("terpene:myrcene".into(), InsightFeedback::Dismissed)
+        .set_insight_feedback("terpene:myrcene".into(), InsightFeedback::Dismissed, 32)
         .unwrap();
     let after = journal.insights().unwrap();
     assert!(after.iter().all(|i| i.key != "terpene:myrcene"));
     assert!(after.iter().any(|i| i.key == "terpene:limonene"));
     journal
-        .set_insight_feedback("terpene".into(), InsightFeedback::Muted)
+        .set_insight_feedback("terpene".into(), InsightFeedback::Muted, 33)
         .unwrap();
     assert!(
         journal
@@ -953,7 +953,7 @@ fn insights_need_evidence_and_respect_feedback() {
             .iter()
             .all(|i| i.category != "terpene")
     );
-    journal.forget_insight_feedback().unwrap();
+    journal.forget_insight_feedback(34).unwrap();
     assert!(
         journal
             .insights()
@@ -973,6 +973,178 @@ fn insights_need_evidence_and_respect_feedback() {
             .iter()
             .all(|i| i.category != "terpene")
     );
+}
+
+/// Five sessions a side with a myrcene product (rated 2) and a limonene
+/// one (rated 4): enough evidence for terpene insights on both.
+fn with_terpene_insights(journal: &Journal) {
+    for (name, terpene, rating) in [("Heavy", "myrcene", 2), ("Bright", "limonene", 4)] {
+        let product = journal
+            .save_product(
+                None,
+                ProductData {
+                    name: name.into(),
+                    form: Some("flower".into()),
+                    brand: None,
+                    strains: vec![],
+                    thc_milli: None,
+                    thc_unit: None,
+                    cbd_milli: None,
+                    cbd_unit: None,
+                    terpenes: vec![TagIntensity {
+                        tag: builtin(terpene),
+                        value: 800,
+                    }],
+                    batch: None,
+                    package_date_day: None,
+                    identifiers: vec![],
+                    shops: vec![],
+                },
+                1,
+            )
+            .unwrap();
+        for i in 0..5 {
+            let mut s = session(Some(product.clone()));
+            s.rating = Some(rating);
+            journal.save_session(None, s, 10 + i).unwrap();
+        }
+    }
+}
+
+fn shown(journal: &Journal) -> Vec<String> {
+    let mut keys: Vec<String> = journal
+        .insights()
+        .unwrap()
+        .into_iter()
+        .map(|i| i.key)
+        .collect();
+    keys.sort();
+    keys
+}
+
+#[test]
+fn insight_feedback_syncs_and_travels_in_exports() {
+    let keys = create_keys().unwrap();
+    let phone_dir = Device::new();
+    let phone = phone_dir.open(&keys).unwrap();
+    with_terpene_insights(&phone);
+    let both = vec!["terpene:limonene".to_owned(), "terpene:myrcene".to_owned()];
+    assert_eq!(shown(&phone), both);
+
+    // Dismissed on the phone, then restored from an export on a tablet:
+    // the tablet hides it too.
+    phone
+        .set_insight_feedback("terpene:myrcene".into(), InsightFeedback::Dismissed, 100)
+        .unwrap();
+    let archive = read_export_archive(
+        phone
+            .export_archive(keys.master_wrapped_by_recovery.clone())
+            .unwrap(),
+    )
+    .unwrap();
+    let restored = keys_for_restore(
+        keys.recovery_key.clone(),
+        archive.master_wrapped_by_recovery.clone(),
+    )
+    .unwrap();
+    let tablet_dir = Device::new();
+    let tablet = Journal::open(
+        tablet_dir
+            .dir
+            .join("journal.db")
+            .to_string_lossy()
+            .into_owned(),
+        tablet_dir.dir.join("files").to_string_lossy().into_owned(),
+        restored.master_key,
+        restored.wrapped_database_key,
+    )
+    .unwrap();
+    for blob in archive.blobs {
+        tablet.import_sync_blob(blob, 110).unwrap();
+    }
+    assert_eq!(shown(&tablet), vec!["terpene:limonene".to_owned()]);
+
+    // Feedback given on the tablet syncs back, merging per insight.
+    tablet
+        .set_insight_feedback("terpene:limonene".into(), InsightFeedback::Wrong, 120)
+        .unwrap();
+    sync(&tablet, &phone, 130);
+    assert!(shown(&phone).is_empty());
+
+    // Forgetting all feedback (the toggle's off-action) reaches every device.
+    phone.forget_insight_feedback(140).unwrap();
+    assert_eq!(shown(&phone), both);
+    sync(&phone, &tablet, 150);
+    assert_eq!(shown(&tablet), both);
+
+    // Master-key rotation keeps it.
+    phone
+        .set_insight_feedback("terpene".into(), InsightFeedback::Muted, 160)
+        .unwrap();
+    phone
+        .rotate_master_key(
+            keys.recovery_key.clone(),
+            keys.master_wrapped_by_recovery.clone(),
+        )
+        .unwrap();
+    assert!(shown(&phone).is_empty());
+}
+
+#[test]
+fn feedback_kept_on_the_device_by_earlier_versions_moves_into_the_journal() {
+    let keys = create_keys().unwrap();
+    let dir = Device::new();
+    let phone = dir.open(&keys).unwrap();
+    with_terpene_insights(&phone);
+    phone.lock();
+    drop(phone);
+
+    // Where earlier versions kept it: this device's local metadata.
+    let master = terpoir_crypto::MasterKey::from_slice(&keys.master_key).unwrap();
+    let database_key = master
+        .unwrap_database_key(
+            &terpoir_crypto::WrappedKey::from_slice(&keys.wrapped_database_key).unwrap(),
+        )
+        .unwrap();
+    {
+        let mut store = terpoir_store::Store::open(
+            &dir.dir.join("journal.db"),
+            &dir.dir.join("files"),
+            &database_key,
+        )
+        .unwrap();
+        store
+            .set_meta("insight_feedback", b"terpene:myrcene\tdismissed\n")
+            .unwrap();
+    }
+
+    let phone = dir.open(&keys).unwrap();
+    assert_eq!(shown(&phone), vec!["terpene:limonene".to_owned()]);
+    // It is a synced record now: another device sees it.
+    let tablet_dir = Device::new();
+    let tablet = Journal::open(
+        tablet_dir
+            .dir
+            .join("journal.db")
+            .to_string_lossy()
+            .into_owned(),
+        tablet_dir.dir.join("files").to_string_lossy().into_owned(),
+        keys.master_key.clone(),
+        wrapped_db_key_for(&keys, &keys),
+    )
+    .unwrap();
+    sync(&phone, &tablet, 200);
+    assert_eq!(shown(&tablet), vec!["terpene:limonene".to_owned()]);
+    // And the device-only copy is gone.
+    phone.lock();
+    drop(phone);
+    let store = terpoir_store::Store::open(
+        &dir.dir.join("journal.db"),
+        &dir.dir.join("files"),
+        &database_key,
+    )
+    .unwrap();
+    assert_eq!(store.meta("insight_feedback").unwrap(), None);
 }
 
 #[test]

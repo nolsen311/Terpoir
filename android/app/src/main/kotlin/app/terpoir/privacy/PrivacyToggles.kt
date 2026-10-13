@@ -137,7 +137,7 @@ fun buildPrivacyCenter(
             onAction = { settings.insights = true },
             offAction = {
                 settings.insights = false
-                withContext(Dispatchers.IO) { journal()?.forgetInsightFeedback() }
+                withContext(Dispatchers.IO) { journal()?.forgetInsightFeedback(System.currentTimeMillis().toULong()) }
             },
         ),
         // A fix is taken only when the journal opens and only compared with

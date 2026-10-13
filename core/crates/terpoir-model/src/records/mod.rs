@@ -11,6 +11,7 @@ use terpoir_crypto::RecordId;
 use crate::{Document, Error, Result, Value};
 
 mod catalog;
+mod feedback;
 mod purchase;
 mod session;
 mod snippet;
@@ -21,6 +22,7 @@ mod tracking;
 pub use catalog::{
     Brand, Form, IdentifierKind, LabelAmount, LabelUnit, Product, Strain, StrainType, Terpene,
 };
+pub use feedback::InsightFeedbackList;
 pub use purchase::{Price, Purchase, PurchaseLine};
 pub use session::{
     CoreEffect, Dose, DoseUnit, Intention, Method, ProductLine, PurchaseRef, Session, Social,
@@ -54,11 +56,13 @@ pub enum RecordKind {
     Purchase,
     /// The journal's "What I track" choices (one per journal).
     Tracking,
+    /// The user's feedback on insights (one per journal).
+    InsightFeedback,
 }
 
 impl RecordKind {
     /// Every kind.
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Session,
         Self::Product,
         Self::Strain,
@@ -68,6 +72,7 @@ impl RecordKind {
         Self::Tag,
         Self::Purchase,
         Self::Tracking,
+        Self::InsightFeedback,
     ];
 
     /// The stable numeric code.
@@ -83,6 +88,7 @@ impl RecordKind {
             Self::Tag => 7,
             Self::Purchase => 8,
             Self::Tracking => 9,
+            Self::InsightFeedback => 10,
         }
     }
 
@@ -99,6 +105,7 @@ impl RecordKind {
             7 => Self::Tag,
             8 => Self::Purchase,
             9 => Self::Tracking,
+            10 => Self::InsightFeedback,
             _ => return None,
         })
     }
