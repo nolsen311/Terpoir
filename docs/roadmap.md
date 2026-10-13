@@ -235,3 +235,18 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       lists no terpenes, and group related strains,
       and the shop effect (which compares by strain record for now) could
       compare by lineage or terpene profile.
+- [ ] Capture from the device lock screen (maintainer, 2026-10-13):
+      investigate letting the quick-capture buttons work on the lock screen
+      itself, without unlocking the phone, on the Android versions that
+      support it. Write-only capture already seals notes without the
+      journal's key, so the question is what the OS allows. To check:
+      - the Quick Settings tile from the lock screen, instead of asking to
+        unlock the phone first (it calls `unlockAndRun` today);
+      - lock-screen widgets, on the devices and versions that offer them;
+      - whether apps can offer a lock-screen shortcut, or only the system
+        can;
+      - showing the capture sheet over the lock screen, with nothing from
+        the journal visible.
+      For each: the minimum Android version, what a passer-by could see or
+      do, and the toggle and disclosure card it needs. The design doc
+      already keeps lock-screen capture as its own opt-in.
