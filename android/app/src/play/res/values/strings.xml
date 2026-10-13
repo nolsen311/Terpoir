@@ -5,4 +5,6 @@
 <!-- Strings only the play build uses. -->
 <resources>
     <string name="ocr_download_google">Google text recognition needs its model, which Google Play services downloads once. It runs on this phone: nothing you scan is sent anywhere. You can switch back to the open engine in the Privacy Center.</string>
+    <!-- The Play build has no "Notify me" or alert tiers (no background location). -->
+    <string name="preset_yolo_does">Turns on the conveniences that lean on your phone\'s platform: Google text recognition, opening lab-results links, the nearby-spot banner, follow-up check-ins, and the online map. Screen protection stays on. Some lines hold in every mode: no phone backups of your journal, no cloud model reading it, no analytics, and no Terpoir server.</string>
 </resources>

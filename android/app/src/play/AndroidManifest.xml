@@ -3,13 +3,21 @@
 <!-- Copyright (C) 2026 The Terpoir Authors -->
 <!-- See LICENSING.md for the additional permission under GPLv3 section 7. -->
 <!--
-  Play flavor only. The Google Maps key from the build (app/build.gradle.kts);
+  Play flavor only. No background location (maintainer, 2026-10-13): the
+  first Play release leaves out "Notify me" and purchase reminders, which
+  need location "all the time"; "Show me" works while the app is open.
+  The Google Maps key from the build (app/build.gradle.kts);
   empty when the build has none, and then Google Maps is not offered
   (app.terpoir.map.PlayGoogleMaps). The SDK reads it only when a Google map
   view is created, which happens only while the online map is on and Google
   is the chosen provider.
 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission
+        android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
+        tools:node="remove" />
 
     <application>
         <meta-data

@@ -127,7 +127,8 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - **What an alert shows** comes from the core (`Journal::spot_alerts`) at registration and is cached only as far as the tier allows. With no cache entry, the alert stays discreet. Tapping it opens the app; after unlock, the journal shows which saved spot is near, from a fresh fix, as "Show me" does.
   - **Cooldown:** at most one alert every 4 hours, whichever spot. Only the end of the quiet period is stored, not which spot fired. Dismissed alerts leave nothing behind.
   - **Tier toggles** (Notifications): "Spot names in alerts" (Named) and "Details in alerts" (Rich), both off by default. On rebuilds the cache now if the journal is open, else at the next unlock. Off narrows or deletes the cache, which works while locked.
-  - **Play Console:** location "all the time" on Google Play needs the background-location declaration and a demonstration video before release (maintainer task).
+  - **Play Console:** location "all the time" on Google Play needs the background-location declaration and a demonstration video before release.
+  - **Left out of the first Play release (maintainer, 2026-10-13):** the Play build doesn't request `ACCESS_BACKGROUND_LOCATION` (its manifest removes it, and the permission allowlist allows it in the foss build only, so a Play manifest that requests it fails the build). `Distribution.BACKGROUND_LOCATION` is false there: "Notify me", purchase reminders and the two alert tiers aren't in its Privacy Center, and their stored settings read as off, so any fences an earlier build registered are cleared at the next unlock. "Show me" (while the app is open) is unchanged, as is the foss build. An instrumented test checks that the toggles match the manifest. Bringing it to Play later needs the declaration and video above.
 
 ### Spots: purpose types, never relationships
 - Every saved location is a **Spot** with one or more purpose types describing what it is *for*, not whose it is:
@@ -171,7 +172,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **F-Droid:** OpenFreeMap is free software end to end and MapTiler is opt-in with the user's own key, so the foss build should carry no NonFreeNet anti-feature; confirm in the F-Droid recipe review.
 
 ### Purchase prompts (decided)
-- **Per-spot opt-in** on a Re-up Spot: "Remind me to log purchases here." Requires that spot to have coordinates; uses "Notify me" geofencing.
+- **Per-spot opt-in** on a Re-up Spot: "Remind me to log purchases here." Requires that spot to have coordinates; uses "Notify me" geofencing, so the Play build doesn't offer it yet (no background location; see "Notify me").
 - **Trigger: leaving after a real stop**, not driving past: a minimum dwell inside the spot (a few minutes), then exit. Android geofences support dwell directly; on iOS the app times entry to exit.
 - **Discreet at every notification tier:** "Quick log?" with no shop name. Tapping opens purchase capture, receipt scan first.
 - **No visit log:** the entry time is held only until exit (in the encrypted store if the app is killed meanwhile), then discarded. Dismissed prompts leave no trace. At most one prompt per spot per day.

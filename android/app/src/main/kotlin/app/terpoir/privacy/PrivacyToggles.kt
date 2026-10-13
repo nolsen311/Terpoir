@@ -196,101 +196,119 @@ fun buildPrivacyCenter(
                 settings.onlineMap = true
             },
         ),
+        // This toggle and the next three exist only in builds with
+        // background location (foss; left out of Play, 2026-10-13).
         // On registers geofences now if the journal is open (else at the
         // next unlock) and once the permissions are granted, which the
         // journal asks for. Off removes every geofence, the notification
         // cache and any alert showing.
-        PrivacyToggle(
-            id = "notify_near_spots",
-            group = PrivacyGroup.LOCATION,
-            card = PrivacyCard(
-                title = R.string.notify_near,
-                whatItDoes = R.string.notify_near_does,
-                whatLeaves = R.string.notify_near_leaves,
-                whoCanSee = R.string.notify_near_who,
-                howToUndo = R.string.notify_near_undo,
-            ),
-            privateState = false,
-            isOn = { settings.notifyNearSpots },
-            onAction = {
-                settings.notifyNearSpots = true
-                alerts.refresh(journal())
-            },
-            offAction = {
-                settings.notifyNearSpots = false
-                alerts.clear()
-            },
-        ),
+        if (Distribution.BACKGROUND_LOCATION) {
+            PrivacyToggle(
+                id = "notify_near_spots",
+                group = PrivacyGroup.LOCATION,
+                card = PrivacyCard(
+                    title = R.string.notify_near,
+                    whatItDoes = R.string.notify_near_does,
+                    whatLeaves = R.string.notify_near_leaves,
+                    whoCanSee = R.string.notify_near_who,
+                    howToUndo = R.string.notify_near_undo,
+                ),
+                privateState = false,
+                isOn = { settings.notifyNearSpots },
+                onAction = {
+                    settings.notifyNearSpots = true
+                    alerts.refresh(journal())
+                },
+                offAction = {
+                    settings.notifyNearSpots = false
+                    alerts.clear()
+                },
+            )
+        } else {
+            null
+        },
         // On lets Re-up Spots opt in (spot editor) and registers their fences
         // with the next refresh, once the journal asks for the permissions.
         // Off removes the prompt fences and any pending state.
-        PrivacyToggle(
-            id = "purchase_prompts",
-            group = PrivacyGroup.LOCATION,
-            card = PrivacyCard(
-                title = R.string.purchase_prompts,
-                whatItDoes = R.string.purchase_prompts_does,
-                whatLeaves = R.string.purchase_prompts_leaves,
-                whoCanSee = R.string.purchase_prompts_who,
-                howToUndo = R.string.purchase_prompts_undo,
-            ),
-            privateState = false,
-            isOn = { settings.purchasePrompts },
-            onAction = {
-                settings.purchasePrompts = true
-                alerts.refresh(journal())
-            },
-            offAction = {
-                settings.purchasePrompts = false
-                alerts.refresh(journal())
-            },
-        ),
+        if (Distribution.BACKGROUND_LOCATION) {
+            PrivacyToggle(
+                id = "purchase_prompts",
+                group = PrivacyGroup.LOCATION,
+                card = PrivacyCard(
+                    title = R.string.purchase_prompts,
+                    whatItDoes = R.string.purchase_prompts_does,
+                    whatLeaves = R.string.purchase_prompts_leaves,
+                    whoCanSee = R.string.purchase_prompts_who,
+                    howToUndo = R.string.purchase_prompts_undo,
+                ),
+                privateState = false,
+                isOn = { settings.purchasePrompts },
+                onAction = {
+                    settings.purchasePrompts = true
+                    alerts.refresh(journal())
+                },
+                offAction = {
+                    settings.purchasePrompts = false
+                    alerts.refresh(journal())
+                },
+            )
+        } else {
+            null
+        },
         // The Named tier. On writes spot names to the notification cache
         // (now if the journal is open, else at the next unlock); off drops
         // them, unless the Rich tier still shows them.
-        PrivacyToggle(
-            id = "alert_names",
-            group = PrivacyGroup.NOTIFICATIONS,
-            card = PrivacyCard(
-                title = R.string.alert_names,
-                whatItDoes = R.string.alert_names_does,
-                whatLeaves = R.string.alert_names_leaves,
-                whoCanSee = R.string.alert_names_who,
-                howToUndo = R.string.alert_names_undo,
-            ),
-            privateState = false,
-            isOn = { settings.alertNames },
-            onAction = {
-                settings.alertNames = true
-                alerts.refresh(journal())
-            },
-            offAction = {
-                settings.alertNames = false
-                alerts.narrowCache()
-            },
-        ),
+        if (Distribution.BACKGROUND_LOCATION) {
+            PrivacyToggle(
+                id = "alert_names",
+                group = PrivacyGroup.NOTIFICATIONS,
+                card = PrivacyCard(
+                    title = R.string.alert_names,
+                    whatItDoes = R.string.alert_names_does,
+                    whatLeaves = R.string.alert_names_leaves,
+                    whoCanSee = R.string.alert_names_who,
+                    howToUndo = R.string.alert_names_undo,
+                ),
+                privateState = false,
+                isOn = { settings.alertNames },
+                onAction = {
+                    settings.alertNames = true
+                    alerts.refresh(journal())
+                },
+                offAction = {
+                    settings.alertNames = false
+                    alerts.narrowCache()
+                },
+            )
+        } else {
+            null
+        },
         // The Rich tier: as above, with session details in the cache.
-        PrivacyToggle(
-            id = "alert_details",
-            group = PrivacyGroup.NOTIFICATIONS,
-            card = PrivacyCard(
-                title = R.string.alert_details,
-                whatItDoes = R.string.alert_details_does,
-                whatLeaves = R.string.alert_details_leaves,
-                whoCanSee = R.string.alert_details_who,
-                howToUndo = R.string.alert_details_undo,
-            ),
-            privateState = false,
-            isOn = { settings.alertDetails },
-            onAction = {
-                settings.alertDetails = true
-                alerts.refresh(journal())
-            },
-            offAction = {
-                settings.alertDetails = false
-                alerts.narrowCache()
-            },
-        ),
+        if (Distribution.BACKGROUND_LOCATION) {
+            PrivacyToggle(
+                id = "alert_details",
+                group = PrivacyGroup.NOTIFICATIONS,
+                card = PrivacyCard(
+                    title = R.string.alert_details,
+                    whatItDoes = R.string.alert_details_does,
+                    whatLeaves = R.string.alert_details_leaves,
+                    whoCanSee = R.string.alert_details_who,
+                    howToUndo = R.string.alert_details_undo,
+                ),
+                privateState = false,
+                isOn = { settings.alertDetails },
+                onAction = {
+                    settings.alertDetails = true
+                    alerts.refresh(journal())
+                },
+                offAction = {
+                    settings.alertDetails = false
+                    alerts.narrowCache()
+                },
+            )
+        } else {
+            null
+        },
         // On only lets the session editor offer a check-in. Off cancels the
         // pending one and clears a showing reminder.
         PrivacyToggle(

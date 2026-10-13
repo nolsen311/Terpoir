@@ -26,7 +26,9 @@ per item or small group of items. Keep this file updated as items land.
       closed-testing requirements.
 - [ ] Play Console: declare background location for "Notify me" (the
       permissions declaration form and a short demonstration video) before
-      the first release that includes it.
+      the first release that includes it. Not needed for the first Play
+      release, which leaves background location out (maintainer,
+      2026-10-13).
 
 ## Phase 0: Repository and CI foundations
 

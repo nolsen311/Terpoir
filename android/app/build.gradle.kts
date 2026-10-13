@@ -381,10 +381,6 @@ val allowedPermissions = setOf(
     // on first use. Never background location here.
     "android.permission.ACCESS_COARSE_LOCATION",
     "android.permission.ACCESS_FINE_LOCATION",
-    // "Notify me" (off by default): geofences around saved spots need
-    // location "all the time"; asked only after the user turns it on, after
-    // its disclosure. Runtime permission.
-    "android.permission.ACCESS_BACKGROUND_LOCATION",
     // The "Notify me" alert (Android 13+). Runtime permission, asked with
     // the location permissions above.
     "android.permission.POST_NOTIFICATIONS",
@@ -398,6 +394,17 @@ val allowedPermissions = setOf(
  * Permissions only the play flavor may add, each from a Google Play library
  * and none with a prompt. The foss flavor gets none of them.
  */
+/**
+ * Permissions only the foss build may request. Background location: "Notify
+ * me" and purchase reminders (off by default) need location "all the time",
+ * asked only after the user turns one on, after its disclosure. The Play
+ * build leaves both out (maintainer, 2026-10-13), so a Play manifest that
+ * requests it fails verify<Variant>Permissions.
+ */
+val fossOnlyPermissions = setOf(
+    "android.permission.ACCESS_BACKGROUND_LOCATION",
+)
+
 val playOnlyPermissions = setOf(
     // Play Asset Delivery: the Play Store has the app copy a downloaded
     // asset pack (the OCR model) into its own storage, shown as a
@@ -453,7 +460,7 @@ androidComponents {
 
         val name = variant.name.replaceFirstChar { it.uppercase() }
         val manifest = variant.artifacts.get(SingleArtifact.MERGED_MANIFEST)
-        val allowed = allowedPermissions + if (variant.flavorName == "play") playOnlyPermissions else emptySet()
+        val allowed = allowedPermissions + if (variant.flavorName == "play") playOnlyPermissions else fossOnlyPermissions
         val task = tasks.register("verify${name}Permissions") {
             description = "Fails if the ${variant.name} manifest requests a permission not on the allowlist."
             group = "verification"
