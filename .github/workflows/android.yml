@@ -104,7 +104,13 @@ jobs:
           path: ~/.android/debug.keystore
           key: debug-keystore-v1
 
+      # The Play flavor's debug Google Maps key (docs/design-decisions.md,
+      # "Map picker"), restricted to the Maps SDK, the package and the debug
+      # certificates. The release key never reaches CI. Without the secret
+      # (forks) the debug build doesn't offer Google Maps.
       - name: Build, test, lint and verify
+        env:
+          GOOGLE_MAPS_API_KEY_DEBUG: ${{ secrets.GOOGLE_MAPS_API_KEY_DEBUG }}
         run: |
           export JAVA_HOME="$JAVA_HOME_21_X64"
           ./gradlew --no-daemon --no-build-cache assemble check lintFossRelease lintPlayRelease

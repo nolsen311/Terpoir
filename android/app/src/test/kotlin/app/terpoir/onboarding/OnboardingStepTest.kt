@@ -43,4 +43,21 @@ class OnboardingStepTest {
     fun aDeletedJournalStartsAtCreateNotTheAgeGateAgain() {
         assertEquals(OnboardingStep.CREATE, onboardingStep(false, ageGatePassed = true, backupPending = false, complete = true))
     }
+
+    @Test
+    fun theGoogleMapsQuestionComesAfterTheBackup() {
+        assertEquals(
+            OnboardingStep.BACKUP,
+            onboardingStep(true, ageGatePassed = true, backupPending = true, complete = false, mapChoicePending = true),
+        )
+        assertEquals(
+            OnboardingStep.MAP_CHOICE,
+            onboardingStep(true, ageGatePassed = true, backupPending = false, complete = false, mapChoicePending = true),
+        )
+        // A journal set up before the question existed is never asked.
+        assertEquals(
+            OnboardingStep.DONE,
+            onboardingStep(true, ageGatePassed = true, backupPending = false, complete = true, mapChoicePending = true),
+        )
+    }
 }

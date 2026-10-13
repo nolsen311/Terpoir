@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception -->
+<!-- Copyright (C) 2026 The Terpoir Authors -->
+<!-- See LICENSING.md for the additional permission under GPLv3 section 7. -->
+<!--
+  Play flavor only. The Google Maps key from the build (app/build.gradle.kts);
+  empty when the build has none, and then Google Maps is not offered
+  (app.terpoir.map.PlayGoogleMaps). The SDK reads it only when a Google map
+  view is created, which happens only while the online map is on and Google
+  is the chosen provider.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${googleMapsKey}" />
+    </application>
+</manifest>

@@ -21,6 +21,7 @@ play-feature-delivery = "2.1.0"
 play-asset-delivery = "2.2.2"
 play-mlkit-text-recognition = "19.0.1"
 play-services-location = "21.4.0"
+play-services-maps = "20.1.0"
 maplibre = "13.6.1"
 okhttp = "4.12.0"
 androidx-test-runner = "1.7.0"
@@ -89,6 +90,12 @@ play-mlkit-text-recognition = { module = "com.google.android.gms:play-services-m
 # app has no INTERNET permission. Without Play services the app uses the
 # platform's LocationManager, as the foss build always does.
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
+# Google Maps, Play flavor only: an active choice of map provider
+# (docs/design-decisions.md, "Map picker"), never created unless the online
+# map is on and Google is the provider. Proprietary (Google APIs Terms of
+# Service), like the other Play libraries; does its own networking through
+# Play services, outside the map gateway, as its card says.
+play-services-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "play-services-maps" }
 # The opt-in online map for picking a spot's location (docs/design-decisions.md,
 # "Map picker"). MapLibre Native, BSD-2-Clause, with its geojson, turf and
 # gestures helpers (MIT, BSD-2-Clause), Gson (Apache-2.0, for GeoJSON) and

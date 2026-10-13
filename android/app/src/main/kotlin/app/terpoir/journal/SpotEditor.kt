@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.terpoir.Distribution
 import app.terpoir.R
 import app.terpoir.core.SpotData
 import app.terpoir.core.TagData
@@ -89,7 +90,7 @@ fun SpotEditor(
     var locationProblem by remember { mutableStateOf<Int?>(null) }
     var newPurpose by remember { mutableStateOf(false) }
     // The provider and style of the map being shown; null while not picking.
-    var picking by remember { mutableStateOf<Pair<MapProvider, String>?>(null) }
+    var picking by remember { mutableStateOf<Pair<MapProvider, String?>?>(null) }
     var purchasePrompts by remember { mutableStateOf(false) }
     var askMap by remember { mutableStateOf(false) }
     val defaultPrefix = stringResource(R.string.spot_default_prefix)
@@ -127,29 +128,33 @@ fun SpotEditor(
     if (!loaded) return
 
     // MapLibre must be set up before the picker creates its view. MapTiler
-    // needs the user's key from the journal; if it is gone (a reset or a
-    // restore on another phone), the map falls back to OpenFreeMap.
+    // needs the user's key from the journal, and Google a build with a
+    // Google Maps key; without them the map falls back to OpenFreeMap.
+    val google = remember { Distribution.googleMaps(context) }
     fun openMap(toggle: PrivacyToggle) {
         scope.launch {
             var provider = settings.mapProvider
             val key = if (provider == MapProvider.MAPTILER) repo.mapTilerKey() else null
-            if (provider == MapProvider.MAPTILER && key == null) {
-                settings.mapTilerKeySaved = false
+            if (provider == MapProvider.MAPTILER && key == null) settings.mapTilerKeySaved = false
+            if ((provider == MapProvider.MAPTILER && key == null) || (provider == MapProvider.GOOGLE && google == null)) {
                 settings.mapProvider = MapProvider.DEFAULT
                 provider = MapProvider.DEFAULT
             }
-            val style = provider.styleUrl(key) ?: return@launch
-            OnlineMap.start(context, enabled = { toggle.isOn() }, provider = { settings.mapProvider })
+            val style = provider.styleUrl(key)
+            if (provider != MapProvider.GOOGLE) {
+                OnlineMap.start(context, enabled = { toggle.isOn() }, provider = { settings.mapProvider })
+            }
             picking = provider to style
         }
     }
 
     val shown = picking
-    if (shown != null && mapToggle != null) {
+    if (shown != null && mapToggle != null && mapToggle.isOn()) {
         MapPicker(
             start = fix,
             provider = shown.first,
             styleUrl = shown.second,
+            google = google,
             onPick = {
                 fix = it
                 picking = null

@@ -159,10 +159,13 @@ fun buildPrivacyCenter(
             offAction = { settings.showNearbySpots = false },
         ),
         // Every build. On lets the spot editor open the map, with MapTiler
-        // if the user saved their own key (as YOLO Mode does), else
-        // OpenFreeMap; the gateway refuses every request while it is off.
-        // Off also deletes anything MapLibre stored and returns the provider
-        // to OpenFreeMap; a saved MapTiler key stays until the user removes it.
+        // if the user saved their own key, else OpenFreeMap; YOLO Mode
+        // chooses Google Maps instead on Play builds that offer it. The
+        // gateway refuses every request while it is off. Off also deletes
+        // anything MapLibre stored and returns the provider to OpenFreeMap;
+        // a saved MapTiler key stays until the user removes it. Google is
+        // otherwise only ever an active choice (onboarding, the Map
+        // provider card).
         PrivacyToggle(
             id = ONLINE_MAP,
             group = PrivacyGroup.LOCATION,
@@ -183,6 +186,14 @@ fun buildPrivacyCenter(
                 settings.onlineMap = false
                 settings.mapProvider = MapProvider.DEFAULT
                 OnlineMap.forget(context)
+            },
+            presetOnAction = { presetId ->
+                settings.mapProvider = when {
+                    presetId == YOLO_MODE.id && Distribution.googleMaps(context) != null -> MapProvider.GOOGLE
+                    settings.mapTilerKeySaved -> MapProvider.MAPTILER
+                    else -> MapProvider.DEFAULT
+                }
+                settings.onlineMap = true
             },
         ),
         // On registers geofences now if the journal is open (else at the
