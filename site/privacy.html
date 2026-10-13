@@ -93,7 +93,7 @@
     <li><strong>Camera</strong>: for scanning labels, receipts and codes, only when you open a scanner. Photos stay in memory and are not saved to your gallery.</li>
     <li><strong>Microphone</strong>: for voice notes, transcribed by your phone’s on-device speech recognizer. Terpoir never receives or keeps the audio.</li>
     <li><strong>Location</strong> (approximate by default, precise only if you ask): to save a spot’s location and, with “Show me” on, to notice you are at a saved spot while the app is open. Locations are stored only inside your encrypted journal.</li>
-    <li><strong>Location “all the time”</strong>: the Google Play version does not request it. The F-Droid and GitHub versions ask for it only if you turn on “Notify me” or purchase reminders; Android’s location service then watches your saved spots, so it holds their coordinates.</li>
+    <li><strong>Location “all the time”</strong>: the Google Play version does not request it. The F-Droid version and the foss APK on GitHub ask for it only if you turn on “Notify me” or purchase reminders; Android’s location service then watches your saved spots, so it holds their coordinates.</li>
     <li><strong>Notifications</strong>: for reminders you turn on. By default they say nothing about your spots, and the lock screen never shows more than a discreet version.</li>
     <li><strong>Internet</strong>: only for the optional online map and, on Google Play, the Google features below. With the default settings, Terpoir opens no network connection.</li>
   </ul>
@@ -107,7 +107,7 @@
   </ul>
 
   <h2>Google components (Google Play version)</h2>
-  <p>The Google Play version can use these Google components. Except for Play Age Signals, each is used only when you turn its feature on or agree to a download. What they collect goes to Google, under the <a href="https://policies.google.com/privacy">Google Privacy Policy</a>, not to the developer. The F-Droid and GitHub versions contain none of them.</p>
+  <p>The Google Play version can use these Google components. Except for Play Age Signals, each is used only when you turn its feature on or agree to a download. What they collect goes to Google, under the <a href="https://policies.google.com/privacy">Google Privacy Policy</a>, not to the developer. The F-Droid version and the foss APK on GitHub contain none of them.</p>
 
   <h3>Google Maps SDK for Android</h3>
   <p>Used only while the online map is on with Google Maps chosen as its provider. According to <a href="https://developers.google.com/maps/documentation/android-sdk/play-data-disclosure">Google’s data disclosure for the Maps SDK</a>, it collects request metadata (such as your device’s OS version, name, model and brand, and the SDK version), stack traces and crash metrics from crashes in its own code, your IP address, a pseudonymous Maps SDK identifier, and map interaction events such as panning and zooming, to maintain and improve Google services. Your spots and journal are never sent to Google; the map only shows a location you move it to.</p>

@@ -503,6 +503,13 @@ Making a new note should take one tap from outside the app. Every entry point op
 - Prohibits apps that facilitate the sale of marijuana regardless of legality (in-app ordering, arranging delivery or pickup, selling THC products).
 - **Rule for Terpoir: no ordering, no delivery, no dispensary menus or purchase links**, including via catalog providers. Re-up Spots and price fields are the user's own records.
 - No entity requirement; Android ships under a personal developer account. Check current closed-testing requirements for new personal accounts at signup.
+- **First submission (maintainer, 2026-10-13):**
+  - **Identity:** developer name "Terpoir", public contact `terpoirapp@gmail.com`, website `https://terpoir.app`, privacy policy `https://terpoir.app/privacy` (`site/privacy.html`).
+  - **Declarations:** health apps declaration for Medication and Treatment Management, and Sleep Management.
+  - **No payments profile yet:** no Connoisseur unlock or tip jar in this release.
+  - **No background location** in this release (see "Notify me").
+  - **Answers:** every Play Console answer (listing copy, Data safety from the merged manifest and Google's SDK disclosures, IARC, target audience 18+, ads, advertising ID, app access, foreground service) is in `docs/play-listing.md`. Store graphics are in `android/release/store/`.
+  - **Developer verification:** the package name is proven with `android/scripts/sign-verification-apk.sh`, which signs a code-free APK carrying the Console's snippet with the YubiKey app key.
 
 ## Data model
 

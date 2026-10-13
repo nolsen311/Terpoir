@@ -204,6 +204,10 @@ without it.
         goes to Google Play from `release.sh` (`play-upload.sh`, internal
         track as a draft by default). Needs the one-time Play setup in
         `docs/releasing.md`.
+  - [x] First Play submission prepared: privacy policy at
+        terpoir.app/privacy, `docs/play-listing.md` (listing, Data safety,
+        IARC, declarations), store graphics, no background location on
+        Play, and the developer-verification APK script.
   - [ ] F-Droid recipe: builds the OCR AAR with
         `android/ocr-native/build.sh` and sets `terpoir.ocr.aar` for the
         foss build (outline in `android/ocr-native/README.md`); settle
