@@ -63,6 +63,7 @@ fun InsightsScreen(repo: JournalRepository, onOpenSession: (String) -> Unit, onC
 
     EditorScaffold(title = stringResource(R.string.insights_title), onClose = onClose, onSave = {}, saveEnabled = false) {
         Text(stringResource(R.string.insights_explainer), style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.health_reminder), style = MaterialTheme.typography.bodySmall)
         val list = insights ?: return@EditorScaffold
         if (list.isEmpty()) Text(stringResource(R.string.insights_none), style = MaterialTheme.typography.bodyMedium)
         for (insight in list) {

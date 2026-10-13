@@ -47,7 +47,22 @@ class Dictation internal constructor(private val speech: OnDeviceSpeech) {
     var problem by mutableStateOf<SpeechProblem?>(null)
         internal set
 
+    /** The microphone isn't allowed yet: the reason shows before Android's prompt. */
+    var explaining by mutableStateOf(false)
+        private set
+
     internal var begin: () -> Unit = {}
+    internal var askMic: () -> Unit = {}
+
+    internal fun explain() {
+        explaining = true
+    }
+
+    /** After the explanation: shows Android's microphone prompt. */
+    fun allowMic() {
+        explaining = false
+        askMic()
+    }
 
     /** Starts listening, asking for the microphone first if needed. */
     fun start() = begin()
@@ -92,8 +107,9 @@ fun rememberDictation(onText: (String) -> Unit): Dictation {
         if (granted) dictation.listen { currentOnText(it) } else dictation.problem = SpeechProblem.NO_PERMISSION
     }
     dictation.begin = {
-        if (micGranted) dictation.listen { currentOnText(it) } else askMic.launch(Manifest.permission.RECORD_AUDIO)
+        if (micGranted) dictation.listen { currentOnText(it) } else dictation.explain()
     }
+    dictation.askMic = { askMic.launch(Manifest.permission.RECORD_AUDIO) }
     DisposableEffect(Unit) { onDispose { dictation.cancel() } }
     return dictation
 }
@@ -107,6 +123,11 @@ fun appendSpoken(text: String, spoken: String): String =
 fun DictationControls(dictation: Dictation) {
     if (!dictation.available) {
         Text(stringResource(R.string.voice_unavailable), style = MaterialTheme.typography.bodyMedium)
+        return
+    }
+    if (dictation.explaining) {
+        Text(stringResource(R.string.voice_mic_why), style = MaterialTheme.typography.bodyMedium)
+        Button(onClick = dictation::allowMic) { Text(stringResource(R.string.continue_label)) }
         return
     }
     Text(stringResource(if (dictation.listening) R.string.voice_listening else R.string.voice_on_device), style = MaterialTheme.typography.bodyMedium)

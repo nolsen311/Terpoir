@@ -22,14 +22,14 @@ ready to paste. Written 2026-10-13 for version 0.1.0 (versionCode 1).
   Inappropriate Content and Health Content and Services policies (linked
   in each section). The IARC questions themselves aren't published there:
   confirm them in the Console.
-- **Still needed in the app** before the first review (Health Content and
-  Services, User Data policies; `docs/roadmap.md`):
-  - a privacy policy link or text inside the app, not only on the listing;
-  - a reminder to consult a healthcare professional for medical advice,
-    diagnosis or treatment;
-  - a short disclosure before the camera and microphone permission prompts
-    (used on the phone only, never sent), since the health policy puts both
-    permissions in scope.
+- **In the app** for the Health Content and Services and User Data
+  policies:
+  - the privacy policy as text: Privacy Center > "Privacy policy", from
+    `site/privacy.html` bundled at build time;
+  - the reminder to consult a healthcare professional, on Insights and in
+    a session's Targeted symptoms section;
+  - a disclosure before the camera and microphone permission prompts: what
+    each is for, and that nothing leaves the phone.
 
 Re-check this file whenever the Play build's dependencies or permissions
 change.
@@ -320,10 +320,9 @@ Google's definitions ([health app categories](https://support.google.com/googlep
 - Camera, location and microphone are in scope of the health policy, which
   asks the app to "prominently disclose how user data will be used" for
   them, with affirmative consent. Location is asked from buttons in the
-  spot editor. The camera prompt appears as soon as a scanner opens
-  (`CameraScreen.kt`), and the microphone prompt at the first dictation
-  (`Dictation.kt`), with no disclosure first: see "Still needed in the
-  app" above.
+  spot editor. The scanner (`CameraScreen.kt`) and dictation
+  (`Dictation.kt`) each explain their permission, with a Continue button,
+  before Android's prompt.
 
 ```
 Terpoir is a private, on-device journal for adults who use legal cannabis.

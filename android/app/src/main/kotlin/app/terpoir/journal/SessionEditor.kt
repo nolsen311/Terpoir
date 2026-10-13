@@ -437,6 +437,7 @@ private fun SymptomsEditor(
 ) {
     val names = custom.associate { it.id to it.data.name }
     Text(stringResource(R.string.session_symptoms_hint), style = MaterialTheme.typography.bodySmall)
+    Text(stringResource(R.string.health_reminder), style = MaterialTheme.typography.bodySmall)
     val all = vocab.symptoms.map { TagRefData.Builtin(it) } + custom.map { TagRefData.Custom(it.id) }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         for (tag in all) {

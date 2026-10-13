@@ -40,7 +40,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -95,7 +94,6 @@ fun CameraScreen(
         granted = it
         asked = true
     }
-    LaunchedEffect(Unit) { if (!granted) request.launch(Manifest.permission.CAMERA) }
     BackHandler(onBack = onClose)
 
     Scaffold(
@@ -121,6 +119,13 @@ fun CameraScreen(
                 Text(stringResource(R.string.scan_camera_denied))
                 Button(onClick = { request.launch(Manifest.permission.CAMERA) }) {
                     Text(stringResource(R.string.scan_camera_allow))
+                }
+            } else {
+                // Before Android's prompt: what the camera is for and that
+                // nothing it sees leaves the phone.
+                Text(stringResource(R.string.scan_camera_why))
+                Button(onClick = { request.launch(Manifest.permission.CAMERA) }) {
+                    Text(stringResource(R.string.continue_label))
                 }
             }
         }

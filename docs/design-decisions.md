@@ -509,6 +509,8 @@ Making a new note should take one tap from outside the app. Every entry point op
   - **No payments profile yet:** no Connoisseur unlock or tip jar in this release.
   - **No background location** in this release (see "Notify me").
   - **Answers:** every Play Console answer (listing copy, Data safety from the merged manifest and Google's SDK disclosures, IARC, target audience 18+, ads, advertising ID, sign-in details, foreground service) is in `docs/play-listing.md`, checked against the Play Console Help Center (2026-10-13). Store graphics are in `android/release/store/`.
+  - **In-app policy text (maintainer, 2026-10-13):** the app shows the privacy policy as text (Privacy Center > "Privacy policy"), not as a link: `site/privacy.html` is copied into the assets at build time, so there is one source and nothing is fetched. Links to terpoir.app in it show as plain text, so the app never sends anyone there; links to other sites (Google's, OpenFreeMap's policies) open in the browser only when tapped.
+  - **Play policy text in the app:** a reminder to consult a healthcare professional on Insights and in Targeted symptoms; a disclosure, with Continue, before the camera and microphone permission prompts.
   - **Developer verification:** the package name is proven with `android/scripts/sign-verification-apk.sh`, which signs a code-free APK carrying the Console's snippet with the YubiKey app key.
 
 ## Data model
