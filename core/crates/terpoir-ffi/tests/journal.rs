@@ -908,6 +908,18 @@ fn insights_need_evidence_and_respect_feedback() {
             .iter()
             .any(|i| i.key == "terpene:myrcene")
     );
+
+    // "What I track": with terpenes hidden, no insight is built on them.
+    journal
+        .set_data_point_tracked("terpenes".into(), false, 40)
+        .unwrap();
+    assert!(
+        journal
+            .insights()
+            .unwrap()
+            .iter()
+            .all(|i| i.category != "terpene")
+    );
 }
 
 #[test]
@@ -1054,6 +1066,18 @@ fn shop_insights_attribute_sessions_to_where_products_were_bought() {
     let shop_b = found.iter().find(|s| s.spot == b).unwrap();
     assert_eq!(shop_b.sessions.len(), 6);
     assert_eq!(shop_b.avg_rating_milli, Some(3_000));
+
+    // "What I track": package dates hidden, no freshness; prices and shops
+    // hidden, no shop insights at all.
+    journal
+        .set_data_point_tracked("batch".into(), false, 50)
+        .unwrap();
+    let found = journal.shop_insights().unwrap();
+    assert!(found.iter().all(|s| s.avg_age_days.is_none()));
+    journal
+        .set_data_point_tracked("price_and_shop".into(), false, 51)
+        .unwrap();
+    assert!(journal.shop_insights().unwrap().is_empty());
 }
 
 #[test]

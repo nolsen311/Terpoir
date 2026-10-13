@@ -14,6 +14,7 @@ use terpoir_insights::{
 };
 use terpoir_model::{
     DoseUnit, Product, ProductLine, Purchase, RecordId, Session, Spot, Strain, TagRef,
+    TrackedField, TrackingPreferences,
 };
 
 use crate::error::Result;
@@ -77,6 +78,8 @@ pub(crate) trait Source {
     fn purchases(&self) -> Result<Vec<(RecordId, Purchase)>>;
     fn spot(&self, id: &RecordId) -> Result<Option<Spot>>;
     fn brand_name(&self, id: &RecordId) -> Result<Option<String>>;
+    /// "What I track": insights skip what is built on a hidden data point.
+    fn tracking(&self) -> Result<TrackingPreferences>;
 }
 
 /// A shop's numbers (see `terpoir_insights::shop_insights`), with their
@@ -155,6 +158,15 @@ fn line_shop(
 /// Shop insights over the journal; see [`line_shop`] for how a line gets
 /// its shop.
 pub(crate) fn shops(source: &dyn Source) -> Result<Vec<ShopInsightData>> {
+    // Shop insights are built on prices and shops; brands, strains and
+    // package dates within them only while those are tracked too.
+    let tracking = source.tracking()?;
+    if !tracking.tracks(&TrackedField::PriceAndShop) {
+        return Ok(Vec::new());
+    }
+    let show_brand = tracking.tracks(&TrackedField::Brand);
+    let show_strain = tracking.tracks(&TrackedField::Strain);
+    let show_age = tracking.tracks(&TrackedField::Batch);
     let sessions = source.sessions()?;
     let purchases: BTreeMap<RecordId, Purchase> = source.purchases()?.into_iter().collect();
     // The shops each product appears on receipts from.
@@ -189,10 +201,15 @@ pub(crate) fn shops(source: &dyn Source) -> Result<Vec<ShopInsightData>> {
             buys.push(Buy {
                 shop: shop.to_hex(),
                 product: product_id.to_hex(),
-                brand: product.brand.map(|b| b.to_hex()),
-                strains: product.strains.iter().map(RecordId::to_hex).collect(),
+                brand: product.brand.filter(|_| show_brand).map(|b| b.to_hex()),
+                strains: if show_strain {
+                    product.strains.iter().map(RecordId::to_hex).collect()
+                } else {
+                    Vec::new()
+                },
                 age_days: day
                     .zip(product.package_date)
+                    .filter(|_| show_age)
                     .map(|(d, p)| d - p)
                     .filter(|age| *age >= 0),
             });
@@ -222,7 +239,7 @@ pub(crate) fn shops(source: &dyn Source) -> Result<Vec<ShopInsightData>> {
                 Level::Product => (
                     "product",
                     match products.get(&id).cloned().flatten() {
-                        Some(p) => Some(product_label(source, &p)?),
+                        Some(p) => Some(product_label(source, &p, show_brand)?),
                         None => None,
                     },
                 ),
@@ -258,9 +275,9 @@ pub(crate) fn shops(source: &dyn Source) -> Result<Vec<ShopInsightData>> {
 }
 
 /// A product's display label: brand, then name (unless the name already
-/// starts with the brand).
-fn product_label(source: &dyn Source, p: &Product) -> Result<String> {
-    let brand = match p.brand {
+/// starts with the brand, or brands are hidden).
+fn product_label(source: &dyn Source, p: &Product, show_brand: bool) -> Result<String> {
+    let brand = match p.brand.filter(|_| show_brand) {
         Some(b) => source.brand_name(&b)?,
         None => None,
     };
@@ -280,6 +297,10 @@ fn local_day(purchase: &Purchase) -> i64 {
 
 /// The insights to show: computed, then filtered by the user's feedback.
 pub(crate) fn current(source: &dyn Source) -> Result<Vec<InsightData>> {
+    let tracking = source.tracking()?;
+    let show_terpenes = tracking.tracks(&TrackedField::Terpenes);
+    let show_strain = tracking.tracks(&TrackedField::Strain);
+    let show_dose = tracking.tracks(&TrackedField::Dose);
     let sessions = source.sessions()?;
     let mut products: BTreeMap<RecordId, Option<Product>> = BTreeMap::new();
     let mut strains: BTreeMap<RecordId, Option<Strain>> = BTreeMap::new();
@@ -307,18 +328,18 @@ pub(crate) fn current(source: &dyn Source) -> Result<Vec<InsightData>> {
                 features.insert(format!("form:{}", form.slug()));
             }
             // The product's dominant terpene (ties: the first in key order).
-            if let Some((tag, _)) =
-                product
-                    .terpenes
-                    .iter()
-                    .fold(None::<(&TagRef, i64)>, |best, (t, v)| match best {
+            if show_terpenes
+                && let Some((tag, _)) = product.terpenes.iter().fold(
+                    None::<(&TagRef, i64)>,
+                    |best, (t, v)| match best {
                         Some((_, b)) if b >= *v => best,
                         _ => Some((t, *v)),
-                    })
+                    },
+                )
             {
                 features.insert(format!("terpene:{}", tag_key(tag)));
             }
-            for strain_id in &product.strains {
+            for strain_id in product.strains.iter().filter(|_| show_strain) {
                 if let std::collections::btree_map::Entry::Vacant(slot) = strains.entry(*strain_id)
                 {
                     slot.insert(source.strain(strain_id)?);
@@ -338,7 +359,7 @@ pub(crate) fn current(source: &dyn Source) -> Result<Vec<InsightData>> {
             index,
             rating: session.rating,
             features,
-            dose_mg_milli: (all_mg && !doses.is_empty()).then(|| doses.iter().sum()),
+            dose_mg_milli: (show_dose && all_mg && !doses.is_empty()).then(|| doses.iter().sum()),
         });
     }
 

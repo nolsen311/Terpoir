@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use terpoir_crypto::{MasterKey, RecoveryKey, WrappedKey};
 use terpoir_model::{
     Brand, DeviceId, Document, Hlc, Location, Product, Purchase, Record, RecordId, RecordKind,
-    Session, Snippet, Spot, Strain, Tag, TagCategory, TagRef, migrate,
+    Session, Snippet, Spot, Strain, Tag, TagCategory, TagRef, TrackingPreferences, migrate,
 };
 use terpoir_scan::{names_match, normalize_name};
 use terpoir_store::Store;
@@ -226,6 +226,10 @@ impl insights::Source for Unlocked {
             .store
             .get_record::<Brand>(&self.master, id)?
             .map(|b| b.name))
+    }
+
+    fn tracking(&self) -> Result<TrackingPreferences> {
+        crate::tracking::preferences(self)
     }
 
     fn feedback(&self) -> Result<Vec<u8>> {

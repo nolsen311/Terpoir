@@ -34,7 +34,7 @@ fn load(u: &Unlocked) -> Result<Option<Document>> {
     Ok(u.store.get(&u.master, &id)?.map(migrate).transpose()?)
 }
 
-fn preferences(u: &Unlocked) -> Result<TrackingPreferences> {
+pub(crate) fn preferences(u: &Unlocked) -> Result<TrackingPreferences> {
     load(u)?
         .map(|doc| TrackingPreferences::from_document(&doc))
         .transpose()
