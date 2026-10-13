@@ -101,6 +101,12 @@ The steps, for doing them separately:
 
 ## Notes
 
+- **Crash stack traces:** release builds are shrunk and obfuscated by R8,
+  so their stack traces show renamed classes. Each release keeps R8's
+  mappings (`terpoir-foss-<version>-mapping.txt`, and the Play one) as
+  release assets. Decode a trace with the Android build-tools' `retrace`:
+  `retrace terpoir-foss-<version>-mapping.txt trace.txt`.
+
 - **Signature schemes:** minSdk is 30, so `apksigner` signs with APK
   Signature Scheme v3 only. v1/v2 aren't needed, and v4 (`.idsig` files,
   for incremental installs) is turned off.
