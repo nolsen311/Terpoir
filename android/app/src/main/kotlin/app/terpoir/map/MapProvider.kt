@@ -16,8 +16,8 @@ enum class MapProvider(
     val id: String,
     /** The only hosts the gateway lets out while this provider is chosen. */
     val hosts: Set<String>,
-    /** The credit drawn over the map. */
-    val attribution: Int,
+    /** The credit drawn over the map, if the provider doesn't draw its own. */
+    val attribution: Int?,
 ) {
     /**
      * OpenStreetMap vector tiles from OpenFreeMap's public instance. No key,
@@ -28,12 +28,24 @@ enum class MapProvider(
 
     /** MapTiler's street map, only with the user's own API key. */
     MAPTILER("maptiler", setOf("api.maptiler.com"), R.string.map_attribution_maptiler),
+
+    /**
+     * Google Maps through Play services, Play builds with a key only. Its
+     * SDK does its own networking, outside the gateway, which therefore
+     * lets nothing out for MapLibre while Google is chosen. Google draws
+     * its own logo and credits.
+     */
+    GOOGLE("google", emptySet(), null),
     ;
 
-    /** The style MapLibre loads; [mapTilerKey] is needed for [MAPTILER] only. */
+    /**
+     * The style MapLibre loads; [mapTilerKey] is needed for [MAPTILER] only.
+     * Null for [GOOGLE], which MapLibre never draws.
+     */
     fun styleUrl(mapTilerKey: String?): String? = when (this) {
         OPENFREEMAP -> "https://tiles.openfreemap.org/styles/liberty"
         MAPTILER -> mapTilerKey?.let { "https://api.maptiler.com/maps/streets-v2/style.json?key=$it" }
+        GOOGLE -> null
     }
 
     companion object {

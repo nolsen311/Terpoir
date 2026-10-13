@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
+import app.terpoir.map.GoogleMapsCard
 import app.terpoir.privacy.SensitiveClipboard
 import app.terpoir.session.JournalSession.RecoveryCheck
 import kotlinx.coroutines.CancellationException
@@ -178,3 +179,21 @@ internal val RecoveryCheck.message: Int
         RecoveryCheck.TYPO -> R.string.confirm_typo
         RecoveryCheck.WRONG_KEY -> R.string.confirm_wrong_key
     }
+
+/**
+ * Play builds with a Google Maps key: whether to use Google Maps for the
+ * online map, an active choice with neither answer preselected
+ * (docs/design-decisions.md, "Map picker"). "Use Google Maps" turns the
+ * map on with Google as its provider; "Not now" leaves the map off, with
+ * OpenFreeMap ready if it is turned on later.
+ */
+@Composable
+fun GoogleMapChoice(onUseGoogle: () -> Unit, onNotNow: () -> Unit) {
+    Page {
+        Text(stringResource(R.string.map_choice_title), style = MaterialTheme.typography.headlineSmall)
+        Text(stringResource(R.string.map_choice_body))
+        GoogleMapsCard()
+        OutlinedButton(onClick = onUseGoogle) { Text(stringResource(R.string.google_maps_use)) }
+        OutlinedButton(onClick = onNotNow) { Text(stringResource(R.string.map_choice_not_now)) }
+    }
+}

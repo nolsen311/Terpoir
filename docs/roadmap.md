@@ -121,10 +121,10 @@ without it.
 - [x] Map picker for spot locations: an opt-in online map (MapTiler
       through MapLibre, builds with a key only), every request through one
       gateway that refuses all of them while the toggle is off.
-- [ ] Map providers (decided 2026-10-12).
+- [x] Map providers (decided 2026-10-12).
   - [x] Keyless OpenFreeMap by default in every build; MapTiler with the
         user's own key; the project's MapTiler key dropped.
-  - [ ] Google Maps as an active Play-only choice (onboarding and YOLO
+  - [x] Google Maps as an active Play-only choice (onboarding and YOLO
         Mode).
 - [ ] "What I track" in Settings: hide data points (brand, price, strain
       and more), synced, with keep-hidden or delete.

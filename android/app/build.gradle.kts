@@ -11,6 +11,19 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+/**
+ * The Google Maps key, Play flavor only (docs/design-decisions.md, "Map
+ * picker"): from the environment (CI reads a repository secret) or the
+ * `terpoir.googleMapsKey` Gradle property. Never committed. It is
+ * restricted to the Maps SDK for Android, this package and the signing
+ * certificates, so it is not a secret in the app itself.
+ */
+val googleMapsKey: String = providers.environmentVariable("GOOGLE_MAPS_API_KEY")
+    .orElse(providers.gradleProperty("terpoir.googleMapsKey"))
+    .getOrElse("")
+    .trim()
+require(googleMapsKey.matches(Regex("[A-Za-z0-9_-]*"))) { "The Google Maps key may contain only letters, digits, - and _." }
+
 android {
     namespace = "app.terpoir"
     compileSdk = 37
@@ -43,6 +56,11 @@ android {
     productFlavors {
         create("play") {
             dimension = "distribution"
+            // The Google Maps key (docs/design-decisions.md, "Map picker"):
+            // CI's GOOGLE_MAPS_API_KEY secret or the terpoir.googleMapsKey
+            // property, never committed. Without one, Google Maps isn't
+            // offered.
+            manifestPlaceholders["googleMapsKey"] = googleMapsKey
         }
         create("foss") {
             dimension = "distribution"
@@ -136,6 +154,7 @@ dependencies {
     "playImplementation"(libs.play.asset.delivery)
     "playImplementation"(libs.play.mlkit.text.recognition)
     "playImplementation"(libs.play.services.location)
+    "playImplementation"(libs.play.services.maps)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.runner)

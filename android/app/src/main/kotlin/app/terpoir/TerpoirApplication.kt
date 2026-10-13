@@ -84,7 +84,7 @@ class TerpoirApplication : Application() {
         // an update, as well as on first launch).
         QuickCapture.sync(this, privacySettings)
         session = JournalSession(JournalFiles(noBackupFilesDir))
-        onboarding = Onboarding(this)
+        onboarding = Onboarding(this, offersGoogleMaps = Distribution.googleMaps(this) != null)
         // The process died after the journal was created but before its
         // recovery key was backed up or skipped. The key lived only in that
         // process, and setup blocks the journal until the backup is
