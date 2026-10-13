@@ -20,8 +20,8 @@
 
 use serde::{Deserialize, Serialize};
 use terpoir_crypto::{MasterKey, SubKey, WrappedKey};
-use terpoir_model::{DeviceId, RecordId, RecordKind};
-use terpoir_store::SealedRecord;
+use terpoir_model::{DeviceId, RecordId};
+use terpoir_store::{PendingRecord, SealedRecord};
 use zeroize::Zeroizing;
 
 use crate::{Error, Result};
@@ -45,6 +45,9 @@ pub struct Blob {
     pub sequence: u64,
     /// Records added or changed.
     pub records: Vec<SealedRecord>,
+    /// Records of a kind this version doesn't know, from a newer app.
+    /// Carried through unchanged; see [`crate::apply_pending`].
+    pub pending: Vec<PendingRecord>,
     /// IDs of deleted records.
     pub deletions: Vec<RecordId>,
 }
@@ -115,6 +118,14 @@ pub fn encode_blob(key: &SubKey, blob: &Blob) -> Result<Vec<u8>> {
                     r.ciphertext.clone(),
                 )
             })
+            .chain(blob.pending.iter().map(|r| {
+                (
+                    *r.id.as_bytes(),
+                    r.kind_code,
+                    r.wrapped_key.as_bytes().to_vec(),
+                    r.ciphertext.clone(),
+                )
+            }))
             .collect(),
         deletions: blob.deletions.iter().map(|id| *id.as_bytes()).collect(),
     };
@@ -137,14 +148,18 @@ pub fn encode_blob(key: &SubKey, blob: &Blob) -> Result<Vec<u8>> {
 ///
 /// # Errors
 ///
-/// [`Error::Blob`] for anything malformed, oversized, or not decrypting
-/// under `key`.
+/// [`Error::NewerFormat`] if a newer app wrote it in a format this version
+/// can't parse; [`Error::Blob`] for anything malformed, oversized, or not
+/// decrypting under `key`.
 pub fn decode_blob(key: &SubKey, bytes: &[u8]) -> Result<Blob> {
     if bytes.len() > MAX_BLOB_LEN + terpoir_crypto::SEAL_OVERHEAD {
         return Err(Error::Blob);
     }
     let plain = key.open(AAD, bytes).map_err(|_| Error::Blob)?;
     let (header, rest) = plain.split_at_checked(HEADER_LEN).ok_or(Error::Blob)?;
+    if header[0] > FORMAT_VERSION {
+        return Err(Error::NewerFormat);
+    }
     if header[0] != FORMAT_VERSION {
         return Err(Error::Blob);
     }
@@ -158,22 +173,25 @@ pub fn decode_blob(key: &SubKey, bytes: &[u8]) -> Result<Blob> {
     if !extra.is_empty() {
         return Err(Error::Blob);
     }
-    let records = wire
-        .records
-        .into_iter()
-        .map(|(id, kind, wrapped, ciphertext)| {
-            Ok(SealedRecord {
-                id: RecordId::from_bytes(id),
-                kind: RecordKind::from_code(kind).ok_or(Error::Blob)?,
-                wrapped_key: WrappedKey::from_slice(&wrapped).map_err(|_| Error::Blob)?,
-                ciphertext,
-            })
-        })
-        .collect::<Result<_>>()?;
+    let mut records = Vec::new();
+    let mut pending = Vec::new();
+    for (id, kind_code, wrapped, ciphertext) in wire.records {
+        let record = PendingRecord {
+            id: RecordId::from_bytes(id),
+            kind_code,
+            wrapped_key: WrappedKey::from_slice(&wrapped).map_err(|_| Error::Blob)?,
+            ciphertext,
+        };
+        match record.to_sealed() {
+            Some(sealed) => records.push(sealed),
+            None => pending.push(record),
+        }
+    }
     Ok(Blob {
         device: wire.device,
         sequence: wire.sequence,
         records,
+        pending,
         deletions: wire
             .deletions
             .into_iter()
@@ -186,6 +204,7 @@ pub fn decode_blob(key: &SubKey, bytes: &[u8]) -> Result<Blob> {
 mod tests {
     use super::*;
     use terpoir_crypto::RecordKey;
+    use terpoir_model::RecordKind;
 
     fn sealed(master: &MasterKey, n: usize) -> SealedRecord {
         let id = RecordId::random().unwrap();
@@ -203,6 +222,7 @@ mod tests {
             device: DeviceId::from_bytes([3; 16]),
             sequence: 42,
             records: (0..records).map(|_| sealed(master, size)).collect(),
+            pending: Vec::new(),
             deletions: vec![RecordId::random().unwrap()],
         }
     }
@@ -260,6 +280,25 @@ mod tests {
         assert_eq!(
             decode_blob(&key, &key.seal(AAD, &plain).unwrap()),
             Err(Error::Blob)
+        );
+    }
+
+    #[test]
+    fn unknown_kinds_are_kept_and_newer_formats_reported() {
+        let master = MasterKey::generate().unwrap();
+        let key = container_key(&master).unwrap();
+        let mut b = blob(&master, 2, 10);
+        let mut unknown = PendingRecord::from(&b.records[0]);
+        unknown.kind_code = 200;
+        b.pending.push(unknown);
+        let bytes = encode_blob(&key, &b).unwrap();
+        assert_eq!(decode_blob(&key, &bytes).unwrap(), b);
+
+        let mut plain = vec![FORMAT_VERSION + 1, 0, 0, 0, 0];
+        plain.resize(4096, 0);
+        assert_eq!(
+            decode_blob(&key, &key.seal(AAD, &plain).unwrap()),
+            Err(Error::NewerFormat)
         );
     }
 

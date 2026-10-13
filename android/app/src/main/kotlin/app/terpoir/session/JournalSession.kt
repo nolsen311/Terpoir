@@ -193,6 +193,9 @@ class JournalSession(private val files: JournalFiles) {
             // failure here must not keep the journal locked: the notes stay
             // sealed in the inbox for the next unlock.
             runCatching { journal.mergeCaptures(files.inbox.path, System.currentTimeMillis().toULong()) }
+            // Records a newer app version synced, kept until this version
+            // can read them, join the journal once it can.
+            runCatching { journal.applyPendingRecords(System.currentTimeMillis().toULong()) }
             state = State.Unlocked(journal)
             contentVisible = true
         } finally {

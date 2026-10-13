@@ -157,10 +157,9 @@ without it.
       the remaining sync backends, because a backup that won't load is
       worse than a missing feature). See "Schema upgrades" in the design
       doc.
-  - [ ] Keep records from a newer app version: store them sealed and
+  - [x] Keep records from a newer app version: store them sealed and
         unchanged, and apply them automatically after the app updates, so
-        an import or restore never drops them. Today they are counted as
-        deferred and skipped, and must be imported again by hand.
+        an import or restore never drops them.
   - [ ] Restore and import say plainly when an export or sync blob needs a
         newer app, before anything is changed, and never finish partially
         in silence.

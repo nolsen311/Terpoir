@@ -79,13 +79,15 @@ class FolderSync(private val context: Context) {
             val own = prefs.getStringSet(KEY_OWN, emptySet()).orEmpty()
 
             // 1. Import what is new. A blob that fails (another device still
-            //    writing it, or a newer app's) is left for the next sync.
+            //    writing it, or in a newer app's format) is left for the next
+            //    sync. Records a newer app wrote inside a readable blob are
+            //    kept by the core and applied after updating.
             var imported = 0
             for ((name, doc) in blobs(resolver, tree)) {
                 if (name in seen || name in own) continue
                 val bytes = runCatching { resolver.openInputStream(doc)?.use { it.readBytes() } }.getOrNull() ?: continue
-                val result = runCatching { journal.importSyncBlob(bytes, System.currentTimeMillis().toULong()) }.getOrNull() ?: continue
-                if (result.deferred == 0uL) seen += name
+                runCatching { journal.importSyncBlob(bytes, System.currentTimeMillis().toULong()) }.getOrNull() ?: continue
+                seen += name
                 imported++
             }
 

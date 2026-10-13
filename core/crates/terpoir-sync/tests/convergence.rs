@@ -317,6 +317,7 @@ fn changes_survive_the_blob_round_trip() {
         device,
         sequence: 1,
         records: sealed,
+        pending: Vec::new(),
         deletions: vec![deleted],
     };
     let bytes = encode_blob(&container, &blob).unwrap();

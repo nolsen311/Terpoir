@@ -115,6 +115,7 @@ impl From<terpoir_sync::Error> for CoreError {
         use terpoir_sync::Error;
         match e {
             Error::Blob => Self::InvalidSyncData,
+            Error::NewerFormat => Self::NewerVersion,
             Error::Mismatch => Self::InvalidSyncData,
             Error::Crypto(c) => c.into(),
             Error::Store(s) => s.into(),

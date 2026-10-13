@@ -9,10 +9,12 @@
 
 use std::fs;
 use std::path::PathBuf;
-use terpoir_crypto::{DatabaseKey, MasterKey};
-use terpoir_model::{Brand, DeviceId, Document, Hlc, LocalTime, RecordId, Session};
-use terpoir_store::Store;
-use terpoir_sync::{Clock, export_blobs, import_blob};
+use terpoir_crypto::{DatabaseKey, MasterKey, RecordKey};
+use terpoir_model::{Brand, DeviceId, Document, Hlc, LocalTime, RecordId, RecordKind, Session};
+use terpoir_store::{PendingRecord, SealedRecord, Store};
+use terpoir_sync::{
+    Blob, Clock, apply_pending, container_key, encode_blob, export_blobs, import_blob,
+};
 
 struct Device {
     dir: PathBuf,
@@ -190,4 +192,100 @@ fn clock_moves_past_imported_stamps() {
     // b's wall clock is behind, but its next stamp still orders after a's.
     b.receive(&master, &a.send(&master), 10_000);
     assert!(b.clock.stamp(10_000) > doc.latest_stamp().unwrap());
+}
+
+/// A record sealed the way the store seals one, with any kind code and
+/// any plaintext, as a newer app version might write it.
+fn sealed_as(master: &MasterKey, kind_code: u8, plaintext: &[u8]) -> PendingRecord {
+    let id = RecordId::random().unwrap();
+    let key = RecordKey::generate().unwrap();
+    let mut aad = id.as_bytes().to_vec();
+    aad.push(kind_code);
+    PendingRecord {
+        id,
+        kind_code,
+        wrapped_key: master.wrap_record_key(&key, &id).unwrap(),
+        ciphertext: key.seal(&aad, plaintext).unwrap(),
+    }
+}
+
+#[test]
+fn records_from_a_newer_version_are_kept_carried_and_applied_later() {
+    let master = MasterKey::generate().unwrap();
+    let mut old = Device::new(1);
+    let mut other = Device::new(2);
+
+    // A kind this version doesn't know, and a known kind in a newer
+    // document envelope.
+    let unknown = sealed_as(&master, 200, b"from the future");
+    let newer = sealed_as(&master, RecordKind::Brand.code(), &[2, 0, 0]);
+    let blob = Blob {
+        device: DeviceId::from_bytes([9; 16]),
+        sequence: 1,
+        records: vec![newer.to_sealed().unwrap()],
+        pending: vec![unknown.clone()],
+        deletions: Vec::new(),
+    };
+    let bytes = encode_blob(&container_key(&master).unwrap(), &blob).unwrap();
+
+    let summary = import_blob(&mut old.store, &master, &mut old.clock, &bytes, 1).unwrap();
+    assert_eq!((summary.records, summary.deferred), (0, 2));
+    assert_eq!(old.store.pending_count().unwrap(), 2);
+    // Still unreadable: nothing applied, nothing lost.
+    assert_eq!(
+        apply_pending(&mut old.store, &master, &mut old.clock, 1).unwrap(),
+        0
+    );
+    assert_eq!(old.store.pending().unwrap(), {
+        let mut both = vec![unknown.clone(), newer.clone()];
+        both.sort_by_key(|r| r.id);
+        both
+    });
+
+    // Exports carry them, so a restore or another old device keeps them.
+    other.receive(&master, &old.send(&master), 2);
+    assert_eq!(other.store.pending().unwrap(), old.store.pending().unwrap());
+
+    // Master key rotation keeps them openable.
+    let rotated = MasterKey::generate().unwrap();
+    other.store.rewrap_all(&master, &rotated).unwrap();
+    for record in other.store.pending().unwrap() {
+        rotated
+            .unwrap_record_key(&record.wrapped_key, &record.id)
+            .unwrap();
+    }
+
+    // A deletion drops a kept record, and it doesn't come back.
+    let deletion = Blob {
+        device: DeviceId::from_bytes([9; 16]),
+        sequence: 2,
+        records: Vec::new(),
+        pending: Vec::new(),
+        deletions: vec![unknown.id],
+    };
+    let key = container_key(&master).unwrap();
+    old.receive(&master, &[encode_blob(&key, &deletion).unwrap(), bytes], 3);
+    assert_eq!(old.store.pending().unwrap(), vec![newer]);
+
+    // Once the app can read a kept record, it is merged and no longer kept.
+    let brand = Document::create(
+        &Brand {
+            name: "Acme".into(),
+        },
+        old.clock.stamp(4),
+    )
+    .unwrap();
+    let mut scratch = Device::new(3);
+    scratch.store.put(&master, &brand).unwrap();
+    let sealed: SealedRecord = scratch.store.sealed(&brand.id()).unwrap().unwrap();
+    old.store
+        .put_pending(&PendingRecord::from(&sealed))
+        .unwrap();
+    assert_eq!(
+        apply_pending(&mut old.store, &master, &mut old.clock, 5).unwrap(),
+        1
+    );
+    assert_eq!(old.store.get(&master, &brand.id()).unwrap(), Some(brand));
+    assert_eq!(old.store.sealed(&sealed.id).unwrap(), Some(sealed));
+    assert_eq!(old.store.pending_count().unwrap(), 1);
 }
