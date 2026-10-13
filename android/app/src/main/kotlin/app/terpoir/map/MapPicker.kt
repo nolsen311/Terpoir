@@ -67,7 +67,7 @@ private const val MAX_ACCURACY_M = 50_000
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapPicker(start: Fix?, onPick: (Fix) -> Unit, onClose: () -> Unit) {
+fun MapPicker(start: Fix?, provider: MapProvider, styleUrl: String, onPick: (Fix) -> Unit, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     val radiusPx = with(LocalDensity.current) { CROSSHAIR_RADIUS.toPx() }
@@ -90,11 +90,12 @@ fun MapPicker(start: Fix?, onPick: (Fix) -> Unit, onClose: () -> Unit) {
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                MapLibreView(start) { map = it }
+                MapLibreView(start, styleUrl) { map = it }
                 Crosshair()
-                // MapTiler's terms: the credit always shows on the map.
+                // The providers' terms: the credit always shows on the map,
+                // not behind an info button.
                 Text(
-                    stringResource(R.string.map_attribution),
+                    stringResource(provider.attribution),
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -121,7 +122,7 @@ private fun pickedFix(map: MapLibreMap, radiusPx: Float): Fix {
 
 /** A MapLibre map view, tied to the screen's lifecycle. */
 @Composable
-private fun MapLibreView(start: Fix?, onReady: (MapLibreMap) -> Unit) {
+private fun MapLibreView(start: Fix?, styleUrl: String, onReady: (MapLibreMap) -> Unit) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val view = remember {
@@ -135,7 +136,7 @@ private fun MapLibreView(start: Fix?, onReady: (MapLibreMap) -> Unit) {
                     .target(start?.let { LatLng(it.latE7 / 1e7, it.lonE7 / 1e7) } ?: LatLng(0.0, 0.0))
                     .zoom(if (start != null) POINT_ZOOM else WORLD_ZOOM)
                     .build()
-                map.setStyle(OnlineMap.styleUrl)
+                map.setStyle(styleUrl)
                 onReady(map)
             }
         }

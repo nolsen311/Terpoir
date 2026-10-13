@@ -139,6 +139,12 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
 
     suspend fun saveTag(id: String?, data: TagData): String = io { journal.saveTag(id, data, now()) }
 
+    /** The user's own MapTiler key for the online map, if saved (this device only, never synced). */
+    suspend fun mapTilerKey(): String? = io { journal.maptilerKey() }
+
+    /** Saves the user's MapTiler key, or deletes it with null. */
+    suspend fun setMapTilerKey(key: String?) = io { journal.setMaptilerKey(key) }
+
     /** Deletes a record (crypto-erasure in the core). */
     suspend fun delete(id: String): Boolean = io { journal.deleteRecord(id) }
 

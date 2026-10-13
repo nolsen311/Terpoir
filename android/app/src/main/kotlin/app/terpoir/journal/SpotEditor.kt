@@ -40,7 +40,9 @@ import app.terpoir.core.TagRefData
 import app.terpoir.location.CurrentLocation
 import app.terpoir.location.Fix
 import app.terpoir.map.MapPicker
+import app.terpoir.map.MapProvider
 import app.terpoir.map.OnlineMap
+import app.terpoir.privacy.PrivacySettings
 import app.terpoir.privacy.PrivacyToggle
 import kotlinx.coroutines.launch
 
@@ -62,12 +64,19 @@ fun nextSpotName(existing: List<String>, prefix: String): String {
  * Creates or edits a spot: a name the user picks (a neutral "Spot N" by
  * default; never looked up from an address), what it's for, and optional
  * coordinates, approximate unless the user asks for precise, or picked on
- * the online map when this build has one ([mapToggle]). Fields not shown
+ * the online map ([mapToggle], with the provider in [settings]). Fields not shown
  * here (geofence radius, purchase prompts) are kept as saved.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SpotEditor(repo: JournalRepository, id: String?, mapToggle: PrivacyToggle?, promptsOn: Boolean, onDone: () -> Unit) {
+fun SpotEditor(
+    repo: JournalRepository,
+    id: String?,
+    mapToggle: PrivacyToggle?,
+    settings: PrivacySettings,
+    promptsOn: Boolean,
+    onDone: () -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var original by remember { mutableStateOf<SpotData?>(null) }
@@ -79,7 +88,8 @@ fun SpotEditor(repo: JournalRepository, id: String?, mapToggle: PrivacyToggle?, 
     var locating by remember { mutableStateOf(false) }
     var locationProblem by remember { mutableStateOf<Int?>(null) }
     var newPurpose by remember { mutableStateOf(false) }
-    var picking by remember { mutableStateOf(false) }
+    // The provider and style of the map being shown; null while not picking.
+    var picking by remember { mutableStateOf<Pair<MapProvider, String>?>(null) }
     var purchasePrompts by remember { mutableStateOf(false) }
     var askMap by remember { mutableStateOf(false) }
     val defaultPrefix = stringResource(R.string.spot_default_prefix)
@@ -116,20 +126,35 @@ fun SpotEditor(repo: JournalRepository, id: String?, mapToggle: PrivacyToggle?, 
     }
     if (!loaded) return
 
-    // MapLibre must be set up before the picker creates its view.
+    // MapLibre must be set up before the picker creates its view. MapTiler
+    // needs the user's key from the journal; if it is gone (a reset or a
+    // restore on another phone), the map falls back to OpenFreeMap.
     fun openMap(toggle: PrivacyToggle) {
-        OnlineMap.start(context) { toggle.isOn() }
-        picking = true
+        scope.launch {
+            var provider = settings.mapProvider
+            val key = if (provider == MapProvider.MAPTILER) repo.mapTilerKey() else null
+            if (provider == MapProvider.MAPTILER && key == null) {
+                settings.mapTilerKeySaved = false
+                settings.mapProvider = MapProvider.DEFAULT
+                provider = MapProvider.DEFAULT
+            }
+            val style = provider.styleUrl(key) ?: return@launch
+            OnlineMap.start(context, enabled = { toggle.isOn() }, provider = { settings.mapProvider })
+            picking = provider to style
+        }
     }
 
-    if (picking && mapToggle != null) {
+    val shown = picking
+    if (shown != null && mapToggle != null) {
         MapPicker(
             start = fix,
+            provider = shown.first,
+            styleUrl = shown.second,
             onPick = {
                 fix = it
-                picking = false
+                picking = null
             },
-            onClose = { picking = false },
+            onClose = { picking = null },
         )
         return
     }

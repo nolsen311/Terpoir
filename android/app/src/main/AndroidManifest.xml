@@ -3,8 +3,7 @@
 <!-- Copyright (C) 2026 The Terpoir Authors -->
 <!-- See LICENSING.md for the additional permission under GPLv3 section 7. -->
 <!--
-  INTERNET only in builds with a MapTiler key, for the opt-in online map
-  (MapLibre adds it; src/offline/AndroidManifest.xml removes it otherwise).
+  INTERNET in every build, for the opt-in online map (MapLibre adds it).
   Every request goes through the map gateway, which refuses all of them
   while the map's toggle is off. Every requested permission must be on the
   allowlist in app/build.gradle.kts.

@@ -47,13 +47,13 @@ import app.terpoir.journal.DataCard
 import app.terpoir.journal.JournalHome
 import app.terpoir.journal.JournalRepository
 import app.terpoir.journal.ScanServices
+import app.terpoir.map.MapProviderCard
 import app.terpoir.onboarding.AgeGate
 import app.terpoir.onboarding.OnboardingStep
 import app.terpoir.onboarding.RecoveryBackup
 import app.terpoir.onboarding.RecoveryKeyBackup
 import app.terpoir.onboarding.RestoreScreen
 import app.terpoir.privacy.ONLINE_MAP
-import app.terpoir.sync.FolderSyncCard
 import app.terpoir.privacy.PrivacyCenterScreen
 import app.terpoir.privacy.PrivateTextInput
 import app.terpoir.privacy.ScreenPrivacy
@@ -61,6 +61,7 @@ import app.terpoir.scan.Scanner
 import app.terpoir.security.UserAuthentication
 import app.terpoir.session.AutoLockCard
 import app.terpoir.session.JournalSession
+import app.terpoir.sync.FolderSyncCard
 import app.terpoir.ui.theme.TerpoirTheme
 import javax.crypto.Cipher
 import kotlinx.coroutines.launch
@@ -221,6 +222,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         AutoLockCard(app.lockSettings)
                         ShortcutCard(app.privacySettings)
+                        MapProviderCard(repo, app.privacySettings)
                         DataCard(repo, session::masterWrappedByRecovery)
                         if (app.privacySettings.folderSync) FolderSyncCard(app.folderSync, state.journal)
                     }
