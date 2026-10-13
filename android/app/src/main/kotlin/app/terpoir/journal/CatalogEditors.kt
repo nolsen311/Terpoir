@@ -65,6 +65,7 @@ fun ProductEditor(
     onDone: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val tracking = LocalTracking.current
     var original by remember { mutableStateOf<ProductData?>(null) }
     var loaded by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
@@ -165,13 +166,18 @@ fun ProductEditor(
                                 R.string.scan_no_text_engine
                             } else {
                                 val label = parseLabel(text)
-                                label.thcMilli?.let { thc = formatMilli(it) }
-                                label.thcUnit?.let { thcUnit = it }
-                                label.cbdMilli?.let { cbd = formatMilli(it) }
-                                label.cbdUnit?.let { cbdUnit = it }
-                                label.batch?.let { batch = it }
-                                label.packageDateDay?.let { packageDay = it }
-                                if (label.terpenes.isNotEmpty()) terpenes = label.terpenes
+                                // Nothing is read into a hidden data point ("What I track").
+                                if (tracking.shows(DataPoint.POTENCY)) {
+                                    label.thcMilli?.let { thc = formatMilli(it) }
+                                    label.thcUnit?.let { thcUnit = it }
+                                    label.cbdMilli?.let { cbd = formatMilli(it) }
+                                    label.cbdUnit?.let { cbdUnit = it }
+                                }
+                                if (tracking.shows(DataPoint.BATCH)) {
+                                    label.batch?.let { batch = it }
+                                    label.packageDateDay?.let { packageDay = it }
+                                }
+                                if (tracking.shows(DataPoint.TERPENES) && label.terpenes.isNotEmpty()) terpenes = label.terpenes
                                 for (tag in label.packageTags) {
                                     if (identifiers.none { it.code == tag }) identifiers = identifiers + IdentifierData(tag, "package_tag")
                                 }
@@ -245,38 +251,51 @@ fun ProductEditor(
         SectionTitle(stringResource(R.string.product_form))
         SingleChoiceChips(vocab.forms, form) { form = it }
 
-        SectionTitle(stringResource(R.string.product_brand))
-        val noBrand = stringResource(R.string.product_no_brand)
-        Dropdown(
-            label = stringResource(R.string.product_brand),
-            options = listOf<Pair<String?, String>>(null to noBrand) + brands.map { it.id to it.data.name },
-            selected = brand,
-            onSelect = { brand = it },
-        )
-        OutlinedButton(onClick = { newName = NewKind.BRAND }) { Text(stringResource(R.string.brand_new)) }
-
-        SectionTitle(stringResource(R.string.product_strains))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (strain in allStrains) {
-                val selected = strain.id in strains
-                FilterChip(
-                    selected = selected,
-                    onClick = { strains = if (selected) strains - strain.id else strains + strain.id },
-                    label = { Text(strain.data.name) },
-                )
-            }
+        // "What I track": hidden data points are left out here; their saved
+        // values are carried unchanged.
+        if (tracking.shows(DataPoint.BRAND)) {
+            SectionTitle(stringResource(R.string.product_brand))
+            val noBrand = stringResource(R.string.product_no_brand)
+            Dropdown(
+                label = stringResource(R.string.product_brand),
+                options = listOf<Pair<String?, String>>(null to noBrand) + brands.map { it.id to it.data.name },
+                selected = brand,
+                onSelect = { brand = it },
+            )
+            OutlinedButton(onClick = { newName = NewKind.BRAND }) { Text(stringResource(R.string.brand_new)) }
         }
-        OutlinedButton(onClick = { newName = NewKind.STRAIN }) { Text(stringResource(R.string.strain_new)) }
 
-        SectionTitle(stringResource(R.string.product_label))
-        LabelRow(stringResource(R.string.product_thc), thc, { thc = it }, vocab, thcUnit) { thcUnit = it }
-        LabelRow(stringResource(R.string.product_cbd), cbd, { cbd = it }, vocab, cbdUnit) { cbdUnit = it }
-        if (terpenes.isNotEmpty()) {
+        if (tracking.shows(DataPoint.STRAIN)) {
+            SectionTitle(stringResource(R.string.product_strains))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (strain in allStrains) {
+                    val selected = strain.id in strains
+                    FilterChip(
+                        selected = selected,
+                        onClick = { strains = if (selected) strains - strain.id else strains + strain.id },
+                        label = { Text(strain.data.name) },
+                    )
+                }
+            }
+            OutlinedButton(onClick = { newName = NewKind.STRAIN }) { Text(stringResource(R.string.strain_new)) }
+        }
+
+        val showPotency = tracking.shows(DataPoint.POTENCY)
+        val showTerpenes = tracking.shows(DataPoint.TERPENES) && terpenes.isNotEmpty()
+        val showBatch = tracking.shows(DataPoint.BATCH)
+        if (showPotency || showTerpenes || showBatch) SectionTitle(stringResource(R.string.product_label))
+        if (showPotency) {
+            LabelRow(stringResource(R.string.product_thc), thc, { thc = it }, vocab, thcUnit) { thcUnit = it }
+            LabelRow(stringResource(R.string.product_cbd), cbd, { cbd = it }, vocab, cbdUnit) { cbdUnit = it }
+        }
+        if (showTerpenes) {
             Text(stringResource(R.string.product_terpenes), style = MaterialTheme.typography.labelLarge)
             TerpeneList(terpenes) { t -> terpenes = terpenes - t }
         }
-        OutlinedTextField(batch, { batch = it }, label = { Text(stringResource(R.string.product_batch)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        DayField(stringResource(R.string.product_package_date), packageDay) { packageDay = it }
+        if (showBatch) {
+            OutlinedTextField(batch, { batch = it }, label = { Text(stringResource(R.string.product_batch)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            DayField(stringResource(R.string.product_package_date), packageDay) { packageDay = it }
+        }
         if (invalid) Text(stringResource(R.string.error_amount), color = MaterialTheme.colorScheme.error)
 
         if (identifiers.isNotEmpty()) {
@@ -286,7 +305,7 @@ fun ProductEditor(
 
         // Where it is bought: receipts add their shop; the user can add or
         // remove one at any time.
-        if (reUpSpots.isNotEmpty()) {
+        if (reUpSpots.isNotEmpty() && tracking.shows(DataPoint.PRICE_AND_SHOP)) {
             SectionTitle(stringResource(R.string.product_shops))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (spot in reUpSpots) {
@@ -300,12 +319,13 @@ fun ProductEditor(
             }
         }
 
-        if (purchases.isNotEmpty()) {
+        if (purchases.isNotEmpty() && tracking.shows(DataPoint.PURCHASES)) {
             SectionTitle(stringResource(R.string.product_purchases))
+            val showPrice = tracking.shows(DataPoint.PRICE_AND_SHOP)
             for (purchase in purchases) {
                 val line = purchase.data.lines.first { it.product == id }
-                val price = line.priceMinorUnits?.let { formatPrice(it, line.priceCurrency) }
-                val where = purchase.data.spot?.let { spotNames[it] }
+                val price = line.priceMinorUnits?.takeIf { showPrice }?.let { formatPrice(it, line.priceCurrency) }
+                val where = purchase.data.spot?.takeIf { showPrice }?.let { spotNames[it] }
                 Text(
                     listOfNotNull(formatWhen(purchase.data.`when`.unixMs, purchase.data.`when`.utcOffsetMin), where, price)
                         .joinToString(" · "),

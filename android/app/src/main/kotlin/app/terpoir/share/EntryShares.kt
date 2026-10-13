@@ -22,7 +22,10 @@ import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.core.ProductData
 import app.terpoir.core.SessionData
+import app.terpoir.journal.DataPoint
 import app.terpoir.journal.JournalRepository
+import app.terpoir.journal.LocalTracking
+import app.terpoir.journal.Tracking
 import app.terpoir.journal.formatMilli
 import app.terpoir.journal.formatWhen
 import app.terpoir.journal.label
@@ -45,6 +48,20 @@ private val SESSION_OPTIONS = listOf(
     ShareOption("spot", R.string.share_field_spot, false),
     ShareOption("notes", R.string.share_field_notes, false),
 )
+
+/** Share options that show a data point the user can hide ("What I track"). */
+private val OPTION_DATA_POINTS = mapOf(
+    "strain" to DataPoint.STRAIN,
+    "intention" to DataPoint.INTENTION,
+    "timeline" to DataPoint.TIMELINE,
+    "cannabinoids" to DataPoint.POTENCY,
+    "terpenes" to DataPoint.TERPENES,
+    "batch" to DataPoint.BATCH,
+)
+
+/** [options] without those whose data point is hidden. */
+private fun List<ShareOption>.tracked(tracking: Tracking): List<ShareOption> =
+    filter { option -> OPTION_DATA_POINTS[option.id]?.let(tracking::shows) ?: true }
 
 /** Offered only while the targeted-symptoms section is on, and off by default. */
 private val SYMPTOMS_OPTION = ShareOption("symptoms", R.string.share_field_symptoms, false)
@@ -81,6 +98,7 @@ private class SessionSource(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SessionShare(repo: JournalRepository, id: String, symptomsOn: Boolean, onClose: () -> Unit) {
+    val tracking = LocalTracking.current
     var source by remember { mutableStateOf<SessionSource?>(null) }
     var date by rememberSaveable { mutableStateOf(DateShare.NONE) }
     LaunchedEffect(id) {
@@ -100,7 +118,7 @@ fun SessionShare(repo: JournalRepository, id: String, symptomsOn: Boolean, onClo
     }
     val loaded = source ?: return
     ShareScreen(
-        options = if (symptomsOn && loaded.session.symptoms.isNotEmpty()) SESSION_OPTIONS + SYMPTOMS_OPTION else SESSION_OPTIONS,
+        options = (if (symptomsOn && loaded.session.symptoms.isNotEmpty()) SESSION_OPTIONS + SYMPTOMS_OPTION else SESSION_OPTIONS).tracked(tracking),
         onClose = onClose,
         extra = {
             Text(stringResource(R.string.share_field_date), style = MaterialTheme.typography.labelLarge)
@@ -110,11 +128,11 @@ fun SessionShare(repo: JournalRepository, id: String, symptomsOn: Boolean, onClo
                 }
             }
         },
-    ) { chosen, mark -> sessionShare(loaded, chosen, date, mark) }
+    ) { chosen, mark -> sessionShare(loaded, chosen, date, mark, showDose = tracking.shows(DataPoint.DOSE)) }
 }
 
 @Composable
-private fun sessionShare(source: SessionSource, chosen: Set<String>, date: DateShare, mark: String?): ShareText {
+private fun sessionShare(source: SessionSource, chosen: Set<String>, date: DateShare, mark: String?, showDose: Boolean): ShareText {
     val s = source.session
     val lines = buildList {
         when (date) {
@@ -130,7 +148,7 @@ private fun sessionShare(source: SessionSource, chosen: Set<String>, date: DateS
         }
         if ("method" in chosen && s.lines.isNotEmpty()) {
             val how = s.lines.map { line ->
-                val dose = line.doseMilli?.let { "${formatMilli(it)} ${line.doseUnit?.let { u -> label(u) }.orEmpty()}".trim() }
+                val dose = line.doseMilli?.takeIf { showDose }?.let { "${formatMilli(it)} ${line.doseUnit?.let { u -> label(u) }.orEmpty()}".trim() }
                 listOfNotNull(label(line.method), dose).joinToString(", ")
             }
             add(ShareLine(stringResource(R.string.share_field_method), how.joinToString("; ")))
@@ -184,10 +202,11 @@ private class ProductSource(val product: ProductData, val title: String, val str
 /** Shares a saved product. */
 @Composable
 fun ProductShare(repo: JournalRepository, id: String, onClose: () -> Unit) {
+    val tracking = LocalTracking.current
     var source by remember { mutableStateOf<ProductSource?>(null) }
     LaunchedEffect(id) {
         val product = repo.product(id) ?: return@LaunchedEffect onClose()
-        val brand = product.brand?.let { repo.brand(it)?.name }
+        val brand = product.brand?.takeIf { tracking.shows(DataPoint.BRAND) }?.let { repo.brand(it)?.name }
         source = ProductSource(
             product = product,
             title = productLabel(product.name, brand),
@@ -196,7 +215,7 @@ fun ProductShare(repo: JournalRepository, id: String, onClose: () -> Unit) {
         )
     }
     val loaded = source ?: return
-    ShareScreen(options = PRODUCT_OPTIONS, onClose = onClose) { chosen, mark ->
+    ShareScreen(options = PRODUCT_OPTIONS.tracked(tracking), onClose = onClose) { chosen, mark ->
         val p = loaded.product
         val lines = buildList {
             if ("strain" in chosen && loaded.strains.isNotEmpty()) {

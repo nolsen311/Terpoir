@@ -111,6 +111,7 @@ fun SessionEditor(
     }
     LaunchedEffect(id, openNote) { if (id != null && openNote == null) notes = repo.sessionSnippets(id) }
     val current = draft ?: return
+    val tracking = LocalTracking.current
     if (sharing && id != null) {
         SessionShare(repo, id, settings.targetedSymptoms) { sharing = false }
         return
@@ -158,11 +159,18 @@ fun SessionEditor(
             draft = current.copy(lines = current.lines + LineDraft(method = method, doseUnit = doseUnitsForMethod(method).firstOrNull()))
         }) { Text(stringResource(R.string.session_add_product)) }
 
-        SectionTitle(stringResource(R.string.session_intention))
-        SingleChoiceChips(vocab.intentions, current.intention) { draft = current.copy(intention = it) }
-        SingleChoiceChips(vocab.social, current.social) { draft = current.copy(social = it) }
-        Text(stringResource(R.string.session_mood_before), style = MaterialTheme.typography.labelLarge)
-        ScaleRow(current.moodBefore, { draft = current.copy(moodBefore = it) }, stringResource(R.string.scale_low), stringResource(R.string.scale_high))
+        // "What I track": hidden data points are left out here, and the
+        // draft carries their saved values unchanged.
+        val showIntention = tracking.shows(DataPoint.INTENTION)
+        val showSocial = tracking.shows(DataPoint.SOCIAL)
+        val showMood = tracking.shows(DataPoint.MOOD)
+        if (showIntention || showSocial || showMood) SectionTitle(stringResource(R.string.session_intention))
+        if (showIntention) SingleChoiceChips(vocab.intentions, current.intention) { draft = current.copy(intention = it) }
+        if (showSocial) SingleChoiceChips(vocab.social, current.social) { draft = current.copy(social = it) }
+        if (showMood) {
+            Text(stringResource(R.string.session_mood_before), style = MaterialTheme.typography.labelLarge)
+            ScaleRow(current.moodBefore, { draft = current.copy(moodBefore = it) }, stringResource(R.string.scale_low), stringResource(R.string.scale_high))
+        }
 
         SectionTitle(stringResource(R.string.session_effects))
         EffectsEditor(
@@ -198,16 +206,20 @@ fun SessionEditor(
             )
         }
 
-        SectionTitle(stringResource(R.string.session_timeline))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MinutesField(stringResource(R.string.session_onset), current.onset, Modifier.weight(1f)) { draft = current.copy(onset = it) }
-            MinutesField(stringResource(R.string.session_peak), current.peak, Modifier.weight(1f)) { draft = current.copy(peak = it) }
-            MinutesField(stringResource(R.string.session_duration), current.duration, Modifier.weight(1f)) { draft = current.copy(duration = it) }
+        if (tracking.shows(DataPoint.TIMELINE)) {
+            SectionTitle(stringResource(R.string.session_timeline))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MinutesField(stringResource(R.string.session_onset), current.onset, Modifier.weight(1f)) { draft = current.copy(onset = it) }
+                MinutesField(stringResource(R.string.session_peak), current.peak, Modifier.weight(1f)) { draft = current.copy(peak = it) }
+                MinutesField(stringResource(R.string.session_duration), current.duration, Modifier.weight(1f)) { draft = current.copy(duration = it) }
+            }
         }
 
         SectionTitle(stringResource(R.string.session_outcome))
-        Text(stringResource(R.string.session_mood_after), style = MaterialTheme.typography.labelLarge)
-        ScaleRow(current.moodAfter, { draft = current.copy(moodAfter = it) }, stringResource(R.string.scale_low), stringResource(R.string.scale_high))
+        if (showMood) {
+            Text(stringResource(R.string.session_mood_after), style = MaterialTheme.typography.labelLarge)
+            ScaleRow(current.moodAfter, { draft = current.copy(moodAfter = it) }, stringResource(R.string.scale_low), stringResource(R.string.scale_high))
+        }
         Text(stringResource(R.string.session_rating), style = MaterialTheme.typography.labelLarge)
         ScaleRow(current.rating, { draft = current.copy(rating = it) }, stringResource(R.string.rating_low), stringResource(R.string.rating_high))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -329,8 +341,9 @@ private fun LineEditor(
             )
             // "From:" only when the product is bought at more than one shop;
             // with one, insights already know where it came from.
+            val tracking = LocalTracking.current
             val shops = products.firstOrNull { it.id == line.product }?.data?.shops.orEmpty().filter { it in spotNames }
-            if (shops.size > 1) {
+            if (shops.size > 1 && tracking.shows(DataPoint.PRICE_AND_SHOP)) {
                 Text(stringResource(R.string.session_line_from), style = MaterialTheme.typography.labelLarge)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     for (shop in shops) {
@@ -350,7 +363,7 @@ private fun LineEditor(
                 onSelect = { method -> onChange(line.copy(method = method, doseUnit = unitFor(method, line.doseUnit))) },
             )
             val units = doseUnitsForMethod(line.method)
-            if (units.isNotEmpty()) {
+            if (units.isNotEmpty() && tracking.shows(DataPoint.DOSE)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = line.dose,

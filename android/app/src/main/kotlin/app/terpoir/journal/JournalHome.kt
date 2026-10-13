@@ -38,6 +38,7 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -98,6 +99,8 @@ private sealed interface Screen {
     data class CheckIn(val session: String) : Screen
 
     data object Insights : Screen
+
+    data object WhatITrack : Screen
 }
 
 private enum class Tab { JOURNAL, PRODUCTS, PRIVACY }
@@ -136,10 +139,15 @@ fun JournalHome(
         if (stack.size > 1) stack.removeAt(stack.lastIndex)
         revision++
     }
+    // "What I track", for every screen below (LocalTracking); reloaded when
+    // an editor or the What I track screen closes.
+    var tracking by remember { mutableStateOf(Tracking.EVERYTHING) }
+    LaunchedEffect(revision) { tracking = repo.tracking() }
     // Opened from a "Quick log?" purchase prompt: receipt scan first.
     LaunchedEffect(quickLog) {
         if (quickLog) {
-            stack.add(Screen.Receipt)
+            // Purchases hidden: there is nothing to log.
+            if (repo.tracking().shows(DataPoint.PURCHASES)) stack.add(Screen.Receipt)
             onQuickLogOpened()
         }
     }
@@ -161,66 +169,70 @@ fun JournalHome(
     // Spots may have changed: "Notify me" re-registers its geofences.
     LaunchedEffect(revision) { if (revision > 0) onEdited() }
 
-    when (val screen = stack.last()) {
-        is Screen.Session -> SessionEditor(repo, vocab, settings, checkIns, screen.id, pop, spotForNew = screen.spot)
-        is Screen.CheckIn -> CheckInScreen(repo, vocab, screen.session, pop)
-        is Screen.Spot -> SpotEditor(repo, screen.id, mapToggle, settings, settings.purchasePrompts, pop)
-        is Screen.Product -> ProductEditor(
-            repo,
-            vocab,
-            scan,
-            screen.id,
-            onOpenProduct = { other -> stack[stack.lastIndex] = Screen.Product(other) },
-            onDone = pop,
-        )
-        Screen.Receipt -> ReceiptScreen(repo, scan, pop)
-        Screen.Insights -> InsightsScreen(repo, onOpenSession = { stack.add(Screen.Session(it)) }, onClose = pop)
-        is Screen.Note -> NoteScreen(repo, settings, vocab, screen.id, pop)
-        is Screen.Strain -> StrainEditor(repo, vocab, screen.id, pop)
-        is Screen.Brand -> BrandEditor(repo, screen.id, pop)
-        Screen.Home -> Scaffold(
-            bottomBar = {
-                NavigationBar {
-                    NavItem(tab == Tab.JOURNAL, R.drawable.ic_journal, R.string.tab_journal) { tab = Tab.JOURNAL }
-                    NavItem(tab == Tab.PRODUCTS, R.drawable.ic_products, R.string.tab_products) { tab = Tab.PRODUCTS }
-                    NavItem(tab == Tab.PRIVACY, R.drawable.ic_privacy, R.string.tab_privacy) { tab = Tab.PRIVACY }
-                }
-            },
-            floatingActionButton = {
-                if (tab == Tab.JOURNAL) {
-                    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        SmallFloatingActionButton(onClick = { stack.add(Screen.Session(null)) }) {
-                            Icon(painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.session_new))
-                        }
-                        // The new-note button: voice first unless the user chose typing.
-                        ExtendedFloatingActionButton(
-                            onClick = { stack.add(Screen.Note(null)) },
-                            icon = { Icon(painterResource(R.drawable.ic_mic), contentDescription = null) },
-                            text = { Text(stringResource(R.string.note_new)) },
-                        )
+    CompositionLocalProvider(LocalTracking provides tracking) {
+        when (val screen = stack.last()) {
+            is Screen.Session -> SessionEditor(repo, vocab, settings, checkIns, screen.id, pop, spotForNew = screen.spot)
+            is Screen.CheckIn -> CheckInScreen(repo, vocab, screen.session, pop)
+            is Screen.Spot -> SpotEditor(repo, screen.id, mapToggle, settings, settings.purchasePrompts, pop)
+            is Screen.Product -> ProductEditor(
+                repo,
+                vocab,
+                scan,
+                screen.id,
+                onOpenProduct = { other -> stack[stack.lastIndex] = Screen.Product(other) },
+                onDone = pop,
+            )
+            Screen.Receipt -> ReceiptScreen(repo, scan, pop)
+            Screen.Insights -> InsightsScreen(repo, onOpenSession = { stack.add(Screen.Session(it)) }, onClose = pop)
+            Screen.WhatITrack -> WhatITrackScreen(repo, onChanged = { revision++ }, onClose = pop)
+            is Screen.Note -> NoteScreen(repo, settings, vocab, screen.id, pop)
+            is Screen.Strain -> StrainEditor(repo, vocab, screen.id, pop)
+            is Screen.Brand -> BrandEditor(repo, screen.id, pop)
+            Screen.Home -> Scaffold(
+                bottomBar = {
+                    NavigationBar {
+                        NavItem(tab == Tab.JOURNAL, R.drawable.ic_journal, R.string.tab_journal) { tab = Tab.JOURNAL }
+                        NavItem(tab == Tab.PRODUCTS, R.drawable.ic_products, R.string.tab_products) { tab = Tab.PRODUCTS }
+                        NavItem(tab == Tab.PRIVACY, R.drawable.ic_privacy, R.string.tab_privacy) { tab = Tab.PRIVACY }
                     }
+                },
+                floatingActionButton = {
+                    if (tab == Tab.JOURNAL) {
+                        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            SmallFloatingActionButton(onClick = { stack.add(Screen.Session(null)) }) {
+                                Icon(painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.session_new))
+                            }
+                            // The new-note button: voice first unless the user chose typing.
+                            ExtendedFloatingActionButton(
+                                onClick = { stack.add(Screen.Note(null)) },
+                                icon = { Icon(painterResource(R.drawable.ic_mic), contentDescription = null) },
+                                text = { Text(stringResource(R.string.note_new)) },
+                            )
+                        }
+                    }
+                },
+            ) { padding ->
+                when (tab) {
+                    Tab.JOURNAL -> JournalList(
+                        repo,
+                        settings,
+                        alerts,
+                        checkNearby,
+                        onEdited,
+                        revision,
+                        padding,
+                        onLock,
+                        onOpenNote = { stack.add(Screen.Note(it)) },
+                        onSessionAt = { stack.add(Screen.Session(null, spot = it)) },
+                        onInsights = { stack.add(Screen.Insights) },
+                        onWhatITrack = { stack.add(Screen.WhatITrack) },
+                        onPurchase = { stack.add(Screen.Receipt) },
+                    ) {
+                        stack.add(Screen.Session(it))
+                    }
+                    Tab.PRODUCTS -> CatalogLists(repo, vocab, revision, padding) { stack.add(it) }
+                    Tab.PRIVACY -> Column(Modifier.padding(padding)) { privacyCenter { tab = Tab.JOURNAL } }
                 }
-            },
-        ) { padding ->
-            when (tab) {
-                Tab.JOURNAL -> JournalList(
-                    repo,
-                    settings,
-                    alerts,
-                    checkNearby,
-                    onEdited,
-                    revision,
-                    padding,
-                    onLock,
-                    onOpenNote = { stack.add(Screen.Note(it)) },
-                    onSessionAt = { stack.add(Screen.Session(null, spot = it)) },
-                    onInsights = { stack.add(Screen.Insights) },
-                    onPurchase = { stack.add(Screen.Receipt) },
-                ) {
-                    stack.add(Screen.Session(it))
-                }
-                Tab.PRODUCTS -> CatalogLists(repo, vocab, revision, padding) { stack.add(it) }
-                Tab.PRIVACY -> Column(Modifier.padding(padding)) { privacyCenter { tab = Tab.JOURNAL } }
             }
         }
     }
@@ -249,6 +261,7 @@ private fun JournalList(
     onOpenNote: (String) -> Unit,
     onSessionAt: (String) -> Unit,
     onInsights: () -> Unit,
+    onWhatITrack: () -> Unit,
     onPurchase: () -> Unit,
     onOpen: (String) -> Unit,
 ) {
@@ -256,6 +269,8 @@ private fun JournalList(
     var notes by remember { mutableStateOf<List<Entry<SnippetData>>>(emptyList()) }
     var productNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var effectNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    // Purchases hidden ("What I track"): no "log a purchase" here.
+    val purchases = LocalTracking.current.shows(DataPoint.PURCHASES)
     var tagNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     // Bumped when a note added while locked is kept or discarded.
     var reviewed by remember { mutableIntStateOf(0) }
@@ -277,6 +292,9 @@ private fun JournalList(
         item {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.journal_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                IconButton(onClick = onWhatITrack) {
+                    Icon(painterResource(R.drawable.ic_tune), contentDescription = stringResource(R.string.track_title))
+                }
                 IconButton(onClick = onLock) {
                     Icon(painterResource(R.drawable.ic_lock), contentDescription = stringResource(R.string.lock_now))
                 }
@@ -296,7 +314,7 @@ private fun JournalList(
         // Purchase prompts use the same geofencing, so they need the same permissions.
         if (settings.notifyNearSpots || settings.purchasePrompts) item { NotifySetupCard(alerts, onPermissions) }
         // "Show me", or the tap on a "Notify me" alert: which spot is near.
-        if (settings.showNearbySpots || checkNearby) item { NearbyBanner(repo, onSessionAt, onPurchase) }
+        if (settings.showNearbySpots || checkNearby) item { NearbyBanner(repo, onSessionAt, onPurchase.takeIf { purchases }) }
         // Insights are computed only when opened, and only while turned on.
         if (settings.insights) {
             item {
@@ -449,6 +467,16 @@ private fun CatalogLists(
     onOpen: (Screen) -> Unit,
 ) {
     var catalog by remember { mutableStateOf(Catalog.PRODUCTS) }
+    // "What I track": hidden strains or brands lose their lists.
+    val tracking = LocalTracking.current
+    val catalogs = Catalog.entries.filter {
+        when (it) {
+            Catalog.STRAINS -> tracking.shows(DataPoint.STRAIN)
+            Catalog.BRANDS -> tracking.shows(DataPoint.BRAND)
+            else -> true
+        }
+    }
+    if (catalog !in catalogs) catalog = Catalog.PRODUCTS
     var products by remember { mutableStateOf<List<Entry<ProductData>>>(emptyList()) }
     var strains by remember { mutableStateOf<List<Entry<StrainData>>>(emptyList()) }
     var brands by remember { mutableStateOf<List<Entry<BrandData>>>(emptyList()) }
@@ -459,7 +487,8 @@ private fun CatalogLists(
         brands = repo.brands()
         spots = repo.spots()
     }
-    val brandNames = brands.associate { it.id to it.data.name }
+    // A product shows without its brand when brands are hidden.
+    val brandNames = if (tracking.shows(DataPoint.BRAND)) brands.associate { it.id to it.data.name } else emptyMap()
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(padding),
         contentPadding = PaddingValues(16.dp),
@@ -467,11 +496,11 @@ private fun CatalogLists(
     ) {
         item {
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                Catalog.entries.forEachIndexed { index, c ->
+                catalogs.forEachIndexed { index, c ->
                     SegmentedButton(
                         selected = catalog == c,
                         onClick = { catalog = c },
-                        shape = SegmentedButtonDefaults.itemShape(index, Catalog.entries.size),
+                        shape = SegmentedButtonDefaults.itemShape(index, catalogs.size),
                         // No checkmark: the fill already marks the selection, and
                         // the icon squeezed "Products" onto two lines.
                         icon = {},
@@ -518,7 +547,7 @@ private fun CatalogLists(
                     ),
                 )
             }
-            if (catalog == Catalog.PRODUCTS) {
+            if (catalog == Catalog.PRODUCTS && tracking.shows(DataPoint.PURCHASES)) {
                 androidx.compose.material3.OutlinedButton(onClick = { onOpen(Screen.Receipt) }) {
                     Text(stringResource(R.string.scan_receipt))
                 }
@@ -553,7 +582,7 @@ private fun CatalogLists(
  * the fix is not kept.
  */
 @Composable
-private fun NearbyBanner(repo: JournalRepository, onSessionAt: (String) -> Unit, onPurchase: () -> Unit) {
+private fun NearbyBanner(repo: JournalRepository, onSessionAt: (String) -> Unit, onPurchase: (() -> Unit)?) {
     val context = LocalContext.current
     var access by remember { mutableStateOf(CurrentLocation.access(context)) }
     var near by remember { mutableStateOf<List<NearbySpot>>(emptyList()) }
@@ -587,7 +616,7 @@ private fun NearbyBanner(repo: JournalRepository, onSessionAt: (String) -> Unit,
                 Text(stringResource(R.string.show_nearby_log_here))
             }
             // "Show me" stands in for purchase prompts at a Re-up Spot.
-            if (spot.reUp) {
+            if (spot.reUp && onPurchase != null) {
                 androidx.compose.material3.OutlinedButton(onClick = onPurchase) {
                     Text(stringResource(R.string.show_nearby_log_purchase))
                 }
