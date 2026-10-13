@@ -1,13 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception -->
 <!-- Copyright (C) 2026 The Terpoir Authors -->
-<!-- Placeholder: a neutral abstract leaf-like shape; no drug imagery. -->
+<!-- An open journal with bubbles rising from its spine: the notebook, and
+     terpenes (liquid at room temperature). No drug imagery. The spine is a
+     gap, not a line, so the one-colour themed icon keeps both pages.
+     Everything sits inside the 66dp safe circle of the 108dp canvas. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Pages -->
     <path
         android:fillColor="#FFE8E2D0"
-        android:pathData="M54,30 C66,40 70,56 54,78 C38,56 42,40 54,30 Z" />
+        android:pathData="M53,58 C47,54 40,53 32,54 L32,74 C40,73 47,74 53,78 Z" />
+    <path
+        android:fillColor="#FFE8E2D0"
+        android:pathData="M55,58 C61,54 68,53 76,54 L76,74 C68,73 61,74 55,78 Z" />
+    <!-- Bubbles -->
+    <path
+        android:fillColor="#FFD9A441"
+        android:pathData="M50.8,49 A3.2,3.2 0 1,0 57.2,49 A3.2,3.2 0 1,0 50.8,49 Z M46.8,40 A2.2,2.2 0 1,0 51.2,40 A2.2,2.2 0 1,0 46.8,40 Z M55.4,33 A1.6,1.6 0 1,0 58.6,33 A1.6,1.6 0 1,0 55.4,33 Z" />
 </vector>

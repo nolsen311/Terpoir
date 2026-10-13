@@ -497,6 +497,7 @@ Making a new note should take one tap from outside the app. Every entry point op
 - **Plan:** submit iOS as an individual with review notes (private personal journal; sells, delivers, and promotes nothing; stores no user data). If rejected under 5.1.1(ix), decide then between forming an LLC (assign trademark and copyright to it; replace the terpoir.app null MX with mail forwarding for the organization email) or remaining Android-only. **iOS is a stretch goal, not a commitment;** Android-only is an acceptable outcome.
 - **1.4.3:** no encouraging consumption. The app records and reflects; playful copy may joke about sharing the app, never "consume more."
 - **2.3.8:** store metadata (icon, screenshots, previews) must be all-ages appropriate even though the app is 18+. No explicit drug imagery; consistent with discreet branding.
+- **App icon (maintainer, 2026-10-13):** an open journal with amber bubbles rising from its spine: the notebook, and terpenes, which are mostly liquid at room temperature. It replaces the placeholder leaf, which read as anatomical. Colours: background `#2E4A3B`, pages `#E8E2D0`, bubbles `#D9A441`. The spine is a gap, not a line, so the one-colour themed icon keeps both pages. The Play icon and feature graphic are rendered from the same shapes (`android/release/store/render.py`).
 - **2.3.6:** honest age-rating answers (see Age gating).
 
 ### Google Play
