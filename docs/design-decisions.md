@@ -550,7 +550,15 @@ Each journal entry records one consumption session, not a product review. Produc
   - **Delete** (`Journal::delete_data_point`): clears the data point's fields on every record and, for brand, strain and purchases, deletes those records too (crypto-erasure); sessions' purchase references and shops go with purchases. Spots stay, since they are places, not shops. The removals sync like edits.
   - **FFI:** `trackable_data_points`, `Journal::hidden_data_points`, `set_data_point_tracked` and `delete_data_point`.
   - **Insights (in the core):** no terpene features with terpenes hidden, no strain-type features with strains hidden, no dose confounder with dose hidden. Shop insights are empty with prices and shops hidden; within them, brand and strain effects need brands and strains, freshness needs package dates, and product labels drop the brand when brands are hidden.
-- **Android: not yet built** (the screen, the editors, scans and share cards).
+- **Android (implemented 2026-10-13):**
+  - **Where:** the app has no separate Settings screen yet, so "What I track" opens from a sliders button in the journal's header (beside "Lock now"), outside the Privacy Center as decided. One switch per data point; turning one off asks "Keep, hidden" or "Delete" (with "can't be undone"). Prices and shops show as off while purchases are off.
+  - **Everywhere else** through one `LocalTracking` value that JournalHome loads from the core and refreshes when a screen closes:
+    - the session editor leaves out intention, solo or with others, mood, timeline, dose and the line's shop;
+    - the product editor leaves out brand, strains, THC/CBD, terpenes, batch and package date, shops and the purchase list (prices and shops within it), and a label scan fills none of those;
+    - receipts record no prices, shop or currency with prices and shops hidden, and with purchases hidden there is no receipt scan, "Quick log?" opens nothing, and "Show me" offers no "log a purchase";
+    - the Products tab drops the Strains or Brands list, and product names drop the brand, when those are hidden;
+    - share cards don't offer strain, intention, timeline, THC/CBD, terpenes or batch when hidden, a session's method leaves out the dose, and a product's title drops the brand.
+  - Editors keep hidden values in their drafts, so saving never clears them.
 
 ### Structural rules
 - **Per-record keys for every record type**, not just sessions (spots and products are sensitive too). Deleting a session leaves its products; deleting a spot detaches it from sessions.

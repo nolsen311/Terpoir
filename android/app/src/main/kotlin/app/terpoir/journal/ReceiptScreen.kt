@@ -126,6 +126,9 @@ private enum class Phase { CAMERA, READING, REVIEW }
 @Composable
 fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Unit) {
     val scope = rememberCoroutineScope()
+    // "What I track": with prices and shops hidden, a receipt records what
+    // was bought and when, nothing more.
+    val showPrice = LocalTracking.current.shows(DataPoint.PRICE_AND_SHOP)
     var phase by remember { mutableStateOf(Phase.CAMERA) }
     var shopText by remember { mutableStateOf("") }
     var shop by remember { mutableStateOf<ShopChoice>(ShopChoice.None) }
@@ -146,6 +149,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
     suspend fun matchProduct(name: String) = repo.findProducts(name, null, emptyList()).firstOrNull()?.id
 
     suspend fun useAsShop(row: Int?) {
+        if (!showPrice) return
         shopRow = row
         shopText = row?.let { rows[it].text }.orEmpty()
         shop = when {
@@ -162,7 +166,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
             row == shopRow -> useAsShop(null)
             else -> {
                 val line = parseReceiptLine(rows[row].text)
-                val price = line.priceMinor?.let { formatMilli(it * 10) }.orEmpty()
+                val price = line.priceMinor?.takeIf { showPrice }?.let { formatMilli(it * 10) }.orEmpty()
                 val draft = ItemDraft(line.name, price, line.name.takeIf { it.isNotBlank() }?.let { matchProduct(it) }, listOf(row))
                 // In printed order; typed items stay at the end.
                 val at = items.indexOfFirst { it.rows.isEmpty() || it.rows.first() > row }
@@ -196,7 +200,8 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                             receipt.dateDay?.let { day = it }
                             useAsShop(receipt.shopLine?.toInt())
                             for (item in receipt.items) {
-                                items += ItemDraft(item.name, formatMilli(item.priceMinor * 10), matchProduct(item.name), item.lines.map { it.toInt() })
+                                val price = if (showPrice) formatMilli(item.priceMinor * 10) else ""
+                                items += ItemDraft(item.name, price, matchProduct(item.name), item.lines.map { it.toInt() })
                             }
                         }
                         phase = Phase.REVIEW
@@ -215,7 +220,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                 val code = currency.trim().uppercase()
                 val chosen = items.filter { it.include && it.name.isNotBlank() }
                 val prices = chosen.map { if (it.price.isBlank()) null else parsePrice(it.price, code) }
-                if (code.length != 3 || chosen.zip(prices).any { (item, price) -> item.price.isNotBlank() && price == null }) {
+                if ((showPrice && code.length != 3) || chosen.zip(prices).any { (item, price) -> item.price.isNotBlank() && price == null }) {
                     invalid = true
                     return@EditorScaffold
                 }
@@ -255,28 +260,34 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                     shopRow = shopRow,
                     onTap = { scope.launch { toggleItem(it) } },
                     onHold = { row ->
-                        scope.launch {
-                            items.removeAll { row in it.rows }
-                            useAsShop(row)
+                        if (showPrice) {
+                            scope.launch {
+                                items.removeAll { row in it.rows }
+                                useAsShop(row)
+                            }
                         }
                     },
                 )
             }
-            SectionTitle(stringResource(R.string.receipt_shop))
-            val newSpot = stringResource(R.string.receipt_new_spot, shopText.ifBlank { "…" })
-            Dropdown(
-                label = stringResource(R.string.receipt_shop),
-                options = listOf<Pair<ShopChoice, String>>(ShopChoice.None to stringResource(R.string.receipt_no_shop)) +
-                    spots.map { ShopChoice.Existing(it.id) to it.data.name } +
-                    (ShopChoice.New to newSpot),
-                selected = shop,
-                onSelect = { shop = it },
-            )
-            if (shop == ShopChoice.New) {
-                OutlinedTextField(shopText, { shopText = it }, label = { Text(stringResource(R.string.receipt_shop_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            if (showPrice) {
+                SectionTitle(stringResource(R.string.receipt_shop))
+                val newSpot = stringResource(R.string.receipt_new_spot, shopText.ifBlank { "…" })
+                Dropdown(
+                    label = stringResource(R.string.receipt_shop),
+                    options = listOf<Pair<ShopChoice, String>>(ShopChoice.None to stringResource(R.string.receipt_no_shop)) +
+                        spots.map { ShopChoice.Existing(it.id) to it.data.name } +
+                        (ShopChoice.New to newSpot),
+                    selected = shop,
+                    onSelect = { shop = it },
+                )
+                if (shop == ShopChoice.New) {
+                    OutlinedTextField(shopText, { shopText = it }, label = { Text(stringResource(R.string.receipt_shop_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                }
             }
             DayField(stringResource(R.string.receipt_date), day) { day = it }
-            OutlinedTextField(currency, { currency = it.take(3) }, label = { Text(stringResource(R.string.receipt_currency)) }, singleLine = true)
+            if (showPrice) {
+                OutlinedTextField(currency, { currency = it.take(3) }, label = { Text(stringResource(R.string.receipt_currency)) }, singleLine = true)
+            }
 
             SectionTitle(stringResource(R.string.receipt_items))
             if (items.isEmpty()) Text(stringResource(R.string.receipt_no_items))
@@ -288,13 +299,15 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                             Checkbox(checked = item.include, onCheckedChange = { item.include = it })
                             OutlinedTextField(item.name, { item.name = it }, label = { Text(stringResource(R.string.receipt_item)) }, singleLine = true, modifier = Modifier.weight(1f))
                         }
-                        OutlinedTextField(
-                            item.price,
-                            { item.price = it },
-                            label = { Text(stringResource(R.string.receipt_price)) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                        )
+                        if (showPrice) {
+                            OutlinedTextField(
+                                item.price,
+                                { item.price = it },
+                                label = { Text(stringResource(R.string.receipt_price)) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true,
+                            )
+                        }
                         Dropdown(
                             label = stringResource(R.string.receipt_product),
                             options = listOf<Pair<String?, String>>(null to newProduct) + products.map { it.id to (productLabels[it.id] ?: it.data.name) }.sortedBy { it.second.lowercase() },

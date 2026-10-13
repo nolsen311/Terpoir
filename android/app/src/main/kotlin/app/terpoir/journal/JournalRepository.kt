@@ -41,7 +41,8 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
 
     /** Each product's display label (brand, then name; see [productLabel]), by ID. */
     suspend fun productLabels(): Map<String, String> {
-        val brands = brands().associate { it.id to it.data.name }
+        // A product shows without its brand when brands are hidden ("What I track").
+        val brands = if (tracking().shows(DataPoint.BRAND)) brands().associate { it.id to it.data.name } else emptyMap()
         return products().associate { it.id to productLabel(it.data.name, it.data.brand?.let(brands::get)) }
     }
 
@@ -80,6 +81,15 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
     suspend fun suggestTags(text: String): List<TagSuggestion> = io { journal.suggestTags(text) }
 
     suspend fun saveSnippet(id: String?, data: SnippetData): String = io { journal.saveSnippet(id, data, now()) }
+
+    /** "What I track": the data points the user has hidden. */
+    suspend fun tracking(): Tracking = io { Tracking(journal.hiddenDataPoints().toSet()) }
+
+    /** Shows or hides a data point; hiding keeps its values. The choice syncs. */
+    suspend fun setTracked(point: DataPoint, tracked: Boolean) = io { journal.setDataPointTracked(point.slug, tracked, now()) }
+
+    /** Deletes a data point's values from every record. Returns how many records changed. */
+    suspend fun deleteDataPoint(point: DataPoint): Int = io { journal.deleteDataPoint(point.slug, now()).toInt() }
 
     /** Keeps a note added while the journal was locked: it stays, no longer marked for review. */
     suspend fun keepCapture(id: String, data: SnippetData): String = saveSnippet(id, data.copy(addedWhileLocked = false))

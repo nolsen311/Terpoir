@@ -27,6 +27,7 @@ import app.terpoir.core.defaultMethodForForm
 import app.terpoir.core.doseUnitsForMethod
 import app.terpoir.core.keysForRestore
 import app.terpoir.core.readExportArchive
+import app.terpoir.core.trackableDataPoints
 import app.terpoir.core.vocabulary
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -227,4 +228,30 @@ class JournalRepositoryTest {
     }
 
     private fun app.terpoir.core.Vocabulary.knowsUnits(units: List<String>) = doseUnits.containsAll(units)
+
+    @Test
+    fun whatITrackHidesAndDeletesThroughTheCore() = runBlocking {
+        val brand = repo.saveBrand(null, BrandData("Acme"))
+        val product = repo.saveProduct(
+            null,
+            ProductData("Gummies", "edible", brand, emptyList(), null, null, null, null, emptyList(), null, null, emptyList(), emptyList()),
+        )
+        assertEquals("Acme Gummies", repo.productLabels()[product])
+        assertTrue(repo.tracking().shows(DataPoint.BRAND))
+
+        // Hidden: the label drops the brand, but the product keeps it.
+        repo.setTracked(DataPoint.BRAND, false)
+        assertEquals(false, repo.tracking().shows(DataPoint.BRAND))
+        assertEquals("Gummies", repo.productLabels()[product])
+        assertEquals(brand, repo.product(product)?.brand)
+
+        // Deleted: gone from the product, and the brand record with it.
+        assertEquals(2, repo.deleteDataPoint(DataPoint.BRAND))
+        assertEquals(null, repo.product(product)?.brand)
+        assertTrue(repo.brands().isEmpty())
+
+        // Every data point the app shows is one the core knows.
+        assertEquals(trackableDataPoints(), DataPoint.entries.map { it.slug })
+    }
 }
+
