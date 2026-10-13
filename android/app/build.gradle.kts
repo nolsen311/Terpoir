@@ -12,17 +12,23 @@ plugins {
 }
 
 /**
- * The Google Maps key, Play flavor only (docs/design-decisions.md, "Map
- * picker"): from the environment (CI reads a repository secret) or the
- * `terpoir.googleMapsKey` Gradle property. Never committed. It is
- * restricted to the Maps SDK for Android, this package and the signing
- * certificates, so it is not a secret in the app itself.
+ * The Google Maps keys, Play flavor only (docs/design-decisions.md, "Map
+ * picker"): one for debug builds (restricted to the debug certificates) and
+ * one for release builds (the release and Play App Signing certificates),
+ * from the environment (CI has the debug one only) or Gradle properties.
+ * Never committed. A variant without its key doesn't offer Google Maps.
  */
-val googleMapsKey: String = providers.environmentVariable("GOOGLE_MAPS_API_KEY")
-    .orElse(providers.gradleProperty("terpoir.googleMapsKey"))
-    .getOrElse("")
-    .trim()
-require(googleMapsKey.matches(Regex("[A-Za-z0-9_-]*"))) { "The Google Maps key may contain only letters, digits, - and _." }
+fun googleMapsKey(environment: String, property: String): String =
+    providers.environmentVariable(environment)
+        .orElse(providers.gradleProperty(property))
+        .getOrElse("")
+        .trim()
+        .also { require(it.matches(Regex("[A-Za-z0-9_-]*"))) { "The Google Maps key may contain only letters, digits, - and _." } }
+
+val googleMapsKeys = mapOf(
+    "debug" to googleMapsKey("GOOGLE_MAPS_API_KEY_DEBUG", "terpoir.googleMapsDebugKey"),
+    "release" to googleMapsKey("GOOGLE_MAPS_API_KEY_RELEASE", "terpoir.googleMapsReleaseKey"),
+)
 
 android {
     namespace = "app.terpoir"
@@ -56,11 +62,6 @@ android {
     productFlavors {
         create("play") {
             dimension = "distribution"
-            // The Google Maps key (docs/design-decisions.md, "Map picker"):
-            // CI's GOOGLE_MAPS_API_KEY secret or the terpoir.googleMapsKey
-            // property, never committed. Without one, Google Maps isn't
-            // offered.
-            manifestPlaceholders["googleMapsKey"] = googleMapsKey
         }
         create("foss") {
             dimension = "distribution"
@@ -445,6 +446,10 @@ androidComponents {
     onVariants { variant ->
         variant.sources.jniLibs?.addGeneratedSourceDirectory(buildRustCore, CargoNdkBuild::outputDir)
         variant.sources.kotlin?.addGeneratedSourceDirectory(generateCoreBindings, UniffiBindgen::outputDir)
+        // The Play manifest's Google Maps key: this build type's own key.
+        if (variant.flavorName == "play") {
+            variant.manifestPlaceholders.put("googleMapsKey", googleMapsKeys[variant.buildType].orEmpty())
+        }
 
         val name = variant.name.replaceFirstChar { it.uppercase() }
         val manifest = variant.artifacts.get(SingleArtifact.MERGED_MANIFEST)
