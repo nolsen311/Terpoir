@@ -103,6 +103,8 @@ fun DataCard(repo: JournalRepository, masterWrappedByRecovery: () -> ByteArray) 
                     checkNotNull(context.contentResolver.openInputStream(uri)).use { it.readBytes() }
                 }
                 DataResult.Imported(repo.importArchive(bytes))
+            } catch (_: NewerAppNeeded) {
+                DataResult.Failed(R.string.newer_version_needed)
             } catch (_: CoreException) {
                 DataResult.Failed(R.string.import_not_this_journal)
             } catch (_: Exception) {

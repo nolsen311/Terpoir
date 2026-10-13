@@ -39,7 +39,10 @@ mod scan;
 mod tracking;
 mod vocabulary;
 
-pub use archive::{ExportArchive, RestoredKeys, keys_for_restore, read_export_archive};
+pub use archive::{
+    ArchiveCheck, ExportArchive, RestoredKeys, check_export_archive, keys_for_restore,
+    read_export_archive,
+};
 pub use capture::{capture_ready, seal_capture};
 pub use error::{CoreError, Result};
 pub use insights::{InsightData, InsightFeedback, ShopEffectData, ShopInsightData};

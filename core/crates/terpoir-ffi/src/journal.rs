@@ -1080,6 +1080,19 @@ impl Journal {
         crate::archive::write(&master_wrapped_by_recovery, &blobs)
     }
 
+    /// Checks an export of this journal before importing it: what it holds
+    /// and whether any of it needs a newer app. Nothing is changed.
+    ///
+    /// # Errors
+    ///
+    /// `InvalidSyncData` if it is damaged or from another journal.
+    pub fn check_export_archive(
+        &self,
+        archive: crate::archive::ExportArchive,
+    ) -> Result<crate::archive::ArchiveCheck> {
+        self.with(|u| crate::archive::check(&u.master, &archive))
+    }
+
     /// Applies a sync blob downloaded from the user's storage. Safe to
     /// repeat.
     ///

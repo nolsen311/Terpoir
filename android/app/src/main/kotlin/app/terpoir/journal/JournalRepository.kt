@@ -28,6 +28,9 @@ import kotlinx.coroutines.withContext
 /** A record and its ID. */
 data class Entry<T>(val id: String, val data: T)
 
+/** An export or sync blob needs a newer version of the app; nothing was changed. */
+class NewerAppNeeded : Exception()
+
 /**
  * The open journal for the UI. Every call goes to the Rust core, which owns
  * the data, encryption and storage; calls run off the main thread because
@@ -179,8 +182,14 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
      */
     suspend fun importArchive(bytes: ByteArray): Long = io {
         val archive = readExportArchive(bytes)
+        // Checked before anything changes, so a file from a newer app is
+        // refused whole rather than imported partly.
+        if (journal.checkExportArchive(archive).newerFormatBlobs > 0uL) throw NewerAppNeeded()
         archive.blobs.sumOf { journal.importSyncBlob(it, now()).records.toLong() }
     }
+
+    /** How many records a newer app version wrote, kept until this app can read them. */
+    suspend fun newerRecordCount(): Long = io { journal.pendingRecordCount().toLong() }
 
     private fun <T> load(type: RecordType, get: (String) -> T?): List<Entry<T>> =
         journal.list(type).mapNotNull { id -> get(id)?.let { Entry(id, it) } }

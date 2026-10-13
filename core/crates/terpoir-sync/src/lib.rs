@@ -34,6 +34,9 @@ pub use blob::{
     Blob, MAX_BLOB_LEN, container_key, decode_blob, encode_blob, opaque_name, padded_len,
 };
 pub use error::{Error, Result};
-pub use exchange::{ImportSummary, StoreReplica, apply_pending, export_blobs, import_blob};
+pub use exchange::{
+    BlobInspection, ImportSummary, StoreReplica, apply_pending, export_blobs, import_blob,
+    inspect_blob,
+};
 pub use hlc::{Clock, MAX_DRIFT_MS};
 pub use merge::{MemoryReplica, Replica, apply_changes, merge_document, prunable_markers};

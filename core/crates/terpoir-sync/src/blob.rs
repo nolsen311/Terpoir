@@ -26,9 +26,9 @@ use zeroize::Zeroizing;
 
 use crate::{Error, Result};
 
-const FORMAT_VERSION: u8 = 1;
+pub(crate) const FORMAT_VERSION: u8 = 1;
 const HEADER_LEN: usize = 5;
-const AAD: &[u8] = b"terpoir/sync-blob";
+pub(crate) const AAD: &[u8] = b"terpoir/sync-blob";
 const MIN_BUCKET: usize = 4 * 1024;
 const LARGE_STEP: usize = 1024 * 1024;
 

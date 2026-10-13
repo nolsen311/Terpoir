@@ -110,6 +110,38 @@ fn readable(sealed: &SealedRecord, master: &MasterKey) -> Result<Option<Document
     }
 }
 
+/// What a blob holds, from [`inspect_blob`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BlobInspection {
+    /// Records this version can read.
+    pub records: usize,
+    /// Records a newer app version wrote; importing keeps them for later.
+    pub newer: usize,
+}
+
+/// Checks a blob without changing anything, so a restore or import can say
+/// up front what needs a newer app.
+///
+/// # Errors
+///
+/// [`Error::NewerFormat`] if a newer app wrote it in a format this version
+/// can't parse; [`Error::Blob`] if it does not decrypt; crypto or model
+/// errors for a damaged record.
+pub fn inspect_blob(master: &MasterKey, bytes: &[u8]) -> Result<BlobInspection> {
+    let blob = decode_blob(&container_key(master)?, bytes)?;
+    let mut inspection = BlobInspection {
+        records: 0,
+        newer: blob.pending.len(),
+    };
+    for sealed in &blob.records {
+        match readable(sealed, master)? {
+            Some(_) => inspection.records += 1,
+            None => inspection.newer += 1,
+        }
+    }
+    Ok(inspection)
+}
+
 /// Decrypts a blob from another device and applies it to the store.
 /// `clock` is advanced past every stamp seen so later local edits are
 /// ordered after them; persist it afterwards.
@@ -266,4 +298,22 @@ pub fn export_blobs(
     }
     flush(&mut current, &mut current_bytes, &mut sequence)?;
     Ok(blobs)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::blob::{AAD, FORMAT_VERSION};
+
+    #[test]
+    fn inspecting_reports_newer_formats_without_changing_anything() {
+        let master = MasterKey::generate().unwrap();
+        let key = container_key(&master).unwrap();
+        let mut plain = vec![FORMAT_VERSION + 1, 0, 0, 0, 0];
+        plain.resize(4096, 0);
+        let newer = key.seal(AAD, &plain).unwrap();
+        assert_eq!(inspect_blob(&master, &newer), Err(Error::NewerFormat));
+        let other = MasterKey::generate().unwrap();
+        assert_eq!(inspect_blob(&other, &newer), Err(Error::Blob));
+    }
 }

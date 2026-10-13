@@ -16,6 +16,7 @@
 //! length and its bytes.
 
 use terpoir_crypto::{DatabaseKey, MasterKey, RecoveryKey, WrappedKey};
+use terpoir_sync::inspect_blob;
 use zeroize::Zeroizing;
 
 use crate::{CoreError, Result};
@@ -39,6 +40,56 @@ pub struct RestoredKeys {
     pub master_key: Vec<u8>,
     /// A new database key for this device, wrapped by the master key.
     pub wrapped_database_key: Vec<u8>,
+}
+
+/// What an export holds, checked before anything is changed.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, uniffi::Record)]
+pub struct ArchiveCheck {
+    /// Records this version can read.
+    pub records: u64,
+    /// Records a newer app version wrote. Restoring or importing keeps
+    /// them, and they appear after updating.
+    pub newer_records: u64,
+    /// Blobs in a format only a newer app can parse. If any, refuse the
+    /// restore or import and ask the user to update first.
+    pub newer_format_blobs: u64,
+}
+
+/// Inspects every blob of an archive under `master`.
+pub(crate) fn check(master: &MasterKey, archive: &ExportArchive) -> Result<ArchiveCheck> {
+    let n = |v: usize| u64::try_from(v).unwrap_or(u64::MAX);
+    let mut result = ArchiveCheck {
+        records: 0,
+        newer_records: 0,
+        newer_format_blobs: 0,
+    };
+    for blob in &archive.blobs {
+        match inspect_blob(master, blob) {
+            Ok(inspection) => {
+                result.records = result.records.saturating_add(n(inspection.records));
+                result.newer_records = result.newer_records.saturating_add(n(inspection.newer));
+            }
+            Err(terpoir_sync::Error::NewerFormat) => result.newer_format_blobs += 1,
+            Err(e) => return Err(e.into()),
+        }
+    }
+    Ok(result)
+}
+
+/// Checks an export before restoring it on a new device: what it holds and
+/// whether any of it needs a newer app. Nothing is changed.
+///
+/// # Errors
+///
+/// The recovery key's parse errors, `WrongKey` if it is not this export's,
+/// or `InvalidSyncData` if a blob is damaged.
+#[uniffi::export]
+pub fn check_export_archive(recovery_key: String, archive: ExportArchive) -> Result<ArchiveCheck> {
+    let text = Zeroizing::new(recovery_key);
+    let recovery = RecoveryKey::parse(&text)?;
+    let wrapped = WrappedKey::from_slice(&archive.master_wrapped_by_recovery)?;
+    let master = recovery.key_encryption_key()?.unwrap_master_key(&wrapped)?;
+    check(&master, &archive)
 }
 
 /// Builds an archive from the wrapped master key and the blobs.

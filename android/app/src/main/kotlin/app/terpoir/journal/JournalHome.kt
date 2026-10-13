@@ -42,6 +42,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -274,6 +275,8 @@ private fun JournalList(
     var tagNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     // Bumped when a note added while locked is kept or discarded.
     var reviewed by remember { mutableIntStateOf(0) }
+    // Records from a newer app version, kept until this one can read them.
+    var newer by remember { mutableLongStateOf(0L) }
     var discarding by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(revision, reviewed) {
@@ -282,6 +285,7 @@ private fun JournalList(
         tagNames = (repo.tags(EFFECT_CATEGORY) + repo.tags("flavor") + repo.tags("mood") + repo.tags("terpene"))
             .associate { it.id to it.data.name }
         notes = repo.standaloneSnippets()
+        newer = runCatching { repo.newerRecordCount() }.getOrDefault(0L)
         sessions = repo.sessions()
     }
     LazyColumn(
@@ -307,6 +311,14 @@ private fun JournalList(
             item {
                 Text(
                     pluralStringResource(R.plurals.capture_review, toReview, toReview),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        if (newer > 0) {
+            item {
+                Text(
+                    pluralStringResource(R.plurals.newer_records_kept, newer.toInt(), newer.toInt()),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
