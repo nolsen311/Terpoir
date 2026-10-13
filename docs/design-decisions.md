@@ -556,7 +556,6 @@ Each journal entry records one consumption session, not a product review. Produc
     - the Products tab drops the Strains or Brands list, and product names drop the brand, when those are hidden;
     - share cards don't offer strain, intention, timeline, THC/CBD, terpenes or batch when hidden, a session's method leaves out the dose, and a product's title drops the brand.
   - Editors keep hidden values in their drafts, so saving never clears them.
-- **Android: not yet built** (the screen, the editors, scans and share cards).
 
 ### Structural rules
 - **Per-record keys for every record type**, not just sessions (spots and products are sensitive too). Deleting a session leaves its products; deleting a spot detaches it from sessions.
