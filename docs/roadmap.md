@@ -11,9 +11,10 @@ per item or small group of items. Keep this file updated as items land.
 - [x] Settings → Code security: enable Dependabot alerts and Dependabot
       security updates. (Managed in `Terpoir-infra` since its first apply,
       2026-10-13.)
-- [ ] After the `DCO` workflow has run once, add `dco` as a required status
+- [x] After the `DCO` workflow has run once, add `dco` as a required status
       check in the `protect-main` ruleset (exempt nothing; bots are handled
-      inside the check).
+      inside the check). (In the ruleset with no bypass actors; managed in
+      `Terpoir-infra` since 2026-10-13.)
 - [ ] Trademark: USPTO clearance search, attorney consult, intent-to-use
       filing (Class 9).
 - [ ] Generate the Android signing key offline; import into two YubiKeys;
