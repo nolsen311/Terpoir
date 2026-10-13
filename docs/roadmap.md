@@ -139,7 +139,7 @@ without it.
       opening the capture sheet in the user's default mode; opt-in Quick
       Settings tile and home-screen widget, each a Privacy Center toggle
       with an off-action. No journal content on any surface.
-- [ ] Write-only capture: capture key pair in the core (private key
+- [x] Write-only capture: capture key pair in the core (private key
       wrapped by the master key, re-keyed on rotation), sealed captures in
       a versioned inbox, merged on unlock with "added while locked" review,
       secure deletion of merged captures. Property tests; FFI; capture

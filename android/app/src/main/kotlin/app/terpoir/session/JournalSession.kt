@@ -10,11 +10,15 @@ import androidx.compose.runtime.setValue
 import app.terpoir.core.CoreException
 import app.terpoir.core.ExportArchive
 import app.terpoir.core.Journal
+import app.terpoir.core.LocalTimeData
+import app.terpoir.core.captureReady as inboxReady
 import app.terpoir.core.createKeys
 import app.terpoir.core.keysForRestore
 import app.terpoir.core.masterKeyFromRecovery
+import app.terpoir.core.sealCapture as sealIntoInbox
 import app.terpoir.security.MasterKeyVault
 import java.io.File
+import java.time.ZonedDateTime
 import javax.crypto.Cipher
 
 /** Where the journal lives: app-private, no-backup storage. */
@@ -36,6 +40,12 @@ class JournalFiles(noBackupDir: File) {
 
     /** The database key wrapped by the master key. */
     val wrappedDatabaseKey: File = root.resolve("keys/database")
+
+    /**
+     * Notes written while the journal is locked, each sealed to the
+     * capture public key (also kept here) until the next unlock.
+     */
+    val inbox: File = root.resolve("inbox")
 }
 
 /**
@@ -178,11 +188,33 @@ class JournalSession(private val files: JournalFiles) {
                 masterKey,
                 files.wrappedDatabaseKey.readBytes(),
             )
+            // Notes written while locked join the journal now, marked for
+            // review; this also gives the inbox the capture public key. A
+            // failure here must not keep the journal locked: the notes stay
+            // sealed in the inbox for the next unlock.
+            runCatching { journal.mergeCaptures(files.inbox.path, System.currentTimeMillis().toULong()) }
             state = State.Unlocked(journal)
             contentVisible = true
         } finally {
             masterKey.fill(0)
         }
+    }
+
+    /**
+     * Whether a note can be written while locked: the journal has been
+     * unlocked at least once since write-only capture arrived.
+     */
+    fun captureReady(): Boolean = state != State.NoJournal && inboxReady(files.inbox.path)
+
+    /**
+     * Seals [text] into the inbox without unlocking. It can't be read until
+     * the next unlock. Returns false if sealing failed.
+     */
+    fun sealCapture(text: String): Boolean {
+        val now = ZonedDateTime.now()
+        return runCatching {
+            sealIntoInbox(files.inbox.path, text, LocalTimeData(now.toInstant().toEpochMilli(), (now.offset.totalSeconds / 60).toShort()))
+        }.isSuccess
     }
 
     /** Wipes the master key from memory and closes the database. */

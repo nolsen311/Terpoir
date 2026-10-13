@@ -36,6 +36,8 @@ pub(crate) enum Domain {
     WrapMaster,
     WrapRecord,
     WrapDatabase,
+    WrapCapture,
+    Capture,
     FileStream,
     SubKeySeal,
 }
@@ -47,6 +49,8 @@ impl Domain {
             Self::WrapMaster => b"wrap/master",
             Self::WrapRecord => b"wrap/record",
             Self::WrapDatabase => b"wrap/database",
+            Self::WrapCapture => b"wrap/capture",
+            Self::Capture => b"capture",
             Self::FileStream => b"file-stream",
             Self::SubKeySeal => b"subkey-seal",
         }

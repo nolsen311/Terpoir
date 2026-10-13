@@ -11,7 +11,7 @@ use zeroize::Zeroizing;
 
 use crate::aead::{self, Domain, WrappedKey};
 use crate::kdf::hkdf_sha256;
-use crate::{Error, RecordId, Result, fill_random};
+use crate::{CapturePublicKey, Error, RecordId, Result, fill_random};
 
 /// Length of every key in bytes.
 pub const KEY_LEN: usize = 32;
@@ -87,6 +87,15 @@ key_type! {
 key_type! {
     /// A purpose-specific key derived from another key with HKDF.
     SubKey
+}
+
+key_type! {
+    /// The private half of the capture key pair: the seed from which
+    /// HPKE derives the X25519 key pair (RFC 9180 `DeriveKeyPair`). Notes
+    /// written while the journal is locked are sealed to its public key
+    /// (see [`crate::CapturePublicKey`]); only this key opens them.
+    /// Wrapped by the [`MasterKey`].
+    CaptureKey
 }
 
 impl MasterKey {
@@ -177,6 +186,40 @@ impl MasterKey {
         Ok(DatabaseKey(secret_from_array(&key)))
     }
 
+    /// Wraps the capture key, binding it to its public key.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Random`] or [`Error::Encrypt`].
+    pub fn wrap_capture_key(&self, key: &CaptureKey) -> Result<WrappedKey> {
+        WrappedKey::wrap(
+            self.secret(),
+            Domain::WrapCapture,
+            key.public_key().as_bytes(),
+            key.secret(),
+        )
+    }
+
+    /// Unwraps a capture key wrapped for `public`, and checks that it is
+    /// that public key's private half.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Decrypt`] for the wrong master key or public key, or
+    /// tampered input.
+    pub fn unwrap_capture_key(
+        &self,
+        wrapped: &WrappedKey,
+        public: &CapturePublicKey,
+    ) -> Result<CaptureKey> {
+        let key = wrapped.unwrap(self.secret(), Domain::WrapCapture, public.as_bytes())?;
+        let key = CaptureKey(secret_from_array(&key));
+        if key.public_key() != *public {
+            return Err(Error::Decrypt);
+        }
+        Ok(key)
+    }
+
     /// Derives a purpose-specific subkey (for example, the sync container
     /// key). `purpose` must be a fixed label, unique per use.
     ///
@@ -223,6 +266,17 @@ impl RecordKey {
     /// The key that encrypts the file `file` attached to this record.
     pub(crate) fn file_key(&self, file: &RecordId) -> Result<SubKey> {
         hkdf_sha256(self.secret(), &[b"file/", file.as_bytes()]).map(SubKey)
+    }
+}
+
+impl CaptureKey {
+    /// Generates a new random capture key.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Random`] if the operating system's generator fails.
+    pub fn generate() -> Result<Self> {
+        random_secret().map(Self)
     }
 }
 

@@ -38,6 +38,9 @@ pub struct Snippet {
     /// Confirmed tags and where each came from. Unconfirmed suggestions
     /// are never stored.
     pub tags: BTreeMap<TagRef, Provenance>,
+    /// Written while the journal was locked (write-only capture) and not
+    /// yet kept by the user. Stored only while true.
+    pub added_while_locked: bool,
 }
 
 impl Record for Snippet {
@@ -54,6 +57,9 @@ impl Record for Snippet {
                 |t| t.to_key(),
                 |p| Value::Text(p.slug().to_owned()),
             );
+        if self.added_while_locked {
+            f.put("locked", Value::Bool(true));
+        }
         f.finish()
     }
 
@@ -67,11 +73,12 @@ impl Record for Snippet {
                 Value::Text(s) => Some(Provenance::from_slug(s)),
                 _ => None,
             })?,
+            added_while_locked: r.bool("locked")?.unwrap_or(false),
         })
     }
 
     fn owns_field(key: &str) -> bool {
-        owns(key, &["session", "at", "text"], &["tags"])
+        owns(key, &["session", "at", "text", "locked"], &["tags"])
     }
 }
 
@@ -94,12 +101,40 @@ mod tests {
                 (TagRef::Builtin("relaxed".into()), Provenance::User),
             ]
             .into(),
+            added_while_locked: false,
         };
         let stamp = Stamp {
             hlc: Hlc::default(),
             device: DeviceId::from_bytes([1; 16]),
         };
         let doc = Document::create(&snippet, stamp).unwrap();
+        assert_eq!(Snippet::from_document(&doc).unwrap(), snippet);
+        assert!(doc.field("locked").is_none());
+    }
+
+    #[test]
+    fn keeping_a_locked_capture_clears_the_mark() {
+        let stamp = |wall_ms| Stamp {
+            hlc: Hlc {
+                wall_ms,
+                counter: 0,
+            },
+            device: DeviceId::from_bytes([1; 16]),
+        };
+        let mut snippet = Snippet {
+            session: None,
+            at: LocalTime {
+                unix_ms: 5,
+                utc_offset_min: 0,
+            },
+            text: "written while locked".into(),
+            tags: BTreeMap::new(),
+            added_while_locked: true,
+        };
+        let mut doc = Document::create(&snippet, stamp(1)).unwrap();
+        assert!(Snippet::from_document(&doc).unwrap().added_while_locked);
+        snippet.added_while_locked = false;
+        doc.update(&snippet, stamp(2)).unwrap();
         assert_eq!(Snippet::from_document(&doc).unwrap(), snippet);
     }
 }

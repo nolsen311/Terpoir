@@ -222,6 +222,7 @@ fn index_queries_follow_updates() {
                 terpoir_model::Provenance::User,
             )]
             .into(),
+            added_while_locked: false,
         },
         stamp(1),
     )

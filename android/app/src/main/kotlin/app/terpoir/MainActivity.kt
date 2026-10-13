@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.PurchasePrompts
 import app.terpoir.alerts.SpotAlerts
+import app.terpoir.capture.LockedCaptureScreen
 import app.terpoir.capture.QuickCapture
 import app.terpoir.capture.ShortcutCard
 import app.terpoir.core.ExportArchive
@@ -82,15 +83,24 @@ class MainActivity : ComponentActivity() {
     /** Opened from a "Quick log?" purchase prompt: after unlock, open receipt scan. */
     private var quickLogRequested by mutableStateOf(false)
 
-    /** Opened from a quick-capture shortcut, tile or widget: after unlock, a new note. */
+    /**
+     * Opened from a quick-capture shortcut, tile or widget: a new note,
+     * written while locked if the journal is locked, else after unlock.
+     */
     private var newNoteRequested by mutableStateOf(false)
+
+    /** A note was just written while locked: say so on the lock screen. */
+    private var captureSaved by mutableStateOf(false)
 
     private fun fromAlert(intent: Intent?) {
         when (intent?.action) {
             SpotAlerts.ACTION_NEAR_SPOT -> nearbyRequested = true
             CheckIns.ACTION_CHECK_IN -> checkInRequested = true
             PurchasePrompts.ACTION_QUICK_LOG -> quickLogRequested = true
-            QuickCapture.ACTION_NEW_NOTE -> newNoteRequested = true
+            QuickCapture.ACTION_NEW_NOTE -> {
+                newNoteRequested = true
+                captureSaved = false
+            }
         }
     }
 
@@ -173,6 +183,7 @@ class MainActivity : ComponentActivity() {
                 // Each unlock re-registers "Notify me" geofences: they need the
                 // spots' coordinates, which only the open journal has.
                 LaunchedEffect(state.journal) {
+                    captureSaved = false
                     app.spotAlerts.refresh(state.journal)
                     // Folder sync, on unlock: it runs only while the app is open.
                     if (app.privacySettings.folderSync) runCatching { app.folderSync.sync(state.journal) }
@@ -217,6 +228,25 @@ class MainActivity : ComponentActivity() {
                 return
             }
         }
+        // A quick-capture entry point while locked: write the note without
+        // unlocking (write-only capture). It is sealed at once and joins
+        // the journal, for review, at the next unlock.
+        if (newNoteRequested && state == JournalSession.State.Locked && step == OnboardingStep.DONE && session.captureReady()) {
+            LockedCaptureScreen(
+                settings = app.privacySettings,
+                onSave = { text ->
+                    session.sealCapture(text).also { saved ->
+                        if (saved) {
+                            newNoteRequested = false
+                            captureSaved = true
+                        }
+                    }
+                },
+                onUnlock = { message = unlock() },
+                onClose = { newNoteRequested = false },
+            )
+            return
+        }
         restoring?.let { archive ->
             if (state == JournalSession.State.NoJournal) {
                 RestoreScreen(
@@ -250,6 +280,7 @@ class MainActivity : ComponentActivity() {
                 JournalSession.State.Locked -> {
                     Text(stringResource(R.string.locked))
                     Button(onClick = { message = unlock() }) { Text(stringResource(R.string.unlock)) }
+                    if (captureSaved) Text(stringResource(R.string.capture_locked_saved))
                 }
                 // Unlocked but in the background: journal content stays hidden.
                 is JournalSession.State.Unlocked -> Unit

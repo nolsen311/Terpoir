@@ -157,10 +157,10 @@ pub struct ImportResult {
     pub deferred: u64,
 }
 
-struct Unlocked {
-    store: Store,
-    master: MasterKey,
-    clock: Clock,
+pub(crate) struct Unlocked {
+    pub(crate) store: Store,
+    pub(crate) master: MasterKey,
+    pub(crate) clock: Clock,
     wrapped_database_key: WrappedKey,
 }
 
@@ -234,7 +234,7 @@ impl insights::Source for Unlocked {
 }
 
 impl Unlocked {
-    fn save_clock(&mut self) -> Result<()> {
+    pub(crate) fn save_clock(&mut self) -> Result<()> {
         let last = self.clock.last();
         let mut bytes = [0u8; 12];
         bytes[..8].copy_from_slice(&last.wall_ms.to_be_bytes());
@@ -287,7 +287,7 @@ impl Journal {
         self.state.lock().map_err(|_| CoreError::Internal)
     }
 
-    fn with<T>(&self, f: impl FnOnce(&mut Unlocked) -> Result<T>) -> Result<T> {
+    pub(crate) fn with<T>(&self, f: impl FnOnce(&mut Unlocked) -> Result<T>) -> Result<T> {
         let mut guard = self.unlocked()?;
         let unlocked = guard.as_mut().ok_or(CoreError::Locked)?;
         f(unlocked)
@@ -1102,8 +1102,9 @@ impl Journal {
     /// Rotates the master key: re-wraps every record key and the database
     /// key, and wraps the new master key under the recovery key. The
     /// recovery key is checked against `master_wrapped_by_recovery` first.
-    /// Store every returned value in place of the old ones, and rewrite
-    /// sync blobs afterwards.
+    /// Store every returned value in place of the old ones, rewrite sync
+    /// blobs afterwards, and call `merge_captures` so the inbox gets the
+    /// new capture public key.
     ///
     /// # Errors
     ///
@@ -1126,6 +1127,7 @@ impl Journal {
             let database_key = u.master.unwrap_database_key(&u.wrapped_database_key)?;
             let wrapped_database_key = new_master.wrap_database_key(&database_key)?;
             u.store.rewrap_all(&u.master, &new_master)?;
+            crate::capture::rotate(u, &new_master)?;
             let rotated = RotatedKeys {
                 master_key: new_master.expose_secret().to_vec(),
                 master_wrapped_by_recovery: kek.wrap_master_key(&new_master)?.as_bytes().to_vec(),

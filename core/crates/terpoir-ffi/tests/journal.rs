@@ -173,6 +173,7 @@ fn full_lifecycle() {
                     tag: TagRefData::Custom { id: tag.clone() },
                     provenance: "user".into(),
                 }],
+                added_while_locked: false,
             },
             3,
         )
