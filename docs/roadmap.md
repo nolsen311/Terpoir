@@ -17,8 +17,11 @@ per item or small group of items. Keep this file updated as items land.
       `Terpoir-infra` since 2026-10-13.)
 - [ ] Trademark: USPTO clearance search, attorney consult, intent-to-use
       filing (Class 9).
-- [ ] Generate the Android signing key offline; import into two YubiKeys;
-      offline encrypted backup.
+- [x] Generate the Android signing key offline; import into two YubiKeys;
+      offline encrypted backup. (Done by 2026-10-13.)
+- [ ] Pin the app signing certificate: its SHA-256 in
+      `android/release/app-certificate.sha256`, its SHA-1 in Terpoir-infra's
+      `maps_release_sha1s` (`docs/releasing.md`, one-time setup).
 - [ ] Create the Google Play developer account (personal); check current
       closed-testing requirements.
 - [ ] Play Console: declare background location for "Notify me" (the
@@ -188,6 +191,9 @@ without it.
 
 - [x] Development builds: main's debug APKs as a rolling `dev-build`
       pre-release on GitHub Releases, replaced on every push.
+- [x] Release pipeline: a `v*` tag builds the unsigned APKs and Play
+      bundle into a draft release; the maintainer signs offline with the
+      YubiKey (`android/scripts/sign-release.sh`, `docs/releasing.md`).
 - [ ] Reproducible Android builds verified in CI; SBOM; signed release
       hashes published on terpoir.app; signing fingerprints in README.
 - [ ] Google Play, F-Droid, GitHub Releases.

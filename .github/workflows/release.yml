@@ -1,0 +1,140 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# Release builds (docs/releasing.md). A v* tag on main builds the unsigned
+# release APKs (foss and Play) and the Play bundle, runs the same checks as
+# the Android workflow, and puts them in a draft GitHub release with their
+# hashes. Nothing here signs: the maintainer signs offline with the YubiKey
+# (android/scripts/sign-release.sh), uploads the signed APKs and publishes.
+# Signing material never reaches CI.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Holds the release Google Maps key; only v* tags can use it
+    # (Terpoir-infra maps.tf). Without it the Play build doesn't offer
+    # Google Maps.
+    environment: release
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Check the tag
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+            || { echo "::error::Release tags must point at a commit on main."; exit 1; }
+          version=$(sed -n 's/^ *versionName = "\(.*\)"$/\1/p' android/app/build.gradle.kts)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match versionName $version."
+            exit 1
+          fi
+
+      # Read-only, and saved only from main (android.yml); every artifact is
+      # still checked against verification-metadata.xml and Cargo.lock.
+      - name: Restore dependency cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/bin/cargo-ndk
+          key: deps-${{ runner.os }}-${{ hashFiles('android/gradle/verification-metadata.xml', 'android/gradle/wrapper/gradle-wrapper.properties', 'core/Cargo.lock', '.github/scripts/setup-android-core.sh') }}
+          restore-keys: deps-${{ runner.os }}-
+
+      - name: Validate Gradle wrapper
+        run: |
+          set -euo pipefail
+          actual=$(sha256sum gradle/wrapper/gradle-wrapper.jar | cut -d' ' -f1)
+          curl -sSfL --proto '=https' --tlsv1.2 https://services.gradle.org/versions/all \
+            | python3 -c "import json,sys; print('\n'.join(v['wrapperChecksum'] for v in json.load(sys.stdin) if v.get('wrapperChecksum')))" \
+            | grep -qx "$actual"
+
+      - name: Set up Rust core toolchain
+        working-directory: .
+        run: .github/scripts/setup-android-core.sh
+
+      - name: Build and check
+        env:
+          GOOGLE_MAPS_API_KEY_RELEASE: ${{ secrets.GOOGLE_MAPS_API_KEY_RELEASE }}
+        run: |
+          set -euo pipefail
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          ./gradlew --no-daemon --no-build-cache \
+            assembleFossRelease assemblePlayRelease bundlePlayRelease check
+
+      - name: Collect
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          out="$RUNNER_TEMP/release"
+          mkdir -p "$out"
+          cp app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk "$out/terpoir-foss-$version-unsigned.apk"
+          cp app/build/outputs/apk/play/release/app-play-release-unsigned.apk "$out/terpoir-play-$version-unsigned.apk"
+          cp app/build/outputs/bundle/playRelease/app-play-release.aab "$out/terpoir-play-$version-unsigned.aab"
+          (cd "$out" && sha256sum terpoir-* > UNSIGNED-SHA256SUMS && cat UNSIGNED-SHA256SUMS)
+          {
+            echo "### Unsigned release builds"
+            echo '```'
+            cat "$out/UNSIGNED-SHA256SUMS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: terpoir-release-unsigned
+          path: ${{ runner.temp }}/release
+          if-no-files-found: error
+
+  # The only job that writes: a draft release with the unsigned builds. It
+  # checks out no code. Drafts are visible only to maintainers.
+  draft:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: terpoir-release-unsigned
+          path: release
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cat > notes.md <<NOTES
+          Terpoir ${GITHUB_REF_NAME}, built from ${GITHUB_SHA}.
+
+          - Install **terpoir-foss-${GITHUB_REF_NAME#v}.apk**. The Play APK lacks text recognition, which only Google Play can install.
+          - Signed with the maintainer's own key, not Google's: it won't install over a Google Play copy, or the reverse.
+          - \`SHA256SUMS\` lists the APKs' hashes.
+          NOTES
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --draft --verify-tag \
+            --title "Terpoir ${GITHUB_REF_NAME}" \
+            --notes-file notes.md
