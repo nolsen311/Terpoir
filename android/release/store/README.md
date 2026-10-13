@@ -8,9 +8,11 @@
   `app/src/main/res/drawable/ic_launcher_foreground.xml`) on its background
   colour (`#2E4A3B`), cropped to the middle 72 units a launcher shows, full
   bleed (Play applies its own mask).
-- `feature-graphic-1024x500.png`: the 1024 × 500 feature graphic: the
-  journal and bubbles, "Terpoir" in Fraunces and the tagline in Work Sans (both bundled,
-  OFL), kept away from the edges, which Play can crop.
+- `feature-graphic-1024x500.png`: the 1024 × 500 feature graphic. One
+  line holds the open journal, sized to the capitals and sitting on the
+  baseline, with its bubbles rising above, then "Terpoir" in Fraunces. The
+  tagline in Work Sans has its own line below. Both fonts are bundled
+  (OFL). Everything is kept away from the edges, which Play can crop.
 
 Both are rendered by `render.py` (Pillow) from the same vector and fonts,
 so they change with the icon artwork. All-ages: no drug imagery
