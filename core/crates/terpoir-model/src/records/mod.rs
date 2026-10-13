@@ -16,6 +16,7 @@ mod session;
 mod snippet;
 mod spot;
 mod tag;
+mod tracking;
 
 pub use catalog::{
     Brand, Form, IdentifierKind, LabelAmount, LabelUnit, Product, Strain, StrainType, Terpene,
@@ -28,6 +29,7 @@ pub use session::{
 pub use snippet::{Provenance, Snippet};
 pub use spot::{DEFAULT_SPOT_RADIUS_M, Location, MIN_SPOT_RADIUS_M, Spot, SpotPurpose};
 pub use tag::{Flavor, Mood, Tag, TagCategory};
+pub use tracking::{TrackedField, TrackingPreferences};
 
 /// The kind of record a document holds. The numeric codes are stored on
 /// disk and synced: never change or reuse them.
@@ -50,11 +52,13 @@ pub enum RecordKind {
     Tag,
     /// A purchase.
     Purchase,
+    /// The journal's "What I track" choices (one per journal).
+    Tracking,
 }
 
 impl RecordKind {
     /// Every kind.
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::Session,
         Self::Product,
         Self::Strain,
@@ -63,6 +67,7 @@ impl RecordKind {
         Self::Snippet,
         Self::Tag,
         Self::Purchase,
+        Self::Tracking,
     ];
 
     /// The stable numeric code.
@@ -77,6 +82,7 @@ impl RecordKind {
             Self::Snippet => 6,
             Self::Tag => 7,
             Self::Purchase => 8,
+            Self::Tracking => 9,
         }
     }
 
@@ -92,6 +98,7 @@ impl RecordKind {
             6 => Self::Snippet,
             7 => Self::Tag,
             8 => Self::Purchase,
+            9 => Self::Tracking,
             _ => return None,
         })
     }

@@ -15,7 +15,7 @@ use terpoir_ffi::{
     ProductData, ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData,
     SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance,
     TagRefData, check_recovery_key, create_keys, keys_for_restore, master_key_from_recovery,
-    read_export_archive,
+    read_export_archive, trackable_data_points,
 };
 
 struct Device {
@@ -908,6 +908,18 @@ fn insights_need_evidence_and_respect_feedback() {
             .iter()
             .any(|i| i.key == "terpene:myrcene")
     );
+
+    // "What I track": with terpenes hidden, no insight is built on them.
+    journal
+        .set_data_point_tracked("terpenes".into(), false, 40)
+        .unwrap();
+    assert!(
+        journal
+            .insights()
+            .unwrap()
+            .iter()
+            .all(|i| i.category != "terpene")
+    );
 }
 
 #[test]
@@ -1054,6 +1066,18 @@ fn shop_insights_attribute_sessions_to_where_products_were_bought() {
     let shop_b = found.iter().find(|s| s.spot == b).unwrap();
     assert_eq!(shop_b.sessions.len(), 6);
     assert_eq!(shop_b.avg_rating_milli, Some(3_000));
+
+    // "What I track": package dates hidden, no freshness; prices and shops
+    // hidden, no shop insights at all.
+    journal
+        .set_data_point_tracked("batch".into(), false, 50)
+        .unwrap();
+    let found = journal.shop_insights().unwrap();
+    assert!(found.iter().all(|s| s.avg_age_days.is_none()));
+    journal
+        .set_data_point_tracked("price_and_shop".into(), false, 51)
+        .unwrap();
+    assert!(journal.shop_insights().unwrap().is_empty());
 }
 
 #[test]
@@ -1184,4 +1208,267 @@ fn maptiler_key_is_local_and_validated() {
     assert_eq!(journal.maptiler_key().unwrap(), None);
     journal.lock();
     assert_eq!(journal.maptiler_key(), Err(CoreError::Locked));
+}
+
+/// A second device on the same journal (same master key, its own database).
+fn second_device(keys: &NewKeys, device: &Device) -> Arc<Journal> {
+    let restored = master_key_from_recovery(
+        keys.recovery_key.clone(),
+        keys.master_wrapped_by_recovery.clone(),
+    )
+    .unwrap();
+    Journal::open(
+        device.dir.join("journal.db").to_string_lossy().into_owned(),
+        device.dir.join("files").to_string_lossy().into_owned(),
+        restored,
+        wrapped_db_key_for(keys, keys),
+    )
+    .unwrap()
+}
+
+fn sync(from: &Journal, to: &Journal, now_ms: u64) {
+    for blob in from.export_sync_blobs().unwrap() {
+        assert_eq!(to.import_sync_blob(blob.bytes, now_ms).unwrap().deferred, 0);
+    }
+}
+
+#[test]
+fn what_i_track_choices_sync_and_merge_per_data_point() {
+    let keys = create_keys().unwrap();
+    let phone_dir = Device::new();
+    let tablet_dir = Device::new();
+    let phone = phone_dir.open(&keys).unwrap();
+    let tablet = second_device(&keys, &tablet_dir);
+
+    let all = trackable_data_points();
+    assert_eq!(all.len(), 12);
+    assert_eq!(all[0], "brand");
+    assert!(phone.hidden_data_points().unwrap().is_empty());
+    assert_eq!(
+        phone.set_data_point_tracked("vibes".into(), false, 1),
+        Err(CoreError::InvalidInput)
+    );
+
+    // Each device hides something before they ever sync: both records
+    // have the same derived ID, so they merge instead of competing.
+    phone
+        .set_data_point_tracked("brand".into(), false, 10)
+        .unwrap();
+    tablet
+        .set_data_point_tracked("mood".into(), false, 11)
+        .unwrap();
+    sync(&phone, &tablet, 12);
+    sync(&tablet, &phone, 13);
+    for device in [&phone, &tablet] {
+        assert_eq!(device.hidden_data_points().unwrap(), ["brand", "mood"]);
+    }
+
+    // Showing brand again on the phone wins, as the later edit.
+    phone
+        .set_data_point_tracked("brand".into(), true, 20)
+        .unwrap();
+    sync(&phone, &tablet, 21);
+    assert_eq!(tablet.hidden_data_points().unwrap(), ["mood"]);
+
+    // Hiding purchases hides prices and shops with them.
+    tablet
+        .set_data_point_tracked("purchases".into(), false, 30)
+        .unwrap();
+    assert_eq!(
+        tablet.hidden_data_points().unwrap(),
+        ["price_and_shop", "purchases", "mood"]
+    );
+}
+
+#[test]
+fn what_i_track_survives_master_key_rotation() {
+    let device = Device::new();
+    let keys = create_keys().unwrap();
+    let journal = device.open(&keys).unwrap();
+    journal
+        .set_data_point_tracked("dose".into(), false, 1)
+        .unwrap();
+    journal
+        .rotate_master_key(
+            keys.recovery_key.clone(),
+            keys.master_wrapped_by_recovery.clone(),
+        )
+        .unwrap();
+    assert_eq!(journal.hidden_data_points().unwrap(), ["dose"]);
+    journal
+        .set_data_point_tracked("dose".into(), true, 2)
+        .unwrap();
+    assert!(journal.hidden_data_points().unwrap().is_empty());
+}
+
+#[test]
+fn deleting_a_data_point_clears_it_everywhere() {
+    let device = Device::new();
+    let keys = create_keys().unwrap();
+    let journal = device.open(&keys).unwrap();
+    let brand = journal
+        .save_brand(
+            None,
+            BrandData {
+                name: "Acme".into(),
+            },
+            1,
+        )
+        .unwrap();
+    let strain = journal
+        .save_strain(
+            None,
+            StrainData {
+                name: "Blue Dream".into(),
+                lineage: None,
+                terpenes: vec![builtin("myrcene")],
+                strain_type: Some("hybrid".into()),
+            },
+            1,
+        )
+        .unwrap();
+    let spot = journal
+        .save_spot(
+            None,
+            SpotData {
+                name: "Spot 1".into(),
+                purposes: vec![builtin("re_up")],
+                lat_e7: None,
+                lon_e7: None,
+                accuracy_m: None,
+                radius_m: None,
+                purchase_prompts: false,
+            },
+            1,
+        )
+        .unwrap();
+    let product = journal
+        .save_product(
+            None,
+            ProductData {
+                name: "Gummies".into(),
+                form: Some("edible".into()),
+                brand: Some(brand.clone()),
+                strains: vec![strain.clone()],
+                thc_milli: Some(5_000),
+                thc_unit: Some("mg_per_unit".into()),
+                cbd_milli: None,
+                cbd_unit: None,
+                terpenes: vec![TagIntensity {
+                    tag: builtin("myrcene"),
+                    value: 500,
+                }],
+                batch: Some("B-7".into()),
+                package_date_day: Some(20_300),
+                identifiers: vec![],
+                shops: vec![spot.clone()],
+            },
+            1,
+        )
+        .unwrap();
+    let purchase = journal
+        .save_purchase(
+            None,
+            PurchaseData {
+                when: LocalTimeData {
+                    unix_ms: 1_759_900_000_000,
+                    utc_offset_min: -420,
+                },
+                spot: Some(spot.clone()),
+                lines: vec![PurchaseLineData {
+                    line_id: None,
+                    product: Some(product.clone()),
+                    batch: Some("B-7".into()),
+                    price_minor_units: Some(2_000),
+                    price_currency: Some("USD".into()),
+                }],
+            },
+            2,
+        )
+        .unwrap();
+    let line = journal
+        .get_purchase(purchase.clone())
+        .unwrap()
+        .unwrap()
+        .lines[0]
+        .line_id
+        .clone();
+    let mut data = session(Some(product.clone()));
+    data.lines[0].purchase_id = Some(purchase.clone());
+    data.lines[0].purchase_line_id = line;
+    data.lines[0].shop = Some(spot.clone());
+    let id = journal.save_session(None, data, 3).unwrap();
+
+    // Hiding alone keeps the values.
+    journal
+        .set_data_point_tracked("brand".into(), false, 4)
+        .unwrap();
+    assert!(
+        journal
+            .get_product(product.clone())
+            .unwrap()
+            .unwrap()
+            .brand
+            .is_some()
+    );
+
+    assert_eq!(
+        journal.delete_data_point("nonsense".into(), 5),
+        Err(CoreError::InvalidInput)
+    );
+    // The product loses its brand and the brand record goes.
+    assert_eq!(journal.delete_data_point("brand".into(), 5).unwrap(), 2);
+    assert!(
+        journal
+            .get_product(product.clone())
+            .unwrap()
+            .unwrap()
+            .brand
+            .is_none()
+    );
+    assert!(journal.get_brand(brand).unwrap().is_none());
+
+    for point in [
+        "strain",
+        "potency",
+        "terpenes",
+        "batch",
+        "dose",
+        "timeline",
+        "mood",
+        "intention",
+        "social",
+        "purchases",
+    ] {
+        assert!(
+            journal.delete_data_point(point.into(), 6).unwrap() > 0,
+            "{point}"
+        );
+        // Nothing left to delete the second time.
+        assert_eq!(
+            journal.delete_data_point(point.into(), 7).unwrap(),
+            0,
+            "{point}"
+        );
+    }
+
+    let p = journal.get_product(product).unwrap().unwrap();
+    assert!(p.strains.is_empty() && p.terpenes.is_empty() && p.shops.is_empty());
+    assert!(p.thc_milli.is_none() && p.batch.is_none() && p.package_date_day.is_none());
+    assert_eq!(p.name, "Gummies");
+    assert!(journal.get_strain(strain).unwrap().is_none());
+    assert!(journal.get_purchase(purchase).unwrap().is_none());
+    assert!(
+        journal.get_spot(spot).unwrap().is_some(),
+        "spots themselves stay"
+    );
+
+    let s = journal.get_session(id).unwrap().unwrap();
+    let l = &s.lines[0];
+    assert!(l.dose_milli.is_none() && l.purchase_id.is_none() && l.shop.is_none());
+    assert!(s.mood_before.is_none() && s.mood_after.is_none() && s.intention.is_none());
+    assert!(s.social.is_none() && s.onset_min.is_none());
+    // Always tracked: untouched.
+    assert_eq!((s.rating, l.method.as_str()), (Some(4), "edible"));
+    assert_eq!(s.effects.len(), 1);
 }

@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use terpoir_crypto::{MasterKey, RecoveryKey, WrappedKey};
 use terpoir_model::{
     Brand, DeviceId, Document, Hlc, Location, Product, Purchase, Record, RecordId, RecordKind,
-    Session, Snippet, Spot, Strain, Tag, TagCategory, TagRef, migrate,
+    Session, Snippet, Spot, Strain, Tag, TagCategory, TagRef, TrackingPreferences, migrate,
 };
 use terpoir_scan::{names_match, normalize_name};
 use terpoir_store::Store;
@@ -228,6 +228,10 @@ impl insights::Source for Unlocked {
             .map(|b| b.name))
     }
 
+    fn tracking(&self) -> Result<TrackingPreferences> {
+        crate::tracking::preferences(self)
+    }
+
     fn feedback(&self) -> Result<Vec<u8>> {
         Ok(self
             .store
@@ -246,7 +250,12 @@ impl Unlocked {
         Ok(())
     }
 
-    fn save<R: Record>(&mut self, id: Option<String>, record: &R, now_ms: u64) -> Result<String> {
+    pub(crate) fn save<R: Record>(
+        &mut self,
+        id: Option<String>,
+        record: &R,
+        now_ms: u64,
+    ) -> Result<String> {
         let stamp = self.clock.stamp(now_ms);
         let doc = match id {
             Some(id) => {
@@ -1171,6 +1180,7 @@ impl Journal {
             let wrapped_database_key = new_master.wrap_database_key(&database_key)?;
             u.store.rewrap_all(&u.master, &new_master)?;
             crate::capture::rotate(u, &new_master)?;
+            crate::tracking::rotate(u, &new_master)?;
             let rotated = RotatedKeys {
                 master_key: new_master.expose_secret().to_vec(),
                 master_wrapped_by_recovery: kek.wrap_master_key(&new_master)?.as_bytes().to_vec(),

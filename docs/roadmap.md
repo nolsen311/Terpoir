@@ -128,6 +128,10 @@ without it.
         Mode).
 - [ ] "What I track" in Settings: hide data points (brand, price, strain
       and more), synced, with keep-hidden or delete.
+  - [x] Core: the synced tracking-preferences record, and deleting a data
+        point from every record.
+  - [ ] Android: the screen, and editors, scans, insights and share cards
+        that skip hidden data points.
 - [x] Targeted symptoms (opt-in).
 - [x] Encrypted export; import; restore on a new phone from an export
       and the recovery key.

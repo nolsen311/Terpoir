@@ -36,6 +36,7 @@ mod keys;
 mod plaintext;
 mod records;
 mod scan;
+mod tracking;
 mod vocabulary;
 
 pub use archive::{ExportArchive, RestoredKeys, keys_for_restore, read_export_archive};
@@ -60,6 +61,7 @@ pub use scan::{
     LabelScanData, ReceiptItemData, ReceiptScan, ScannedCodeData, classify_code, parse_label,
     parse_receipt,
 };
+pub use tracking::trackable_data_points;
 pub use vocabulary::{Vocabulary, default_method_for_form, dose_units_for_method, vocabulary};
 
 uniffi::setup_scaffolding!();
