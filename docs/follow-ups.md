@@ -15,7 +15,7 @@ Items waiting on the maintainer. See CLAUDE.md, "Workflow".
 | F-Droid anti-features for the map: OpenFreeMap is free software and MapTiler needs the user's own key, so no NonFreeNet is expected. | Confirmed in the F-Droid recipe review. | 2026-10-12, open |
 | The Google Maps key (`GOOGLE_MAPS_API_KEY`) is restricted to Maps SDK for Android only, not yet to the package and signing-certificate SHA-1s. | Restricted to `app.terpoir` plus the CI debug, local debug, release (YubiKey) and Play App Signing SHA-1s. | 2026-10-12, open (maintainer) |
 | The website's tip jar (`site/index.html`, `#tip`) shows "Tip jar opens soon" instead of a donation link; no donation account exists yet. | The maintainer sets up GitHub Sponsors and/or Liberapay and the placeholder is replaced with the real link(s). | 2026-10-12, open (maintainer) |
-| The CI repository secret `TERPOIR_MAPTILER_KEY` is no longer read (the project's MapTiler key is superseded; builds carry no map key). | The maintainer deletes the secret (Settings → Secrets and variables → Actions) and revokes the key in the MapTiler account. | 2026-10-13, open (maintainer) |
+| The project's MapTiler key is superseded (builds carry no map key); the CI secret `TERPOIR_MAPTILER_KEY` was deleted on 2026-10-13. | The maintainer revokes the key in the MapTiler account. | 2026-10-13, open (maintainer) |
 | No device test yet that the app opens no network connection with the default settings (`docs/design-decisions.md`, "Android project"). The gateway's unit tests cover the refusal logic. | An instrumented test drives the app with the defaults (opening the spot editor included) and finds no traffic from its UID. | 2026-10-12, open |
 
 ## Blocked network sources
