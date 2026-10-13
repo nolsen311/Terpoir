@@ -8,8 +8,9 @@ per item or small group of items. Keep this file updated as items land.
 ## Maintainer tasks (outside the code)
 
 - [ ] Squash-merge PR #1 with a `Signed-off-by:` line in the merge message.
-- [ ] Settings → Code security: enable Dependabot alerts and Dependabot
-      security updates.
+- [x] Settings → Code security: enable Dependabot alerts and Dependabot
+      security updates. (Managed in `Terpoir-infra` since its first apply,
+      2026-10-13.)
 - [ ] After the `DCO` workflow has run once, add `dco` as a required status
       check in the `protect-main` ruleset (exempt nothing; bots are handled
       inside the check).
