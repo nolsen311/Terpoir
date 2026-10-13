@@ -48,6 +48,17 @@ never reaches CI or the repository.
 
 ## Each release
 
+**Shortcut:** once the version PR is merged, `android/scripts/release.sh
+v0.1.0` does steps 2 to 5 below in one run. It asks before it tags and
+pushes, signs the tag, waits for CI, runs `sign-release.sh --upload` (PIN
+once, a touch per signature), and asks before publishing. It is safe to
+re-run after an interruption. Set `TERPOIR_UPLOAD_SLOT=82` (and
+`TERPOIR_SSH_KEY`) in the environment as for `sign-release.sh`. It writes
+signed builds under `~/terpoir-releases` (`TERPOIR_WORK_DIR`). Nothing is
+signed in CI: it only chains the steps by hand.
+
+The steps, for doing them separately:
+
 1. **Version:** a PR raises `versionCode` and sets `versionName` in
    `android/app/build.gradle.kts`. Merge it.
 2. **Tag** that commit on `main`, signed with the YubiKey's SSH key, and
