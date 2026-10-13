@@ -97,7 +97,7 @@ Notes on the copy:
   that isn't a regulated medical device: "not a medical device and does not
   diagnose, treat, cure, or prevent any medical condition", plus the
   reminder to consult a healthcare professional
-  ([Health Content and Services](https://support.google.com/googleplay/android-developer/answer/16679511)).
+  ([Health Content and Services](https://support.google.com/googleplay/android-developer/answer/9878878)).
 - **All-ages:** it names cannabis factually and says who the app is for.
   It has no imagery or wording that encourages use, and no ordering,
   delivery, dispensary, menu or price language. Google's marijuana policy
