@@ -19,7 +19,7 @@ per item or small group of items. Keep this file updated as items land.
       filing (Class 9).
 - [x] Generate the Android signing key offline; import into two YubiKeys;
       offline encrypted backup. (Done by 2026-10-13.)
-- [ ] Pin the app signing certificate: its SHA-256 in
+- [x] Pin the app signing certificate: its SHA-256 in
       `android/release/app-certificate.sha256`, its SHA-1 in Terpoir-infra's
       `maps_release_sha1s` (`docs/releasing.md`, one-time setup).
 - [ ] Create the Google Play developer account (personal); check current

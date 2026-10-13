@@ -44,7 +44,9 @@ never reaches CI or the repository.
    ykman piv certificates generate --subject "CN=Terpoir upload key" --valid-days 10000 82 upload.pub.pem
    ykman piv certificates export 82 upload.pem   # for the Play Console
    ```
-   Then set `TERPOIR_UPLOAD_SLOT=82` when signing.
+   Then set `TERPOIR_UPLOAD_SLOT=82` when signing. (The first release used
+   slot `9d` for the upload key instead; any slot works, as long as
+   `TERPOIR_UPLOAD_SLOT` names it.)
 
 ## Each release
 
@@ -79,7 +81,7 @@ The steps, for doing them separately:
 4. **Sign** with the YubiKey plugged in (one PIN entry, a touch per
    signature):
    ```bash
-   TERPOIR_UPLOAD_SLOT=82 android/scripts/sign-release.sh v0.1.0 --upload
+   TERPOIR_UPLOAD_SLOT=9d android/scripts/sign-release.sh v0.1.0 --upload
    ```
    The script:
    - downloads the unsigned builds and checks them against CI's hashes;
