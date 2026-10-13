@@ -5,7 +5,6 @@
 package app.terpoir.map
 
 import android.content.Context
-import app.terpoir.BuildConfig
 import java.io.File
 import org.maplibre.android.MapLibre
 import org.maplibre.android.log.Logger
@@ -15,16 +14,10 @@ import org.maplibre.android.offline.OfflineManager
 
 /**
  * The opt-in online map (docs/design-decisions.md, "Map picker"): MapLibre
- * showing MapTiler's map, for picking a spot's location. Only in builds
- * with a MapTiler key, and only while the "Online map" toggle is on.
+ * showing the chosen [MapProvider]'s map, for picking a spot's location.
+ * In every build, and only while the "Online map" toggle is on.
  */
 object OnlineMap {
-    /** Whether this build has a map at all. */
-    val available: Boolean get() = BuildConfig.MAPTILER_KEY.isNotEmpty()
-
-    /** MapTiler's street map. Its tiles, fonts and icons are on the same host. */
-    val styleUrl: String get() = "https://${MapGateway.HOST}/maps/streets-v2/style.json?key=${BuildConfig.MAPTILER_KEY}"
-
     /** MapLibre's tile database and settings file, which [forget] deletes. */
     private const val DATABASE = "mbgl-offline.db"
     private const val PREFERENCES = "MapboxSharedPreferences"
@@ -33,10 +26,11 @@ object OnlineMap {
 
     /**
      * Sets MapLibre up once, before the first map: logging off, every
-     * request through [MapGateway] (which asks [enabled] each time), and no
-     * tile cache kept, since cached tiles would show which areas were viewed.
+     * request through [MapGateway] (which asks [enabled] and [provider] each
+     * time), and no tile cache kept, since cached tiles would show which
+     * areas were viewed.
      */
-    fun start(context: Context, enabled: () -> Boolean) {
+    fun start(context: Context, enabled: () -> Boolean, provider: () -> MapProvider) {
         if (started) return
         Logger.setVerbosity(Logger.NONE)
         Logger.setLoggerDefinition(Silent)
@@ -46,7 +40,7 @@ object OnlineMap {
         MapLibre.setConnected(true)
         HttpRequestUtil.setLogEnabled(false)
         HttpRequestUtil.setPrintRequestUrlOnFailure(false)
-        HttpRequestUtil.setOkHttpClient(MapGateway.client(enabled))
+        HttpRequestUtil.setOkHttpClient(MapGateway.client(enabled, provider))
         OfflineManager.getInstance(context).setMaximumAmbientCacheSize(0, Ignore)
         started = true
     }

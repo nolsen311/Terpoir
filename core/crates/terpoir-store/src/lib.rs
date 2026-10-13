@@ -422,6 +422,18 @@ impl Store {
         Ok(())
     }
 
+    /// Removes a piece of local state. Returns whether it existed.
+    ///
+    /// # Errors
+    ///
+    /// Database errors.
+    pub fn delete_meta(&mut self, key: &str) -> Result<bool> {
+        Ok(self
+            .conn
+            .execute("DELETE FROM meta WHERE key = ?1", params![key])?
+            > 0)
+    }
+
     /// Re-wraps every record key from `old` to `new` in one transaction,
     /// for master-key rotation. Ciphertext and files are unchanged. Returns
     /// the number of records.

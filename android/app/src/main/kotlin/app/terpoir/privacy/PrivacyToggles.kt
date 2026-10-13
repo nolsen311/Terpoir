@@ -14,6 +14,7 @@ import app.terpoir.capture.NewNoteTileService
 import app.terpoir.capture.NewNoteWidget
 import app.terpoir.capture.QuickCapture
 import app.terpoir.core.Journal
+import app.terpoir.map.MapProvider
 import app.terpoir.map.OnlineMap
 import app.terpoir.sync.FolderSync
 import kotlinx.coroutines.Dispatchers
@@ -157,31 +158,33 @@ fun buildPrivacyCenter(
             onAction = { settings.showNearbySpots = true },
             offAction = { settings.showNearbySpots = false },
         ),
-        // Builds with a MapTiler key only. On lets the spot editor open the
-        // map; the gateway refuses every request while it is off. Off also
-        // deletes anything MapLibre stored.
-        if (OnlineMap.available) {
-            PrivacyToggle(
-                id = ONLINE_MAP,
-                group = PrivacyGroup.LOCATION,
-                card = PrivacyCard(
-                    title = R.string.online_map,
-                    whatItDoes = R.string.online_map_does,
-                    whatLeaves = R.string.online_map_leaves,
-                    whoCanSee = R.string.online_map_who,
-                    howToUndo = R.string.online_map_undo,
-                ),
-                privateState = false,
-                isOn = { settings.onlineMap },
-                onAction = { settings.onlineMap = true },
-                offAction = {
-                    settings.onlineMap = false
-                    OnlineMap.forget(context)
-                },
-            )
-        } else {
-            null
-        },
+        // Every build. On lets the spot editor open the map, with MapTiler
+        // if the user saved their own key (as YOLO Mode does), else
+        // OpenFreeMap; the gateway refuses every request while it is off.
+        // Off also deletes anything MapLibre stored and returns the provider
+        // to OpenFreeMap; a saved MapTiler key stays until the user removes it.
+        PrivacyToggle(
+            id = ONLINE_MAP,
+            group = PrivacyGroup.LOCATION,
+            card = PrivacyCard(
+                title = R.string.online_map,
+                whatItDoes = R.string.online_map_does,
+                whatLeaves = R.string.online_map_leaves,
+                whoCanSee = R.string.online_map_who,
+                howToUndo = R.string.online_map_undo,
+            ),
+            privateState = false,
+            isOn = { settings.onlineMap },
+            onAction = {
+                settings.mapProvider = if (settings.mapTilerKeySaved) MapProvider.MAPTILER else MapProvider.DEFAULT
+                settings.onlineMap = true
+            },
+            offAction = {
+                settings.onlineMap = false
+                settings.mapProvider = MapProvider.DEFAULT
+                OnlineMap.forget(context)
+            },
+        ),
         // On registers geofences now if the journal is open (else at the
         // next unlock) and once the permissions are granted, which the
         // journal asks for. Off removes every geofence, the notification
@@ -404,7 +407,7 @@ val YOLO_MODE = PrivacyPreset(
         "alert_names",
         "alert_details",
         "follow_up_check_ins",
-        // Added by the maintainer, 2026-10-12. Builds without a map ignore it.
+        // Added by the maintainer, 2026-10-12.
         ONLINE_MAP,
     ),
 )

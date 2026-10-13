@@ -1155,3 +1155,33 @@ fn shop_insights_compare_brands_and_strains_across_shops() {
         ]
     );
 }
+
+#[test]
+fn maptiler_key_is_local_and_validated() {
+    let device = Device::new();
+    let keys = create_keys().unwrap();
+    let journal = device.open(&keys).unwrap();
+    assert_eq!(journal.maptiler_key().unwrap(), None);
+    journal.set_maptiler_key(Some("AbC123xyz".into())).unwrap();
+    assert_eq!(
+        journal.maptiler_key().unwrap().as_deref(),
+        Some("AbC123xyz")
+    );
+    for bad in ["", "has space", "dash-ed", "ünïcode", &"a".repeat(129)] {
+        assert_eq!(
+            journal.set_maptiler_key(Some(bad.into())),
+            Err(CoreError::InvalidInput)
+        );
+    }
+    // Local only: a journal restored from this one's sync blobs has no key.
+    let other = Device::new();
+    let restored = other.open(&keys).unwrap();
+    for blob in journal.export_sync_blobs().unwrap() {
+        restored.import_sync_blob(blob.bytes, 5).unwrap();
+    }
+    assert_eq!(restored.maptiler_key().unwrap(), None);
+    journal.set_maptiler_key(None).unwrap();
+    assert_eq!(journal.maptiler_key().unwrap(), None);
+    journal.lock();
+    assert_eq!(journal.maptiler_key(), Err(CoreError::Locked));
+}

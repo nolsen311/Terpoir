@@ -7,6 +7,7 @@ package app.terpoir.privacy
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import app.terpoir.TerpoirApplication
+import app.terpoir.map.MapProvider
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -53,6 +54,29 @@ class PrivacyTogglesTest {
             assertEquals(1, center.relaxedCount())
             toggle.set(toggle.privateState)
             assertEquals(0, center.relaxedCount())
+        }
+    }
+
+    @Test
+    fun theOnlineMapChoosesItsProvider() = runBlocking {
+        val settings = app.privacySettings
+        val map = app.privacyCenter.toggles.first { it.id == ONLINE_MAP }
+        val hadKey = settings.mapTilerKeySaved
+        try {
+            // No key: OpenFreeMap.
+            settings.mapTilerKeySaved = false
+            map.set(true)
+            assertEquals(MapProvider.OPENFREEMAP, settings.mapProvider)
+            map.set(false)
+            // With the user's own key, turning the map on (as YOLO Mode
+            // does) chooses MapTiler; off returns to OpenFreeMap.
+            settings.mapTilerKeySaved = true
+            map.set(true)
+            assertEquals(MapProvider.MAPTILER, settings.mapProvider)
+            map.set(false)
+            assertEquals(MapProvider.OPENFREEMAP, settings.mapProvider)
+        } finally {
+            settings.mapTilerKeySaved = hadKey
         }
     }
 }

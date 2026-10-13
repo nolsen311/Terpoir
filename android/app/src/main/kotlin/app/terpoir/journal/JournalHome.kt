@@ -164,7 +164,7 @@ fun JournalHome(
     when (val screen = stack.last()) {
         is Screen.Session -> SessionEditor(repo, vocab, settings, checkIns, screen.id, pop, spotForNew = screen.spot)
         is Screen.CheckIn -> CheckInScreen(repo, vocab, screen.session, pop)
-        is Screen.Spot -> SpotEditor(repo, screen.id, mapToggle, settings.purchasePrompts, pop)
+        is Screen.Spot -> SpotEditor(repo, screen.id, mapToggle, settings, settings.purchasePrompts, pop)
         is Screen.Product -> ProductEditor(
             repo,
             vocab,

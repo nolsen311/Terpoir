@@ -108,10 +108,10 @@
     <string name="coa_links_undo">Turn it off here. Pages you already opened stay in your browser\'s history until you clear it.</string>
     <string name="show_nearby">Show nearby saved spots</string>
     <string name="online_map">Online map</string>
-    <string name="online_map_does">Lets you pick a spot\'s location on a map instead of using your phone\'s location. The map comes from MapTiler, over the internet.</string>
-    <string name="online_map_leaves">While you use the map, your IP address and the areas you look at go to MapTiler. Looking around a spot shows roughly where it is. Nothing from your journal is sent, and map images aren\'t kept on your phone.</string>
-    <string name="online_map_who">MapTiler, a map company, sees the areas you view and your IP address. Your internet provider can see that you use MapTiler, but not which areas.</string>
-    <string name="online_map_undo">Turn it off here. Terpoir stops all map requests and deletes anything the map stored. Locations you already picked stay with your spots.</string>
+    <string name="online_map_does">Lets you pick a spot\'s location on a map instead of using your phone\'s location. The map comes over the internet from OpenFreeMap, a free map service with no account or key, or from MapTiler if you add your own MapTiler key.</string>
+    <string name="online_map_leaves">While you use the map, your IP address and the areas you look at go to the map provider. Looking around a spot shows roughly where it is. Nothing from your journal is sent, and map images aren\'t kept on your phone.</string>
+    <string name="online_map_who">The map provider sees the areas you view and your IP address: OpenFreeMap, a free service run by one person on donations, or MapTiler, a map company, if you chose it. Your internet provider can see which one you use, but not which areas.</string>
+    <string name="online_map_undo">Turn it off here. Terpoir stops all map requests, deletes anything the map stored and goes back to OpenFreeMap. Locations you already picked stay with your spots, and a saved MapTiler key stays until you remove it.</string>
     <string name="show_nearby_does">When you open your journal, Terpoir checks your location once and shows a saved spot you\'re near, so you can log a session there.</string>
     <string name="show_nearby_leaves">Nothing leaves your phone. The location is checked only while Terpoir is open, compared with your spots inside the encrypted journal, and not kept. Nothing is registered with Android for alerts.</string>
     <string name="show_nearby_who">Android knows Terpoir asked for your location while open, as with any app. No one else sees your spots.</string>
@@ -487,7 +487,8 @@
     <string name="map_pick_title">Pick on map</string>
     <string name="map_pick_hint">Move the map until the circle is on the spot. Zoom in for a more exact point: the circle\'s size is how exact it is.</string>
     <string name="map_pick_use">Use this point</string>
-    <string name="map_attribution" translatable="false">© MapTiler © OpenStreetMap contributors</string>
+    <string name="map_attribution_openfreemap" translatable="false">© OpenMapTiles, data from © OpenStreetMap contributors</string>
+    <string name="map_attribution_maptiler" translatable="false">© MapTiler © OpenStreetMap contributors</string>
     <string name="spot_location_clear">Remove location</string>
     <string name="spot_locating">Getting your location…</string>
     <string name="spot_location_failed">Couldn\'t get a location. Check that location is on, or save the spot without one.</string>
@@ -653,4 +654,16 @@
     <string name="capture_keep">Keep</string>
     <string name="capture_discard">Discard</string>
     <string name="capture_discard_title">Discard this note?</string>
+    <string name="map_provider_title">Map provider</string>
+    <string name="map_provider_openfreemap">OpenFreeMap (no account or key)</string>
+    <string name="map_provider_maptiler">MapTiler (your own key)</string>
+    <string name="map_provider_note">Only the chosen provider is ever contacted, and only while the online map is on. OpenFreeMap is free and run by one person on donations, so it could stop working one day.</string>
+    <string name="maptiler_key_title">Your MapTiler key</string>
+    <string name="maptiler_key_leaves">With your own MapTiler key, the map comes from MapTiler instead. Get a key from your MapTiler account and paste it here. It\'s kept encrypted with your journal on this phone only, and never synced or exported.</string>
+    <string name="maptiler_key_who">MapTiler sees your IP address, the areas you look at and your key, which identifies your MapTiler account. Your use counts against your MapTiler plan.</string>
+    <string name="maptiler_key_field">MapTiler API key</string>
+    <string name="maptiler_key_save">Save key and use MapTiler</string>
+    <string name="maptiler_key_saved">A MapTiler key is saved on this phone.</string>
+    <string name="maptiler_key_remove">Remove key</string>
+    <string name="maptiler_key_invalid">A MapTiler key has only letters and digits.</string>
 </resources>

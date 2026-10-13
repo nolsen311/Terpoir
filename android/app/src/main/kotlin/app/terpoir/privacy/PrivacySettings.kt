@@ -5,6 +5,7 @@
 package app.terpoir.privacy
 
 import android.content.Context
+import app.terpoir.map.MapProvider
 
 /**
  * Privacy toggles that must be readable before unlock. Not journal
@@ -92,13 +93,26 @@ class PrivacySettings(context: Context) {
         set(value) = prefs.edit().putBoolean(KEY_CHECK_INS, value).apply()
 
     /**
-     * The online map for picking a spot's location (builds with a MapTiler
-     * key only). Off by default: MapTiler sees the areas viewed and the IP
-     * address.
+     * The online map for picking a spot's location. Off by default: the
+     * provider sees the areas viewed and the IP address.
      */
     var onlineMap: Boolean
         get() = prefs.getBoolean(KEY_ONLINE_MAP, false)
         set(value) = prefs.edit().putBoolean(KEY_ONLINE_MAP, value).apply()
+
+    /** Whose map the online map shows. OpenFreeMap unless the user picks another. */
+    var mapProvider: MapProvider
+        get() = MapProvider.fromId(prefs.getString(KEY_MAP_PROVIDER, null))
+        set(value) = prefs.edit().putString(KEY_MAP_PROVIDER, value.id).apply()
+
+    /**
+     * Whether the user has saved their own MapTiler key. The key itself is
+     * in the journal's encrypted local metadata; this only lets the map be
+     * offered while the journal is locked, and YOLO Mode choose MapTiler.
+     */
+    var mapTilerKeySaved: Boolean
+        get() = prefs.getBoolean(KEY_MAPTILER_KEY_SAVED, false)
+        set(value) = prefs.edit().putBoolean(KEY_MAPTILER_KEY_SAVED, value).apply()
 
     /**
      * Targeted symptoms: the session editor shows a section for rating
@@ -171,6 +185,8 @@ class PrivacySettings(context: Context) {
         const val KEY_ALERT_DETAILS = "alert_details"
         const val KEY_CHECK_INS = "follow_up_check_ins"
         const val KEY_ONLINE_MAP = "online_map"
+        const val KEY_MAP_PROVIDER = "map_provider"
+        const val KEY_MAPTILER_KEY_SAVED = "maptiler_key_saved"
         const val KEY_SYMPTOMS = "targeted_symptoms"
         const val KEY_INSIGHTS = "insights"
         const val KEY_PURCHASE_PROMPTS = "purchase_prompts"

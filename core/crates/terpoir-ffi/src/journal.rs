@@ -30,6 +30,9 @@ use crate::{CoreError, Result};
 const META_DEVICE: &str = "device_id";
 const META_CLOCK: &str = "clock";
 const META_SEQUENCE: &str = "sync_sequence";
+const META_MAPTILER_KEY: &str = "maptiler_key";
+/// Longest MapTiler key accepted. Real keys are 20 characters.
+const MAX_MAPTILER_KEY_LEN: usize = 128;
 
 /// An existing product that may be the one being entered.
 #[derive(Clone, PartialEq, Eq, Debug, uniffi::Record)]
@@ -1083,6 +1086,46 @@ impl Journal {
                 deletions: n(summary.deletions),
                 deferred: n(summary.deferred),
             })
+        })
+    }
+
+    /// The user's own MapTiler API key for the online map, if they saved
+    /// one. Kept in this device's encrypted local metadata; never synced or
+    /// exported.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn maptiler_key(&self) -> Result<Option<String>> {
+        self.with(|u| {
+            Ok(u.store
+                .meta(META_MAPTILER_KEY)?
+                .and_then(|bytes| String::from_utf8(bytes).ok()))
+        })
+    }
+
+    /// Saves the user's MapTiler key (`Some`) or deletes it (`None`).
+    ///
+    /// # Errors
+    ///
+    /// `InvalidInput` unless the key is 1 to 128 ASCII letters and digits;
+    /// `Locked` or `Storage`.
+    pub fn set_maptiler_key(&self, key: Option<String>) -> Result<()> {
+        if let Some(key) = &key
+            && (key.is_empty()
+                || key.len() > MAX_MAPTILER_KEY_LEN
+                || !key.bytes().all(|b| b.is_ascii_alphanumeric()))
+        {
+            return Err(CoreError::InvalidInput);
+        }
+        self.with(|u| {
+            match key {
+                Some(key) => u.store.set_meta(META_MAPTILER_KEY, key.as_bytes())?,
+                None => {
+                    u.store.delete_meta(META_MAPTILER_KEY)?;
+                }
+            }
+            Ok(())
         })
     }
 
