@@ -21,6 +21,12 @@ enum class OnboardingStep {
     /** Show the recovery key, then confirm the backup or skip. */
     BACKUP,
 
+    /**
+     * Play builds with a Google Maps key: Google Maps or not, an active
+     * choice with neither preselected.
+     */
+    MAP_CHOICE,
+
     /** Tour of the Privacy Center, everything at its most private. */
     PRIVACY_TOUR,
 
@@ -46,16 +52,20 @@ enum class RecoveryBackup {
  * @param hasJournal a journal exists on this device.
  * @param backupPending a journal was created but its backup was neither
  *   confirmed nor skipped.
+ * @param mapChoicePending this build offers Google Maps and the user has
+ *   not answered whether to use it.
  */
 fun onboardingStep(
     hasJournal: Boolean,
     ageGatePassed: Boolean,
     backupPending: Boolean,
     complete: Boolean,
+    mapChoicePending: Boolean = false,
 ): OnboardingStep = when {
     !hasJournal && !ageGatePassed -> OnboardingStep.AGE
     !hasJournal -> OnboardingStep.CREATE
     backupPending -> OnboardingStep.BACKUP
+    !complete && mapChoicePending -> OnboardingStep.MAP_CHOICE
     !complete -> OnboardingStep.PRIVACY_TOUR
     else -> OnboardingStep.DONE
 }
@@ -66,7 +76,7 @@ fun onboardingStep(
  * itself is never written anywhere: it lives in process memory only, from
  * journal creation until the backup is confirmed or skipped.
  */
-class Onboarding(context: Context) {
+class Onboarding(context: Context, private val offersGoogleMaps: Boolean = false) {
     private val prefs = context.getSharedPreferences("onboarding", Context.MODE_PRIVATE)
 
     /**
@@ -91,6 +101,10 @@ class Onboarding(context: Context) {
     var complete: Boolean by mutableStateOf(prefs.getBoolean(KEY_COMPLETE, false))
         private set
 
+    /** The user answered the Google Maps question (either way). */
+    var mapChoiceMade: Boolean by mutableStateOf(prefs.getBoolean(KEY_MAP_CHOICE, false))
+        private set
+
     /**
      * The new journal's recovery key, shown until the backup is resolved.
      * A JVM string cannot be wiped, so it is dropped as soon as possible.
@@ -99,7 +113,8 @@ class Onboarding(context: Context) {
         private set
 
     /** The step to show, given whether a journal exists. */
-    fun step(hasJournal: Boolean): OnboardingStep = onboardingStep(hasJournal, ageGatePassed, backupPending, complete)
+    fun step(hasJournal: Boolean): OnboardingStep =
+        onboardingStep(hasJournal, ageGatePassed, backupPending, complete, mapChoicePending = offersGoogleMaps && !mapChoiceMade)
 
     /** The age gate passed. */
     fun passAgeGate() {
@@ -145,6 +160,12 @@ class Onboarding(context: Context) {
         recoveryKey = null
     }
 
+    /** The Google Maps question is answered; the answer itself is a toggle state. */
+    fun mapChosen() {
+        prefs.edit().putBoolean(KEY_MAP_CHOICE, true).apply()
+        mapChoiceMade = true
+    }
+
     /** The Privacy Center tour is done. */
     fun finish() {
         prefs.edit().putBoolean(KEY_COMPLETE, true).apply()
@@ -156,5 +177,6 @@ class Onboarding(context: Context) {
         const val KEY_PENDING = "backup_pending"
         const val KEY_BACKUP = "recovery_backup"
         const val KEY_COMPLETE = "complete"
+        const val KEY_MAP_CHOICE = "map_choice_made"
     }
 }

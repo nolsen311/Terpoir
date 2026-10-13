@@ -112,7 +112,12 @@ class MapGatewayTest {
     fun providersAndStyles() {
         assertEquals(MapProvider.OPENFREEMAP, MapProvider.DEFAULT)
         assertEquals(MapProvider.OPENFREEMAP, MapProvider.fromId(null))
-        assertEquals(MapProvider.OPENFREEMAP, MapProvider.fromId("google"))
+        assertEquals(MapProvider.OPENFREEMAP, MapProvider.fromId("bing"))
+        assertEquals(MapProvider.GOOGLE, MapProvider.fromId("google"))
+        // Google's SDK draws the map; MapLibre gets nothing out while it is chosen.
+        assertNull(MapProvider.GOOGLE.styleUrl("Key123"))
+        assertFalse(MapGateway.allows("https", "tiles.openfreemap.org", enabled = true, MapProvider.GOOGLE))
+        assertFalse(MapGateway.allows("https", "maps.googleapis.com", enabled = true, MapProvider.GOOGLE))
         assertEquals(MapProvider.MAPTILER, MapProvider.fromId("maptiler"))
         // Every style URL stays on its provider's hosts.
         for (provider in MapProvider.entries) {

@@ -47,8 +47,10 @@ import app.terpoir.journal.DataCard
 import app.terpoir.journal.JournalHome
 import app.terpoir.journal.JournalRepository
 import app.terpoir.journal.ScanServices
+import app.terpoir.map.MapProvider
 import app.terpoir.map.MapProviderCard
 import app.terpoir.onboarding.AgeGate
+import app.terpoir.onboarding.GoogleMapChoice
 import app.terpoir.onboarding.OnboardingStep
 import app.terpoir.onboarding.RecoveryBackup
 import app.terpoir.onboarding.RecoveryKeyBackup
@@ -163,6 +165,20 @@ class MainActivity : ComponentActivity() {
             }
             showContent && step == OnboardingStep.BACKUP && recoveryKey != null -> {
                 RecoveryKeyBackup(recoveryKey, session::checkRecoveryKey, onboarding::backupResolved)
+                return
+            }
+            showContent && step == OnboardingStep.MAP_CHOICE -> {
+                val scope = rememberCoroutineScope()
+                GoogleMapChoice(
+                    onUseGoogle = {
+                        scope.launch {
+                            app.privacyCenter.toggles.firstOrNull { it.id == ONLINE_MAP }?.set(true)
+                            app.privacySettings.mapProvider = MapProvider.GOOGLE
+                            onboarding.mapChosen()
+                        }
+                    },
+                    onNotNow = onboarding::mapChosen,
+                )
                 return
             }
             showContent && step == OnboardingStep.PRIVACY_TOUR -> {

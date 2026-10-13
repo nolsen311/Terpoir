@@ -43,6 +43,9 @@ class PrivacyCard(
  * @property isOn reads the current state.
  * @property offChoice for a toggle that collects journal data: turning it
  *   off by hand asks whether to keep that data hidden or delete it.
+ * @property presetOnAction runs instead of the on-action when a preset
+ *   (by ID) turns the toggle on, for a toggle whose preset state carries a
+ *   choice (YOLO Mode's map provider). It must leave the toggle on.
  */
 class PrivacyToggle(
     val id: String,
@@ -53,6 +56,7 @@ class PrivacyToggle(
     private val onAction: suspend () -> Unit,
     private val offAction: suspend () -> Unit,
     val offChoice: OffChoice? = null,
+    private val presetOnAction: (suspend (presetId: String) -> Unit)? = null,
 ) {
     /** Whether the toggle is in its most private state. */
     val isPrivate: Boolean get() = isOn() == privateState
@@ -61,6 +65,14 @@ class PrivacyToggle(
     suspend fun set(on: Boolean) {
         if (on) onAction() else offAction()
         check(isOn() == on) { "Privacy toggle $id did not turn ${if (on) "on" else "off"}" }
+    }
+
+    /** As [set], for preset [presetId]. */
+    suspend fun setForPreset(on: Boolean, presetId: String) {
+        val forPreset = presetOnAction
+        if (!on || forPreset == null) return set(on)
+        forPreset(presetId)
+        check(isOn()) { "Privacy toggle $id did not turn on" }
     }
 }
 
@@ -120,7 +132,7 @@ class PrivacyCenter(val toggles: List<PrivacyToggle>, val presets: List<PrivacyP
      * preset runs the off-actions of everything it turned on.
      */
     suspend fun apply(preset: PrivacyPreset) {
-        for (toggle in toggles) toggle.set(preset.stateFor(toggle))
+        for (toggle in toggles) toggle.setForPreset(preset.stateFor(toggle), preset.id)
     }
 
     /** Toggles by section, in display order; empty sections are left out. */

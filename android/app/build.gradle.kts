@@ -11,6 +11,25 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+/**
+ * The Google Maps keys, Play flavor only (docs/design-decisions.md, "Map
+ * picker"): one for debug builds (restricted to the debug certificates) and
+ * one for release builds (the release and Play App Signing certificates),
+ * from the environment (CI has the debug one only) or Gradle properties.
+ * Never committed. A variant without its key doesn't offer Google Maps.
+ */
+fun googleMapsKey(environment: String, property: String): String =
+    providers.environmentVariable(environment)
+        .orElse(providers.gradleProperty(property))
+        .getOrElse("")
+        .trim()
+        .also { require(it.matches(Regex("[A-Za-z0-9_-]*"))) { "The Google Maps key may contain only letters, digits, - and _." } }
+
+val googleMapsKeys = mapOf(
+    "debug" to googleMapsKey("GOOGLE_MAPS_API_KEY_DEBUG", "terpoir.googleMapsDebugKey"),
+    "release" to googleMapsKey("GOOGLE_MAPS_API_KEY_RELEASE", "terpoir.googleMapsReleaseKey"),
+)
+
 android {
     namespace = "app.terpoir"
     compileSdk = 37
@@ -136,6 +155,7 @@ dependencies {
     "playImplementation"(libs.play.asset.delivery)
     "playImplementation"(libs.play.mlkit.text.recognition)
     "playImplementation"(libs.play.services.location)
+    "playImplementation"(libs.play.services.maps)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.runner)
@@ -426,6 +446,10 @@ androidComponents {
     onVariants { variant ->
         variant.sources.jniLibs?.addGeneratedSourceDirectory(buildRustCore, CargoNdkBuild::outputDir)
         variant.sources.kotlin?.addGeneratedSourceDirectory(generateCoreBindings, UniffiBindgen::outputDir)
+        // The Play manifest's Google Maps key: this build type's own key.
+        if (variant.flavorName == "play") {
+            variant.manifestPlaceholders.put("googleMapsKey", googleMapsKeys[variant.buildType].orEmpty())
+        }
 
         val name = variant.name.replaceFirstChar { it.uppercase() }
         val manifest = variant.artifacts.get(SingleArtifact.MERGED_MANIFEST)

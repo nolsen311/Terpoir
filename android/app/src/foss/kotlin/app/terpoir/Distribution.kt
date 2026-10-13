@@ -7,6 +7,7 @@ package app.terpoir
 import android.content.Context
 import app.terpoir.alerts.AospGeofencer
 import app.terpoir.alerts.Geofencer
+import app.terpoir.map.GoogleMapSupport
 import app.terpoir.onboarding.AgeSignals
 import app.terpoir.privacy.PrivacySettings
 import app.terpoir.scan.BundledTextEngine
@@ -36,6 +37,10 @@ object Distribution {
 
     /** "Notify me" geofencing through the platform's LocationManager. */
     fun geofencer(context: Context): Geofencer = AospGeofencer(context)
+
+    /** No Google Maps in this build. */
+    @Suppress("UNUSED_PARAMETER")
+    fun googleMaps(context: Context): GoogleMapSupport? = null
 
     /** No Google text recognition here, so nothing to release. */
     @Suppress("UNUSED_PARAMETER", "RedundantSuspendModifier")

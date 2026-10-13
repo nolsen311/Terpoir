@@ -698,4 +698,14 @@
     <string name="track_off_body">Keep it hidden: anything you saved stays, out of sight, and comes back if you turn %1$s on again. Delete: removes %1$s from every entry, on every device you sync with. Deleting can\'t be undone.</string>
     <string name="track_keep_hidden">Keep, hidden</string>
     <string name="track_delete">Delete</string>
+    <string name="map_provider_google">Google Maps</string>
+    <string name="google_maps">Google Maps</string>
+    <string name="google_maps_does">Shows Google\'s map when you pick a spot\'s location, instead of OpenFreeMap. The online map is turned on with it.</string>
+    <string name="google_maps_leaves">While you use the map, your IP address and the areas you look at go to Google, through Google Play services on your phone. Looking around a spot shows roughly where it is. Nothing from your journal is sent.</string>
+    <string name="google_maps_who">Google sees the areas you view. Play services is tied to your phone and Google account more closely than the other map providers are. Its maps connect to Google directly, not through Terpoir\'s network gate.</string>
+    <string name="google_maps_undo">Turn the online map off, or choose another provider, in the Privacy Center. Terpoir then shows no Google map, but it can\'t clear what Play services cached for itself.</string>
+    <string name="google_maps_use">Use Google Maps</string>
+    <string name="map_choice_title">Maps for your spots</string>
+    <string name="map_choice_body">You can pick a spot\'s location on a map instead of using your phone\'s location. The map is optional and off unless you choose it here or later in the Privacy Center, where OpenFreeMap is also available.</string>
+    <string name="map_choice_not_now">Not now</string>
 </resources>

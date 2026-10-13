@@ -67,9 +67,17 @@ private const val MAX_ACCURACY_M = 50_000
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapPicker(start: Fix?, provider: MapProvider, styleUrl: String, onPick: (Fix) -> Unit, onClose: () -> Unit) {
+fun MapPicker(
+    start: Fix?,
+    provider: MapProvider,
+    styleUrl: String?,
+    google: GoogleMapSupport?,
+    onPick: (Fix) -> Unit,
+    onClose: () -> Unit,
+) {
     BackHandler(onBack = onClose)
-    var map by remember { mutableStateOf<MapLibreMap?>(null) }
+    // Reads the point under the crosshair, once the map is ready.
+    var pick by remember { mutableStateOf<(() -> Fix)?>(null) }
     val radiusPx = with(LocalDensity.current) { CROSSHAIR_RADIUS.toPx() }
     Scaffold(
         topBar = {
@@ -90,22 +98,28 @@ fun MapPicker(start: Fix?, provider: MapProvider, styleUrl: String, onPick: (Fix
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                MapLibreView(start, styleUrl) { map = it }
+                if (provider == MapProvider.GOOGLE) {
+                    google?.PickerMap(start, CROSSHAIR_RADIUS) { pick = it }
+                } else if (styleUrl != null) {
+                    MapLibreView(start, styleUrl) { map -> pick = { pickedFix(map, radiusPx) } }
+                }
                 Crosshair()
                 // The providers' terms: the credit always shows on the map,
-                // not behind an info button.
-                Text(
-                    stringResource(provider.attribution),
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
-                        .padding(horizontal = 4.dp, vertical = 2.dp),
-                )
+                // not behind an info button. Google draws its own.
+                provider.attribution?.let { credit ->
+                    Text(
+                        stringResource(credit),
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                    )
+                }
             }
             Button(
-                enabled = map != null,
-                onClick = { map?.let { onPick(pickedFix(it, radiusPx)) } },
+                enabled = pick != null,
+                onClick = { pick?.let { onPick(it()) } },
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
             ) { Text(stringResource(R.string.map_pick_use)) }
         }

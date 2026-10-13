@@ -7,6 +7,8 @@ package app.terpoir
 import android.content.Context
 import app.terpoir.alerts.Geofencer
 import app.terpoir.alerts.PlayGeofencer
+import app.terpoir.map.GoogleMapSupport
+import app.terpoir.map.PlayGoogleMaps
 import app.terpoir.onboarding.AgeSignals
 import app.terpoir.onboarding.PlayAgeSignals
 import app.terpoir.privacy.PrivacySettings
@@ -44,6 +46,9 @@ object Distribution {
 
     /** "Notify me" geofencing: Play services, or the platform without them. */
     fun geofencer(context: Context): Geofencer = PlayGeofencer(context)
+
+    /** Google Maps, if this build carries a Google Maps key. */
+    fun googleMaps(context: Context): GoogleMapSupport? = PlayGoogleMaps.takeIf { it.hasKey(context) }
 
     /** Lets Play services remove ML Kit's model (the toggle's off-action). */
     suspend fun releaseGoogleTextRecognition(context: Context) = GoogleTextEngine.release(context)
