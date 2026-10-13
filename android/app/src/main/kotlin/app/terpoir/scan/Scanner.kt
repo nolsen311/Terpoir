@@ -9,6 +9,7 @@ import app.terpoir.core.TextPieceData
 import app.terpoir.core.TextRowData
 import app.terpoir.core.groupTextRows
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -71,7 +72,14 @@ class Scanner(val textEngine: () -> TextEngine) {
     private suspend fun rows(photo: Bitmap, layout: TextLayout): List<TextRowData>? {
         val readable = forReading(photo)
         try {
-            val recognizer = textEngine().open() ?: return null
+            // An engine that fails to open reads nothing; the caller offers typing instead.
+            val recognizer = try {
+                textEngine().open()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            } ?: return null
             val lines = try {
                 recognizer.recognize(readable.image, layout)
             } finally {

@@ -27,21 +27,37 @@ import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.scan.EngineStatus
 import app.terpoir.scan.Scanner
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.catch
 
 /**
  * Shows [content] (a text scan) once the scanner's text engine is ready.
  * An engine that must be downloaded first (Play) is offered, never fetched
  * on its own: the user agrees, or closes and types instead.
+ *
+ * Anything the engine throws (Play's delivery services can, for instance on
+ * a copy not installed from Google Play) shows as a failed download, which
+ * the user can retry or close, never as a crash.
  */
 @Composable
 fun TextEngineGate(scanner: Scanner, title: String, onClose: () -> Unit, content: @Composable () -> Unit) {
     val engine = remember(scanner) { scanner.textEngine() }
     var status by remember(engine) { mutableStateOf<EngineStatus?>(null) }
     var installing by remember(engine) { mutableStateOf(false) }
-    LaunchedEffect(engine) { status = engine.status() }
+    LaunchedEffect(engine) {
+        status = try {
+            engine.status()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            EngineStatus.Failed
+        }
+    }
     LaunchedEffect(installing) {
         if (installing) {
-            engine.install().collect { status = it }
+            engine.install()
+                .catch { emit(EngineStatus.Failed) }
+                .collect { status = it }
             installing = false
         }
     }
@@ -81,7 +97,12 @@ fun TextEngineGate(scanner: Scanner, title: String, onClose: () -> Unit, content
                     }
                 }
                 is EngineStatus.NeedsConfirmation -> {
-                    LaunchedEffect(current) { current.confirm(confirmation) }
+                    LaunchedEffect(current) {
+                        if (runCatching { current.confirm(confirmation) }.isFailure) {
+                            installing = false
+                            status = EngineStatus.Failed
+                        }
+                    }
                     Text(stringResource(R.string.ocr_downloading))
                 }
                 EngineStatus.Ready -> Unit
