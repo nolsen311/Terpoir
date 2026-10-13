@@ -273,6 +273,36 @@ val generateCoreBindings by tasks.registering(UniffiBindgen::class) {
     outputDir.set(layout.buildDirectory.dir("generated/rust/kotlin"))
 }
 
+// --- The privacy policy ---------------------------------------------------
+//
+// The app shows the website's privacy policy as text (Play's User Data and
+// Health policies ask for it inside the app). One source: site/privacy.html
+// is copied into the assets at build time, never fetched.
+
+/** Copies the website's privacy policy into a generated assets directory. */
+abstract class CopyPrivacyPolicy : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val source: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val out = outputDir.get().asFile
+        out.deleteRecursively()
+        out.mkdirs()
+        source.get().asFile.copyTo(out.resolve("privacy.html"))
+    }
+}
+
+val copyPrivacyPolicy by tasks.registering(CopyPrivacyPolicy::class) {
+    description = "Copies site/privacy.html into the app's assets."
+    source.set(rootProject.layout.projectDirectory.file("../site/privacy.html"))
+    outputDir.set(layout.buildDirectory.dir("generated/privacy/assets"))
+}
+
 /**
  * Groups that must never reach the FOSS build: Play services, Firebase,
  * Google Data Transport (ML Kit's usage metrics), Play Billing, Play Core /
@@ -453,6 +483,7 @@ androidComponents {
     onVariants { variant ->
         variant.sources.jniLibs?.addGeneratedSourceDirectory(buildRustCore, CargoNdkBuild::outputDir)
         variant.sources.kotlin?.addGeneratedSourceDirectory(generateCoreBindings, UniffiBindgen::outputDir)
+        variant.sources.assets?.addGeneratedSourceDirectory(copyPrivacyPolicy, CopyPrivacyPolicy::outputDir)
         // The Play manifest's Google Maps key: this build type's own key.
         if (variant.flavorName == "play") {
             variant.manifestPlaceholders.put("googleMapsKey", googleMapsKeys[variant.buildType].orEmpty())

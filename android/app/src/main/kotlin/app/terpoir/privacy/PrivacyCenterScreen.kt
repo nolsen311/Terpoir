@@ -63,6 +63,7 @@ fun PrivacyCenterScreen(
     var choosing by remember { mutableStateOf<PrivacyPreset?>(null) }
     // The tour's optional question; never stored.
     var threat by remember { mutableStateOf<Threat?>(null) }
+    var readingPolicy by remember { mutableStateOf(false) }
     fun run(action: suspend () -> Unit) {
         scope.launch {
             action()
@@ -72,6 +73,10 @@ fun PrivacyCenterScreen(
     }
     // During the tour, Back leaves the app as usual instead of skipping it.
     BackHandler(enabled = !tour, onBack = onClose)
+    if (readingPolicy) {
+        PrivacyPolicyScreen(onClose = { readingPolicy = false })
+        return
+    }
 
     Column(
         modifier = Modifier.verticalScroll(rememberScrollState()).padding(24.dp),
@@ -126,6 +131,7 @@ fun PrivacyCenterScreen(
             }
         }
         footer()
+        OutlinedButton(onClick = { readingPolicy = true }) { Text(stringResource(R.string.privacy_policy)) }
         if (tour) {
             Button(onClick = onClose) { Text(stringResource(R.string.privacy_tour_finish)) }
         } else {

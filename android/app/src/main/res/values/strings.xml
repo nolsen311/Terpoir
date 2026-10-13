@@ -23,6 +23,9 @@
     </plurals>
     <string name="privacy_restore">Restore maximum privacy</string>
     <string name="privacy_close">Done</string>
+    <string name="privacy_policy">Privacy policy</string>
+    <string name="continue_label">Continue</string>
+    <string name="health_reminder">Terpoir is a self-tracking journal, not a medical device: it doesn\'t diagnose, treat, cure or prevent any condition. For medical advice, diagnosis or treatment, talk to a healthcare professional.</string>
     <string name="privacy_relax">Continue</string>
     <string name="privacy_keep">Keep it private</string>
     <string name="privacy_group_journal">Journal</string>
@@ -435,6 +438,7 @@
     <string name="scan_no_text_engine">Text recognition couldn\'t start. Any codes were still read; enter the rest by hand.</string>
     <string name="scan_camera_denied">Scanning needs the camera. Terpoir uses it only while this screen is open and never saves photos to your gallery.</string>
     <string name="scan_camera_allow">Allow camera</string>
+    <string name="scan_camera_why">Scanning uses the camera, only while this screen is open. Terpoir reads the picture on your phone and keeps it in memory: it isn\'t saved to your gallery or sent anywhere. Android will ask you to allow the camera next.</string>
     <string name="product_terpenes">Terpenes</string>
     <string name="product_package_date">Package date</string>
     <string name="product_identifiers">Scanned codes</string>
@@ -524,6 +528,7 @@
     <string name="prompt_text">Tap to scan the receipt.</string>
     <string name="session_notes">Notes</string>
     <string name="session_notes_after_save">Save the session first to add notes to it.</string>
+    <string name="voice_mic_why">Speaking a note uses the microphone. Your phone\'s own speech recognizer turns it into text on the phone; the recording isn\'t kept or sent anywhere. Android will ask you to allow the microphone next.</string>
     <string name="voice_on_device">Speech is turned into text on your phone. Nothing is sent anywhere, and the recording isn\'t kept.</string>
     <string name="voice_listening">Listening…</string>
     <string name="voice_speak">Speak</string>
