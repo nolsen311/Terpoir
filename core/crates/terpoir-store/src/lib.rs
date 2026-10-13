@@ -49,6 +49,24 @@ use zeroize::Zeroizing;
 pub use error::{Error, Result};
 use index::IndexEntries;
 
+/// The version of the index rules in this build (see
+/// [`Store::refresh_index`]).
+pub const INDEX_VERSION: u32 = index::VERSION;
+
+/// The name the index's rule version is kept under (see
+/// [`Store::derived_version`]).
+const DERIVED_INDEX: &str = "index";
+
+/// What [`Store::rebuild_index`] did.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct IndexRebuild {
+    /// Records indexed.
+    pub indexed: usize,
+    /// Records skipped because they did not open (damaged); they have no
+    /// index rows.
+    pub unreadable: usize,
+}
+
 /// A record in its encrypted form, as stored and synced.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SealedRecord {
@@ -161,11 +179,16 @@ impl Store {
         conn.pragma_update(None, "secure_delete", "ON")?;
         conn.pragma_update(None, "temp_store", "MEMORY")?;
         let _mode: String = conn.query_row("PRAGMA journal_mode = WAL", [], |r| r.get(0))?;
-        schema::migrate(&conn)?;
-        Ok(Self {
+        let from = schema::migrate(&conn)?;
+        let mut store = Self {
             conn,
             files_dir: files_dir.to_path_buf(),
-        })
+        };
+        // A new database has nothing to index yet: its index is current.
+        if from == 0 {
+            store.set_derived_version(DERIVED_INDEX, INDEX_VERSION)?;
+        }
+        Ok(store)
     }
 
     /// Encrypts and stores a document, creating its record key on first
@@ -228,28 +251,7 @@ impl Store {
     ///
     /// Database or format errors.
     pub fn sealed(&self, id: &RecordId) -> Result<Option<SealedRecord>> {
-        self.conn
-            .query_row(
-                "SELECT kind, wrapped_key, ciphertext FROM records WHERE id = ?1",
-                params![id.as_bytes()],
-                |r| {
-                    Ok((
-                        r.get::<_, u8>(0)?,
-                        r.get::<_, Vec<u8>>(1)?,
-                        r.get::<_, Vec<u8>>(2)?,
-                    ))
-                },
-            )
-            .optional()?
-            .map(|(kind, wrapped, ciphertext)| {
-                Ok(SealedRecord {
-                    id: *id,
-                    kind: RecordKind::from_code(kind).ok_or(Error::Mismatch)?,
-                    wrapped_key: WrappedKey::from_slice(&wrapped)?,
-                    ciphertext,
-                })
-            })
-            .transpose()
+        select_sealed(&self.conn, id)
     }
 
     /// Decrypts a record. The document is not migrated; use
@@ -550,6 +552,88 @@ impl Store {
             > 0)
     }
 
+    /// The version of the rules a kind of derived data (such as the index)
+    /// was last built with, or `None` if it never was in this database.
+    ///
+    /// # Errors
+    ///
+    /// Database errors.
+    pub fn derived_version(&self, name: &str) -> Result<Option<u32>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT version FROM derived WHERE name = ?1",
+                params![name],
+                |r| r.get(0),
+            )
+            .optional()?)
+    }
+
+    /// Records that a kind of derived data is now built with `version` of
+    /// its rules.
+    ///
+    /// # Errors
+    ///
+    /// Database errors.
+    pub fn set_derived_version(&mut self, name: &str, version: u32) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO derived (name, version) VALUES (?1, ?2)
+             ON CONFLICT (name) DO UPDATE SET version = excluded.version",
+            params![name, version],
+        )?;
+        Ok(())
+    }
+
+    /// Rebuilds the index if it was built with other rules than this
+    /// build's ([`INDEX_VERSION`]), for example after an app upgrade that
+    /// changed them. Call on every unlock; it is cheap when the index is
+    /// current. Returns what was rebuilt, if anything.
+    ///
+    /// # Errors
+    ///
+    /// Database errors (nothing is changed in that case).
+    pub fn refresh_index(&mut self, master: &MasterKey) -> Result<Option<IndexRebuild>> {
+        if self.derived_version(DERIVED_INDEX)? == Some(INDEX_VERSION) {
+            return Ok(None);
+        }
+        self.rebuild_index(master).map(Some)
+    }
+
+    /// Rebuilds the whole index from the records, in one transaction, and
+    /// marks it current. A record that does not open is skipped and left
+    /// unindexed, rather than keeping the journal from opening. Attached
+    /// files are not part of this: their owner links are not derived from
+    /// records.
+    ///
+    /// # Errors
+    ///
+    /// Database errors (nothing is changed in that case).
+    pub fn rebuild_index(&mut self, master: &MasterKey) -> Result<IndexRebuild> {
+        let mut summary = IndexRebuild::default();
+        let ids = self.all_ids()?;
+        let tx = self.conn.transaction()?;
+        tx.execute_batch("DELETE FROM refs; DELETE FROM days; DELETE FROM tags;")?;
+        for id in ids {
+            let sealed = match select_sealed(&tx, &id) {
+                Err(e @ Error::Database(_)) => return Err(e),
+                result => result.ok().flatten(),
+            };
+            let Some(doc) = sealed.and_then(|s| open_sealed(master, &s).ok()) else {
+                summary.unreadable += 1;
+                continue;
+            };
+            write_index(&tx, &id, &IndexEntries::from_document(&doc))?;
+            summary.indexed += 1;
+        }
+        tx.execute(
+            "INSERT INTO derived (name, version) VALUES (?1, ?2)
+             ON CONFLICT (name) DO UPDATE SET version = excluded.version",
+            params![DERIVED_INDEX, INDEX_VERSION],
+        )?;
+        tx.commit()?;
+        Ok(summary)
+    }
+
     /// Re-wraps every record key from `old` to `new` in one transaction,
     /// for master-key rotation. Ciphertext and files are unchanged. Returns
     /// the number of records.
@@ -748,6 +832,30 @@ fn key_pragma(key: &DatabaseKey) -> Zeroizing<String> {
     sql
 }
 
+fn select_sealed(conn: &Connection, id: &RecordId) -> Result<Option<SealedRecord>> {
+    conn.query_row(
+        "SELECT kind, wrapped_key, ciphertext FROM records WHERE id = ?1",
+        params![id.as_bytes()],
+        |r| {
+            Ok((
+                r.get::<_, u8>(0)?,
+                r.get::<_, Vec<u8>>(1)?,
+                r.get::<_, Vec<u8>>(2)?,
+            ))
+        },
+    )
+    .optional()?
+    .map(|(kind, wrapped, ciphertext)| {
+        Ok(SealedRecord {
+            id: *id,
+            kind: RecordKind::from_code(kind).ok_or(Error::Mismatch)?,
+            wrapped_key: WrappedKey::from_slice(&wrapped)?,
+            ciphertext,
+        })
+    })
+    .transpose()
+}
+
 fn open_sealed(master: &MasterKey, sealed: &SealedRecord) -> Result<Document> {
     let key = master.unwrap_record_key(&sealed.wrapped_key, &sealed.id)?;
     let plaintext = key.open(&record_aad(&sealed.id, sealed.kind), &sealed.ciphertext)?;
@@ -771,7 +879,12 @@ fn write_sealed(tx: &Transaction<'_>, sealed: &SealedRecord, entries: &IndexEntr
             sealed.ciphertext
         ],
     )?;
-    clear_index(tx, &sealed.id)?;
+    write_index(tx, &sealed.id, entries)
+}
+
+fn write_index(tx: &Transaction<'_>, id: &RecordId, entries: &IndexEntries) -> Result<()> {
+    clear_index(tx, id)?;
+    let id = id.as_bytes();
     for to in &entries.refs {
         tx.execute(
             "INSERT INTO refs (from_id, to_id) VALUES (?1, ?2)",

@@ -359,6 +359,10 @@ impl Journal {
                 wrapped_database_key,
             })),
         });
+        // An index built by an older app's rules is rebuilt with this
+        // version's. A failure must not keep the journal locked either: the
+        // old index still answers, and the rebuild is retried next unlock.
+        let _ = journal.with(|u| Ok(u.store.refresh_index(&u.master)?));
         // Feedback earlier versions kept on this device joins the synced
         // record. A failure must not keep the journal locked: it is retried
         // on the next unlock, and the feedback applies meanwhile.

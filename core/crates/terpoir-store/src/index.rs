@@ -15,6 +15,13 @@ const TAG_KEYED_MAPS: &[&str] = &["effects", "symptoms", "tags", "purposes", "te
 const CUSTOM_TAG_PREFIX: &str = "custom:";
 const MS_PER_DAY: i64 = 86_400_000;
 
+/// The version of the rules below. Bump it with any change to what
+/// [`IndexEntries::from_document`] produces (and with any schema step that
+/// adds an index table): the store then rebuilds the index of every record
+/// on the first unlock after the upgrade. The `rules_match_their_version`
+/// test pins the rules to this number.
+pub(crate) const VERSION: u32 = 1;
+
 /// Index rows for one record.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(crate) struct IndexEntries {
@@ -87,7 +94,7 @@ mod tests {
     use super::*;
     use terpoir_model::{
         CoreEffect, DeviceId, Hlc, IdentifierKind, LocalTime, Method, Product, ProductLine,
-        Purchase, PurchaseLine, Session, Stamp, TagRef,
+        Purchase, PurchaseLine, PurchaseRef, Session, Stamp, TagRef,
     };
 
     fn stamp() -> Stamp {
@@ -173,6 +180,64 @@ mod tests {
             .insert("0123456789012".into(), IdentifierKind::Barcode);
         let doc = Document::create(&p, stamp()).unwrap();
         assert_eq!(IndexEntries::from_document(&doc), IndexEntries::default());
+    }
+
+    /// Pins the rules to [`VERSION`]. If this fails, the index rules
+    /// changed: bump `VERSION`, then update the version and the expected
+    /// entries here together.
+    #[test]
+    fn rules_match_their_version() {
+        let mut session = Session::new(LocalTime {
+            unix_ms: 1_760_148_000_000,
+            utc_offset_min: -420,
+        });
+        session.lines.insert(
+            id(1),
+            ProductLine {
+                product: Some(id(2)),
+                method: Method::Smoked,
+                dose: None,
+                purchase: Some(PurchaseRef {
+                    purchase: id(6),
+                    line: id(7),
+                }),
+                shop: Some(id(5)),
+            },
+        );
+        session.spot = Some(id(3));
+        session.effects.insert(CoreEffect::Relaxed.into(), 3);
+        session.effects.insert(TagRef::Custom(id(4)), 1);
+        let mut product = Product::new("x".into());
+        product.strains.insert(id(8));
+        product.shops.insert(id(9));
+        product
+            .terpenes
+            .insert(TagRef::Builtin("myrcene".into()), 2);
+        let docs = [
+            Document::create(&session, stamp()).unwrap(),
+            Document::create(&product, stamp()).unwrap(),
+        ];
+        let summary: Vec<_> = docs
+            .iter()
+            .map(|doc| {
+                let e = IndexEntries::from_document(doc);
+                let refs: Vec<u8> = e.refs.iter().map(|r| r.as_bytes()[0]).collect();
+                (refs, e.day, e.tags.into_iter().collect::<Vec<_>>())
+            })
+            .collect();
+        assert_eq!(VERSION, 1, "update the expected entries below with VERSION");
+        assert_eq!(
+            summary,
+            [
+                (
+                    vec![2, 3, 4, 5, 6, 7],
+                    Some(20_371),
+                    vec![format!("custom:{}", id(4).to_hex()), "relaxed".to_owned()],
+                ),
+                (vec![8, 9], None, vec!["myrcene".to_owned()]),
+            ],
+            "the index rules changed: bump index::VERSION"
+        );
     }
 
     #[test]
