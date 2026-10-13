@@ -48,6 +48,14 @@ const STEPS: &[&str] = &[
      CREATE TABLE deletions (
          id BLOB PRIMARY KEY NOT NULL
      ) WITHOUT ROWID;",
+    // 2 -> 3: records this app version can't read yet (an unknown kind or
+    // a newer schema), kept sealed exactly as received until it can.
+    "CREATE TABLE pending (
+         id BLOB PRIMARY KEY NOT NULL,
+         kind INTEGER NOT NULL,
+         wrapped_key BLOB NOT NULL,
+         ciphertext BLOB NOT NULL
+     ) WITHOUT ROWID;",
 ];
 
 pub(crate) fn migrate(conn: &Connection) -> Result<()> {

@@ -391,6 +391,7 @@ fn delete_erases_record_index_and_files() {
     assert_eq!(store.deletion_markers().unwrap(), vec![doc.id()]);
     store.remove_deletion_markers(&[doc.id()]).unwrap();
     assert!(store.deletion_markers().unwrap().is_empty());
+    assert_eq!(store.pending_count().unwrap(), 0);
 }
 
 #[test]
@@ -565,8 +566,10 @@ fn version_one_databases_upgrade() {
         .unwrap();
     {
         let conn = rusqlite_open(&journal, &key);
-        conn.execute_batch("DROP TABLE meta; DROP TABLE deletions; PRAGMA user_version = 1;")
-            .unwrap();
+        conn.execute_batch(
+            "DROP TABLE meta; DROP TABLE deletions; DROP TABLE pending; PRAGMA user_version = 1;",
+        )
+        .unwrap();
     }
     let mut store = Store::open(&journal.db(), &journal.files(), &key).unwrap();
     store.set_meta("k", b"v").unwrap();

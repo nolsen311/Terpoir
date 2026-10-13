@@ -17,6 +17,9 @@ pub enum Error {
     Mismatch,
     /// A blob is malformed, too large, or does not decrypt.
     Blob,
+    /// A blob was written by a newer app in a format this version can't
+    /// read. Keep it and import it again after updating.
+    NewerFormat,
     /// A cryptographic error.
     Crypto(terpoir_crypto::Error),
     /// A store error while applying changes.
@@ -30,6 +33,7 @@ impl fmt::Display for Error {
         match self {
             Self::Mismatch => f.write_str("documents do not match"),
             Self::Blob => f.write_str("invalid sync blob"),
+            Self::NewerFormat => f.write_str("sync blob is from a newer app version"),
             Self::Crypto(e) => write!(f, "{e}"),
             Self::Store(e) => write!(f, "{e}"),
             Self::Model(e) => write!(f, "{e}"),

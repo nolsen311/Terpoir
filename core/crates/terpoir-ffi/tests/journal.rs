@@ -514,6 +514,9 @@ fn two_devices_sync_through_blobs() {
         let result = tablet.import_sync_blob(blob.bytes, 20).unwrap();
         assert_eq!(result.deferred, 0);
     }
+    // Nothing from a newer app version to keep or apply.
+    assert_eq!(tablet.pending_record_count().unwrap(), 0);
+    assert_eq!(tablet.apply_pending_records(20).unwrap(), 0);
     assert!(tablet.get_session(id.clone()).unwrap() == phone.get_session(id.clone()).unwrap());
 
     tablet.delete_record(id.clone()).unwrap();

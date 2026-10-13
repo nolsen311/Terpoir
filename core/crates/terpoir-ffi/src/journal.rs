@@ -14,7 +14,7 @@ use terpoir_model::{
 };
 use terpoir_scan::{names_match, normalize_name};
 use terpoir_store::Store;
-use terpoir_sync::{Clock, export_blobs, import_blob};
+use terpoir_sync::{Clock, apply_pending, export_blobs, import_blob};
 use terpoir_tagging::CustomTag;
 use zeroize::Zeroizing;
 
@@ -155,8 +155,9 @@ pub struct ImportResult {
     pub records: u64,
     /// Deletions applied.
     pub deletions: u64,
-    /// Records from a newer app version, skipped; import the blob again
-    /// after updating.
+    /// Records from a newer app version. They are kept sealed, carried in
+    /// exports, and applied by `apply_pending_records` after updating, so
+    /// the blob need not be imported again.
     pub deferred: u64,
 }
 
@@ -1084,7 +1085,9 @@ impl Journal {
     ///
     /// # Errors
     ///
-    /// `InvalidSyncData` if it is malformed or from another journal.
+    /// `InvalidSyncData` if it is malformed or from another journal;
+    /// `NewerVersion` if a newer app wrote it in a format this version
+    /// can't parse (keep it and import it again after updating).
     pub fn import_sync_blob(&self, bytes: Vec<u8>, now_ms: u64) -> Result<ImportResult> {
         self.with(|u| {
             let summary = import_blob(&mut u.store, &u.master, &mut u.clock, &bytes, now_ms)?;
@@ -1096,6 +1099,30 @@ impl Journal {
                 deferred: n(summary.deferred),
             })
         })
+    }
+
+    /// Applies records kept for a newer app version (see
+    /// [`ImportResult::deferred`]) that this version can now read. Call
+    /// after unlocking. Returns how many were applied.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn apply_pending_records(&self, now_ms: u64) -> Result<u64> {
+        self.with(|u| {
+            let applied = apply_pending(&mut u.store, &u.master, &mut u.clock, now_ms)?;
+            u.save_clock()?;
+            Ok(u64::try_from(applied).unwrap_or(u64::MAX))
+        })
+    }
+
+    /// How many records are kept for a newer app version.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn pending_record_count(&self) -> Result<u64> {
+        self.with(|u| Ok(u.store.pending_count()?))
     }
 
     /// The user's own MapTiler API key for the online map, if they saved

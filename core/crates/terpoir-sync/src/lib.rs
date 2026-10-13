@@ -10,7 +10,9 @@
 //! - [`apply_changes`]: new records merge as a set union; deletion markers
 //!   carry only the record ID and always win.
 //! - [`export_blobs`] / [`import_blob`]: the same, against the encrypted
-//!   store.
+//!   store. Records a newer app version wrote are kept sealed and carried
+//!   along, and [`apply_pending`] applies them once this version can read
+//!   them.
 //! - [`Blob`]: the file format written to the user's own storage: sealed
 //!   records and deletion markers, padded to a size bucket, encrypted under
 //!   a key derived from the master key, and stored under a random name.
@@ -32,6 +34,6 @@ pub use blob::{
     Blob, MAX_BLOB_LEN, container_key, decode_blob, encode_blob, opaque_name, padded_len,
 };
 pub use error::{Error, Result};
-pub use exchange::{ImportSummary, StoreReplica, export_blobs, import_blob};
+pub use exchange::{ImportSummary, StoreReplica, apply_pending, export_blobs, import_blob};
 pub use hlc::{Clock, MAX_DRIFT_MS};
 pub use merge::{MemoryReplica, Replica, apply_changes, merge_document, prunable_markers};

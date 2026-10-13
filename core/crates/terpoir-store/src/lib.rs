@@ -75,6 +75,46 @@ impl SealedRecord {
     }
 }
 
+/// A record this app version can't read yet: an unknown record kind, or
+/// a document from a newer schema. It is kept sealed, exactly as
+/// received, carried in sync blobs and exports, and applied once the app
+/// is new enough (see `terpoir_sync::apply_pending`).
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct PendingRecord {
+    /// Record ID.
+    pub id: RecordId,
+    /// The record kind's numeric code, possibly one this version lacks.
+    pub kind_code: u8,
+    /// The record key, wrapped by the master key and bound to `id`.
+    pub wrapped_key: WrappedKey,
+    /// The document sealed with the record key.
+    pub ciphertext: Vec<u8>,
+}
+
+impl PendingRecord {
+    /// The record as a [`SealedRecord`], if this version knows its kind.
+    #[must_use]
+    pub fn to_sealed(&self) -> Option<SealedRecord> {
+        Some(SealedRecord {
+            id: self.id,
+            kind: RecordKind::from_code(self.kind_code)?,
+            wrapped_key: self.wrapped_key.clone(),
+            ciphertext: self.ciphertext.clone(),
+        })
+    }
+}
+
+impl From<&SealedRecord> for PendingRecord {
+    fn from(sealed: &SealedRecord) -> Self {
+        Self {
+            id: sealed.id,
+            kind_code: sealed.kind.code(),
+            wrapped_key: sealed.wrapped_key.clone(),
+            ciphertext: sealed.ciphertext.clone(),
+        }
+    }
+}
+
 /// Associated data binding a record's ciphertext to its ID and kind, so
 /// rows cannot be swapped.
 fn record_aad(id: &RecordId, kind: RecordKind) -> [u8; 17] {
@@ -337,6 +377,7 @@ impl Store {
         clear_index(&tx, id)?;
         tx.execute("DELETE FROM files WHERE owner = ?1", params![id.as_bytes()])?;
         let existed = tx.execute("DELETE FROM records WHERE id = ?1", params![id.as_bytes()])? > 0;
+        tx.execute("DELETE FROM pending WHERE id = ?1", params![id.as_bytes()])?;
         tx.execute(
             "INSERT OR IGNORE INTO deletions (id) VALUES (?1)",
             params![id.as_bytes()],
@@ -347,6 +388,81 @@ impl Store {
         }
         self.checkpoint()?;
         Ok(existed)
+    }
+
+    /// Keeps a record this version can't read yet, replacing any earlier
+    /// copy of it (the latest received wins: it can't be merged unread).
+    ///
+    /// # Errors
+    ///
+    /// Database errors.
+    pub fn put_pending(&mut self, record: &PendingRecord) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO pending (id, kind, wrapped_key, ciphertext) VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT (id) DO UPDATE SET kind = excluded.kind,
+                 wrapped_key = excluded.wrapped_key, ciphertext = excluded.ciphertext",
+            params![
+                record.id.as_bytes(),
+                record.kind_code,
+                record.wrapped_key.as_bytes().as_slice(),
+                record.ciphertext
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Every record kept for a newer app version.
+    ///
+    /// # Errors
+    ///
+    /// Database or format errors.
+    pub fn pending(&self) -> Result<Vec<PendingRecord>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, kind, wrapped_key, ciphertext FROM pending ORDER BY id")?;
+        let rows = stmt
+            .query_map([], |r| {
+                Ok((
+                    r.get::<_, Vec<u8>>(0)?,
+                    r.get::<_, u8>(1)?,
+                    r.get::<_, Vec<u8>>(2)?,
+                    r.get::<_, Vec<u8>>(3)?,
+                ))
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        rows.into_iter()
+            .map(|(id, kind_code, wrapped, ciphertext)| {
+                Ok(PendingRecord {
+                    id: RecordId::from_slice(&id)?,
+                    kind_code,
+                    wrapped_key: WrappedKey::from_slice(&wrapped)?,
+                    ciphertext,
+                })
+            })
+            .collect()
+    }
+
+    /// Drops a kept record (it has been applied).
+    ///
+    /// # Errors
+    ///
+    /// Database errors.
+    pub fn remove_pending(&mut self, id: &RecordId) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM pending WHERE id = ?1", params![id.as_bytes()])?;
+        Ok(())
+    }
+
+    /// How many records are kept for a newer app version.
+    ///
+    /// # Errors
+    ///
+    /// Database errors.
+    pub fn pending_count(&self) -> Result<u64> {
+        let n: i64 = self
+            .conn
+            .query_row("SELECT COUNT(*) FROM pending", [], |r| r.get(0))?;
+        Ok(u64::try_from(n).unwrap_or(0))
     }
 
     /// Whether a deletion marker exists for `id`.
@@ -455,6 +571,21 @@ impl Store {
                 old.rewrap_record_key(&WrappedKey::from_slice(wrapped)?, &record, new)?;
             tx.execute(
                 "UPDATE records SET wrapped_key = ?1 WHERE id = ?2",
+                params![rewrapped.as_bytes().as_slice(), id],
+            )?;
+        }
+        // Records kept for a newer version are wrapped by the master key too.
+        let pending: Vec<(Vec<u8>, Vec<u8>)> = {
+            let mut stmt = tx.prepare("SELECT id, wrapped_key FROM pending")?;
+            stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+                .collect::<rusqlite::Result<_>>()?
+        };
+        for (id, wrapped) in &pending {
+            let record = RecordId::from_slice(id)?;
+            let rewrapped =
+                old.rewrap_record_key(&WrappedKey::from_slice(wrapped)?, &record, new)?;
+            tx.execute(
+                "UPDATE pending SET wrapped_key = ?1 WHERE id = ?2",
                 params![rewrapped.as_bytes().as_slice(), id],
             )?;
         }

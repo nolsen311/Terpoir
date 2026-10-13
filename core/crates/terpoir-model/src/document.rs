@@ -206,9 +206,13 @@ impl Document {
     ///
     /// # Errors
     ///
+    /// [`Error::NewerSchema`] for an envelope from a newer app;
     /// [`Error::Format`] for malformed input or duplicate fields.
     pub fn decode(bytes: &[u8]) -> Result<Self> {
         let (&format, body) = bytes.split_first().ok_or(Error::Format)?;
+        if format > FORMAT_VERSION {
+            return Err(Error::NewerSchema);
+        }
         if format != FORMAT_VERSION {
             return Err(Error::Format);
         }
@@ -328,7 +332,9 @@ mod tests {
         bytes.push(0);
         assert_eq!(Document::decode(&bytes).err(), Some(Error::Format));
         assert_eq!(Document::decode(&[]).err(), Some(Error::Format));
-        assert_eq!(Document::decode(&[2, 0, 0]).err(), Some(Error::Format));
+        assert_eq!(Document::decode(&[0, 0, 0]).err(), Some(Error::Format));
+        // A newer envelope is from a newer app, not garbage: keep it.
+        assert_eq!(Document::decode(&[2, 0, 0]).err(), Some(Error::NewerSchema));
         assert_eq!(Document::decode(&[1, 0xff]).err(), Some(Error::Format));
     }
 

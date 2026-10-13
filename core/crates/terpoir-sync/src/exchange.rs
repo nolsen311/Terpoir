@@ -8,7 +8,7 @@
 use std::collections::BTreeMap;
 use terpoir_crypto::MasterKey;
 use terpoir_model::{DeviceId, Document, RecordId, migrate};
-use terpoir_store::{SealedRecord, Store};
+use terpoir_store::{PendingRecord, SealedRecord, Store};
 
 use crate::{
     Blob, Clock, Error, Replica, Result, apply_changes, container_key, decode_blob, encode_blob,
@@ -90,9 +90,24 @@ pub struct ImportSummary {
     pub records: usize,
     /// Deletion markers applied.
     pub deletions: usize,
-    /// Records skipped because a newer app version wrote them. Keep the
-    /// blob and import it again after updating.
+    /// Records a newer app version wrote. They are kept sealed, carried
+    /// in exports, and applied by [`apply_pending`] after updating.
     pub deferred: usize,
+}
+
+/// Opens and migrates a sealed record, or `None` if a newer app version
+/// wrote it.
+fn readable(sealed: &SealedRecord, master: &MasterKey) -> Result<Option<Document>> {
+    let doc = match sealed.open(master) {
+        Ok(doc) => doc,
+        Err(terpoir_store::Error::Model(terpoir_model::Error::NewerSchema)) => return Ok(None),
+        Err(e) => return Err(e.into()),
+    };
+    match migrate(doc) {
+        Ok(doc) => Ok(Some(doc)),
+        Err(terpoir_model::Error::NewerSchema) => Ok(None),
+        Err(e) => Err(Error::Model(e)),
+    }
 }
 
 /// Decrypts a blob from another device and applies it to the store.
@@ -101,8 +116,13 @@ pub struct ImportSummary {
 ///
 /// # Errors
 ///
-/// [`Error::Blob`] if the blob does not decrypt; crypto, model or store
-/// errors otherwise. Applying the same blob again is harmless.
+/// [`Error::Blob`] if the blob does not decrypt; [`Error::NewerFormat`] if
+/// a newer app wrote it in a format this version can't parse; crypto,
+/// model or store errors otherwise. Applying the same blob again is
+/// harmless.
+///
+/// Records this version can't read (an unknown kind or a newer schema)
+/// are kept sealed, exactly as received, unless they were deleted.
 pub fn import_blob(
     store: &mut Store,
     master: &MasterKey,
@@ -113,19 +133,17 @@ pub fn import_blob(
     let blob = decode_blob(&container_key(master)?, bytes)?;
     let mut replica = StoreReplica::new(store, master);
     let mut docs = Vec::with_capacity(blob.records.len());
-    let mut deferred = 0;
+    let mut kept = blob.pending;
     for sealed in blob.records {
-        let doc = sealed.open(master)?;
-        match migrate(doc) {
-            Ok(doc) => {
+        match readable(&sealed, master)? {
+            Some(doc) => {
                 if let Some(stamp) = doc.latest_stamp() {
                     clock.observe(stamp.hlc, now_ms);
                 }
                 replica.incoming.insert(doc.id(), sealed);
                 docs.push(doc);
             }
-            Err(terpoir_model::Error::NewerSchema) => deferred += 1,
-            Err(e) => return Err(Error::Model(e)),
+            None => kept.push(PendingRecord::from(&sealed)),
         }
     }
     let summary = ImportSummary {
@@ -133,13 +151,54 @@ pub fn import_blob(
         sequence: blob.sequence,
         records: docs.len(),
         deletions: blob.deletions.len(),
-        deferred,
+        deferred: kept.len(),
     };
     apply_changes(&mut replica, docs, blob.deletions)?;
+    for record in &kept {
+        if !store.is_deleted(&record.id)? {
+            store.put_pending(record)?;
+        }
+    }
     Ok(summary)
 }
 
-/// Writes the whole journal (every sealed record and deletion marker) as
+/// Applies the records kept for a newer app version that this version
+/// can now read, merging them like records from a sync blob, and stops
+/// keeping them. Call after opening the store; records still unreadable
+/// stay kept. Returns how many were applied.
+///
+/// # Errors
+///
+/// Store or crypto errors.
+pub fn apply_pending(
+    store: &mut Store,
+    master: &MasterKey,
+    clock: &mut Clock,
+    now_ms: u64,
+) -> Result<usize> {
+    let pending = store.pending()?;
+    let mut replica = StoreReplica::new(store, master);
+    let mut docs = Vec::new();
+    for sealed in pending.iter().filter_map(PendingRecord::to_sealed) {
+        let Ok(Some(doc)) = readable(&sealed, master) else {
+            continue;
+        };
+        if let Some(stamp) = doc.latest_stamp() {
+            clock.observe(stamp.hlc, now_ms);
+        }
+        replica.incoming.insert(doc.id(), sealed);
+        docs.push(doc);
+    }
+    let applied: Vec<RecordId> = docs.iter().map(Document::id).collect();
+    apply_changes(&mut replica, docs, [])?;
+    for id in &applied {
+        store.remove_pending(id)?;
+    }
+    Ok(applied.len())
+}
+
+/// Writes the whole journal (every sealed record, record kept for a newer
+/// app version, and deletion marker) as
 /// encrypted, padded blobs, numbered from `first_sequence`. Returns
 /// `(opaque name, bytes)` pairs to upload.
 ///
@@ -162,11 +221,12 @@ pub fn export_blobs(
         device,
         sequence,
         records: Vec::new(),
+        pending: Vec::new(),
         deletions: Vec::new(),
     };
     let mut current_bytes = 0usize;
     let mut flush = |blob: &mut Blob, size: &mut usize, seq: &mut u64| -> Result<()> {
-        if blob.records.is_empty() && blob.deletions.is_empty() {
+        if blob.records.is_empty() && blob.pending.is_empty() && blob.deletions.is_empty() {
             return Ok(());
         }
         blobs.push((opaque_name()?, encode_blob(&key, blob)?));
@@ -175,6 +235,7 @@ pub fn export_blobs(
             device,
             sequence: *seq,
             records: Vec::new(),
+            pending: Vec::new(),
             deletions: Vec::new(),
         };
         *size = 0;
@@ -194,6 +255,14 @@ pub fn export_blobs(
         }
         current_bytes += size;
         current.records.push(sealed);
+    }
+    for record in store.pending()? {
+        let size = record.ciphertext.len() + 128;
+        if current_bytes + size > BATCH_BYTES {
+            flush(&mut current, &mut current_bytes, &mut sequence)?;
+        }
+        current_bytes += size;
+        current.pending.push(record);
     }
     flush(&mut current, &mut current_bytes, &mut sequence)?;
     Ok(blobs)
