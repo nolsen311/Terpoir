@@ -6,7 +6,7 @@
 # Signs a release on the maintainer's machine with the YubiKey
 # (docs/releasing.md). Downloads the unsigned builds from the tag's draft
 # GitHub release, checks them against the hashes CI published, signs the
-# APKs with the app signing key and the Play bundle with the upload key
+# foss APK with the app signing key and the Play bundle with the upload key
 # (both through the YubiKey's PKCS#11 module, PIN and touch required),
 # verifies the signatures and certificates, and writes SHA256SUMS.
 # With --upload, it also puts the signed APKs on the draft release and
@@ -99,23 +99,22 @@ pkcs11=(--ks NONE --ks-type PKCS11 --provider-class sun.security.pkcs11.SunPKCS1
 expected_cert=""
 [ -s "$here/../release/app-certificate.sha256" ] && expected_cert=$(tr -d ' \n:' < "$here/../release/app-certificate.sha256" | tr 'A-F' 'a-f')
 
-for flavor in foss play; do
-    in="$work/unsigned/terpoir-$flavor-$version-unsigned.apk"
-    out="$work/signed/terpoir-$flavor-$version.apk"
-    zipalign -c -P 16 4 "$in" >/dev/null || die "$in is not aligned"
-    echo "Signing $(basename "$out") (touch the YubiKey if it blinks)"
-    # Java 17+ keeps the PKCS#11 provider's class to its module unless told.
-    apksigner -J-add-exports=jdk.crypto.cryptoki/sun.security.pkcs11=ALL-UNNAMED \
-        sign "${pkcs11[@]}" --ks-key-alias "$app_alias" --v4-signing-enabled false --in "$in" --out "$out"
-    apksigner verify --verbose --print-certs "$out" > "$work/$flavor-verify.txt"
-    # "Signer #1 certificate ..." or, for v3-only APKs, "V3.0 Signer: certificate ...".
-    cert=$(sed -n 's/^.*[Ss]igner.* certificate SHA-256 digest: //p' "$work/$flavor-verify.txt" | head -n 1)
-    [ -n "$cert" ] || die "no signer certificate in $out"
-    if [ -n "$expected_cert" ] && [ "$cert" != "$expected_cert" ]; then
-        die "$out is signed by $cert, not the app key in android/release/app-certificate.sha256"
-    fi
-    echo "  certificate SHA-256: $cert"
-done
+flavor=foss
+in="$work/unsigned/terpoir-$flavor-$version-unsigned.apk"
+out="$work/signed/terpoir-$flavor-$version.apk"
+zipalign -c -P 16 4 "$in" >/dev/null || die "$in is not aligned"
+echo "Signing $(basename "$out") (touch the YubiKey if it blinks)"
+# Java 17+ keeps the PKCS#11 provider's class to its module unless told.
+apksigner -J-add-exports=jdk.crypto.cryptoki/sun.security.pkcs11=ALL-UNNAMED \
+    sign "${pkcs11[@]}" --ks-key-alias "$app_alias" --v4-signing-enabled false --in "$in" --out "$out"
+apksigner verify --verbose --print-certs "$out" > "$work/$flavor-verify.txt"
+# "Signer #1 certificate ..." or, for v3-only APKs, "V3.0 Signer: certificate ...".
+cert=$(sed -n 's/^.*[Ss]igner.* certificate SHA-256 digest: //p' "$work/$flavor-verify.txt" | head -n 1)
+[ -n "$cert" ] || die "no signer certificate in $out"
+if [ -n "$expected_cert" ] && [ "$cert" != "$expected_cert" ]; then
+    die "$out is signed by $cert, not the app key in android/release/app-certificate.sha256"
+fi
+echo "  certificate SHA-256: $cert"
 
 if [ -n "$upload_alias" ]; then
     in="$work/unsigned/terpoir-play-$version-unsigned.aab"
@@ -141,12 +140,14 @@ if $upload; then
     assets=("$work"/signed/*.apk "$work/signed/SHA256SUMS")
     [ -f "$work/signed/SHA256SUMS.sig" ] && assets+=("$work/signed/SHA256SUMS.sig")
     gh release upload "$tag" --repo "$repo" "${assets[@]}"
-    for name in "terpoir-foss-$version-unsigned.apk" "terpoir-play-$version-unsigned.apk" \
-        "terpoir-play-$version-unsigned.aab" UNSIGNED-SHA256SUMS; do
+    for name in "terpoir-foss-$version-unsigned.apk" "terpoir-play-$version-unsigned.aab" UNSIGNED-SHA256SUMS; do
         gh release delete-asset "$tag" "$name" --repo "$repo" --yes
     done
     echo "Uploaded. Check the draft, then publish: gh release edit $tag --repo $repo --draft=false"
 else
     echo "Signed builds are in $work/signed. Upload with --upload, or by hand."
 fi
-[ -f "$work/signed/terpoir-play-$version.aab" ] && echo "Upload the bundle to the Play Console: $work/signed/terpoir-play-$version.aab"
+if [ -f "$work/signed/terpoir-play-$version.aab" ]; then
+    echo "The signed bundle for Google Play: $work/signed/terpoir-play-$version.aab"
+    echo "Send it with android/scripts/play-upload.sh $tag (release.sh does)."
+fi

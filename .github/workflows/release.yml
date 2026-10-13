@@ -3,10 +3,12 @@
 # See LICENSING.md for the additional permission under GPLv3 section 7.
 #
 # Release builds (docs/releasing.md). A v* tag on main builds the unsigned
-# release APKs (foss and Play) and the Play bundle, runs the same checks as
-# the Android workflow, and puts them in a draft GitHub release with their
-# hashes. Nothing here signs: the maintainer signs offline with the YubiKey
-# (android/scripts/sign-release.sh), uploads the signed APKs and publishes.
+# foss APK and Play bundle, runs the same checks as the Android workflow,
+# and puts them in a draft GitHub release with their hashes. Nothing here
+# signs: the maintainer signs offline with the YubiKey
+# (android/scripts/sign-release.sh), uploads the signed APK, publishes, and
+# sends the bundle to Google Play (android/scripts/play-upload.sh). The
+# release page offers only the foss APK: Play builds come from Google Play.
 # Signing material never reaches CI.
 
 name: Release
@@ -83,7 +85,7 @@ jobs:
           set -euo pipefail
           export JAVA_HOME="$JAVA_HOME_21_X64"
           ./gradlew --no-daemon --no-build-cache \
-            assembleFossRelease assemblePlayRelease bundlePlayRelease check
+            assembleFossRelease bundlePlayRelease check
 
       - name: Collect
         run: |
@@ -92,7 +94,6 @@ jobs:
           out="$RUNNER_TEMP/release"
           mkdir -p "$out"
           cp app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk "$out/terpoir-foss-$version-unsigned.apk"
-          cp app/build/outputs/apk/play/release/app-play-release-unsigned.apk "$out/terpoir-play-$version-unsigned.apk"
           cp app/build/outputs/bundle/playRelease/app-play-release.aab "$out/terpoir-play-$version-unsigned.aab"
           (cd "$out" && sha256sum terpoir-* > UNSIGNED-SHA256SUMS && cat UNSIGNED-SHA256SUMS)
           # R8's maps from obfuscated names back to the source, to read a
@@ -135,9 +136,9 @@ jobs:
           cat > notes.md <<NOTES
           Terpoir ${GITHUB_REF_NAME}, built from ${GITHUB_SHA}.
 
-          - Install **terpoir-foss-${GITHUB_REF_NAME#v}.apk**. The Play APK lacks text recognition, which only Google Play can install.
+          - Install **terpoir-foss-${GITHUB_REF_NAME#v}.apk**. For the Google Play version, install Terpoir from Google Play.
           - Signed with the maintainer's own key, not Google's: it won't install over a Google Play copy, or the reverse.
-          - \`SHA256SUMS\` lists the APKs' hashes.
+          - \`SHA256SUMS\` lists the APK's hash.
           NOTES
           gh release create "$GITHUB_REF_NAME" release/* \
             --draft --verify-tag \

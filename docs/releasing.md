@@ -3,8 +3,10 @@
 
 # Releasing
 
-How a release goes from a tag to signed APKs on GitHub and a signed bundle
-for Google Play. CI builds; only the maintainer signs, offline, with the
+How a release goes from a tag to a signed foss APK on GitHub and a signed
+bundle on Google Play. GitHub offers only the foss APK (maintainer, 2026-10-13):
+the Play build's text recognition comes from Google Play, so a Play APK
+installed from GitHub can't have it. CI builds; only the maintainer signs, offline, with the
 YubiKey (`docs/design-decisions.md`, "Signing keys"). Signing material
 never reaches CI or the repository.
 
@@ -48,12 +50,50 @@ never reaches CI or the repository.
    slot `9d` for the upload key instead; any slot works, as long as
    `TERPOIR_UPLOAD_SLOT` names it.)
 
+## Google Play (one-time setup)
+
+`android/scripts/play-upload.sh` sends the signed bundle to Google Play
+through the Google Play Developer API. It runs on the maintainer's machine,
+because the bundle is signed there; `release.sh` runs it as its last step.
+There is no key file: the maintainer's own `gcloud` login asks Google's IAM
+Credentials API for a 10-minute token of a Play publisher service account,
+scoped to the Play Developer API.
+
+1. **The app in the Play Console.** The API can't create an app or make its
+   first release. Create the app, then upload the first signed bundle by
+   hand (`~/terpoir-releases/terpoir-release-<version>/signed/`). That
+   enrolls the app in Play App Signing and registers the upload key.
+2. **The service account** (Terpoir-infra, `play.tf`): the Play
+   publisher service account, and the Token Creator role on it for the
+   maintainer's Google account (the `PLAY_RELEASE_MEMBERS` repository
+   variable there). Enable the Google Play Android Developer API in the same
+   project (Terpoir-infra BOOTSTRAP B7).
+3. **Access in the Play Console:** Users and permissions > Invite new
+   users, with the service account's email. Give it access to Terpoir only,
+   with "Release apps to testing tracks" (add "Release to production" only
+   if production releases should be automated too).
+4. **On the maintainer's machine:**
+   ```bash
+   export TERPOIR_PLAY_SERVICE_ACCOUNT=terpoir-play-publisher@<project>.iam.gserviceaccount.com
+   ```
+   `gcloud auth login` as the maintainer's Google account.
+
+**Track and status:** by default the bundle goes to the **internal** track
+as a **draft** release, which waits in the Play Console for "Start
+rollout". A draft is also the only kind an app that hasn't been published
+yet accepts. Later, `TERPOIR_PLAY_TRACK` (`alpha`, `beta`, `production`)
+and `TERPOIR_PLAY_STATUS=completed` change both. The upload is one API
+edit, committed only once every step succeeded, so a failure changes
+nothing on Play. The R8 mapping goes with it, so Play's crash reports show
+real names.
+
 ## Each release
 
 **Shortcut:** once the version PR is merged, `android/scripts/release.sh
-v0.1.0` does steps 2 to 5 below in one run. It asks before it tags and
+v0.1.0` does steps 2 to 6 below in one run. It asks before it tags and
 pushes, signs the tag, waits for CI, runs `sign-release.sh --upload` (PIN
-once, a touch per signature), and asks before publishing. It is safe to
+once, a touch per signature), asks before publishing on GitHub, and asks
+before sending the bundle to Google Play. It is safe to
 re-run after an interruption. Set `TERPOIR_UPLOAD_SLOT=82` (and
 `TERPOIR_SSH_KEY`) in the environment as for `sign-release.sh`. It writes
 signed builds under `~/terpoir-releases` (`TERPOIR_WORK_DIR`). Nothing is
@@ -71,8 +111,7 @@ The steps, for doing them separately:
    ```
 3. **CI** (`.github/workflows/release.yml`):
    - checks the tag is on `main` and matches `versionName`;
-   - builds the unsigned foss and Play APKs and the Play bundle, and runs
-     every check;
+   - builds the unsigned foss APK and Play bundle, and runs every check;
    - creates a draft release holding them and `UNSIGNED-SHA256SUMS`.
 
    The build runs in the `release` environment, which holds the release
@@ -85,26 +124,30 @@ The steps, for doing them separately:
    ```
    The script:
    - downloads the unsigned builds and checks them against CI's hashes;
-   - signs both APKs with the app key and the bundle with the upload key;
+   - signs the foss APK with the app key and the bundle with the upload key;
    - verifies every signature and the pinned certificate;
    - writes `SHA256SUMS`, and signs it if `TERPOIR_SSH_KEY` names an
      `ed25519-sk` key;
    - with `--upload`, replaces the unsigned files on the draft with the
-     signed APKs and `SHA256SUMS`.
+     signed APK and `SHA256SUMS`.
 
    The signed bundle stays local.
 5. **Publish:** check the draft, then publish it:
    ```bash
    gh release edit v0.1.0 --draft=false
    ```
-   Upload the bundle in the Play Console.
+6. **Google Play** (see the one-time setup above):
+   ```bash
+   android/scripts/play-upload.sh v0.1.0
+   ```
+   Then start the rollout in the Play Console, while releases are drafts.
 
 ## Notes
 
 - **Crash stack traces:** release builds are shrunk and obfuscated by R8,
   so their stack traces show renamed classes. Each release keeps R8's
   mappings (`terpoir-foss-<version>-mapping.txt`, and the Play one) as
-  release assets. Decode a trace with the Android build-tools' `retrace`:
+  release assets; `play-upload.sh` also gives Play its mapping. Decode a trace with the Android build-tools' `retrace`:
   `retrace terpoir-foss-<version>-mapping.txt trace.txt`.
 
 - **Signature schemes:** minSdk is 30, so `apksigner` signs with APK
