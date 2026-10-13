@@ -42,6 +42,9 @@ enum class AlertNeed { PRECISE_LOCATION, BACKGROUND_LOCATION, NOTIFICATIONS }
  * - At most one alert per [COOLDOWN_MS], whichever spot, so alerts don't
  *   become a visit log. Only the end of the quiet period is stored, not
  *   which spot; dismissed alerts leave nothing behind.
+ * - What an older app version built (the cache, fence IDs, prompt state)
+ *   is dropped at process start when [CACHE_VERSION] changed, and fence
+ *   events are ignored until the next unlock rebuilds everything.
  */
 class SpotAlerts(
     private val context: Context,
@@ -50,6 +53,7 @@ class SpotAlerts(
     private val prompts: PurchasePrompts,
 ) {
     private val cache = AlertCache(File(context.noBackupFilesDir, "alerts/spots.tsv"))
+    private val version = CacheVersion(File(context.noBackupFilesDir, "alerts/version"), CACHE_VERSION)
     private val state = context.getSharedPreferences("alerts", Context.MODE_PRIVATE)
     private val lock = Mutex()
 
@@ -60,6 +64,22 @@ class SpotAlerts(
             settings.alertNames -> AlertTier.NAMED
             else -> AlertTier.DISCREET
         }
+
+    /** Whether the cache and fences were built by this version's rules. */
+    val upToDate: Boolean
+        get() = version.isCurrent
+
+    /**
+     * At process start, before any fence event: drops the cache and the
+     * prompt state an older version left, which this one may read
+     * differently. The fences stay registered but are ignored until the
+     * next unlock rebuilds them ([refresh]).
+     */
+    fun dropOutdated() {
+        if (version.isCurrent) return
+        cache.delete()
+        prompts.forget()
+    }
 
     /** What is still missing for "Notify me" to work, in the order to ask. */
     fun needs(): List<AlertNeed> = buildList {
@@ -82,6 +102,7 @@ class SpotAlerts(
         val prompting = settings.purchasePrompts
         if (!notify && !prompting) {
             clearLocked()
+            withContext(Dispatchers.IO) { version.markCurrent() }
             return@withLock
         }
         if (!notify) clearNotifyState()
@@ -93,7 +114,10 @@ class SpotAlerts(
         val needs = needs()
         if (AlertNeed.PRECISE_LOCATION in needs || AlertNeed.BACKGROUND_LOCATION in needs) {
             geofencer.clear()
-            withContext(Dispatchers.IO) { cache.delete() }
+            withContext(Dispatchers.IO) {
+                cache.delete()
+                version.markCurrent()
+            }
             return@withLock
         }
         val promptFences = if (!prompting) {
@@ -129,6 +153,7 @@ class SpotAlerts(
         }
         val fences = spotFences + promptFences
         if (fences.isEmpty()) geofencer.clear() else geofencer.register(fences)
+        withContext(Dispatchers.IO) { version.markCurrent() }
     }
 
     /** Removes every fence, the cache, the quiet period and any alert showing. */
@@ -218,6 +243,13 @@ class SpotAlerts(
 
         /** Geofences per app are limited (100 with Play services); prompt fences first, then the most-used spots. */
         const val MAX_FENCES = 90
+
+        /**
+         * The version of what alerts keep outside the journal: the cache's
+         * format, the fence ID scheme and the prompt state's keys. Bump it
+         * with any change to them.
+         */
+        const val CACHE_VERSION = 1
 
         /** One alert at most per this many milliseconds, whichever spot. */
         const val COOLDOWN_MS = 4 * 60 * 60 * 1000L

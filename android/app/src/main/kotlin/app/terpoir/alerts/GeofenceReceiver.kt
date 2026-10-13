@@ -16,6 +16,9 @@ import app.terpoir.TerpoirApplication
 class GeofenceReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val app = context.applicationContext as TerpoirApplication
+        // Fences an older version registered: ignored until the next unlock
+        // rebuilds them.
+        if (!app.spotAlerts.upToDate) return
         val events = app.spotAlerts.geofencer.events(intent) ?: return
         val (prompts, spots) = events.partition { it.id.startsWith(PurchasePrompts.FENCE_PREFIX) }
         app.spotAlerts.onEntered(spots.filter { it.arrived }.map { it.id })

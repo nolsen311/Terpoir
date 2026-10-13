@@ -163,11 +163,12 @@ without it.
   - [x] Restore and import say plainly when an export or sync blob needs a
         newer app, before anything is changed, and never finish partially
         in silence.
-  - [ ] Versioned derived data: indexes (local day, references, tags,
+  - [x] Versioned derived data: indexes (local day, references, tags,
         files), scan aliases and links, and Android caches (alert cache,
         geofences, notification cache) carry a version and are rebuilt on
         the first unlock after an upgrade, with re-linking where the
-        rules changed.
+        rules changed. (Files aren't derived; scan aliases get their
+        version when they are built: see the design doc.)
   - [ ] Compatibility fixtures: an encrypted export, a sync blob and a
         database from each released version, checked in, and a test that
         every one still opens, migrates and round-trips. A release that
@@ -239,6 +240,12 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       lists no terpenes, and group related strains,
       and the shop effect (which compares by strain record for now) could
       compare by lineage or terpene profile.
+      **Detail as a slider (maintainer, 2026-10-13):** one setting that
+      runs from indica / sativa / hybrid at one end, through a middle step
+      still to define, to a full terpene profile at the other, so users
+      record as much detail as they want. At the detailed end, also track
+      individual cannabinoids when data exists: CBN, CBG, THCa and the one
+      noted as "CBV" (to confirm: CBDV, THCV or CBC).
 - [ ] Capture from the device lock screen (maintainer, 2026-10-13):
       investigate letting the quick-capture buttons work on the lock screen
       itself, without unlocking the phone, on the Android versions that
