@@ -5,6 +5,7 @@
 package app.terpoir.privacy
 
 import android.content.Context
+import app.terpoir.Distribution
 import app.terpoir.map.MapProvider
 
 /**
@@ -64,8 +65,9 @@ class PrivacySettings(context: Context) {
      * phone stops at one. Off by default: it needs location "all the time",
      * and the OS location service holds the spots' coordinates.
      */
+    // Off in a build without background location, whatever was stored.
     var notifyNearSpots: Boolean
-        get() = prefs.getBoolean(KEY_NOTIFY_NEAR, false)
+        get() = Distribution.BACKGROUND_LOCATION && prefs.getBoolean(KEY_NOTIFY_NEAR, false)
         set(value) = prefs.edit().putBoolean(KEY_NOTIFY_NEAR, value).apply()
 
     /**
@@ -138,7 +140,7 @@ class PrivacySettings(context: Context) {
      * coordinates.
      */
     var purchasePrompts: Boolean
-        get() = prefs.getBoolean(KEY_PURCHASE_PROMPTS, false)
+        get() = Distribution.BACKGROUND_LOCATION && prefs.getBoolean(KEY_PURCHASE_PROMPTS, false)
         set(value) = prefs.edit().putBoolean(KEY_PURCHASE_PROMPTS, value).apply()
 
     /**

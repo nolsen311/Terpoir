@@ -4,13 +4,16 @@
 
 package app.terpoir.privacy
 
+import android.content.pm.PackageManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import app.terpoir.Distribution
 import app.terpoir.TerpoirApplication
 import app.terpoir.map.MapProvider
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -27,6 +30,29 @@ class PrivacyTogglesTest {
     @Test
     fun screenProtectionIsRegistered() {
         assertTrue(app.privacyCenter.toggles.any { it.id == "screen_protection" })
+    }
+
+    /**
+     * "Notify me", purchase reminders and the alert tiers exist exactly when
+     * the build requests background location (foss yes, Play no), and a
+     * build without it never treats them as on.
+     */
+    @Test
+    fun backgroundLocationFeaturesMatchTheManifest() {
+        val requested = app.packageManager
+            .getPackageInfo(app.packageName, PackageManager.GET_PERMISSIONS)
+            .requestedPermissions.orEmpty()
+            .toSet()
+        val hasBackground = "android.permission.ACCESS_BACKGROUND_LOCATION" in requested
+        assertEquals(Distribution.BACKGROUND_LOCATION, hasBackground)
+        val ids = app.privacyCenter.toggles.map { it.id }.toSet()
+        for (id in listOf("notify_near_spots", "purchase_prompts", "alert_names", "alert_details")) {
+            assertEquals(id, hasBackground, id in ids)
+        }
+        if (!hasBackground) {
+            assertFalse(app.privacySettings.notifyNearSpots)
+            assertFalse(app.privacySettings.purchasePrompts)
+        }
     }
 
     @Test

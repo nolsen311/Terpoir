@@ -25,6 +25,14 @@ object Distribution {
     /** Google-dependent features this build may offer (each still opt-in). */
     val capabilities: Set<Capability> = Capability.entries.toSet()
 
+    /**
+     * Location "all the time", for "Notify me" and purchase reminders. Left
+     * out of the Play build (maintainer, 2026-10-13): its manifest removes
+     * ACCESS_BACKGROUND_LOCATION, and "Show me" covers spots while the app is
+     * open (docs/design-decisions.md, "Location and saved spots").
+     */
+    const val BACKGROUND_LOCATION = false
+
     /** Google Play Age Signals. */
     val ageSignals: AgeSignals = PlayAgeSignals
 

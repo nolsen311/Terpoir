@@ -27,6 +27,9 @@ object Distribution {
     /** No platform age signal: self-attestation is the gate. */
     val ageSignals: AgeSignals = AgeSignals.NONE
 
+    /** Location "all the time", for "Notify me" and purchase reminders. */
+    const val BACKGROUND_LOCATION = true
+
     /** Nothing is delivered on demand. */
     @Suppress("UNUSED_PARAMETER")
     fun attachBaseContext(context: Context) = Unit

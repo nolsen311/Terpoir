@@ -1,0 +1,149 @@
+<!doctype html>
+<!--
+  SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+  Copyright (C) 2026 The Terpoir Authors
+  See LICENSING.md for the additional permission under GPLv3 section 7.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy policy — Terpoir</title>
+<meta name="description" content="Terpoir's privacy policy: the app collects nothing. What stays on your phone, and what the optional Google components collect.">
+<meta name="color-scheme" content="light dark">
+<!-- Served at https://terpoir.app/privacy. Same rules as index.html: no
+     analytics, cookies, scripts, fonts or external requests. -->
+<style>
+  :root {
+    --paper: #f4efe4;
+    --ink: #1f2a22;
+    --ink-soft: #4b574e;
+    --rule: #cfc5b0;
+    --accent: #2f6b4f;
+    --card: #fbf8f1;
+    --serif: "Iowan Old Style", "Charter", "Palatino Linotype", Palatino, Georgia, ui-serif, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #141a16;
+      --ink: #e8e2d4;
+      --ink-soft: #a9b1a6;
+      --rule: #2f3a33;
+      --accent: #7fc4a0;
+      --card: #1a211c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.65 var(--sans); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+  header { border-bottom: 1px solid var(--rule); padding: 18px 0; }
+  header a { font-family: var(--serif); font-weight: 600; font-size: 22px; color: var(--ink); text-decoration: none; }
+  main { padding: 40px 0 60px; }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 600; line-height: 1.2; }
+  h1 { font-size: clamp(30px, 6vw, 42px); margin: 0 0 6px; }
+  h2 { font-size: 26px; margin: 44px 0 10px; padding-top: 14px; border-top: 1px solid var(--rule); }
+  h3 { font-size: 19px; margin: 26px 0 6px; }
+  p, li { color: var(--ink); }
+  .meta { color: var(--ink-soft); font-size: 15px; margin: 0 0 24px; }
+  .summary { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 20px; }
+  .summary p { margin: 0 0 8px; }
+  .summary p:last-child { margin: 0; }
+  a { color: var(--accent); }
+  ul { padding-left: 22px; }
+  li { margin: 4px 0; }
+  .note { color: var(--ink-soft); font-size: 15px; }
+  footer { border-top: 1px solid var(--rule); padding: 28px 0 48px; font-size: 14px; color: var(--ink-soft); }
+</style>
+</head>
+<body>
+
+<header><div class="wrap"><a href="/">Terpoir</a></div></header>
+
+<main class="wrap">
+  <h1>Privacy policy</h1>
+  <p class="meta">Effective 13 October 2026. Applies to the Terpoir app on Android (Google Play, F-Droid and GitHub versions) and to this website.</p>
+
+  <div class="summary">
+    <p><strong>Terpoir collects nothing.</strong> There is no account, no Terpoir server, no analytics, no advertising and no advertising ID. Your journal is encrypted on your phone, and only you hold the key.</p>
+    <p>The developer never receives your journal, your location, your scans or anything about how you use the app. The app never contacts terpoir.app.</p>
+    <p>A few optional features use Google components, which collect some technical data for Google. Each one is off until you turn it on, and each is described below.</p>
+  </div>
+
+  <h2>Who we are</h2>
+  <p>Terpoir is an open-source personal journal for adults, made by the developer “Terpoir”. Contact: <a href="mailto:terpoirapp@gmail.com">terpoirapp@gmail.com</a>. Website: <a href="https://terpoir.app">https://terpoir.app</a>. The source code is public at <a href="https://github.com/nolsen311/Terpoir">github.com/nolsen311/Terpoir</a>, so anyone can check what this page says.</p>
+
+  <h2>What stays on your phone</h2>
+  <ul>
+    <li><strong>Your journal.</strong> Sessions, products, notes, photos, voice notes, spots and everything else you record are stored in an encrypted database on your phone. The key is protected by Android’s secure hardware and your screen lock, and a recovery key that only you have.</li>
+    <li><strong>On-device processing.</strong> Text recognition (receipts and labels), barcode reading, speech-to-text, tag suggestions and insights all run on your phone. Photos and audio are processed in memory; audio is never kept, and nothing you scan or say is sent to the developer.</li>
+    <li><strong>No phone backups.</strong> Terpoir excludes its data from Android’s cloud backups and device-to-device transfers, so your journal is never copied to a backup service.</li>
+    <li><strong>Nothing about you in logs.</strong> Terpoir writes nothing about your journal to Android’s system log.</li>
+  </ul>
+
+  <h2>Sync, export and sharing: only where you choose</h2>
+  <ul>
+    <li><strong>Sync through a folder</strong> (optional): Terpoir writes encrypted files to a folder you pick, for example a Syncthing folder or a cloud drive through its own app. Only your journal’s keys can open them. Whoever stores the folder can see that encrypted files exist, their sizes and when they change, but not their contents. The folder also holds your journal’s key locked by your recovery key, so a new phone can restore from it.</li>
+    <li><strong>Export</strong>: an encrypted file (opened only with your recovery key) or a readable copy, saved wherever you choose. Nothing is exported unless you ask.</li>
+    <li><strong>Share cards</strong>: an image you choose to share, through Android’s share menu. Only what the card shows leaves the app.</li>
+  </ul>
+
+  <h2>Permissions</h2>
+  <ul>
+    <li><strong>Camera</strong>: for scanning labels, receipts and codes, only when you open a scanner. Photos stay in memory and are not saved to your gallery.</li>
+    <li><strong>Microphone</strong>: for voice notes, transcribed by your phone’s on-device speech recognizer. Terpoir never receives or keeps the audio.</li>
+    <li><strong>Location</strong> (approximate by default, precise only if you ask): to save a spot’s location and, with “Show me” on, to notice you are at a saved spot while the app is open. Locations are stored only inside your encrypted journal.</li>
+    <li><strong>Location “all the time”</strong>: the Google Play version does not request it. The F-Droid version and the foss APK on GitHub ask for it only if you turn on “Notify me” or purchase reminders; Android’s location service then watches your saved spots, so it holds their coordinates.</li>
+    <li><strong>Notifications</strong>: for reminders you turn on. By default they say nothing about your spots, and the lock screen never shows more than a discreet version.</li>
+    <li><strong>Internet</strong>: only for the optional online map and, on Google Play, the Google features below. With the default settings, Terpoir opens no network connection.</li>
+  </ul>
+
+  <h2>Optional online map</h2>
+  <p>Off by default. When you turn it on, the map’s provider receives map-tile requests from your phone, which include your IP address and the area you are looking at:</p>
+  <ul>
+    <li><strong>OpenFreeMap</strong> (the default provider), under <a href="https://openfreemap.org/privacy/">OpenFreeMap’s privacy policy</a>. It says it keeps no IP addresses in its access logs by default.</li>
+    <li><strong>MapTiler</strong>, only with your own MapTiler key, under <a href="https://www.maptiler.com/privacy-policy/">MapTiler’s privacy policy</a>.</li>
+    <li><strong>Google Maps</strong> (Google Play version only, if you choose it): see below.</li>
+  </ul>
+
+  <h2>Google components (Google Play version)</h2>
+  <p>The Google Play version can use these Google components. Except for Play Age Signals, each is used only when you turn its feature on or agree to a download. What they collect goes to Google, under the <a href="https://policies.google.com/privacy">Google Privacy Policy</a>, not to the developer. The F-Droid version and the foss APK on GitHub contain none of them.</p>
+
+  <h3>Google Maps SDK for Android</h3>
+  <p>Used only while the online map is on with Google Maps chosen as its provider. According to <a href="https://developers.google.com/maps/documentation/android-sdk/play-data-disclosure">Google’s data disclosure for the Maps SDK</a>, it collects request metadata (such as your device’s OS version, name, model and brand, and the SDK version), stack traces and crash metrics from crashes in its own code, your IP address, a pseudonymous Maps SDK identifier, and map interaction events such as panning and zooming, to maintain and improve Google services. Your spots and journal are never sent to Google; the map only shows a location you move it to.</p>
+
+  <h3>Google text recognition (ML Kit)</h3>
+  <p>Off by default (“Google text recognition” in the Privacy Center). Your photos are read on your phone, and the scanned text and images are never sent anywhere. According to <a href="https://developers.google.com/ml-kit/android-data-disclosure">Google’s data disclosure for ML Kit</a>, it sends Google usage metrics for diagnostics and usage analytics: device information (manufacturer, model, OS version), the app’s package name and version, a device identifier and per-installation identifiers, performance metrics, settings such as image format and size, input and output sizes, event types and error codes. These are sent over HTTPS and not shared with third parties.</p>
+
+  <h3>Google Play Age Signals</h3>
+  <p>When you first open the app, Terpoir asks Google Play on your phone whether your account belongs to a minor, to keep Terpoir away from people under 18. Terpoir reads only that answer, never stores or sends it, and never asks you to share your age. According to <a href="https://developer.android.com/google/play/age-signals/overview#data-safety">Google’s data safety notes for Play Age Signals</a>, the client library collects no data; the Play Store handles the request under the Google Play Terms of Service.</p>
+
+  <h3>Google Play Feature and Asset Delivery</h3>
+  <p>If you agree to download the open text-recognition engine, the Google Play Store delivers it. According to Google’s notes for <a href="https://developer.android.com/guide/playcore/feature-delivery#data-safety">Feature Delivery</a> and <a href="https://developer.android.com/guide/playcore/asset-delivery#data-safety">Asset Delivery</a>, the Play Store receives device metadata and the app version to deliver the right files, encrypted, not shared with third parties and deleted after a fixed period.</p>
+
+  <h3>Google Play services location</h3>
+  <p>Included for geofencing, which the Google Play version does not offer in this release, so it is not used. Saved-spot locations come from Android’s own location service, only while the app is open.</p>
+
+  <h2>Crash reports</h2>
+  <p>Terpoir contains no crash reporter. If you have allowed your phone to share usage and diagnostics with Google, Android itself may send Google a report when an app crashes, and Google shows developers aggregated crash statistics in the Play Console. That is a setting of your phone, not of Terpoir; you can change it in Android’s settings.</p>
+
+  <h2>Age</h2>
+  <p>Terpoir is for adults of legal age to use cannabis where they live. It asks you to confirm this on first launch (one local yes/no, no date of birth) and is not directed at children.</p>
+
+  <h2>Your choices and deleting your data</h2>
+  <ul>
+    <li>Every optional feature is a switch in the app’s Privacy Center, with a card saying what it does and what leaves the phone. Turning one off also cleans up what it created.</li>
+    <li>Because the developer holds none of your data, there is nothing to request or delete on our side. To delete your journal, uninstall Terpoir or clear its storage in Android’s settings. Files you synced or exported stay where you put them until you delete them.</li>
+  </ul>
+
+  <h2>Changes</h2>
+  <p>Changes to this policy are published on this page, with a new effective date, and in the <a href="https://github.com/nolsen311/Terpoir/commits/main/site/privacy.html">source history</a>. Questions: <a href="mailto:terpoirapp@gmail.com">terpoirapp@gmail.com</a>.</p>
+
+  <h2>This website</h2>
+  <p class="note">terpoir.app has no analytics, cookies or scripts. It is served through Cloudflare, which can see visits (such as IP addresses), under <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare’s privacy policy</a>.</p>
+</main>
+
+<footer><div class="wrap"><p><a href="/">terpoir.app</a> · <a href="https://github.com/nolsen311/Terpoir">Source</a> · Self-tracking, not medical advice.</p></div></footer>
+
+</body>
+</html>
