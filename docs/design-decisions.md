@@ -546,6 +546,11 @@ Each journal entry records one consumption session, not a product review. Produc
 - **Fixed-point numbers:** doses and label amounts in thousandths of their unit; prices in minor currency units; coordinates in 1e-7 degrees with an accuracy radius.
 - **Serialization:** `postcard` (compact, stable wire format) inside a versioned envelope; the serialized document is what the record key encrypts. Record-kind codes and value variants are append-only.
 - **Migrations** live in the core, run on read, must be deterministic and keep stamps (devices that migrate independently agree; a migration never beats a real edit). Documents from a newer schema are reported, not rewritten.
+- **Schema upgrades (decided 2026-10-13, maintainer):** an app upgrade or a restore must never lose data because of a schema mismatch. A backup that won't load is treated as worse than a missing feature, so this work comes before the remaining sync backends.
+  - **Newer data is kept, not skipped:** records from a newer schema are stored sealed and unchanged, and applied once the app is new enough. An import never quietly drops them, and the user is told when an update is needed.
+  - **Derived data is versioned and rebuilt:** indexes, scan aliases and links, and platform caches are rebuilt (and re-linked) on the first unlock after an upgrade that changes them.
+  - **Old backups keep working:** checked-in fixtures from every released version (export, sync blob, database) must still open and migrate. CI enforces this.
+  - **Older apps refuse newer databases** with a clear message, never a reset.
 - **Stream snippets** are separate records referencing their session; photos and voice clips are attachment IDs on the session.
 - **Purchases (record kind 8):** `when`, optional `spot`, and `lines/<id>` → (product, batch, price minor units, currency). A price is all-or-nothing, like a dose. Purchases are in the date index by `when`, and a line's product is a reference, so "every purchase of this product" is an index lookup.
   - **Session product lines** may carry a (purchase ID, purchase line ID) pair; both or neither. Older four-item line values still read. Changing a line's product in the editor drops its purchase reference.

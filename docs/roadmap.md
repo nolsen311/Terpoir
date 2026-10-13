@@ -148,6 +148,28 @@ without it.
       effect, freshness by package date.
 - [x] Purchase prompts on Re-up Spots: dwell-then-exit geofence, discreet
       "Quick log?", no visit log; "Show me" banner alternative.
+- [ ] Schema upgrades without data loss (maintainer, 2026-10-13; ahead of
+      the remaining sync backends, because a backup that won't load is
+      worse than a missing feature). See "Schema upgrades" in the design
+      doc.
+  - [ ] Keep records from a newer app version: store them sealed and
+        unchanged, and apply them automatically after the app updates, so
+        an import or restore never drops them. Today they are counted as
+        deferred and skipped, and must be imported again by hand.
+  - [ ] Restore and import say plainly when an export or sync blob needs a
+        newer app, before anything is changed, and never finish partially
+        in silence.
+  - [ ] Versioned derived data: indexes (local day, references, tags,
+        files), scan aliases and links, and Android caches (alert cache,
+        geofences, notification cache) carry a version and are rebuilt on
+        the first unlock after an upgrade, with re-linking where the
+        rules changed.
+  - [ ] Compatibility fixtures: an encrypted export, a sync blob and a
+        database from each released version, checked in, and a test that
+        every one still opens, migrates and round-trips. A release that
+        breaks one fails CI.
+  - [ ] Downgrade: an older app opening a newer database refuses (as
+        today) with a message to update, never a crash or a reset.
 - [ ] Bring-your-own-storage sync backends and direct device pairing.
   - [x] First backend: a folder chosen through the system file picker
         (Syncthing, or cloud drives through their apps); no INTERNET.
