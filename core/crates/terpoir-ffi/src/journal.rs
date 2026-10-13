@@ -246,7 +246,12 @@ impl Unlocked {
         Ok(())
     }
 
-    fn save<R: Record>(&mut self, id: Option<String>, record: &R, now_ms: u64) -> Result<String> {
+    pub(crate) fn save<R: Record>(
+        &mut self,
+        id: Option<String>,
+        record: &R,
+        now_ms: u64,
+    ) -> Result<String> {
         let stamp = self.clock.stamp(now_ms);
         let doc = match id {
             Some(id) => {
@@ -1171,6 +1176,7 @@ impl Journal {
             let wrapped_database_key = new_master.wrap_database_key(&database_key)?;
             u.store.rewrap_all(&u.master, &new_master)?;
             crate::capture::rotate(u, &new_master)?;
+            crate::tracking::rotate(u, &new_master)?;
             let rotated = RotatedKeys {
                 master_key: new_master.expose_secret().to_vec(),
                 master_wrapped_by_recovery: kek.wrap_master_key(&new_master)?.as_bytes().to_vec(),

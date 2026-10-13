@@ -539,7 +539,12 @@ Each journal entry records one consumption session, not a product review. Produc
   - Share cards don't offer hidden fields.
   - A product shows without its brand when brand is hidden ("Product names").
   - The plaintext export still includes data kept hidden, because it exports what is stored.
-- **Not yet built.**
+- **Core (implemented 2026-10-13):**
+  - **Data points** (`TrackedField`, slugs in display order): `brand`, `strain` (with strain type), `price_and_shop`, `purchases` (hiding it also hides `price_and_shop`), `potency` (THC and CBD), `terpenes`, `batch` (with package date), `dose`, `timeline`, `mood` (before and after), `intention`, `social`.
+  - **The record:** a new record kind, `Tracking` (code 9), with one map entry per hidden data point (`hidden/<slug>`), so choices merge per data point. Its ID is the first 16 bytes of an HKDF subkey of the master key (`tracking-preferences`); master-key rotation moves it to the new ID with its fields and stamps. It is a setting, so the plaintext export leaves it out. An app from before this version defers the record when syncing (an unknown kind), like any record from a newer version.
+  - **Delete** (`Journal::delete_data_point`): clears the data point's fields on every record and, for brand, strain and purchases, deletes those records too (crypto-erasure); sessions' purchase references and shops go with purchases. Spots stay, since they are places, not shops. The removals sync like edits.
+  - **FFI:** `trackable_data_points`, `Journal::hidden_data_points`, `set_data_point_tracked` and `delete_data_point`.
+- **Android: not yet built** (the screen, the editors, scans, insights and share cards).
 
 ### Structural rules
 - **Per-record keys for every record type**, not just sessions (spots and products are sensitive too). Deleting a session leaves its products; deleting a spot detaches it from sessions.
