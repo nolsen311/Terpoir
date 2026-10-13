@@ -56,9 +56,17 @@ const STEPS: &[&str] = &[
          wrapped_key BLOB NOT NULL,
          ciphertext BLOB NOT NULL
      ) WITHOUT ROWID;",
+    // 3 -> 4: the version of the rules each kind of derived data (such as
+    // the index) was built with, so an upgrade that changes them rebuilds it.
+    "CREATE TABLE derived (
+         name TEXT PRIMARY KEY NOT NULL,
+         version INTEGER NOT NULL
+     ) WITHOUT ROWID;",
 ];
 
-pub(crate) fn migrate(conn: &Connection) -> Result<()> {
+/// Brings the schema up to date. Returns the version it started at (0 for
+/// a new database).
+pub(crate) fn migrate(conn: &Connection) -> Result<usize> {
     let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
     let version = usize::try_from(version).map_err(|_| Error::NewerDatabase)?;
     if version > STEPS.len() {
@@ -70,5 +78,5 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
             "BEGIN; {step}; PRAGMA user_version = {to}; COMMIT;"
         ))?;
     }
-    Ok(())
+    Ok(version)
 }

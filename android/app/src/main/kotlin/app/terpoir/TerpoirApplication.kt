@@ -75,6 +75,9 @@ class TerpoirApplication : Application() {
         privacySettings = PrivacySettings(this)
         purchasePrompts = PurchasePrompts(this, privacySettings)
         spotAlerts = SpotAlerts(this, privacySettings, Distribution.geofencer(this), purchasePrompts)
+        // After an upgrade that changed them: drop what alerts kept from
+        // the older version; the next unlock rebuilds it.
+        spotAlerts.dropOutdated()
         checkIns = CheckIns(this, privacySettings)
         folderSync = FolderSync(this)
         privacyCenter = buildPrivacyCenter(this, privacySettings, spotAlerts, checkIns, folderSync) {

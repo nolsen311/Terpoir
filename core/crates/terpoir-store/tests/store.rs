@@ -15,7 +15,7 @@ use terpoir_model::{
     Brand, CoreEffect, DeviceId, Document, Hlc, LocalTime, Method, Product, ProductLine, RecordId,
     RecordKind, Session, Snippet, Stamp, TagRef,
 };
-use terpoir_store::{Error, Store};
+use terpoir_store::{Error, INDEX_VERSION, IndexRebuild, Store};
 
 struct TempDir(PathBuf);
 
@@ -567,11 +567,143 @@ fn version_one_databases_upgrade() {
     {
         let conn = rusqlite_open(&journal, &key);
         conn.execute_batch(
-            "DROP TABLE meta; DROP TABLE deletions; DROP TABLE pending; PRAGMA user_version = 1;",
+            "DROP TABLE meta; DROP TABLE deletions; DROP TABLE pending; DROP TABLE derived;
+             PRAGMA user_version = 1;",
         )
         .unwrap();
     }
     let mut store = Store::open(&journal.db(), &journal.files(), &key).unwrap();
     store.set_meta("k", b"v").unwrap();
     assert!(store.deletion_markers().unwrap().is_empty());
+}
+
+/// A brand, a product of that brand, and a session of that product on day
+/// 100 with a "sleepy" effect.
+fn indexed_journal(journal: &Journal, store: &mut Store) -> [RecordId; 3] {
+    let brand = Document::create(
+        &Brand {
+            name: "Acme".into(),
+        },
+        stamp(1),
+    )
+    .unwrap();
+    let mut product = Product::new("Gummies".into());
+    product.brand = Some(brand.id());
+    let product = Document::create(&product, stamp(1)).unwrap();
+    let mut session = session_on_day(100, "x");
+    session.lines.insert(
+        RecordId::random().unwrap(),
+        ProductLine {
+            product: Some(product.id()),
+            method: Method::Edible,
+            dose: None,
+            purchase: None,
+            shop: None,
+        },
+    );
+    session.effects.insert(CoreEffect::Sleepy.into(), 4);
+    let session = Document::create(&session, stamp(1)).unwrap();
+    for doc in [&brand, &product, &session] {
+        store.put(&journal.master, doc).unwrap();
+    }
+    [brand.id(), product.id(), session.id()]
+}
+
+fn assert_indexed(store: &Store, [brand, product, session]: [RecordId; 3]) {
+    assert_eq!(store.referencing(&brand).unwrap(), vec![product]);
+    assert_eq!(store.referencing(&product).unwrap(), vec![session]);
+    assert_eq!(store.ids_on_days(100, 100).unwrap(), vec![session]);
+    assert_eq!(store.ids_with_tag("sleepy").unwrap(), vec![session]);
+}
+
+#[test]
+fn a_new_database_has_a_current_index() {
+    let journal = Journal::new();
+    let mut store = journal.open();
+    assert_eq!(store.derived_version("index").unwrap(), Some(INDEX_VERSION));
+    assert_eq!(store.refresh_index(&journal.master).unwrap(), None);
+}
+
+#[test]
+fn an_index_built_with_older_rules_is_rebuilt_once() {
+    let journal = Journal::new();
+    let ids = {
+        let mut store = journal.open();
+        indexed_journal(&journal, &mut store)
+    };
+    // A database from before index versions (schema 3), whose index was
+    // built by rules that indexed nothing.
+    let key = journal
+        .master
+        .unwrap_database_key(&journal.wrapped_db_key)
+        .unwrap();
+    {
+        let conn = rusqlite_open(&journal, &key);
+        conn.execute_batch(
+            "DELETE FROM refs; DELETE FROM days; DELETE FROM tags;
+             DROP TABLE derived; PRAGMA user_version = 3;",
+        )
+        .unwrap();
+    }
+    let mut store = Store::open(&journal.db(), &journal.files(), &key).unwrap();
+    assert_eq!(store.derived_version("index").unwrap(), None);
+    assert!(store.ids_with_tag("sleepy").unwrap().is_empty());
+
+    assert_eq!(
+        store.refresh_index(&journal.master).unwrap(),
+        Some(IndexRebuild {
+            indexed: 3,
+            unreadable: 0
+        })
+    );
+    assert_indexed(&store, ids);
+    assert_eq!(store.derived_version("index").unwrap(), Some(INDEX_VERSION));
+    assert_eq!(store.refresh_index(&journal.master).unwrap(), None);
+
+    // An older version number rebuilds too, and drops rows of records
+    // that are gone.
+    store
+        .set_derived_version("index", INDEX_VERSION - 1)
+        .unwrap();
+    {
+        let conn = rusqlite_open(&journal, &key);
+        conn.execute(
+            "INSERT INTO tags (id, tag) VALUES (?1, 'stale')",
+            [RecordId::random().unwrap().as_bytes().to_vec()],
+        )
+        .unwrap();
+    }
+    assert!(store.refresh_index(&journal.master).unwrap().is_some());
+    assert!(store.ids_with_tag("stale").unwrap().is_empty());
+    assert_indexed(&store, ids);
+}
+
+#[test]
+fn a_damaged_record_does_not_stop_a_rebuild() {
+    let journal = Journal::new();
+    let mut store = journal.open();
+    let ids = indexed_journal(&journal, &mut store);
+    let damaged = Document::create(&session_on_day(100, "y"), stamp(1)).unwrap();
+    store.put(&journal.master, &damaged).unwrap();
+    let key = journal
+        .master
+        .unwrap_database_key(&journal.wrapped_db_key)
+        .unwrap();
+    {
+        let conn = rusqlite_open(&journal, &key);
+        conn.execute(
+            "UPDATE records SET ciphertext = x'00' WHERE id = ?1",
+            [damaged.id().as_bytes().to_vec()],
+        )
+        .unwrap();
+    }
+    assert_eq!(
+        store.rebuild_index(&journal.master).unwrap(),
+        IndexRebuild {
+            indexed: 3,
+            unreadable: 1
+        }
+    );
+    assert_indexed(&store, ids);
+    assert_eq!(store.derived_version("index").unwrap(), Some(INDEX_VERSION));
 }

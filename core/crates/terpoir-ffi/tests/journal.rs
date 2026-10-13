@@ -1697,3 +1697,35 @@ fn deleting_a_data_point_clears_it_everywhere() {
     assert_eq!((s.rating, l.method.as_str()), (Some(4), "edible"));
     assert_eq!(s.effects.len(), 1);
 }
+
+#[test]
+fn unlocking_rebuilds_an_index_built_by_an_older_app() {
+    let dir = Device::new();
+    let keys = create_keys().unwrap();
+    drop(dir.open(&keys).unwrap());
+
+    let master = terpoir_crypto::MasterKey::from_slice(&keys.master_key).unwrap();
+    let database_key = master
+        .unwrap_database_key(
+            &terpoir_crypto::WrappedKey::from_slice(&keys.wrapped_database_key).unwrap(),
+        )
+        .unwrap();
+    let store = || {
+        terpoir_store::Store::open(
+            &dir.dir.join("journal.db"),
+            &dir.dir.join("files"),
+            &database_key,
+        )
+        .unwrap()
+    };
+    // As an app whose index rules were older left it.
+    store()
+        .set_derived_version("index", terpoir_store::INDEX_VERSION - 1)
+        .unwrap();
+
+    drop(dir.open(&keys).unwrap());
+    assert_eq!(
+        store().derived_version("index").unwrap(),
+        Some(terpoir_store::INDEX_VERSION)
+    );
+}
