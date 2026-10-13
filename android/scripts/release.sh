@@ -5,8 +5,9 @@
 #
 # Drives a whole release from the maintainer's machine (docs/releasing.md):
 # signs and pushes the tag, waits for the Release workflow's draft, runs
-# sign-release.sh (YubiKey PIN once, a touch per signature), then asks
-# before publishing. Nothing is signed or stored in CI; this only chains
+# sign-release.sh (YubiKey PIN once, a touch per signature), asks before
+# publishing on GitHub, then asks before sending the bundle to Google Play
+# (play-upload.sh). Nothing is signed or stored in CI; this only chains
 # the manual steps, and each outward-facing one asks first.
 #
 # Usage: android/scripts/release.sh vX.Y.Z
@@ -14,7 +15,8 @@
 # Safe to re-run after an interruption: a tag that is already on the remote
 # is not recreated, and a finished CI run is not waited for again.
 #
-# Settings (environment): the ones sign-release.sh takes, plus
+# Settings (environment): the ones sign-release.sh and play-upload.sh take,
+# plus
 #   TERPOIR_REPO      default nolsen311/Terpoir
 #   TERPOIR_WORK_DIR  where signed builds are written
 #                     (default ~/terpoir-releases, outside the repository)
@@ -88,13 +90,22 @@ echo "Signing (YubiKey PIN, then a touch per signature)"
 echo
 gh release view "$tag" --repo "$repo" --json assets --jq '.assets[].name'
 echo
-if [ -f "$workdir/terpoir-release-$version/signed/terpoir-play-$version.aab" ]; then
-    echo "The signed Play bundle is at $workdir/terpoir-release-$version/signed/terpoir-play-$version.aab"
-    echo "Upload it in the Play Console."
-fi
 if confirm "Publish $tag on GitHub now? Check the draft first: https://github.com/$repo/releases"; then
     gh release edit "$tag" --repo "$repo" --draft=false
     echo "Published."
 else
     echo "Left as a draft. Publish later: gh release edit $tag --repo $repo --draft=false"
+fi
+
+# 5. Google Play.
+bundle="$workdir/terpoir-release-$version/signed/terpoir-play-$version.aab"
+if [ ! -f "$bundle" ]; then
+    echo "No signed Play bundle (TERPOIR_UPLOAD_SLOT unset): nothing to send to Google Play."
+elif [ -z "${TERPOIR_PLAY_SERVICE_ACCOUNT:-}" ]; then
+    echo "The signed Play bundle is at $bundle"
+    echo "Set TERPOIR_PLAY_SERVICE_ACCOUNT to send it automatically, or upload it in the Play Console."
+elif confirm "Send $tag to Google Play's ${TERPOIR_PLAY_TRACK:-internal} track (${TERPOIR_PLAY_STATUS:-draft})?"; then
+    TERPOIR_WORK_DIR=$workdir "$here/play-upload.sh" "$tag"
+else
+    echo "Not sent. Later: TERPOIR_WORK_DIR=$workdir android/scripts/play-upload.sh $tag"
 fi
