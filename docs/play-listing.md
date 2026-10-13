@@ -16,10 +16,20 @@ ready to paste. Written 2026-10-13 for version 0.1.0 (versionCode 1).
   - developer name "Terpoir", contact `terpoirapp@gmail.com`, website
     `https://terpoir.app`;
   - no payments profile, so no in-app purchases.
-- **Not checked:** this session couldn't reach the Play Console Help
-  Center (`support.google.com`) or `play.google.com`. The question wording
-  below follows the Play Console as of this writing. Check it against the
-  live form (`docs/follow-ups.md`).
+- **Checked** against the Play Console Help Center on 2026-10-13: Data
+  safety, App content, sign-in details, target audience, content ratings,
+  health apps, foreground services, testing requirements, and the
+  Inappropriate Content and Health Content and Services policies (linked
+  in each section). The IARC questions themselves aren't published there:
+  confirm them in the Console.
+- **Still needed in the app** before the first review (Health Content and
+  Services, User Data policies; `docs/roadmap.md`):
+  - a privacy policy link or text inside the app, not only on the listing;
+  - a reminder to consult a healthcare professional for medical advice,
+    diagnosis or treatment;
+  - a short disclosure before the camera and microphone permission prompts
+    (used on the phone only, never sent), since the health policy puts both
+    permissions in scope.
 
 Re-check this file whenever the Play build's dependencies or permissions
 change.
@@ -38,7 +48,7 @@ Terpoir: Private Journal
 An encrypted journal for adults: note what you try and how it felt. No account.
 ```
 
-**Full description** (2633/4000):
+**Full description** (2809/4000):
 
 ```
 Terpoir is a private journal for adults who use cannabis where it is legal. Note what you tried, how much, and how it felt, then look back and see what actually works for you. It is a notebook, not a shop or a social network: Terpoir sells nothing, recommends nothing, and does not tell you to use more.
@@ -73,16 +83,28 @@ OPTIONAL GOOGLE FEATURES
 A few features use Google components. Each is off until you turn it on, and its card says what Google receives: Google Maps for picking a spot on a map, and Google's text recognition as an alternative scanner. Without them, Terpoir still works fully.
 
 FOR ADULTS ONLY
-Terpoir is for adults of legal age to use cannabis where they live. It asks you to confirm this on first launch. Terpoir is a personal self-tracking tool, not medical advice.
+Terpoir is for adults of legal age to use cannabis where they live. It asks you to confirm this on first launch.
+
+NOT MEDICAL ADVICE
+Terpoir is a personal self-tracking tool. It is not a medical device and does not diagnose, treat, cure, or prevent any medical condition. Consult a healthcare professional for medical advice, diagnosis, or treatment.
 
 Privacy policy: https://terpoir.app/privacy
 ```
 
 Notes on the copy:
+- **Medical disclaimer (required):** the "NOT MEDICAL ADVICE" paragraph
+  carries the sentence Google requires in the description of a health app
+  that isn't a regulated medical device: "not a medical device and does not
+  diagnose, treat, cure, or prevent any medical condition", plus the
+  reminder to consult a healthcare professional
+  ([Health Content and Services](https://support.google.com/googleplay/android-developer/answer/16679511)).
 - **All-ages:** it names cannabis factually and says who the app is for.
   It has no imagery or wording that encourages use, and no ordering,
-  delivery, dispensary, menu or price language (Google Play policy on
-  marijuana; `docs/design-decisions.md`, "App store policy").
+  delivery, dispensary, menu or price language. Google's marijuana policy
+  bans facilitating sale "regardless of legality": an in-app cart, arranging
+  delivery or pick-up, or selling THC products
+  ([Inappropriate Content](https://support.google.com/googleplay/android-developer/answer/9878810);
+  `docs/design-decisions.md`, "App store policy").
 - **No background-location sentence:** background location isn't in this
   release, so the prominent-disclosure sentence isn't needed.
 - **Graphics:** `android/release/store/icon-512.png` (app icon) and
@@ -115,14 +137,26 @@ Notes on the copy:
 ## Target audience and content
 
 - **Target age groups:** 18 and over only.
+- **Restrict Minor Access:** check it. Choosing 18 and over as the only
+  group offers this box; with it, users Google determines to be minors
+  can't search for, download or buy the app
+  ([target audience](https://support.google.com/googleplay/android-developer/answer/9867159)). It isn't required for this
+  kind of app
+  ([Age-Restricted Content](https://support.google.com/googleplay/android-developer/answer/16302250)), but it is the store
+  half of the age gating in `docs/design-decisions.md`.
 - **Appeals to children:** No.
 - **Store presence for children:** none. Not in Designed for Families, and
   not a Teacher Approved candidate.
 
-## App access
+## Sign-in details (formerly "App access")
 
-**All or some functionality is restricted:** select "All functionality is
-available without special access", and paste these instructions:
+There is no login, but the journal opens only with the device's screen
+lock, which the reviewer sets up themselves. Google asks for clear
+instructions whenever "your app requires users to set up their own
+password (for example, a PIN)"
+([sign-in details](https://support.google.com/googleplay/android-developer/answer/15748846)). Under **Sign-in details**,
+choose **+ Add new instructions**, leave the username and password empty,
+and paste this into **Any other instructions**:
 
 ```
 No account or sign-in. Everything is on the device.
@@ -141,10 +175,22 @@ off by default and are turned on in the Privacy Center (shield tab). No
 test credentials are needed.
 ```
 
+## Other App content declarations
+
+- **COVID-19 contact tracing and status apps:** none of these.
+- **News and Magazine apps:** not a news or magazine app.
+- **Permissions declaration form:** not needed: no SMS, call log or other
+  high-risk permission.
+
+([App content](https://support.google.com/googleplay/android-developer/answer/9859455))
+
 ## Content rating (IARC questionnaire)
 
 - **Email for rating notices:** `terpoirapp@gmail.com`.
 - **Category:** All other app types (not a game).
+- **Process** ([content ratings](https://support.google.com/googleplay/android-developer/answer/188189)): enter the email,
+  pick the category, answer, review the calculated ratings, then submit.
+  The table below is a guide: the live questionnaire's wording rules.
 
 | Question | Answer | Why |
 |---|---|---|
@@ -193,20 +239,31 @@ are on
 Yes: only through the optional Google features above.
 
 **Is all of the user data collected by your app encrypted in transit?**
-Yes. ML Kit states HTTPS. The Maps SDK and the Play Store talk to Google
+Yes, which Google allows only if it holds for every SDK. ML Kit states HTTPS. The Maps SDK and the Play Store talk to Google
 over TLS.
 
 **Which account creation methods does your app support?** None: the app
 doesn't allow users to create an account.
 
 **Do you provide a way for users to request that their data is deleted?**
-No. There is no account and the developer holds no user data. The data
+No. Google allows Yes for a request mechanism, or for data deleted or
+anonymized automatically within 90 days; neither is the developer's to
+offer for Google's SDK data. There is no account and the developer holds no user data. The data
 Google's SDKs collect is pseudonymous and governed by Google. The journal
 is deleted by uninstalling or clearing the app's storage.
 
-**Data types collected.** Not shared with third parties in any case: the
-SDK provider collects for its own service, and ML Kit states it doesn't
-transfer the data to third parties.
+**Data types collected.** Collected, not shared. Google counts data an
+SDK sends to its own provider as **collected**, and as **shared** when the
+provider is a third party using it for itself, as Google does here ("to
+improve Google services") rather than as the developer's service provider.
+It isn't "sharing", though, when the transfer follows "a prominent in-app
+disclosure and consent that meets the requirements described in our User
+Data policy", or a user-initiated action the user expects
+([Data safety](https://support.google.com/googleplay/android-developer/answer/10787469)). Each of these Google features is
+off by default and is turned on from a Privacy Center card that says what
+Google receives; the text-recognition download starts only from the user's
+"Download" tap. ML Kit also states it doesn't transfer the data to third
+parties.
 
 | Data type | Collected | Processed ephemerally | Required or optional | Purposes | From |
 |---|---|---|---|---|---|
@@ -218,8 +275,9 @@ transfer the data to third parties.
 
 Everything else is **not collected**:
 - **Location:** spot locations stay in the encrypted journal. The Maps SDK
-  receives the IP address, which Google says it uses to understand SDK
-  usage, not to locate the user.
+  receives the IP address; Google's Data safety guidance makes IP addresses
+  location data only "where developers use IP addresses as a means to
+  determine location", which Terpoir doesn't.
 - **Personal info, financial info:** price fields stay on the phone.
 - **Health and fitness, messages, photos and videos, audio** (on-device
   speech recognition), **files and docs, calendar, contacts, web browsing.**
@@ -232,13 +290,40 @@ security review yet.
 Judgement calls, to revisit if Google's guidance changes:
 - Play Delivery's device metadata is declared, although the Play Store
   process handles it.
-- IP addresses aren't declared as location.
-- Data sent to Google as the SDK's provider counts as collected, not
-  shared.
+- IP addresses aren't declared as location (Google's IP guidance above).
+- Google's SDK data is collected, not shared, by the disclosure-and-consent
+  exception. That holds only while each Google feature stays opt-in behind
+  its Privacy Center card. If one ever turns on by default or without its
+  card, declare its data types as shared too.
+- **Optional** is allowed only if every user, on every device and in every
+  region, can opt out. True here: every Google feature is a Privacy Center
+  switch, off by default.
 
 ## Health apps declaration
 
 **Categories:** Medication and Treatment Management; Sleep Management.
+
+How the form works ([health apps declaration](https://support.google.com/googleplay/android-developer/answer/14738291)):
+- Under **Policy > App content > Health apps**, tick the features, then
+  **Next**.
+- A second page asks for more information only when a feature needs it.
+  The text below is for that page, and for any reviewer question.
+
+Google's definitions ([health app categories](https://support.google.com/googleplay/android-developer/answer/13996367)):
+- **Medication and Treatment Management:** "managing medication schedules,
+  pharmacy services, and ensuring adherence to treatment plans".
+- **Sleep Management:** "improving and tracking sleep patterns and
+  quality".
+- Terpoir's fit to the first is loose: it logs what was taken and how it
+  felt, with no schedules or reminders. It is declared because the journal
+  records use of a substance taken for relief.
+- Camera, location and microphone are in scope of the health policy, which
+  asks the app to "prominently disclose how user data will be used" for
+  them, with affirmative consent. Location is asked from buttons in the
+  spot editor. The camera prompt appears as soon as a scanner opens
+  (`CameraScreen.kt`), and the microphone prompt at the first dictation
+  (`Dictation.kt`), with no disclosure first: see "Still needed in the
+  app" above.
 
 ```
 Terpoir is a private, on-device journal for adults who use legal cannabis.
@@ -267,7 +352,10 @@ sensors and does not use Health Connect.
 Its `ExtractionForegroundService` has `foregroundServiceType="dataSync"`,
 and Terpoir declares no foreground service of its own.
 
-- **Task type:** Data sync. Google's description includes "Data upload or
+- **Task type:** Data sync.
+- **Use case** (Play Console list,
+  [foreground services](https://support.google.com/googleplay/android-developer/answer/13392821)): "Network transfer:
+  Upload or download" (data fetch). Google's description includes "Data upload or
   download" and "Local file processing"
   ([foreground service types](https://developer.android.com/develop/background-work/services/fgs/service-types)).
 - **Feature:**
@@ -287,7 +375,9 @@ and Terpoir declares no foreground service of its own.
   have to type the receipt or label by hand; a partial copy would have to be
   downloaded again.
   ```
-- **Video (about 30 seconds):**
+- **Video (about 30 seconds):** the form takes a link to it, for example
+  an unlisted YouTube video. It must show the steps that start the
+  service.
   - **0:00–0:05:** open Terpoir, unlock, and tap "Scan receipt" from a new
     purchase.
   - **0:05–0:10:** the "Text recognition needs a download" card; tap
@@ -310,5 +400,9 @@ the background-location declaration and a video
 
 - **Track:** internal testing first, as a draft
   (`android/scripts/play-upload.sh`, `docs/releasing.md`).
-- **Closed testing:** check the current requirements for new personal
-  developer accounts before production.
+- **Closed testing:** personal developer accounts created after
+  13 November 2023 must run a closed test with at least 12 testers, opted
+  in continuously for 14 days, before applying for production access. The
+  application asks for a summary of their feedback, so keep a record of
+  it. The rule applies only to those personal accounts
+  ([testing requirements](https://support.google.com/googleplay/android-developer/answer/14151465)).

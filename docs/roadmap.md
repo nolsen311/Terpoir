@@ -208,6 +208,11 @@ without it.
         terpoir.app/privacy, `docs/play-listing.md` (listing, Data safety,
         IARC, declarations), store graphics, no background location on
         Play, and the developer-verification APK script.
+  - [ ] Play policy gaps found when checking the Help Center
+        (`docs/play-listing.md`, "Checked"): a privacy policy link or text
+        inside the app; an in-app reminder to consult a healthcare
+        professional; a disclosure before the camera and microphone
+        permission prompts. Needed before the first review.
   - [ ] F-Droid recipe: builds the OCR AAR with
         `android/ocr-native/build.sh` and sets `terpoir.ocr.aar` for the
         foss build (outline in `android/ocr-native/README.md`); settle
