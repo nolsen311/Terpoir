@@ -52,6 +52,7 @@
     <string name="sync_last">Last synced %1$s.</string>
     <string name="sync_done">Synced.</string>
     <string name="sync_failed">Couldn\'t sync. Check that the folder is still there and you can write to it.</string>
+    <string name="sync_needs_update">Some synced changes were made by a newer version of Terpoir. Update the app to bring them in.</string>
     <plurals name="sync_imported">
         <item quantity="one">Brought in %1$d file from your other devices.</item>
         <item quantity="other">Brought in %1$d files from your other devices.</item>
@@ -136,6 +137,7 @@
     <string name="restore_explainer">Type the recovery key of the journal you exported. It opens the export on this phone; capitals and dashes don\'t matter.</string>
     <string name="restore_button">Restore</string>
     <string name="restore_not_export">That file isn\'t a Terpoir export.</string>
+    <string name="newer_version_needed">This was made by a newer version of Terpoir. Update the app, then try again. Nothing was changed.</string>
     <string name="restore_failed">The journal couldn\'t be restored. Nothing was kept; try again.</string>
     <string name="data_title">Your data</string>
     <string name="data_explainer">Export saves your whole journal as one encrypted file, and only your recovery key opens it, so keep the two apart. Use it to move to a new phone: choose \"Restore from an export\" when setting Terpoir up there. Import merges an export of this same journal back in.</string>
@@ -646,6 +648,10 @@
     <string name="capture_locked_failed">The note couldn\'t be saved. Try again, or unlock your journal.</string>
     <string name="capture_locked_unlock">Unlock instead</string>
     <string name="capture_locked_saved">Note saved and sealed. It joins your journal when you unlock.</string>
+    <plurals name="newer_records_kept">
+        <item quantity="one">%d entry was made by a newer version of Terpoir. It\'s kept safely and will appear after you update the app.</item>
+        <item quantity="other">%d entries were made by a newer version of Terpoir. They\'re kept safely and will appear after you update the app.</item>
+    </plurals>
     <plurals name="capture_review">
         <item quantity="one">%d note was added while your journal was locked. Anyone holding your phone could have written it, so keep or discard it.</item>
         <item quantity="other">%d notes were added while your journal was locked. Anyone holding your phone could have written them, so keep or discard each one.</item>

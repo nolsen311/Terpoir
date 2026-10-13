@@ -160,7 +160,7 @@ without it.
   - [x] Keep records from a newer app version: store them sealed and
         unchanged, and apply them automatically after the app updates, so
         an import or restore never drops them.
-  - [ ] Restore and import say plainly when an export or sync blob needs a
+  - [x] Restore and import say plainly when an export or sync blob needs a
         newer app, before anything is changed, and never finish partially
         in silence.
   - [ ] Versioned derived data: indexes (local day, references, tags,

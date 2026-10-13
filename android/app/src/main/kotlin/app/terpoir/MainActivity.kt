@@ -40,6 +40,7 @@ import app.terpoir.capture.LockedCaptureScreen
 import app.terpoir.capture.QuickCapture
 import app.terpoir.capture.ShortcutCard
 import app.terpoir.core.ExportArchive
+import app.terpoir.core.checkExportArchive
 import app.terpoir.core.coreVersion
 import app.terpoir.core.readExportArchive
 import app.terpoir.core.vocabulary
@@ -270,9 +271,17 @@ class MainActivity : ComponentActivity() {
                 RestoreScreen(
                     check = { typed -> session.checkRecoveryKey(typed, archive.masterWrappedByRecovery) },
                     onRestore = { typed ->
-                        message = restoreJournal(typed, archive) {
-                            message = it
+                        // Checked before anything changes: an export a newer
+                        // app wrote is refused whole, never restored partly.
+                        val check = runCatching { checkExportArchive(typed, archive) }.getOrNull()
+                        if (check == null || check.newerFormatBlobs > 0uL) {
+                            message = if (check == null) R.string.restore_failed else R.string.newer_version_needed
                             restoring = null
+                        } else {
+                            message = restoreJournal(typed, archive) {
+                                message = it
+                                restoring = null
+                            }
                         }
                     },
                     onCancel = { restoring = null },

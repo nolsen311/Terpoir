@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
+import app.terpoir.core.CoreException
 import app.terpoir.core.Journal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -35,7 +36,7 @@ class FolderSync(private val context: Context) {
     private val lock = Mutex()
 
     /** What the last sync did. */
-    data class Outcome(val imported: Int, val written: Int)
+    data class Outcome(val imported: Int, val written: Int, val needsUpdate: Boolean = false)
 
     /** The folder, if one was chosen and its permission is still held. */
     val folder: Uri?
@@ -83,10 +84,13 @@ class FolderSync(private val context: Context) {
             //    sync. Records a newer app wrote inside a readable blob are
             //    kept by the core and applied after updating.
             var imported = 0
+            var needsUpdate = false
             for ((name, doc) in blobs(resolver, tree)) {
                 if (name in seen || name in own) continue
                 val bytes = runCatching { resolver.openInputStream(doc)?.use { it.readBytes() } }.getOrNull() ?: continue
-                runCatching { journal.importSyncBlob(bytes, System.currentTimeMillis().toULong()) }.getOrNull() ?: continue
+                val result = runCatching { journal.importSyncBlob(bytes, System.currentTimeMillis().toULong()) }
+                if (result.exceptionOrNull() is CoreException.NewerVersion) needsUpdate = true
+                if (result.isFailure) continue
                 seen += name
                 imported++
             }
@@ -122,7 +126,7 @@ class FolderSync(private val context: Context) {
                 .putStringSet(KEY_OWN, written)
                 .putLong(KEY_LAST, System.currentTimeMillis())
                 .apply()
-            Outcome(imported, written.size)
+            Outcome(imported, written.size, needsUpdate)
         }
     }
 

@@ -11,11 +11,11 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use terpoir_ffi::{
-    BrandData, CoreError, IdentifierData, InsightFeedback, Journal, LocalTimeData, NewKeys,
-    ProductData, ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData,
+    BrandData, CoreError, ExportArchive, IdentifierData, InsightFeedback, Journal, LocalTimeData,
+    NewKeys, ProductData, ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData,
     SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance,
-    TagRefData, check_recovery_key, create_keys, keys_for_restore, master_key_from_recovery,
-    read_export_archive, trackable_data_points,
+    TagRefData, check_export_archive, check_recovery_key, create_keys, keys_for_restore,
+    master_key_from_recovery, read_export_archive, trackable_data_points,
 };
 
 struct Device {
@@ -686,6 +686,48 @@ fn an_export_restores_on_a_new_device() {
     .unwrap();
     assert_eq!(restored.master_key, keys.master_key);
 
+    // Checked before anything changes: everything readable, nothing newer.
+    let check = |blobs: Vec<Vec<u8>>| {
+        check_export_archive(
+            keys.recovery_key.clone(),
+            ExportArchive {
+                master_wrapped_by_recovery: keys.master_wrapped_by_recovery.clone(),
+                blobs,
+            },
+        )
+        .unwrap()
+    };
+    let current = check(parsed.blobs.clone());
+    assert_eq!(
+        (
+            current.records,
+            current.newer_records,
+            current.newer_format_blobs
+        ),
+        (1, 0, 0)
+    );
+    // A record of a kind a newer app added is counted, not an error.
+    let master = terpoir_crypto::MasterKey::from_slice(&keys.master_key).unwrap();
+    let mut newer = terpoir_sync::Blob {
+        device: terpoir_model::DeviceId::from_bytes([7; 16]),
+        sequence: 1,
+        records: Vec::new(),
+        pending: Vec::new(),
+        deletions: Vec::new(),
+    };
+    let record = terpoir_model::RecordId::random().unwrap();
+    let record_key = terpoir_crypto::RecordKey::generate().unwrap();
+    newer.pending.push(terpoir_store::PendingRecord {
+        id: record,
+        kind_code: 200,
+        wrapped_key: master.wrap_record_key(&record_key, &record).unwrap(),
+        ciphertext: record_key.seal(b"", b"later").unwrap(),
+    });
+    let newer =
+        terpoir_sync::encode_blob(&terpoir_sync::container_key(&master).unwrap(), &newer).unwrap();
+    let mixed = check([parsed.blobs.clone(), vec![newer]].concat());
+    assert_eq!((mixed.records, mixed.newer_records), (1, 1));
+
     let new_dir = Device::new();
     let new_phone = Journal::open(
         new_dir
@@ -702,6 +744,14 @@ fn an_export_restores_on_a_new_device() {
         assert_eq!(new_phone.import_sync_blob(blob, 20).unwrap().deferred, 0);
     }
     assert!(new_phone.get_session(id.clone()).unwrap() == phone.get_session(id).unwrap());
+    // Importing into a journal checks under its own key.
+    let again = read_export_archive(
+        phone
+            .export_archive(keys.master_wrapped_by_recovery.clone())
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(new_phone.check_export_archive(again).unwrap().records, 1);
 }
 
 #[test]

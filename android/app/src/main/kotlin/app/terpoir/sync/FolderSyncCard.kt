@@ -40,6 +40,7 @@ fun FolderSyncCard(sync: FolderSync, journal: Journal) {
     var message by remember { mutableStateOf<String?>(null) }
     var failed by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    var needsUpdate by remember { mutableStateOf(false) }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
             sync.choose(uri)
@@ -78,6 +79,7 @@ fun FolderSyncCard(sync: FolderSync, journal: Journal) {
                         val outcome = runCatching { sync.sync(journal) }.getOrNull()
                         failed = outcome == null
                         imported = outcome?.imported ?: -1
+                        needsUpdate = outcome?.needsUpdate == true
                         message = if (outcome == null) failedText else doneText
                         busy = false
                         revision++
@@ -90,5 +92,6 @@ fun FolderSyncCard(sync: FolderSync, journal: Journal) {
             Text(it, style = MaterialTheme.typography.bodySmall, color = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
         }
         if (imported > 0) Text(pluralStringResource(importedTemplate, imported, imported), style = MaterialTheme.typography.bodySmall)
+        if (needsUpdate) Text(stringResource(R.string.sync_needs_update), style = MaterialTheme.typography.bodySmall)
     }
 }
