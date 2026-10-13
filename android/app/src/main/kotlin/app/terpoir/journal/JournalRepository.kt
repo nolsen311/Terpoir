@@ -81,6 +81,9 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
 
     suspend fun saveSnippet(id: String?, data: SnippetData): String = io { journal.saveSnippet(id, data, now()) }
 
+    /** Keeps a note added while the journal was locked: it stays, no longer marked for review. */
+    suspend fun keepCapture(id: String, data: SnippetData): String = saveSnippet(id, data.copy(addedWhileLocked = false))
+
     /** Spots, by name. */
     suspend fun spots(): List<Entry<SpotData>> = io {
         load(RecordType.SPOT, journal::getSpot).sortedBy { it.data.name.lowercase() }

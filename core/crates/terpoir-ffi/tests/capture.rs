@@ -203,6 +203,8 @@ fn bad_files_are_removed_and_newer_ones_kept() {
     // From a newer app version: kept for after an update.
     let newer = inbox.join(format!("{}.cap", "cd".repeat(16)));
     fs::write(&newer, [2u8; 200]).unwrap();
+    // Empty: never readable.
+    fs::write(inbox.join(format!("{}.cap", "12".repeat(16))), b"").unwrap();
     // Not a record ID, and an interrupted write.
     fs::write(inbox.join("junk.cap"), b"x").unwrap();
     fs::write(inbox.join(format!("{}.tmp", "ef".repeat(16))), b"x").unwrap();

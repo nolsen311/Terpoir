@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -35,6 +36,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,6 +44,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,6 +73,7 @@ import app.terpoir.location.CurrentLocation
 import app.terpoir.location.LocationAccess
 import app.terpoir.privacy.PrivacySettings
 import app.terpoir.privacy.PrivacyToggle
+import kotlinx.coroutines.launch
 
 /** Where the user is inside the unlocked app. */
 private sealed interface Screen {
@@ -253,7 +257,11 @@ private fun JournalList(
     var productNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var effectNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var tagNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    LaunchedEffect(revision) {
+    // Bumped when a note added while locked is kept or discarded.
+    var reviewed by remember { mutableIntStateOf(0) }
+    var discarding by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(revision, reviewed) {
         productNames = repo.productLabels()
         effectNames = repo.tags(EFFECT_CATEGORY).associate { it.id to it.data.name }
         tagNames = (repo.tags(EFFECT_CATEGORY) + repo.tags("flavor") + repo.tags("mood") + repo.tags("terpene"))
@@ -272,6 +280,17 @@ private fun JournalList(
                 IconButton(onClick = onLock) {
                     Icon(painterResource(R.drawable.ic_lock), contentDescription = stringResource(R.string.lock_now))
                 }
+            }
+        }
+        // Notes written while the journal was locked: anyone holding the
+        // phone could have added them, so the user keeps or discards each.
+        val toReview = notes.count { it.data.addedWhileLocked }
+        if (toReview > 0) {
+            item {
+                Text(
+                    pluralStringResource(R.plurals.capture_review, toReview, toReview),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
             }
         }
         // Purchase prompts use the same geofencing, so they need the same permissions.
@@ -297,9 +316,36 @@ private fun JournalList(
         items(timeline, key = { it.second.id }) { (_, entry) ->
             when (val data = entry.data) {
                 is SessionData -> SessionCard(data, productNames, effectNames) { onOpen(entry.id) }
-                is SnippetData -> NoteCard(data, tagNames) { onOpenNote(entry.id) }
+                is SnippetData -> NoteCard(
+                    data,
+                    tagNames,
+                    onKeep = {
+                        scope.launch {
+                            repo.keepCapture(entry.id, data)
+                            reviewed++
+                        }
+                    },
+                    onDiscard = { discarding = entry.id },
+                ) { onOpenNote(entry.id) }
             }
         }
+    }
+    discarding?.let { id ->
+        AlertDialog(
+            onDismissRequest = { discarding = null },
+            title = { Text(stringResource(R.string.capture_discard_title)) },
+            text = { Text(stringResource(R.string.note_delete_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    discarding = null
+                    scope.launch {
+                        repo.delete(id)
+                        reviewed++
+                    }
+                }) { Text(stringResource(R.string.capture_discard)) }
+            },
+            dismissButton = { TextButton(onClick = { discarding = null }) { Text(stringResource(android.R.string.cancel)) } },
+        )
     }
 }
 
@@ -346,7 +392,13 @@ private fun SessionCard(
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
-private fun NoteCard(note: SnippetData, customNames: Map<String, String>, onClick: () -> Unit) {
+private fun NoteCard(
+    note: SnippetData,
+    customNames: Map<String, String>,
+    onKeep: () -> Unit,
+    onDiscard: () -> Unit,
+    onClick: () -> Unit,
+) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -361,6 +413,17 @@ private fun NoteCard(note: SnippetData, customNames: Map<String, String>, onClic
             if (note.tags.isNotEmpty()) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     for (t in note.tags.take(MAX_CARD_TAGS)) AssistChip(onClick = onClick, label = { Text(tagLabel(t.tag, customNames)) })
+                }
+            }
+            if (note.addedWhileLocked) {
+                Text(
+                    stringResource(R.string.capture_added_while_locked),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = onKeep) { Text(stringResource(R.string.capture_keep)) }
+                    TextButton(onClick = onDiscard) { Text(stringResource(R.string.capture_discard)) }
                 }
             }
         }

@@ -304,7 +304,10 @@ fn merge_one(
     if unlocked.store.contains(id)? || unlocked.store.is_deleted(id)? {
         return Ok(Outcome::Present);
     }
-    if sealed.first() != Some(&FILE_VERSION) {
+    if sealed
+        .first()
+        .is_some_and(|&version| version > FILE_VERSION)
+    {
         return Ok(Outcome::Deferred);
     }
     let Ok(recipient) = CapturePublicKey::of_sealed(sealed) else {
