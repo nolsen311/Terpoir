@@ -11,6 +11,9 @@
 # the manual steps, and each outward-facing one asks first.
 #
 # Usage: android/scripts/release.sh vX.Y.Z
+#   On a desktop whose SSH agent can't use the YubiKey's ed25519-sk key
+#   (the maintainer's), blank it so tag and SHA256SUMS signing reach the
+#   key directly: SSH_AUTH_SOCK= android/scripts/release.sh vX.Y.Z
 #
 # Safe to re-run after an interruption: a tag that is already on the remote
 # is not recreated, and a finished CI run is not waited for again.
@@ -22,6 +25,8 @@
 #                     (default ~/terpoir-releases, outside the repository)
 
 set -euo pipefail
+# A failing command ends the script (set -e): say where, never stop silently.
+trap 'echo "error: release.sh stopped at line $LINENO (exit $?)" >&2' ERR
 
 die() { echo "error: $*" >&2; exit 1; }
 confirm() { read -rp "$1 [y/N] " answer; [[ "$answer" =~ ^[Yy]$ ]]; }
@@ -33,19 +38,26 @@ repo=${TERPOIR_REPO:-nolsen311/Terpoir}
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(git -C "$here" rev-parse --show-toplevel)
 
+echo "Releasing $tag from $repo"
 for tool in git gh; do
     command -v "$tool" >/dev/null || die "$tool not found"
 done
+echo "Checking the GitHub CLI login"
 gh auth status >/dev/null 2>&1 || die "gh is not logged in (gh auth login)"
 
-git -C "$root" fetch --quiet origin main --tags
+# Only main and this release's tag: never every tag, since CI moves the
+# dev-build tag and fetching it over an older local copy fails. With an SSH
+# remote on a YubiKey key, a fetch waits for a touch.
+echo "Fetching origin/main (touch the YubiKey if it blinks)"
+git -C "$root" fetch --quiet origin main || die "git fetch origin main failed"
 main_sha=$(git -C "$root" rev-parse origin/main)
 
 # 1. The tag.
 if git -C "$root" ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
     echo "Tag $tag is already on origin; not creating it again."
-    tag_sha=$(git -C "$root" rev-parse "$tag^{commit}" 2>/dev/null) \
-        || die "$tag is on origin but not fetched locally: git fetch origin tag $tag"
+    git -C "$root" fetch --quiet origin "refs/tags/$tag:refs/tags/$tag" \
+        || die "can't fetch $tag: a local $tag that differs from origin's? Compare, then git tag -d $tag"
+    tag_sha=$(git -C "$root" rev-parse "$tag^{commit}")
 else
     current=$(git -C "$root" show origin/main:android/app/build.gradle.kts \
         | sed -n 's/^ *versionName = "\(.*\)"$/\1/p')

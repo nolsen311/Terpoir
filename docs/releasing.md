@@ -99,6 +99,18 @@ re-run after an interruption. Set `TERPOIR_UPLOAD_SLOT=82` (and
 signed builds under `~/terpoir-releases` (`TERPOIR_WORK_DIR`). Nothing is
 signed in CI: it only chains the steps by hand.
 
+On the maintainer's machine, run it with the SSH agent switched off:
+
+```bash
+SSH_AUTH_SOCK= TERPOIR_UPLOAD_SLOT=9d android/scripts/release.sh v0.2.0
+```
+
+The tag and `SHA256SUMS` are signed with the YubiKey's `ed25519-sk` SSH
+key. With `SSH_AUTH_SOCK` set, `git tag -s` and `ssh-keygen -Y sign` go
+through the desktop's SSH agent, which can't use a security-key key.
+Empty, they use the YubiKey directly (touch it when it blinks). The
+fetches use HTTPS, so nothing else needs the agent.
+
 The steps, for doing them separately:
 
 1. **Version:** a PR raises `versionCode` and sets `versionName` in
