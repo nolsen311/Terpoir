@@ -481,6 +481,7 @@ Making a new note should take one tap from outside the app. Every entry point op
 
 ### Transparency and updates
 - Release hashes published on terpoir.app and signed; later, logged to Sigstore's public transparency log.
+  - **Published so far (2026-10-14):** terpoir.app ("Verify your download") and the README carry both certificate fingerprints and the release-signing SSH key, also committed as `android/release/allowed_signers` (principal: the tagger's GitHub noreply address, namespaces `file` and `git`, so one file verifies both `SHA256SUMS.sig` and `git verify-tag`). The hashes themselves stay in each GitHub release's signed `SHA256SUMS` rather than being pasted onto the site by hand, which would go stale; publishing them on terpoir.app is automated in 0.7.0. A second key from the backup YubiKey is added to the same places when it exists.
 - No in-app updater; stores and F-Droid handle updates (preserves "the app never contacts terpoir.app").
 
 ## Monetization (decided)
