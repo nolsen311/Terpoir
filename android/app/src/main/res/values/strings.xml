@@ -748,6 +748,13 @@
     <string name="maptiler_key_remove">Remove key</string>
     <string name="maptiler_key_invalid">A MapTiler key has only letters and digits.</string>
     <string name="track_title">What I track</string>
+    <string name="settings_title">Settings</string>
+    <string name="theme_title">Theme</string>
+    <string name="theme_intro">On this phone only.</string>
+    <string name="theme_system">Use the phone\'s setting</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="settings_track_hint">Choose which details your journal keeps. Applies on every device you sync with.</string>
     <string name="track_intro">Turn off what you don\'t care about, and Terpoir stops asking for it. Your choices apply on every device you sync with.</string>
     <string name="track_always">When, product, method, effects and rating are always tracked: they\'re what makes the journal and its insights work.</string>
     <string name="track_brand">Brands</string>

@@ -8,5 +8,5 @@
         <item name="android:colorBackground">@color/terroir_surface</item>
     </style>
 
-    <color name="terroir_surface">#141A15</color>
+    <color name="terroir_surface">#111712</color>
 </resources>

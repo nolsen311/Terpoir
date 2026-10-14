@@ -22,6 +22,7 @@ import app.terpoir.session.AutoLock
 import app.terpoir.session.JournalFiles
 import app.terpoir.session.JournalSession
 import app.terpoir.session.LockSettings
+import app.terpoir.ui.theme.AppearanceSettings
 import java.io.OutputStream
 import java.io.PrintStream
 
@@ -37,6 +38,10 @@ class TerpoirApplication : Application() {
 
     /** Privacy toggles readable before unlock. */
     lateinit var privacySettings: PrivacySettings
+        private set
+
+    /** The theme choice (this phone only). */
+    lateinit var appearance: AppearanceSettings
         private set
 
     /** "Notify me" geofences and alerts. */
@@ -76,6 +81,7 @@ class TerpoirApplication : Application() {
         // Installs the core's panic hook (never reports panic messages).
         initCore()
         lockSettings = LockSettings(this)
+        appearance = AppearanceSettings(this).also { it.applyToSystem() }
         privacySettings = PrivacySettings(this)
         purchasePrompts = PurchasePrompts(this, privacySettings)
         spotAlerts = SpotAlerts(this, privacySettings, Distribution.geofencer(this), purchasePrompts)
