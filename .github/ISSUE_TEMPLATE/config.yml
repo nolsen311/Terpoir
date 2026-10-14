@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+blank_issues_enabled: true
+contact_links:
+  - name: Report without a GitHub account
+    url: https://github.com/nolsen311/Terpoir/blob/main/CONTRIBUTING.md#reporting-bugs
+    about: Use "Send a report" in the app, or email terpoirapp@gmail.com. The maintainer files it here without your name or address.
+  - name: Security issue
+    url: https://github.com/nolsen311/Terpoir/blob/main/SECURITY.md
+    about: Please don't report vulnerabilities in public issues; see SECURITY.md.

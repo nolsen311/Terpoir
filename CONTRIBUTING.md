@@ -54,6 +54,20 @@ A commit that reaches `main` without a sign-off is never rewritten. The
 maintainer signs off on it in a follow-up commit recorded in
 [docs/dco-remediations.md](docs/dco-remediations.md).
 
+## Reporting bugs
+
+Bugs are tracked in [GitHub Issues](https://github.com/nolsen311/Terpoir/issues)
+with the `bug` label; the roadmap is for planned work only. Issues are
+public, so leave out anything from your journal, your location and other
+personal details.
+
+- **With a GitHub account:** open a "Bug report" issue.
+- **Without one:** use "Send a report" in the app, or email
+  terpoirapp@gmail.com. The maintainer files it as an issue labelled
+  `user-report`, with your description and the app's details but never
+  your name or address (`scripts/file-report.sh`, which opens the draft
+  for review and refuses one that still holds an email address).
+
 ## Security issues
 
 Do not open public issues for vulnerabilities. See [SECURITY.md](SECURITY.md).
