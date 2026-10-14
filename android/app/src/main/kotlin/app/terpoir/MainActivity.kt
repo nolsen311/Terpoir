@@ -67,6 +67,7 @@ import app.terpoir.onboarding.RestoreScreen
 import app.terpoir.privacy.FOLDER_SYNC
 import app.terpoir.privacy.ONLINE_MAP
 import app.terpoir.privacy.PrivacyCenterScreen
+import app.terpoir.privacy.PrivacyGroup
 import app.terpoir.privacy.PrivateTextInput
 import app.terpoir.privacy.ScreenPrivacy
 import app.terpoir.scan.Scanner
@@ -288,13 +289,16 @@ class MainActivity : ComponentActivity() {
                         center = app.privacyCenter,
                         onChanged = { ScreenPrivacy.onResume(this, app.privacySettings.screenProtection) },
                         onClose = onClose,
-                    ) {
-                        AutoLockCard(app.lockSettings)
-                        ShortcutCard(app.privacySettings)
-                        MapProviderCard(repo, app.privacySettings)
-                        DataCard(repo, session::masterWrappedByRecovery)
-                        if (app.privacySettings.folderSync) FolderSyncCard(app.folderSync, state.journal)
-                    }
+                        sectionExtras = mapOf<PrivacyGroup, @Composable () -> Unit>(
+                            PrivacyGroup.LOCATION to { MapProviderCard(repo, app.privacySettings) },
+                            PrivacyGroup.OS_INTEGRATION to { ShortcutCard(app.privacySettings) },
+                            PrivacyGroup.SYNC_AND_KEYS to {
+                                DataCard(repo, session::masterWrappedByRecovery)
+                                if (app.privacySettings.folderSync) FolderSyncCard(app.folderSync, state.journal)
+                            },
+                            PrivacyGroup.DEVICE_SECURITY to { AutoLockCard(app.lockSettings) },
+                        ),
+                    )
                 }
                 return
             }
