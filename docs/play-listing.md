@@ -4,7 +4,8 @@
 # Google Play submission: copy-ready answers
 
 Everything the Play Console asks for Terpoir's first Google Play release,
-ready to paste. Written 2026-10-13 for version 0.1.0 (versionCode 1).
+ready to paste. Written 2026-10-13 for the first Play release, version
+0.2.0 (versionCode 2).
 
 - **Sources:** the Play release build's merged manifest
   (`app/build/intermediates/merged_manifest/playRelease/`) and Google's own
@@ -399,6 +400,13 @@ the background-location declaration and a video
 
 - **Track:** internal testing first, as a draft
   (`android/scripts/play-upload.sh`, `docs/releasing.md`).
+- **Release notes** (en-US, the "What's new" box, 500 characters at most;
+  this text is 296):
+  ```
+  <en-US>
+  First release on Google Play. Terpoir is a private, encrypted journal: no account, no ads, no tracking. Already have a journal? Restore it from your recovery key or a sync folder. The privacy policy is in the Privacy Center, and every optional feature explains what it does before you turn it on.
+  </en-US>
+  ```
 - **Closed testing:** personal developer accounts created after
   13 November 2023 must run a closed test with at least 12 testers, opted
   in continuously for 14 days, before applying for production access. The
