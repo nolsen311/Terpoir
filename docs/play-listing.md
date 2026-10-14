@@ -12,8 +12,8 @@ ready to paste. Written 2026-10-13 for the first Play release, version
   data disclosure pages, linked where used.
 - **Maintainer decisions** (2026-10-13):
   - no background location in this release;
-  - health declaration: Medication and Treatment Management, Sleep
-    Management;
+  - health declaration: Sleep Management only (2026-10-14, after Play
+    rejected Medication and Treatment Management for a personal account);
   - developer name "Terpoir", contact `terpoirapp@gmail.com`, website
     `https://terpoir.app`;
   - no payments profile, so no in-app purchases.
@@ -302,7 +302,23 @@ Judgement calls, to revisit if Google's guidance changes:
 
 ## Health apps declaration
 
-**Categories:** Medication and Treatment Management; Sleep Management.
+**Category:** Sleep Management only.
+
+Why not Medication and Treatment Management: it sits in the form's
+**Medical** group, and Google says apps offering Medical health features
+should come from an **organization** account
+([account types](https://support.google.com/googleplay/android-developer/answer/13634885)). The first submission declared it
+from a personal account and was rejected (2026-10-14). It also fit poorly,
+since Terpoir has no schedules, reminders or adherence tracking. Sleep
+Management is in the **Health and fitness** group, which a personal account
+can publish.
+
+Watch for: a reviewer may read the optional Targeted symptoms section
+(pain, nausea, anxiety) as "Diseases and Conditions Management", also in
+the Medical group. The listing, the symptoms card and the in-app reminder
+present it as self-tracking, not condition management. If Google objects,
+the choices are hiding Targeted symptoms in the Play build or an
+organization account (a legal entity plus a free D-U-N-S number).
 
 How the form works ([health apps declaration](https://support.google.com/googleplay/android-developer/answer/14738291)):
 - Under **Policy > App content > Health apps**, tick the features, then
@@ -311,13 +327,8 @@ How the form works ([health apps declaration](https://support.google.com/googlep
   The text below is for that page, and for any reviewer question.
 
 Google's definitions ([health app categories](https://support.google.com/googleplay/android-developer/answer/13996367)):
-- **Medication and Treatment Management:** "managing medication schedules,
-  pharmacy services, and ensuring adherence to treatment plans".
-- **Sleep Management:** "improving and tracking sleep patterns and
-  quality".
-- Terpoir's fit to the first is loose: it logs what was taken and how it
-  felt, with no schedules or reminders. It is declared because the journal
-  records use of a substance taken for relief.
+- **Sleep Management:** "Apps dedicated to improving and tracking sleep
+  patterns and quality."
 - Camera, location and microphone are in scope of the health policy, which
   asks the app to "prominently disclose how user data will be used" for
   them, with affirmative consent. Location is asked from buttons in the
@@ -328,19 +339,17 @@ Google's definitions ([health app categories](https://support.google.com/googlep
 ```
 Terpoir is a private, on-device journal for adults who use legal cannabis.
 Users record each session (products, amounts, method, time) and how they
-felt afterwards, including a "sleepy" effect and an optional section for
-symptoms they hoped to ease (such as sleep or pain) and whether the session
-helped. The app shows patterns from their own entries, such as which
-products they found helpful for sleep.
+felt afterwards. It is a personal self-tracking journal, not a medical app.
 
-Medication and Treatment Management: users log what they took, how much and
-when, and their own notes on effects and on symptoms they hoped to relieve.
 Sleep Management: users can mark sleep as a session's intention, note a
-"sleepy" effect, and record whether a session helped with sleep; insights
-compare products on those self-reported outcomes.
+"sleepy" effect, and record whether a session helped with sleep. Insights
+compare products on those self-reported outcomes, from the user's own
+entries only.
 
-Terpoir gives no medical advice, diagnosis, dosing recommendations or
-treatment, and says so in the app and the listing. All health-related
+Terpoir is not a medical device and does not diagnose, treat, cure or
+prevent any condition. It gives no medical advice or dosing
+recommendations, and reminds users to consult a healthcare professional,
+in the app and the listing. All health-related
 entries stay encrypted on the device; there is no account or server, and
 none of this data is collected by the developer or shared. It reads no
 sensors and does not use Health Connect.
