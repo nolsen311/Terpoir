@@ -266,7 +266,7 @@ requirement rather than on features.
 | Version | Contents |
 |---|---|
 | 0.2.1 | Google Maps on Play (first build with the release Maps key), unlock prompt on open, newer-journal message. Rolling out 2026-10-14. |
-| 0.3.0 | Privacy Center readability pass: layout options for the maintainer to pick from, then the chosen one. |
+| 0.3.0 | Privacy Center readability pass: layout options for the maintainer to pick from, then the chosen one. Shipped early, in 0.2.2; no 0.3.0 release. |
 | 0.4.0 | Richer strains I: detail setting, terpene levels, lineage links, strain-profile fallback in insights. |
 | 0.5.0 | Richer strains II: more cannabinoids, insights and shop effect grouped by lineage or terpene profile. |
 | 0.6.0 | Strain lookups: an offline strain and seed catalog first, then online sources (such as Leafly or a seed database) each behind its own toggle, as "Catalog lookups" requires. Which providers depends on their terms and APIs, researched during 0.4.0. |
