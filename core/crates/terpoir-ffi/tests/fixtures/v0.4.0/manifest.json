@@ -1,0 +1,24 @@
+{
+  "core_version": "0.1.0",
+  "recovery_key": "0400-20G3-0G2G-C1R8-1450-P30D-1R7H-048J-2CA1-A5GQ-30CH-M6RW-3MF1-Y1YN",
+  "passphrase": "terpoir fixture passphrase",
+  "maptiler_key": "FixtureMapTilerKey0",
+  "ids": {
+    "brand": "cd0168fba80c2f80cfd0cbcd2fa9343d",
+    "deleted_brand": "a7b86b9addba6f946c614e26a05c626d",
+    "strain": "042d0d6b81bd97385c1b017da2eb1bbf",
+    "parent_strain": "00acb404384c3b1ef85a09b608269a92",
+    "spot": "0f32dd42c6b73de1925830f38373b6e5",
+    "product": "ef2ba3e6e104c67078dc054fdbb03e76",
+    "purchase": "0a36aad0913610f013c1b3cb4a3c8e01",
+    "purchase_line": "fd9f297e1325ce0c6de9efdae9c05315",
+    "tag": "c5aedbeb5b3353def1c74336b8d49ff9",
+    "symptom_tag": "c9bd16be33bfb05e833a17fba52a029c",
+    "session": "b8025f8c15b559015f2333a55e574b3d",
+    "snippet": "750b0ecf53b2509854afd1fef6488745",
+    "captured_note": "710a202648cc6d9a23038b5ae247d9d9",
+    "attachment": "3b4f13f34df8cadead11f2bbe04db01e"
+  },
+  "sync_blobs_before_edit": ["308cea52611647d9f3d945d5f163b18c"],
+  "sync_blobs_final": ["9b73441e1d3b5634fbceef9ae5ad1c38", "1d5cb12d2410690d8181d866cc5d1c19"]
+}

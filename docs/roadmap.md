@@ -181,8 +181,8 @@ without it.
         database from each released version, checked in, and a test that
         every one still opens, migrates and round-trips. A release that
         breaks one fails CI. (v0.1.0's, in
-        `core/crates/terpoir-ffi/tests/fixtures/`; v0.2.0 changed no
-        format.)
+        `core/crates/terpoir-ffi/tests/fixtures/`; v0.2.0 to v0.2.2
+        changed no format. v0.4.0's adds the richer strain fields.)
   - [x] Downgrade: an older app opening a newer database refuses (as
         today) with a message to update, never a crash or a reset.
 - [ ] Bring-your-own-storage sync backends and direct device pairing.
@@ -279,7 +279,7 @@ requirement rather than on features.
 ## Feature releases
 
 - [ ] Richer strains (`docs/design-decisions.md`, "Richer strains").
-  - [ ] 0.4.0: journal-wide detail setting (Simple / Terpenes / Detailed),
+  - [x] 0.4.0: journal-wide detail setting (Simple / Terpenes / Detailed),
         the terpene picker guiding to 3 or fewer, terpene levels
         (dominant, secondary, trace; existing terpenes unrated), parent
         strains as links (a typed name creates a minimal strain), insights
