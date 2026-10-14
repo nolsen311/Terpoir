@@ -228,6 +228,11 @@
 </style>
 </head>
 <body>
+<!-- Cloudflare's Email Address Obfuscation rewrites mailto: links and
+     injects a decoding script, which this page's CSP blocks (and which
+     would break "no third-party scripts"). These markers keep it off;
+     the zone setting is off too (Terpoir-infra). -->
+<!--email_off-->
 
 <div class="wrap">
   <nav>
@@ -438,5 +443,6 @@
   </div>
 </footer>
 
+<!--/email_off-->
 </body>
 </html>

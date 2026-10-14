@@ -61,6 +61,11 @@
 </style>
 </head>
 <body>
+<!-- Cloudflare's Email Address Obfuscation rewrites mailto: links and
+     injects a decoding script, which this page's CSP blocks (and which
+     would break "no third-party scripts"). These markers keep it off;
+     the zone setting is off too (Terpoir-infra). -->
+<!--email_off-->
 
 <header><div class="wrap"><a href="/"><img src="/logo.svg" alt="Terpoir" width="117" height="34"></a></div></header>
 
@@ -150,5 +155,6 @@
 
 <footer><div class="wrap"><p><a href="/">terpoir.app</a> · <a href="https://github.com/nolsen311/Terpoir">Source</a> · Self-tracking, not medical advice.</p></div></footer>
 
+<!--/email_off-->
 </body>
 </html>
