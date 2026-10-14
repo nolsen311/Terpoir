@@ -208,6 +208,11 @@ without it.
         terpoir.app/privacy, `docs/play-listing.md` (listing, Data safety,
         IARC, declarations), store graphics, no background location on
         Play, and the developer-verification APK script.
+  - [x] First Play review passed (2026-10-14), with the health
+        declaration narrowed to Sleep Management.
+  - [ ] Production access: a closed test with at least 12 testers opted
+        in for 14 days in a row, if the developer account is personal and
+        newer than 13 November 2023 (`docs/play-listing.md`, "Release").
   - [x] Play policy gaps found when checking the Help Center
         (`docs/play-listing.md`, "Checked"): the privacy policy as text
         inside the app (Privacy Center, from `site/privacy.html` bundled at
