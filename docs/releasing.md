@@ -50,6 +50,29 @@ never reaches CI or the repository.
    slot `9d` for the upload key instead; any slot works, as long as
    `TERPOIR_UPLOAD_SLOT` names it.)
 
+## Checking the YubiKeys
+
+`android/scripts/check-yubikeys.sh` checks the release YubiKeys without a
+PIN: it uses no PIN attempt and changes nothing on them. Run it with one
+key plugged in, then the other (or both at once). For each key it shows:
+
+- the PIV PIN and PUK tries left, and the FIDO2 PIN tries left. The PIV
+  PIN signs the APK and the bundle; the FIDO2 PIN signs the tag and
+  `SHA256SUMS`. Below the maximum means a wrong PIN was entered since the
+  last correct one. The PIV PIN locks after 3 wrong tries in a row and
+  only the PUK unlocks it; if the PUK locks too, the only way back is a
+  reset that erases the key's PIV keys. So after a failure, check here
+  before trying again;
+- each signing slot's key (algorithm, PIN and touch policy, imported or
+  generated on the key) and certificate fingerprints;
+- whether the app signing slot holds the pinned certificate, and whether
+  the upload key slot holds a key at all. An upload key generated on a
+  YubiKey exists only on that key: the other can't sign Play bundles.
+
+It saves each key's slot details under `~/terpoir-releases/yubikey-check`
+and compares every saved key with the others, so the two keys can be
+checked one after the other.
+
 ## Google Play (one-time setup)
 
 `android/scripts/play-upload.sh` sends the signed bundle to Google Play
