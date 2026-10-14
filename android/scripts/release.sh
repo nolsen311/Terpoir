@@ -42,16 +42,19 @@ done
 echo "Checking the GitHub CLI login"
 gh auth status >/dev/null 2>&1 || die "gh is not logged in (gh auth login)"
 
-# With an SSH remote on a YubiKey key, this waits for a touch.
-echo "Fetching origin (touch the YubiKey if it blinks)"
-git -C "$root" fetch --quiet origin main --tags || die "git fetch failed: check the remote and your SSH key"
+# Only main and this release's tag: never every tag, since CI moves the
+# dev-build tag and fetching it over an older local copy fails. With an SSH
+# remote on a YubiKey key, a fetch waits for a touch.
+echo "Fetching origin/main (touch the YubiKey if it blinks)"
+git -C "$root" fetch --quiet origin main || die "git fetch origin main failed"
 main_sha=$(git -C "$root" rev-parse origin/main)
 
 # 1. The tag.
 if git -C "$root" ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
     echo "Tag $tag is already on origin; not creating it again."
-    tag_sha=$(git -C "$root" rev-parse "$tag^{commit}" 2>/dev/null) \
-        || die "$tag is on origin but not fetched locally: git fetch origin tag $tag"
+    git -C "$root" fetch --quiet origin "refs/tags/$tag:refs/tags/$tag" \
+        || die "can't fetch $tag: a local $tag that differs from origin's? Compare, then git tag -d $tag"
+    tag_sha=$(git -C "$root" rev-parse "$tag^{commit}")
 else
     current=$(git -C "$root" show origin/main:android/app/build.gradle.kts \
         | sed -n 's/^ *versionName = "\(.*\)"$/\1/p')
