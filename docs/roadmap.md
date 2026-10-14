@@ -45,8 +45,9 @@ per item or small group of items. Keep this file updated as items land.
       `unwrap_used` in release code; `cargo test`.
 - [x] `cargo-deny` (licenses compatible with GPL-3.0, advisories, banned
       crates, sources) and `cargo-vet` (audits).
-- [ ] Add the CI jobs as required status checks in the `protect-main`
-      ruleset (maintainer step).
+- [x] Add the CI jobs as required status checks in the `protect-main`
+      ruleset (maintainer step; managed in Terpoir-infra, applied
+      2026-10-14).
 
 ## Phase 1: Rust core (`core/`)
 
@@ -278,7 +279,7 @@ requirement rather than on features.
     - [x] Core data model: terpene levels, parent links, "known for"
           cannabinoids and the synced detail step, through the FFI.
     - [x] Strain editor and detail setting in the app.
-    - [ ] Insights: the strain's dominant terpene when a label has none.
+    - [x] Insights: the strain's dominant terpene when a label has none.
   - [ ] 0.5.0: CBN, CBG, THCa and CBDV label amounts on products and
         "known for" cannabinoids on strains; insights and the shop effect
         grouped by shared parent or dominant terpene.

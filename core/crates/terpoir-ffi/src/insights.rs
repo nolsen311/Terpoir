@@ -13,8 +13,8 @@ use terpoir_insights::{
     Buy, Level, SessionFacts, ShopSessionFacts, insights, shop_insights, time_of_day,
 };
 use terpoir_model::{
-    DoseUnit, Product, ProductLine, Purchase, RecordId, Session, Spot, Strain, TagRef,
-    TrackedField, TrackingPreferences,
+    DoseUnit, Product, ProductLine, Purchase, RecordId, Session, Spot, Strain, StrainDetail,
+    TagRef, TrackedField, TrackingPreferences,
 };
 
 use crate::error::Result;
@@ -42,6 +42,11 @@ pub struct InsightData {
     pub without_count: u32,
     /// Likely confounders: `method`, `time` or `dose`.
     pub confounders: Vec<String>,
+    /// For a terpene insight: how many of [`Self::with_sessions`] have the
+    /// terpene only from a strain's profile, because their product's label
+    /// lists none (docs/design-decisions.md, "Richer strains"). The app
+    /// says so; it is weaker evidence than a label.
+    pub from_strain_profiles: u32,
 }
 
 /// What the user said about an insight.
@@ -299,12 +304,20 @@ pub(crate) fn current(source: &dyn Source) -> Result<Vec<InsightData>> {
     let show_terpenes = tracking.tracks(&TrackedField::Terpenes);
     let show_strain = tracking.tracks(&TrackedField::Strain);
     let show_dose = tracking.tracks(&TrackedField::Dose);
+    // A strain's terpenes stand in for a label's only while the journal
+    // shows them: terpenes and strains tracked, above the Simple step.
+    let strain_terpenes =
+        show_terpenes && show_strain && tracking.strain_detail() != StrainDetail::Simple;
+    // (session index, feature) pairs that come only from a strain profile.
+    let mut from_profile: BTreeSet<(usize, String)> = BTreeSet::new();
     let sessions = source.sessions()?;
     let mut products: BTreeMap<RecordId, Option<Product>> = BTreeMap::new();
     let mut strains: BTreeMap<RecordId, Option<Strain>> = BTreeMap::new();
     let mut facts = Vec::with_capacity(sessions.len());
     for (index, (_, session)) in sessions.iter().enumerate() {
         let mut features = BTreeSet::new();
+        let mut from_labels = BTreeSet::new();
+        let mut from_strains = BTreeSet::new();
         let mut doses = Vec::new();
         let mut all_mg = !session.lines.is_empty();
         for line in session.lines.values() {
@@ -326,29 +339,46 @@ pub(crate) fn current(source: &dyn Source) -> Result<Vec<InsightData>> {
                 features.insert(format!("form:{}", form.slug()));
             }
             // The product's dominant terpene (ties: the first in key order).
-            if show_terpenes
-                && let Some((tag, _)) = product.terpenes.iter().fold(
-                    None::<(&TagRef, i64)>,
-                    |best, (t, v)| match best {
-                        Some((_, b)) if b >= *v => best,
-                        _ => Some((t, *v)),
-                    },
-                )
-            {
-                features.insert(format!("terpene:{}", tag_key(tag)));
+            let label_terpene = product
+                .terpenes
+                .iter()
+                .fold(None::<(&TagRef, i64)>, |best, (t, v)| match best {
+                    Some((_, b)) if b >= *v => best,
+                    _ => Some((t, *v)),
+                })
+                .map(|(tag, _)| tag);
+            if show_terpenes && let Some(tag) = label_terpene {
+                from_labels.insert(format!("terpene:{}", tag_key(tag)));
             }
+            let mut strain_terpene = None;
             for strain_id in product.strains.iter().filter(|_| show_strain) {
                 if let std::collections::btree_map::Entry::Vacant(slot) = strains.entry(*strain_id)
                 {
                     slot.insert(source.strain(strain_id)?);
                 }
-                if let Some(Some(strain)) = strains.get(strain_id)
-                    && let Some(kind) = &strain.strain_type
-                {
-                    features.insert(format!("strain_type:{}", kind.slug()));
+                if let Some(Some(strain)) = strains.get(strain_id) {
+                    if let Some(kind) = &strain.strain_type {
+                        features.insert(format!("strain_type:{}", kind.slug()));
+                    }
+                    // No terpenes on the label: the first of its strains
+                    // (in ID order) with a dominant terpene stands in.
+                    if strain_terpene.is_none() {
+                        strain_terpene = strain.dominant_terpene().map(tag_key);
+                    }
                 }
             }
+            if strain_terpenes
+                && label_terpene.is_none()
+                && let Some(key) = strain_terpene
+            {
+                from_strains.insert(format!("terpene:{key}"));
+            }
         }
+        for feature in from_strains.difference(&from_labels) {
+            from_profile.insert((index, feature.clone()));
+        }
+        features.extend(from_labels);
+        features.extend(from_strains);
         let local_min =
             session.when.unix_ms.div_euclid(60_000) + i64::from(session.when.utc_offset_min);
         let hour = u32::try_from(local_min.rem_euclid(1440) / 60).unwrap_or(0);
@@ -392,6 +422,14 @@ pub(crate) fn current(source: &dyn Source) -> Result<Vec<InsightData>> {
                 .collect(),
             without_count: u32::try_from(insight.without_count).unwrap_or(u32::MAX),
             confounders: insight.confounders.clone(),
+            from_strain_profiles: u32::try_from(
+                insight
+                    .with_sessions
+                    .iter()
+                    .filter(|i| from_profile.contains(&(**i, insight.feature.clone())))
+                    .count(),
+            )
+            .unwrap_or(u32::MAX),
         });
     }
     Ok(out)
