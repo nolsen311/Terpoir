@@ -36,8 +36,10 @@ import app.terpoir.core.ProductMatch
 import app.terpoir.core.PurchaseData
 import app.terpoir.core.SpotData
 import app.terpoir.core.StrainData
+import app.terpoir.core.TagData
 import app.terpoir.core.TagIntensity
 import app.terpoir.core.TagRefData
+import app.terpoir.core.TerpeneLevelData
 import app.terpoir.core.Vocabulary
 import app.terpoir.core.classifyCode
 import app.terpoir.core.parseLabel
@@ -453,39 +455,69 @@ private fun LabelRow(
     }
 }
 
-/** Creates or edits a strain. Terpenes are kept as saved (edited later). */
+/**
+ * Creates or edits a strain, in as much detail as the journal's strain
+ * detail step allows (docs/design-decisions.md, "Richer strains"): the
+ * type always; at Terpenes, which terpenes it is known for, nudged to 3 or
+ * fewer; at Detailed, terpene levels, parent strains and cannabinoids too.
+ * Fields a lower step (or a hidden data point) leaves out keep their saved
+ * values when the strain is saved.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone: () -> Unit) {
     val scope = rememberCoroutineScope()
+    val tracking = LocalTracking.current
     var original by remember { mutableStateOf<StrainData?>(null) }
     var loaded by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var lineage by remember { mutableStateOf("") }
     var type by remember { mutableStateOf<String?>(null) }
+    var terpenes by remember { mutableStateOf<List<TagRefData>>(emptyList()) }
+    var levels by remember { mutableStateOf<Map<TagRefData, String>>(emptyMap()) }
+    var parents by remember { mutableStateOf<List<String>>(emptyList()) }
+    var cannabinoids by remember { mutableStateOf<List<String>>(emptyList()) }
+    var allStrains by remember { mutableStateOf<List<Entry<StrainData>>>(emptyList()) }
+    var customTerpenes by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
+    var addingParent by remember { mutableStateOf(false) }
     LaunchedEffect(id) {
+        allStrains = repo.strains()
+        customTerpenes = repo.tags("terpene")
         id?.let { repo.strain(it) }?.let {
             original = it
             name = it.name
             lineage = it.lineage.orEmpty()
             type = it.strainType
+            terpenes = it.terpenes
+            levels = it.terpeneLevels.associate { l -> l.terpene to l.level }
+            parents = it.parents
+            cannabinoids = it.cannabinoids
         }
         loaded = true
     }
     if (!loaded) return
+    val step = tracking.strainDetail
+    val showTerpenes = tracking.shows(DataPoint.TERPENES) && step != StrainDetail.SIMPLE
+    val detailed = step == StrainDetail.DETAILED
     EditorScaffold(
         title = stringResource(if (id == null) R.string.strain_new else R.string.strain_edit),
         onClose = onDone,
         saveEnabled = name.isNotBlank(),
         onSave = {
-            // Fields this editor doesn't show yet are kept as they are.
+            val kept = original
+            // What this step doesn't show is saved as it was.
             val data = StrainData(
-                name.trim(),
-                lineage.trim().ifEmpty { null },
-                original?.terpenes.orEmpty(),
-                type,
-                original?.terpeneLevels.orEmpty(),
-                original?.parents.orEmpty(),
-                original?.cannabinoids.orEmpty(),
+                name = name.trim(),
+                lineage = if (step == StrainDetail.SIMPLE) kept?.lineage else lineage.trim().ifEmpty { null },
+                terpenes = if (showTerpenes) terpenes else kept?.terpenes.orEmpty(),
+                strainType = type,
+                terpeneLevels = if (showTerpenes && detailed) {
+                    terpenes.mapNotNull { t -> levels[t]?.let { TerpeneLevelData(t, it) } }
+                } else {
+                    kept?.terpeneLevels.orEmpty()
+                },
+                parents = if (detailed) parents else kept?.parents.orEmpty(),
+                cannabinoids = if (detailed) cannabinoids else kept?.cannabinoids.orEmpty(),
             )
             scope.launch {
                 repo.saveStrain(id, data)
@@ -494,11 +526,92 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
         },
     ) {
         OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.strain_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(lineage, { lineage = it }, label = { Text(stringResource(R.string.strain_lineage)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         SectionTitle(stringResource(R.string.strain_type))
         SingleChoiceChips(vocab.strainTypes, type) { type = it }
         Text(stringResource(R.string.strain_type_note), style = MaterialTheme.typography.bodySmall)
+
+        if (showTerpenes) {
+            SectionTitle(stringResource(R.string.strain_terpenes))
+            Text(stringResource(R.string.strain_terpenes_hint), style = MaterialTheme.typography.bodySmall)
+            val options = vocab.terpenes.map { TagRefData.Builtin(it) } + customTerpenes.map { TagRefData.Custom(it.id) }
+            val customNames = customTerpenes.associate { it.id to it.data.name }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Terpenes saved earlier that aren't offered (a tag since deleted) still show.
+                for (tag in (options + terpenes).distinct()) {
+                    FilterChip(
+                        selected = tag in terpenes,
+                        onClick = { terpenes = if (tag in terpenes) terpenes - tag else terpenes + tag },
+                        label = { Text(tagLabel(tag, customNames)) },
+                    )
+                }
+            }
+            if (terpenes.size > 3) {
+                Text(stringResource(R.string.strain_terpenes_many), style = MaterialTheme.typography.bodySmall)
+            }
+            if (detailed && terpenes.isNotEmpty()) {
+                SectionTitle(stringResource(R.string.strain_levels))
+                Text(stringResource(R.string.strain_levels_hint), style = MaterialTheme.typography.bodySmall)
+                for (tag in terpenes) {
+                    Text(tagLabel(tag, customNames), style = MaterialTheme.typography.labelLarge)
+                    SingleChoiceChips(vocab.terpeneLevels, levels[tag]) { level ->
+                        levels = if (level == null) levels - tag else levels + (tag to level)
+                    }
+                }
+            }
+        }
+
+        if (detailed) {
+            SectionTitle(stringResource(R.string.strain_parents))
+            val names = allStrains.associate { it.id to it.data.name }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (parent in parents) {
+                    FilterChip(
+                        selected = true,
+                        onClick = { parents = parents - parent },
+                        label = { Text(names[parent] ?: stringResource(R.string.strain_parent_missing)) },
+                    )
+                }
+            }
+            val choices = allStrains.filter { it.id != id && it.id !in parents }
+            if (choices.isNotEmpty()) {
+                Dropdown<String?>(
+                    label = stringResource(R.string.strain_parent_add),
+                    options = choices.map { it.id to it.data.name },
+                    selected = null,
+                    onSelect = { picked -> picked?.let { parents = parents + it } },
+                )
+            }
+            OutlinedButton(onClick = { addingParent = true }) { Text(stringResource(R.string.strain_parent_new)) }
+
+            SectionTitle(stringResource(R.string.strain_cannabinoids))
+            Text(stringResource(R.string.strain_cannabinoids_hint), style = MaterialTheme.typography.bodySmall)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (c in (vocab.cannabinoids + cannabinoids).distinct()) {
+                    FilterChip(
+                        selected = c in cannabinoids,
+                        onClick = { cannabinoids = if (c in cannabinoids) cannabinoids - c else cannabinoids + c },
+                        label = { Text(label(c)) },
+                    )
+                }
+            }
+        }
+
+        if (step != StrainDetail.SIMPLE) {
+            OutlinedTextField(lineage, { lineage = it }, label = { Text(stringResource(R.string.strain_lineage)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        }
         if (id != null) DeleteButton(R.string.strain_delete, R.string.strain_delete_body) { scope.launch { repo.delete(id); onDone() } }
+    }
+
+    // A parent that isn't in the journal yet becomes a strain with only a name.
+    if (addingParent) {
+        NameDialog(stringResource(R.string.strain_parent_new), onDismiss = { addingParent = false }) { typed ->
+            addingParent = false
+            scope.launch {
+                val parentId = repo.saveStrain(null, StrainData(typed, null, emptyList(), null, emptyList(), emptyList(), emptyList()))
+                allStrains = repo.strains()
+                parents = parents + parentId
+            }
+        }
     }
 }
 
