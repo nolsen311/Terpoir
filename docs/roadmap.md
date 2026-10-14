@@ -223,6 +223,21 @@ without it.
         `android/ocr-native/build.sh` and sets `terpoir.ocr.aar` for the
         foss build (outline in `android/ocr-native/README.md`); settle
         with F-Droid whether the source tarballs come in as `srclibs`.
+    Tabled 2026-10-14; found while starting, both needed before F-Droid
+    can publish the maintainer-signed APK (builds must match byte for byte):
+    - `release.yml` builds the foss APK with JitPack's prebuilt OCR
+      libraries; it must build `android/ocr-native` and pass
+      `-Pterpoir.ocr.aar` as F-Droid will.
+    - The Rust core library embeds build-machine paths (`$CARGO_HOME`
+      registry sources, OpenSSL's build directory under `core/target`), so
+      it differs between GitHub's runners and F-Droid's build server. Remap
+      them (`--remap-path-prefix`) and extend the reproducible-build check
+      to a different `CARGO_HOME` and to the whole foss APK.
+    - Then: a helper script that installs the pinned Rust toolchain,
+      targets and `cargo-ndk` (like Mullvad's `android/fdroid-build/`), the
+      recipe with `Binaries` and `AllowedAPKSigningKeys`, and
+      `fastlane/metadata/android/en-US/` for the listing. Test with
+      `fdroid build` before submitting to `fdroiddata`.
 - [ ] Trademark Statement of Use after launch.
 
 ## Feature releases (after the first public release)
