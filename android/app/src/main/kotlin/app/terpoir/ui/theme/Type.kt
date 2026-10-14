@@ -37,6 +37,9 @@ private fun workSans(weight: FontWeight) = Font(
 /** Display, headline and title: Fraunces, a soft serif. */
 val Fraunces = FontFamily(fraunces(FontWeight.Medium), fraunces(FontWeight.SemiBold))
 
+/** The wordmark: Fraunces at its heaviest, as in the store graphics. */
+val Wordmark = FontFamily(fraunces(FontWeight.Black))
+
 /** Body and labels: Work Sans. */
 val WorkSans = FontFamily(workSans(FontWeight.Normal), workSans(FontWeight.Medium), workSans(FontWeight.SemiBold))
 
