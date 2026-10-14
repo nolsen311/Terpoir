@@ -66,7 +66,8 @@
     <string name="sync_never">Not synced yet.</string>
     <string name="sync_last">Last synced %1$s.</string>
     <string name="sync_done">Synced.</string>
-    <string name="sync_failed">Couldn\'t sync. Check that the folder is still there and you can write to it.</string>
+    <string name="sync_failed">Couldn\'t sync: the folder didn\'t take the files. Check that it\'s still there and you can write to it, or choose a folder in your phone\'s storage that Syncthing or your cloud app syncs.</string>
+    <string name="sync_no_access">That folder\'s app doesn\'t let Terpoir keep access to it. Choose a folder in your phone\'s storage instead, one that Syncthing or your cloud app syncs.</string>
     <string name="sync_needs_update">Some synced changes were made by a newer version of Terpoir. Update the app to bring them in.</string>
     <plurals name="sync_imported">
         <item quantity="one">Brought in %1$d file from your other devices.</item>
@@ -180,6 +181,7 @@
     <string name="plaintext_confirm">Export unencrypted</string>
     <string name="plaintext_saved">Saved, unencrypted. Keep it private and delete it when you\'re done.</string>
     <string name="export_failed">The export couldn\'t be saved. Try another place.</string>
+    <string name="export_incomplete">The file was created but didn\'t keep the export. Try saving it to your phone\'s storage, then copy it where you want it.</string>
     <string name="import_not_this_journal">That file isn\'t an export of this journal.</string>
     <string name="import_failed">The file couldn\'t be read.</string>
     <plurals name="import_done">

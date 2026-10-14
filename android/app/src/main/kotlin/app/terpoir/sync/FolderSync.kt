@@ -12,6 +12,8 @@ import android.provider.DocumentsContract
 import app.terpoir.core.CoreException
 import app.terpoir.core.Journal
 import app.terpoir.core.syncFolderKeyFile
+import app.terpoir.storage.writeNewDocument
+import java.io.IOException
 import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -53,14 +55,22 @@ class FolderSync(private val context: Context, private val masterWrappedByRecove
     /** When the last sync finished, in ms since the epoch, or 0. */
     val lastSyncMs: Long get() = prefs.getLong(KEY_LAST, 0)
 
-    /** Keeps access to [tree], the folder the user picked, across restarts. */
-    fun choose(tree: Uri) {
+    /**
+     * Keeps access to [tree], the folder the user picked, across restarts.
+     * Returns false if the folder's app doesn't let Terpoir keep access.
+     */
+    fun choose(tree: Uri): Boolean {
         val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-        context.contentResolver.takePersistableUriPermission(tree, flags)
+        try {
+            context.contentResolver.takePersistableUriPermission(tree, flags)
+        } catch (_: SecurityException) {
+            return false
+        }
         val previous = prefs.getString(KEY_FOLDER, null)
         // A different folder: nothing seen or written there yet.
         if (previous != tree.toString()) prefs.edit().clear().apply()
         prefs.edit().putString(KEY_FOLDER, tree.toString()).apply()
+        return true
     }
 
     /**
@@ -76,7 +86,10 @@ class FolderSync(private val context: Context, private val masterWrappedByRecove
         prefs.edit().clear().apply()
     }
 
-    /** Syncs with the folder once; `null` if there is no folder. Throws on I/O failure. */
+    /**
+     * Syncs with the folder once; `null` if there is no folder. Throws on
+     * I/O failure, including a file the folder didn't keep.
+     */
     suspend fun sync(journal: Journal): Outcome? = lock.withLock {
         val tree = folder ?: return@withLock null
         withContext(Dispatchers.IO) {
@@ -105,16 +118,18 @@ class FolderSync(private val context: Context, private val masterWrappedByRecove
             val written = mutableSetOf<String>()
             for (blob in journal.exportSyncBlobs()) {
                 val name = blob.name + SUFFIX
-                val partial = DocumentsContract.createDocument(resolver, dir, MIME, name + PARTIAL) ?: continue
-                resolver.openOutputStream(partial, "wt")?.use { it.write(blob.bytes) }
+                val partial = DocumentsContract.createDocument(resolver, dir, MIME, name + PARTIAL)
+                    ?: throw IOException("couldn't create a file in the folder")
+                writeNewDocument(resolver, partial, blob.bytes)
                 val renamed = runCatching { DocumentsContract.renameDocument(resolver, partial, name) }.getOrNull()
                 if (renamed == null) {
                     // Some providers cannot rename: write under the final
                     // name directly. A device reading it half-written fails
                     // to import it and retries at its next sync.
                     runCatching { DocumentsContract.deleteDocument(resolver, partial) }
-                    val direct = DocumentsContract.createDocument(resolver, dir, MIME, name) ?: continue
-                    resolver.openOutputStream(direct, "wt")?.use { it.write(blob.bytes) }
+                    val direct = DocumentsContract.createDocument(resolver, dir, MIME, name)
+                        ?: throw IOException("couldn't create a file in the folder")
+                    writeNewDocument(resolver, direct, blob.bytes)
                 }
                 written += name
             }
@@ -161,7 +176,9 @@ class FolderSync(private val context: Context, private val masterWrappedByRecove
      * After restoring from [tree]: keeps syncing through it. Every blob is
      * imported again at the first sync, which changes nothing already there.
      */
-    fun adopt(tree: Uri) = choose(tree)
+    fun adopt(tree: Uri) {
+        choose(tree)
+    }
 
     /** Step 4 of [sync]: the folder's key file. */
     private fun writeKeyFile(resolver: ContentResolver, tree: Uri, dir: Uri) {
@@ -175,11 +192,13 @@ class FolderSync(private val context: Context, private val masterWrappedByRecove
             val current = runCatching { resolver.openInputStream(existing)?.use { it.readBytes() } }.getOrNull() ?: return
             val ours = prefs.getString(KEY_KEY_WRITTEN, null)
             if (ours != sha256(current) || ours == digest) return
-            resolver.openOutputStream(existing, "wt")?.use { it.write(bytes) } ?: return
-        } else {
-            val doc = DocumentsContract.createDocument(resolver, dir, MIME, KEY_FILE) ?: return
-            resolver.openOutputStream(doc, "wt")?.use { it.write(bytes) } ?: return
+            // Replaced by delete and create: not every provider can
+            // truncate a file in place.
+            DocumentsContract.deleteDocument(resolver, existing)
         }
+        val doc = DocumentsContract.createDocument(resolver, dir, MIME, KEY_FILE)
+            ?: throw IOException("couldn't create $KEY_FILE in the folder")
+        writeNewDocument(resolver, doc, bytes)
         prefs.edit().putString(KEY_KEY_WRITTEN, digest).apply()
     }
 
