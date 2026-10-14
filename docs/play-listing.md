@@ -415,6 +415,12 @@ the background-location declaration and a video
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.4.0** (411 characters):
+    ```
+    <en-US>
+    Richer strains. Choose how much detail you keep in What I track: Simple, Terpenes or Detailed. Terpenes lets you pick the ones a strain is known for (most have one to three). Detailed adds how strong each one is, parent strains (from your journal, or just type a name) and other cannabinoids like CBG and CBN. When a product's label lists no terpenes, insights use its strain's main terpene instead, and say so.
+    </en-US>
+    ```
   - **0.2.2** (353 characters):
     ```
     <en-US>
