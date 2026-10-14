@@ -19,10 +19,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -70,6 +72,9 @@ import app.terpoir.privacy.PrivacyCenterScreen
 import app.terpoir.privacy.PrivacyGroup
 import app.terpoir.privacy.PrivateTextInput
 import app.terpoir.privacy.ScreenPrivacy
+import app.terpoir.report.CrashRecorder
+import app.terpoir.report.ProblemReport
+import app.terpoir.report.ReportButton
 import app.terpoir.scan.Scanner
 import app.terpoir.security.UserAuthentication
 import app.terpoir.session.AutoLockCard
@@ -146,6 +151,7 @@ class MainActivity : ComponentActivity() {
                 TerpoirTheme {
                     Surface(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
                         Screen(app.session, core)
+                        CrashPrompt()
                     }
                 }
             }
@@ -168,6 +174,33 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         ScreenPrivacy.onPause(this)
         super.onPause()
+    }
+
+    /**
+     * After a crash: offers to report it by email, once. Sending or
+     * dismissing forgets it (docs/design-decisions.md, "Problem reports").
+     */
+    @Composable
+    private fun CrashPrompt() {
+        var crash by remember { mutableStateOf(CrashRecorder.pending(this)) }
+        val summary = crash ?: return
+        fun done() {
+            CrashRecorder.clear(this)
+            crash = null
+        }
+        AlertDialog(
+            onDismissRequest = ::done,
+            title = { Text(stringResource(R.string.crash_title)) },
+            text = { Text(stringResource(R.string.crash_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val body = ProblemReport.body(this, "crash", details = summary)
+                    ProblemReport.send(this, getString(R.string.report_subject, "crash"), body)
+                    done()
+                }) { Text(stringResource(R.string.crash_send)) }
+            },
+            dismissButton = { TextButton(onClick = ::done) { Text(stringResource(R.string.crash_dismiss)) } },
+        )
     }
 
     @Composable
@@ -411,7 +444,12 @@ class MainActivity : ComponentActivity() {
                 // Unlocked but in the background: journal content stays hidden.
                 is JournalSession.State.Unlocked -> Unit
             }
-            message?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
+            message?.let {
+                Text(stringResource(it), color = MaterialTheme.colorScheme.error)
+                // Failures with no step for the user to take; the others
+                // (wrong file, no screen lock, an update needed) say what to do.
+                if (it in REPORTABLE) ReportButton(it)
+            }
             Text(stringResource(R.string.core_version, core), style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -525,3 +563,6 @@ class MainActivity : ComponentActivity() {
  * that prompt (its PIN screen returning), not to the user coming back.
  */
 private const val PROMPT_SETTLE_MILLIS = 1500L
+
+/** Messages on the unlock and setup screens that offer a problem report. */
+private val REPORTABLE = setOf(R.string.restore_failed, R.string.error_keystore, R.string.error_unlock_failed)

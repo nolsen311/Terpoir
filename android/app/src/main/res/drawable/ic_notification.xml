@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception -->
+<!-- Copyright (C) 2026 The Terpoir Authors -->
+<!-- Notification icon: the app icon's open journal and bubbles as one
+     solid shape, as Android requires for the status bar
+     (ic_launcher_foreground.xml, same 108-unit coordinates, cropped; the
+     bubbles are a little larger so they still read at status-bar size). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="50"
+    android:viewportHeight="50">
+    <group
+        android:translateX="-29"
+        android:translateY="-30">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M53,58 C47,54 40,53 32,54 L32,74 C40,73 47,74 53,78 Z M55,58 C61,54 68,53 76,54 L76,74 C68,73 61,74 55,78 Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M50.2,48.6 a3.8,3.8 0 1,0 7.6,0 a3.8,3.8 0 1,0 -7.6,0 Z M46,39.4 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0 Z M55,32.4 a2.2,2.2 0 1,0 4.4,0 a2.2,2.2 0 1,0 -4.4,0 Z" />
+    </group>
+</vector>

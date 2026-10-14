@@ -11,6 +11,7 @@ import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.PurchasePrompts
 import app.terpoir.alerts.SpotAlerts
 import app.terpoir.capture.QuickCapture
+import app.terpoir.report.CrashRecorder
 import app.terpoir.sync.FolderSync
 import app.terpoir.core.init as initCore
 import app.terpoir.onboarding.Onboarding
@@ -68,6 +69,9 @@ class TerpoirApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // First, so a crash anywhere below is recorded for the next launch
+        // to offer reporting (docs/design-decisions.md, "Problem reports").
+        CrashRecorder.install(this)
         if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) silenceConsole()
         // Installs the core's panic hook (never reports panic messages).
         initCore()

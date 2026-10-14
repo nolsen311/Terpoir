@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.journal.EditorScaffold
 import app.terpoir.privacy.PrivacySettings
+import app.terpoir.report.ReportButton
 import app.terpoir.voice.DictationControls
 import app.terpoir.voice.appendSpoken
 import app.terpoir.voice.rememberDictation
@@ -66,7 +67,10 @@ fun LockedCaptureScreen(
             label = { Text(stringResource(R.string.note_text)) },
             modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp),
         )
-        if (failed) Text(stringResource(R.string.capture_locked_failed), color = MaterialTheme.colorScheme.error)
+        if (failed) {
+            Text(stringResource(R.string.capture_locked_failed), color = MaterialTheme.colorScheme.error)
+            ReportButton(R.string.capture_locked_failed)
+        }
         OutlinedButton(onClick = {
             if (voice) dictation.cancel()
             voice = !voice

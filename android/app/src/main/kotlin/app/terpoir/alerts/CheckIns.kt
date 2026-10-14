@@ -85,7 +85,7 @@ class CheckIns(private val context: Context, private val settings: PrivacySettin
         manager.notify(
             NOTIFICATION_ID,
             NotificationCompat.Builder(context, CHANNEL)
-                .setSmallIcon(R.drawable.ic_journal)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(context.getString(R.string.check_in_title))
                 .setContentText(context.getString(R.string.check_in_text))
                 .setContentIntent(open)

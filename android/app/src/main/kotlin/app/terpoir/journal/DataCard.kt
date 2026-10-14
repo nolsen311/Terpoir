@@ -4,6 +4,7 @@
 
 package app.terpoir.journal
 
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.core.CoreException
+import app.terpoir.report.ReportButton
 import app.terpoir.storage.IncompleteDocument
 import app.terpoir.storage.writeNewDocument
 import java.time.LocalDate
@@ -44,7 +46,7 @@ private sealed interface DataResult {
 
     data class Imported(val records: Long) : DataResult
 
-    data class Failed(val message: Int) : DataResult
+    data class Failed(val message: Int, val error: Throwable? = null, val file: Uri? = null, val reportable: Boolean = true) : DataResult
 }
 
 /**
@@ -67,10 +69,10 @@ fun DataCard(repo: JournalRepository, masterWrappedByRecovery: () -> ByteArray) 
                     writeNewDocument(context.contentResolver, uri, bytes)
                 }
                 DataResult.Saved
-            } catch (_: IncompleteDocument) {
-                DataResult.Failed(R.string.export_incomplete)
-            } catch (_: Exception) {
-                DataResult.Failed(R.string.export_failed)
+            } catch (e: IncompleteDocument) {
+                DataResult.Failed(R.string.export_incomplete, e, uri)
+            } catch (e: Exception) {
+                DataResult.Failed(R.string.export_failed, e, uri)
             }
         }
     }
@@ -94,10 +96,10 @@ fun DataCard(repo: JournalRepository, masterWrappedByRecovery: () -> ByteArray) 
                     }
                 }
                 DataResult.SavedPlaintext
-            } catch (_: IncompleteDocument) {
-                DataResult.Failed(R.string.export_incomplete)
-            } catch (_: Exception) {
-                DataResult.Failed(R.string.export_failed)
+            } catch (e: IncompleteDocument) {
+                DataResult.Failed(R.string.export_incomplete, e, uri)
+            } catch (e: Exception) {
+                DataResult.Failed(R.string.export_failed, e, uri)
             }
         }
     }
@@ -110,11 +112,11 @@ fun DataCard(repo: JournalRepository, masterWrappedByRecovery: () -> ByteArray) 
                 }
                 DataResult.Imported(repo.importArchive(bytes))
             } catch (_: NewerAppNeeded) {
-                DataResult.Failed(R.string.newer_version_needed)
+                DataResult.Failed(R.string.newer_version_needed, reportable = false)
             } catch (_: CoreException) {
-                DataResult.Failed(R.string.import_not_this_journal)
-            } catch (_: Exception) {
-                DataResult.Failed(R.string.import_failed)
+                DataResult.Failed(R.string.import_not_this_journal, reportable = false)
+            } catch (e: Exception) {
+                DataResult.Failed(R.string.import_failed, e, uri)
             }
         }
     }
@@ -134,7 +136,10 @@ fun DataCard(repo: JournalRepository, masterWrappedByRecovery: () -> ByteArray) 
                 pluralStringResource(R.plurals.import_done, r.records.toInt(), r.records.toInt()),
                 style = MaterialTheme.typography.bodySmall,
             )
-            is DataResult.Failed -> Text(stringResource(r.message), color = MaterialTheme.colorScheme.error)
+            is DataResult.Failed -> {
+                Text(stringResource(r.message), color = MaterialTheme.colorScheme.error)
+                if (r.reportable) ReportButton(r.message, r.error, r.file)
+            }
         }
     }
 

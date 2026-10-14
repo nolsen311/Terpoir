@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.core.Journal
 import app.terpoir.journal.formatWhen
+import app.terpoir.report.ReportButton
 import java.time.ZoneId
 import kotlinx.coroutines.launch
 
@@ -41,6 +42,7 @@ fun FolderSyncCard(sync: FolderSync, journal: Journal) {
     var failed by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var needsUpdate by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<Throwable?>(null) }
     val doneText = stringResource(R.string.sync_done)
     val failedText = stringResource(R.string.sync_failed)
     val noAccessText = stringResource(R.string.sync_no_access)
@@ -49,7 +51,9 @@ fun FolderSyncCard(sync: FolderSync, journal: Journal) {
     fun syncNow() {
         busy = true
         scope.launch {
-            val outcome = runCatching { sync.sync(journal) }.getOrNull()
+            val attempt = runCatching { sync.sync(journal) }
+            val outcome = attempt.getOrNull()
+            error = attempt.exceptionOrNull()
             failed = outcome == null
             imported = outcome?.imported ?: -1
             needsUpdate = outcome?.needsUpdate == true
@@ -99,6 +103,7 @@ fun FolderSyncCard(sync: FolderSync, journal: Journal) {
         }
         message?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+            if (failed) ReportButton(R.string.sync_failed, error, folder)
         }
         if (imported > 0) Text(pluralStringResource(importedTemplate, imported, imported), style = MaterialTheme.typography.bodySmall)
         if (needsUpdate) Text(stringResource(R.string.sync_needs_update), style = MaterialTheme.typography.bodySmall)

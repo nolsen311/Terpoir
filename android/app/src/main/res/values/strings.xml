@@ -16,6 +16,17 @@
     <string name="error_unlock_failed">The journal couldn\'t be opened. Nothing was changed; try again.</string>
     <string name="error_key_invalidated">Your fingerprints or face changed, so this device\'s key no longer works. Unlock with your recovery key.</string>
 
+    <!-- Problem reports (docs/design-decisions.md, "Problem reports") -->
+    <string name="report_send">Send a report</string>
+    <string name="report_subject">Terpoir problem: %1$s</string>
+    <string name="report_describe">What were you doing when this happened? (optional)</string>
+    <string name="report_footer">This report holds nothing from your journal. You can edit or delete anything in it before sending.</string>
+    <string name="report_no_email">No email app found. You can write to %1$s.</string>
+    <string name="crash_title">Terpoir closed unexpectedly</string>
+    <string name="crash_body">Terpoir closed unexpectedly last time. Send a report so it can be fixed? It says only where in the app it happened, nothing from your journal, and opens in your email app so you can check it first.</string>
+    <string name="crash_send">Send report</string>
+    <string name="crash_dismiss">Dismiss</string>
+
     <!-- Privacy Center -->
     <string name="privacy_center">Privacy Center</string>
     <string name="privacy_all_on">All protections on</string>
