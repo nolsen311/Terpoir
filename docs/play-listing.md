@@ -445,3 +445,12 @@ the background-location declaration and a video
   application asks for a summary of their feedback, so keep a record of
   it. The rule applies only to those personal accounts
   ([testing requirements](https://support.google.com/googleplay/android-developer/answer/14151465)).
+  - **Testers (maintainer, 2026-10-14):** the alpha track's testers are the
+    Google Group [terpoir-testers](https://groups.google.com/g/terpoir-testers),
+    which anyone can join, beside the original email list. The website's
+    "Help test it" box sends people to the group first, so adding a tester
+    takes no step from the maintainer. The group's members are visible only
+    to its managers, and it carries no posts. Play's API can attach groups
+    to a track but not single addresses, so the email list can't be
+    scripted.
+
