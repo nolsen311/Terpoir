@@ -22,8 +22,10 @@ per item or small group of items. Keep this file updated as items land.
 - [x] Pin the app signing certificate: its SHA-256 in
       `android/release/app-certificate.sha256`, its SHA-1 in Terpoir-infra's
       `maps_release_sha1s` (`docs/releasing.md`, one-time setup).
-- [ ] Create the Google Play developer account (personal); check current
-      closed-testing requirements.
+- [x] Create the Google Play developer account (personal); check current
+      closed-testing requirements. (Done; first review passed 2026-10-14.)
+- [ ] Recruit closed testers: 12 opted in for 14 days in a row before
+      Play production access (3 as of 2026-10-14).
 - [ ] Play Console: declare background location for "Notify me" (the
       permissions declaration form and a short demonstration video) before
       the first release that includes it. Not needed for the first Play
@@ -189,8 +191,8 @@ without it.
   - [ ] Direct device pairing (QR code, local transfer).
 - [ ] Privacy Center readability pass (maintainer, 2026-10-12): the screen
       is visually dense and hard to scan. Review it and try a few layout
-      options for the maintainer to pick from. After the main
-      functionality above.
+      options for the maintainer to pick from. Next, as 0.3.0
+      (maintainer, 2026-10-14).
 
 ## Phase 4: Release
 
@@ -242,9 +244,49 @@ without it.
       `fdroid build` before submitting to `fdroiddata`.
 - [ ] Trademark Statement of Use after launch.
 
-## Feature releases (after the first public release)
+## Release plan (maintainer, 2026-10-14)
 
-Features planned for the first versioned releases, each its own release.
+Which version each remaining item is expected in. Versions are estimates and
+move as priorities do; 1.0 is the public launch, gated on Play's tester
+requirement rather than on features.
+
+| Version | Contents |
+|---|---|
+| 0.2.1 | Google Maps on Play (first build with the release Maps key), unlock prompt on open, newer-journal message. Rolling out 2026-10-14. |
+| 0.3.0 | Privacy Center readability pass: layout options for the maintainer to pick from, then the chosen one. |
+| 0.4.0 | Richer strains I: detail setting, terpene levels, lineage links, strain-profile fallback in insights. |
+| 0.5.0 | Richer strains II: more cannabinoids, insights and shop effect grouped by lineage or terpene profile. |
+| 0.6.0 | Strain lookups: an offline strain and seed catalog first, then online sources (such as Leafly or a seed database) each behind its own toggle, as "Catalog lookups" requires. Which providers depends on their terms and APIs, researched during 0.4.0. |
+| 0.7.0 | F-Droid groundwork: OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app. |
+| any | "Notify me" on Play, in the first release after the maintainer files the background-location declaration and video. |
+| 1.0.0 | Public launch: Play production access, F-Droid submission, "Get Terpoir" with real links and fingerprints. |
+| 1.x | WebDAV / S3 sync; direct device pairing; scan recognition from the journal; personal gear; lock-screen capture. Order to be set after 1.0. |
+| 2.0 | iOS. |
+
+## Feature releases
+
+- [ ] Richer strains (`docs/design-decisions.md`, "Richer strains").
+  - [ ] 0.4.0: journal-wide detail setting (Simple / Terpenes / Detailed),
+        the terpene picker guiding to 3 or fewer, terpene levels
+        (dominant, secondary, trace; existing terpenes unrated), parent
+        strains as links (a typed name creates a minimal strain), insights
+        falling back to the strain's dominant terpene, and a 0.4.0
+        compatibility fixture.
+  - [ ] 0.5.0: CBN, CBG, THCa and CBDV label amounts on products and
+        "known for" cannabinoids on strains; insights and the shop effect
+        grouped by shared parent or dominant terpene.
+- [ ] Strain lookups, 0.6.0 (`docs/design-decisions.md`, "Catalog
+      lookups"; maintainer, 2026-10-14: Leafly and a seed database).
+  - [ ] Research, during 0.4.0: for each candidate (Leafly, seed
+        databases, open strain datasets), whether it has an API or a
+        downloadable dataset, its terms on caching and offline
+        redistribution, its licence, and what a lookup reveals. A short
+        comparison for the maintainer to choose from.
+  - [ ] An offline catalog: downloaded in one piece, searched on the
+        device, filling a strain's type, terpenes, lineage and
+        cannabinoids as suggestions the user confirms.
+  - [ ] Online sources the maintainer picks, each its own toggle (off by
+        default) with a disclosure card; search on submit only.
 
 - [ ] Scan recognition from the journal (`docs/design-decisions.md`,
       "Scan recognition from the journal"): learned receipt names with
@@ -275,21 +317,6 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       are offered. Still to design: how it is stored (its own record or a
       tag kind), and how it shows in shares (excluded by default) and the
       plaintext export.
-- [ ] Richer strains (maintainer, 2026-10-12): two ways to describe a
-      strain, the user's choice. Simple: indica / sativa / hybrid, as now.
-      Detailed: lineage as links to parent strains, and a terpene profile
-      as rough proportions (such as dominant, secondary, trace), never
-      exact percentages, which stay on products where a label states them.
-      Insights could then use a strain's profile when a product's label
-      lists no terpenes, and group related strains,
-      and the shop effect (which compares by strain record for now) could
-      compare by lineage or terpene profile.
-      **Detail as a slider (maintainer, 2026-10-13):** one setting that
-      runs from indica / sativa / hybrid at one end, through a middle step
-      still to define, to a full terpene profile at the other, so users
-      record as much detail as they want. At the detailed end, also track
-      individual cannabinoids when data exists: CBN, CBG, THCa and the one
-      noted as "CBV" (to confirm: CBDV, THCV or CBC).
 - [ ] Capture from the device lock screen (maintainer, 2026-10-13):
       investigate letting the quick-capture buttons work on the lock screen
       itself, without unlocking the phone, on the Android versions that
