@@ -317,6 +317,15 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       are offered. Still to design: how it is stored (its own record or a
       tag kind), and how it shows in shares (excluded by default) and the
       plaintext export.
+- [ ] Prompt frequency for location prompts (maintainer, 2026-10-14): let
+      the user choose how often "Notify me" alerts and purchase reminders
+      can come, from about hourly to a low-key "every so often" (for
+      example: about hourly; a few times a day, today's 4-hour alert
+      cooldown; once a day, today's purchase-reminder limit; every few
+      days). To design: one setting for both or one each, the choices
+      and defaults, and keeping the "no visit log" rule: only the end of
+      the quiet period is stored (per spot for reminders, as opaque IDs),
+      however long it is.
 - [ ] Capture from the device lock screen (maintainer, 2026-10-13):
       investigate letting the quick-capture buttons work on the lock screen
       itself, without unlocking the phone, on the Android versions that
