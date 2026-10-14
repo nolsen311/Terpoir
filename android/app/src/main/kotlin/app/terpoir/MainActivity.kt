@@ -345,7 +345,6 @@ class MainActivity : ComponentActivity() {
                             if (app.privacySettings.folderSync) runCatching { app.folderSync.sync(state.journal) }
                         }
                     },
-                    onLock = session::lock,
                 ) { onClose ->
                     PrivacyCenterScreen(
                         center = app.privacyCenter,
