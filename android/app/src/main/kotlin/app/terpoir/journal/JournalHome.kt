@@ -74,6 +74,8 @@ import app.terpoir.core.Vocabulary
 import app.terpoir.location.CurrentLocation
 import app.terpoir.location.LocationAccess
 import app.terpoir.privacy.PrivacySettings
+import app.terpoir.ui.theme.AppearanceSettings
+import app.terpoir.ui.theme.CardTones
 import app.terpoir.privacy.PrivacyToggle
 import kotlinx.coroutines.launch
 
@@ -102,6 +104,7 @@ private sealed interface Screen {
     data object Insights : Screen
 
     data object WhatITrack : Screen
+    data object Settings : Screen
 }
 
 private enum class Tab { JOURNAL, PRODUCTS, PRIVACY }
@@ -118,6 +121,7 @@ fun JournalHome(
     vocab: Vocabulary,
     scan: ScanServices,
     settings: PrivacySettings,
+    appearance: AppearanceSettings,
     alerts: SpotAlerts,
     checkIns: CheckIns,
     mapToggle: PrivacyToggle?,
@@ -186,6 +190,7 @@ fun JournalHome(
             Screen.Receipt -> ReceiptScreen(repo, scan, pop)
             Screen.Insights -> InsightsScreen(repo, onOpenSession = { stack.add(Screen.Session(it)) }, onClose = pop)
             Screen.WhatITrack -> WhatITrackScreen(repo, onChanged = { revision++ }, onClose = pop)
+            Screen.Settings -> SettingsScreen(appearance, onWhatITrack = { stack.add(Screen.WhatITrack) }, onClose = pop)
             is Screen.Note -> NoteScreen(repo, settings, vocab, screen.id, pop)
             is Screen.Strain -> StrainEditor(repo, vocab, screen.id, pop)
             is Screen.Brand -> BrandEditor(repo, screen.id, pop)
@@ -226,7 +231,7 @@ fun JournalHome(
                         onOpenNote = { stack.add(Screen.Note(it)) },
                         onSessionAt = { stack.add(Screen.Session(null, spot = it)) },
                         onInsights = { stack.add(Screen.Insights) },
-                        onWhatITrack = { stack.add(Screen.WhatITrack) },
+                        onSettings = { stack.add(Screen.Settings) },
                         onPurchase = { stack.add(Screen.Receipt) },
                     ) {
                         stack.add(Screen.Session(it))
@@ -262,7 +267,7 @@ private fun JournalList(
     onOpenNote: (String) -> Unit,
     onSessionAt: (String) -> Unit,
     onInsights: () -> Unit,
-    onWhatITrack: () -> Unit,
+    onSettings: () -> Unit,
     onPurchase: () -> Unit,
     onOpen: (String) -> Unit,
 ) {
@@ -296,8 +301,8 @@ private fun JournalList(
         item {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.journal_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
-                IconButton(onClick = onWhatITrack) {
-                    Icon(painterResource(R.drawable.ic_tune), contentDescription = stringResource(R.string.track_title))
+                IconButton(onClick = onSettings) {
+                    Icon(painterResource(R.drawable.ic_tune), contentDescription = stringResource(R.string.settings_title))
                 }
                 IconButton(onClick = onLock) {
                     Icon(painterResource(R.drawable.ic_lock), contentDescription = stringResource(R.string.lock_now))
@@ -389,7 +394,8 @@ private fun SessionCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        colors = CardDefaults.cardColors(containerColor = CardTones.raised),
+        border = CardTones.border,
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -431,7 +437,8 @@ private fun NoteCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = CardTones.quiet),
+        border = CardTones.border,
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
@@ -685,7 +692,8 @@ private fun NotifySetupCard(alerts: SpotAlerts, onGranted: () -> Unit) {
 private fun CatalogRow(title: String, detail: String, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        colors = CardDefaults.cardColors(containerColor = CardTones.raised),
+        border = CardTones.border,
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)

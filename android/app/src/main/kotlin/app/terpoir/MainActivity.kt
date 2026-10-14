@@ -5,12 +5,14 @@
 package app.terpoir
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -146,10 +149,12 @@ class MainActivity : ComponentActivity() {
         ScreenPrivacy.install(this)
         val core = coreVersion()
         // System bars follow the theme: light icons in dark mode and back.
-        enableEdgeToEdge()
+        systemBars(app.appearance.theme.isDark(systemDark()))
         setContent {
+            val dark = app.appearance.theme.isDark(isSystemInDarkTheme())
+            LaunchedEffect(dark) { systemBars(dark) }
             PrivateTextInput {
-                TerpoirTheme {
+                TerpoirTheme(darkTheme = dark) {
                     Surface(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
                         Screen(app.session, core)
                         CrashPrompt()
@@ -157,6 +162,22 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /** Whether the phone (or, from Android 12, the app's night mode) is dark. */
+    private fun systemDark(): Boolean =
+        resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+
+    /** Edge to edge, with system bar icons that suit [dark]. */
+    private fun systemBars(dark: Boolean) {
+        val transparent = android.graphics.Color.TRANSPARENT
+        // The scrims enableEdgeToEdge uses by default for the navigation bar.
+        val lightScrim = android.graphics.Color.argb(0xe6, 0xFF, 0xFF, 0xFF)
+        val darkScrim = android.graphics.Color.argb(0x80, 0x1b, 0x1b, 0x1b)
+        enableEdgeToEdge(
+            statusBarStyle = if (dark) SystemBarStyle.dark(transparent) else SystemBarStyle.light(transparent, transparent),
+            navigationBarStyle = if (dark) SystemBarStyle.dark(darkScrim) else SystemBarStyle.light(lightScrim, darkScrim),
+        )
     }
 
     override fun onStart() {
@@ -304,6 +325,7 @@ class MainActivity : ComponentActivity() {
                     vocab,
                     scan,
                     app.privacySettings,
+                    app.appearance,
                     app.spotAlerts,
                     app.checkIns,
                     mapToggle = app.privacyCenter.toggles.firstOrNull { it.id == ONLINE_MAP },
