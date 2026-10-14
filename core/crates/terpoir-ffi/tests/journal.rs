@@ -1875,3 +1875,79 @@ fn strains_keep_levels_parents_and_cannabinoids() {
     assert_eq!(journal.strain_detail().unwrap(), "detailed");
     assert_eq!(journal.hidden_data_points().unwrap(), ["brand"]);
 }
+
+#[test]
+fn insights_fall_back_to_a_strains_dominant_terpene() {
+    let device = Device::new();
+    let keys = create_keys().unwrap();
+    let journal = device.open(&keys).unwrap();
+    let strain = |name: &str, terpene: &str| StrainData {
+        name: name.into(),
+        lineage: None,
+        terpenes: vec![builtin(terpene)],
+        strain_type: None,
+        terpene_levels: vec![TerpeneLevelData {
+            terpene: builtin(terpene),
+            level: "dominant".into(),
+        }],
+        parents: vec![],
+        cannabinoids: vec![],
+    };
+    let product = |name: &str, strain: String, terpenes: Vec<TagIntensity>| ProductData {
+        name: name.into(),
+        form: Some("flower".into()),
+        brand: None,
+        strains: vec![strain],
+        thc_milli: None,
+        thc_unit: None,
+        cbd_milli: None,
+        cbd_unit: None,
+        terpenes,
+        batch: None,
+        package_date_day: None,
+        identifiers: vec![],
+        shops: vec![],
+    };
+    let sleepy = journal
+        .save_strain(None, strain("Sleepy", "myrcene"), 1)
+        .unwrap();
+    let zesty = journal
+        .save_strain(None, strain("Zesty", "limonene"), 2)
+        .unwrap();
+    // No terpenes on this label: its strain's dominant myrcene stands in.
+    let heavy = journal
+        .save_product(None, product("Heavy", sleepy, vec![]), 3)
+        .unwrap();
+    // A label's terpenes win over its strain's profile.
+    let bright = journal
+        .save_product(
+            None,
+            product(
+                "Bright",
+                zesty,
+                vec![TagIntensity {
+                    tag: builtin("limonene"),
+                    value: 800,
+                }],
+            ),
+            4,
+        )
+        .unwrap();
+    for (product, rating) in [(&heavy, 2), (&bright, 4)] {
+        for i in 0..5 {
+            let mut s = session(Some(product.clone()));
+            s.rating = Some(rating);
+            journal.save_session(None, s, 10 + i).unwrap();
+        }
+    }
+    let found = journal.insights().unwrap();
+    let myrcene = found.iter().find(|i| i.key == "terpene:myrcene").unwrap();
+    assert_eq!(myrcene.from_strain_profiles, 5);
+    let limonene = found.iter().find(|i| i.key == "terpene:limonene").unwrap();
+    assert_eq!(limonene.from_strain_profiles, 0);
+
+    // At the Simple step strain terpenes aren't shown, so they aren't used.
+    journal.set_strain_detail("simple".into(), 20).unwrap();
+    let simple = journal.insights().unwrap();
+    assert!(simple.iter().all(|i| i.key != "terpene:myrcene"));
+}

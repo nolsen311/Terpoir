@@ -308,6 +308,10 @@
         <item quantity="one">Based on %1$d session vs %2$d.</item>
         <item quantity="other">Based on %1$d sessions vs %2$d.</item>
     </plurals>
+    <plurals name="insights_from_strain_profiles">
+        <item quantity="one">%1$d of these has no terpenes on its label, so its strain\'s dominant terpene is used instead.</item>
+        <item quantity="other">%1$d of these have no terpenes on their labels, so their strain\'s dominant terpene is used instead.</item>
+    </plurals>
     <string name="insights_confounders">These sessions also differ in %1$s, which could explain it.</string>
     <string name="insights_sessions">Sessions</string>
     <string name="insights_shops">Shops</string>

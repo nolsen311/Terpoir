@@ -88,6 +88,17 @@ fun InsightsScreen(repo: JournalRepository, onOpenSession: (String) -> Unit, onC
                         ),
                         style = MaterialTheme.typography.bodySmall,
                     )
+                    if (insight.fromStrainProfiles > 0u) {
+                        Text(
+                            pluralStringResource(
+                                R.plurals.insights_from_strain_profiles,
+                                insight.fromStrainProfiles.toInt(),
+                                insight.fromStrainProfiles.toInt(),
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
                     if (insight.confounders.isNotEmpty()) {
                         val also = insight.confounders.map { stringResource(confounderLabel(it)) }.joinToString(", ")
                         Text(stringResource(R.string.insights_confounders, also), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
