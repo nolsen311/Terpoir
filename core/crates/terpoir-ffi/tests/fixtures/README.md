@@ -46,7 +46,9 @@ credentials and lists the record IDs the release made.
 Written by `make_compat_fixtures.rs` with fixed contents and clock:
 
 - brand "Acme", and brand "Gone", deleted (only its ID remains, as a marker);
-- strain "Blue Dream" (lineage, terpenes, type);
+- strain "Blue Dream" (lineage, terpenes, type); since 0.4.0 also terpene
+  levels (myrcene dominant, pinene secondary), parent "Haze" (a name-only
+  strain, `parent_strain` in the manifest) and the cannabinoid CBG;
 - spot "Corner shop" (purpose, coordinates, radius, purchase prompts on);
 - product "Gummies" (form, brand, strain, THC/CBD, terpene, batch, package
   date, barcode, shop);
@@ -56,7 +58,8 @@ Written by `make_compat_fixtures.rs` with fixed contents and clock:
   set: effects (built-in and custom), symptoms (built-in and custom),
   timeline, moods, rating 4 then edited to 5, spot, one attachment;
 - a note on the session, and a note captured while locked and merged;
-- "What I track" with terpenes hidden, and one insight dismissed.
+- "What I track" with terpenes hidden (since 0.4.0, also the Detailed
+  strain step), and one insight dismissed.
 
 ## Adding the next release
 

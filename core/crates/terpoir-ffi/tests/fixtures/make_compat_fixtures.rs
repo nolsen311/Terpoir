@@ -24,8 +24,8 @@ use terpoir_crypto::{DatabaseKey, MasterKey, RecoveryKey};
 use terpoir_ffi::{
     BrandData, IdentifierData, InsightFeedback, Journal, LocalTimeData, ProductData,
     ProductLineData, PurchaseData, PurchaseLineData, SessionData, SnippetData, SpotData,
-    StrainData, SymptomData, TagData, TagIntensity, TagProvenance, TagRefData, seal_capture,
-    wrap_master_key_with_passphrase,
+    StrainData, SymptomData, TagData, TagIntensity, TagProvenance, TagRefData,
+    TerpeneLevelData, seal_capture, wrap_master_key_with_passphrase,
 };
 
 /// Recovery key bytes 0x00..=0x1f, in display form.
@@ -139,6 +139,23 @@ fn main() {
             T0 + 2,
         )
         .unwrap();
+    // Since 0.4.0: a parent strain with only a name, as the editor makes
+    // for a typed name, and terpene levels, parents and cannabinoids.
+    let parent_strain = journal
+        .save_strain(
+            None,
+            StrainData {
+                name: "Haze".into(),
+                lineage: None,
+                terpenes: vec![],
+                strain_type: None,
+                terpene_levels: vec![],
+                parents: vec![],
+                cannabinoids: vec![],
+            },
+            T0 + 3,
+        )
+        .unwrap();
     let strain = journal
         .save_strain(
             None,
@@ -147,9 +164,18 @@ fn main() {
                 lineage: Some("Blueberry x Haze".into()),
                 terpenes: vec![builtin("myrcene"), builtin("pinene")],
                 strain_type: Some("hybrid".into()),
-                terpene_levels: vec![],
-                parents: vec![],
-                cannabinoids: vec![],
+                terpene_levels: vec![
+                    TerpeneLevelData {
+                        terpene: builtin("myrcene"),
+                        level: "dominant".into(),
+                    },
+                    TerpeneLevelData {
+                        terpene: builtin("pinene"),
+                        level: "secondary".into(),
+                    },
+                ],
+                parents: vec![parent_strain.clone()],
+                cannabinoids: vec!["cbg".into()],
             },
             T0 + 3,
         )
@@ -325,6 +351,9 @@ fn main() {
         .set_data_point_tracked("terpenes".into(), false, T0 + 12)
         .unwrap();
     journal
+        .set_strain_detail("detailed".into(), T0 + 12)
+        .unwrap();
+    journal
         .set_insight_feedback(
             "fixture-insight".into(),
             InsightFeedback::Dismissed,
@@ -418,6 +447,7 @@ fn main() {
     "brand": "{brand}",
     "deleted_brand": "{deleted_brand}",
     "strain": "{strain}",
+    "parent_strain": "{parent_strain}",
     "spot": "{spot}",
     "product": "{product}",
     "purchase": "{purchase}",

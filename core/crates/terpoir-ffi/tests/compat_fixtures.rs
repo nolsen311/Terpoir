@@ -23,8 +23,8 @@ use terpoir_ffi::{
     BrandData, IdentifierData, Journal, LocalTimeData, PassphraseWrapped, ProductData,
     ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData, SnippetData,
     SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance, TagRefData,
-    check_export_archive, keys_for_restore, master_key_from_passphrase, master_key_from_recovery,
-    read_export_archive,
+    TerpeneLevelData, check_export_archive, keys_for_restore, master_key_from_passphrase,
+    master_key_from_recovery, read_export_archive,
 };
 
 /// Every fixture version directory, oldest name first.
@@ -59,6 +59,11 @@ impl Fixture {
 
     fn text(&self, key: &str) -> String {
         self.manifest[key].as_str().unwrap().to_owned()
+    }
+
+    /// An ID only fixtures from some versions have.
+    fn optional_id(&self, key: &str) -> Option<String> {
+        self.manifest["ids"][key].as_str().map(str::to_owned)
     }
 
     fn id(&self, key: &str) -> String {
@@ -202,7 +207,12 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
     let count = |t: RecordType| journal.list(t).unwrap().len();
     assert_eq!(count(RecordType::Session), 1);
     assert_eq!(count(RecordType::Product), 1);
-    assert_eq!(count(RecordType::Strain), 1);
+    // Since 0.4.0, a parent strain too.
+    let parent_strain = fixture.optional_id("parent_strain");
+    assert_eq!(
+        count(RecordType::Strain),
+        1 + usize::from(parent_strain.is_some())
+    );
     assert_eq!(count(RecordType::Brand), 1);
     assert_eq!(count(RecordType::Spot), 1);
     assert_eq!(count(RecordType::Snippet), 2);
@@ -223,6 +233,25 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
         "{}: a deleted brand came back",
         fixture.name()
     );
+    // Older versions wrote no levels, parents or cannabinoids, and those
+    // read back empty.
+    let (terpene_levels, parents, cannabinoids) = match &parent_strain {
+        Some(parent) => (
+            vec![
+                TerpeneLevelData {
+                    terpene: builtin("myrcene"),
+                    level: "dominant".into(),
+                },
+                TerpeneLevelData {
+                    terpene: builtin("pinene"),
+                    level: "secondary".into(),
+                },
+            ],
+            vec![parent.clone()],
+            vec!["cbg".to_owned()],
+        ),
+        None => (vec![], vec![], vec![]),
+    };
     check(
         fixture,
         "strain",
@@ -232,11 +261,27 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
             lineage: Some("Blueberry x Haze".into()),
             terpenes: vec![builtin("myrcene"), builtin("pinene")],
             strain_type: Some("hybrid".into()),
-            terpene_levels: vec![],
-            parents: vec![],
-            cannabinoids: vec![],
+            terpene_levels,
+            parents,
+            cannabinoids,
         },
     );
+    if let Some(parent) = &parent_strain {
+        check(
+            fixture,
+            "parent strain",
+            journal.get_strain(parent.clone()).unwrap(),
+            StrainData {
+                name: "Haze".into(),
+                lineage: None,
+                terpenes: vec![],
+                strain_type: None,
+                terpene_levels: vec![],
+                parents: vec![],
+                cannabinoids: vec![],
+            },
+        );
+    }
     check(
         fixture,
         "spot",
@@ -407,6 +452,19 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
         journal.hidden_data_points().unwrap(),
         vec!["terpenes".to_owned()]
     );
+    // Before 0.4.0 there was no step; a journal without one reads as
+    // Terpenes.
+    let step = if parent_strain.is_some() {
+        "detailed"
+    } else {
+        "terpenes"
+    };
+    assert_eq!(
+        journal.strain_detail().unwrap(),
+        step,
+        "{}: strain detail",
+        fixture.name()
+    );
 
     // The indexes answer for the old records.
     let mut refs = journal.referencing(id("product")).unwrap();
@@ -414,6 +472,14 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
     let mut expected = vec![id("session"), id("purchase")];
     expected.sort();
     assert_eq!(refs, expected, "{}: references", fixture.name());
+    if let Some(parent) = &parent_strain {
+        assert_eq!(
+            journal.referencing(parent.clone()).unwrap(),
+            vec![id("strain")],
+            "{}: parent strain references",
+            fixture.name()
+        );
+    }
     assert_eq!(
         journal.with_tag(builtin("relaxed")).unwrap(),
         vec![id("session")]
