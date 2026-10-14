@@ -11,11 +11,15 @@
 <title>Terpoir — your private cannabis journal</title>
 <meta name="description" content="A private, open-source journal for learning how cannabis actually affects you. Your data, your key, no server.">
 <meta name="color-scheme" content="light dark">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <!--
   terpoir.app landing page.
   No analytics, no cookies, no third-party scripts or fonts, no external requests.
-  ARTIST SLOTS: search this file for "ARTIST:" to find where logo, icon and
-  illustration work goes. Everything visual here is plain type and CSS on purpose.
+  The logo and favicons come from the app icon (site/README.md).
+  ARTIST SLOTS: search this file for "ARTIST:" to find where illustration
+  work goes.
 -->
 <style>
   :root {
@@ -82,8 +86,8 @@
 
   /* nav */
   nav { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; }
-  .wordmark { font: 600 22px/1 var(--serif); color: var(--ink); text-decoration: none; letter-spacing: .01em; }
-  /* ARTIST: logo mark goes beside or in place of the wordmark above. */
+  .wordmark { display: block; line-height: 0; }
+  .wordmark img { height: 40px; width: auto; }
   nav .links { display: flex; gap: 22px; font-size: 15px; }
   nav .links a { color: var(--ink-soft); text-decoration: none; }
   nav .links a:hover { color: var(--ink); }
@@ -203,7 +207,7 @@
 
 <div class="wrap">
   <nav>
-    <a class="wordmark" href="#">Terpoir</a>
+    <a class="wordmark" href="#"><img src="/logo.svg" alt="Terpoir" width="138" height="40"></a>
     <div class="links">
       <a href="#how" class="opt">How it works</a>
       <a href="#privacy">Privacy</a>
