@@ -409,13 +409,21 @@ the background-location declaration and a video
 
 - **Track:** internal testing first, as a draft
   (`android/scripts/play-upload.sh`, `docs/releasing.md`).
-- **Release notes** (en-US, the "What's new" box, 500 characters at most;
-  this text is 296):
-  ```
-  <en-US>
-  First release on Google Play. Terpoir is a private, encrypted journal: no account, no ads, no tracking. Already have a journal? Restore it from your recovery key or a sync folder. The privacy policy is in the Privacy Center, and every optional feature explains what it does before you turn it on.
-  </en-US>
-  ```
+- **Release notes** (en-US, the "What's new" box, 500 characters at most).
+  `play-upload.sh` doesn't send them: paste them into the release in the
+  Play Console before rolling it out.
+  - **0.2.1** (223 characters):
+    ```
+    <en-US>
+    Unlocking is quicker: the fingerprint or face prompt now appears as soon as you open the app, with no extra tap. If a journal was made by a newer version of Terpoir, the app now says to update instead of failing to open it.
+    </en-US>
+    ```
+  - **0.2.0** (296 characters):
+    ```
+    <en-US>
+    First release on Google Play. Terpoir is a private, encrypted journal: no account, no ads, no tracking. Already have a journal? Restore it from your recovery key or a sync folder. The privacy policy is in the Privacy Center, and every optional feature explains what it does before you turn it on.
+    </en-US>
+    ```
 - **Closed testing:** personal developer accounts created after
   13 November 2023 must run a closed test with at least 12 testers, opted
   in continuously for 14 days, before applying for production access. The
