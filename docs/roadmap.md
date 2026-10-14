@@ -174,10 +174,12 @@ without it.
         the first unlock after an upgrade, with re-linking where the
         rules changed. (Files aren't derived; scan aliases get their
         version when they are built: see the design doc.)
-  - [ ] Compatibility fixtures: an encrypted export, a sync blob and a
+  - [x] Compatibility fixtures: an encrypted export, a sync blob and a
         database from each released version, checked in, and a test that
         every one still opens, migrates and round-trips. A release that
-        breaks one fails CI.
+        breaks one fails CI. (v0.1.0's, in
+        `core/crates/terpoir-ffi/tests/fixtures/`; v0.2.0 changed no
+        format.)
   - [ ] Downgrade: an older app opening a newer database refuses (as
         today) with a message to update, never a crash or a reset.
 - [ ] Bring-your-own-storage sync backends and direct device pairing.
