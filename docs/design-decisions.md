@@ -415,7 +415,7 @@ Making a new note should take one tap from outside the app. Every entry point op
 - **Unlock options** (default remains biometric or device passcode):
   - **Device passcode only:** disables biometrics (some users prefer this given US courts' greater willingness to compel biometrics than passcodes).
   - **App passphrase:** separate from the device passcode, so someone who knows the phone's passcode still can't open the journal. Argon2id-derived; escalating delays on failed attempts.
-- **Quick-lock:** in-app lock button and a "Lock now" app-icon shortcut, plus lock-on-device-lock. No gesture triggers (they misfire).
+- **Quick-lock:** lock-on-device-lock (the default auto-lock), or "Immediately" for locking as soon as the app leaves the screen. No gesture triggers (they misfire). The in-app "Lock now" button was removed (maintainer, 2026-10-14): locking the phone already locks the journal. A "Lock now" app-icon shortcut was planned but never built.
 - **Panic wipe** (both behind confirmation):
   - **Wipe this device:** destroys the local master key, crypto-erasing the journal on this phone; synced encrypted copies remain and can be restored with the recovery key.
   - **Destroy everything:** also deletes synced blobs. Irreversible.
@@ -577,7 +577,7 @@ Each journal entry records one consumption session, not a product review. Produc
   - **FFI:** `trackable_data_points`, `Journal::hidden_data_points`, `set_data_point_tracked` and `delete_data_point`.
   - **Insights (in the core):** no terpene features with terpenes hidden, no strain-type features with strains hidden, no dose confounder with dose hidden. Shop insights are empty with prices and shops hidden; within them, brand and strain effects need brands and strains, freshness needs package dates, and product labels drop the brand when brands are hidden.
 - **Android (implemented 2026-10-13):**
-  - **Where:** the app has no separate Settings screen yet, so "What I track" opens from a sliders button in the journal's header (beside "Lock now"), outside the Privacy Center as decided. One switch per data point; turning one off asks "Keep, hidden" or "Delete" (with "can't be undone"). Prices and shops show as off while purchases are off.
+  - **Where:** the app has no separate Settings screen yet, so "What I track" opens from a sliders button in the journal's header (now Settings, which leads to it), outside the Privacy Center as decided. One switch per data point; turning one off asks "Keep, hidden" or "Delete" (with "can't be undone"). Prices and shops show as off while purchases are off.
   - **Everywhere else** through one `LocalTracking` value that JournalHome loads from the core and refreshes when a screen closes:
     - the session editor leaves out intention, solo or with others, mood, timeline, dose and the line's shop;
     - the product editor leaves out brand, strains, THC/CBD, terpenes, batch and package date, shops and the purchase list (prices and shops within it), and a label scan fills none of those;

@@ -133,7 +133,6 @@ fun JournalHome(
     newNote: Boolean,
     onNewNoteOpened: () -> Unit,
     onEdited: () -> Unit,
-    onLock: () -> Unit,
     privacyCenter: @Composable (onClose: () -> Unit) -> Unit,
 ) {
     val stack = remember { mutableStateListOf<Screen>(Screen.Home) }
@@ -227,7 +226,6 @@ fun JournalHome(
                         onEdited,
                         revision,
                         padding,
-                        onLock,
                         onOpenNote = { stack.add(Screen.Note(it)) },
                         onSessionAt = { stack.add(Screen.Session(null, spot = it)) },
                         onInsights = { stack.add(Screen.Insights) },
@@ -263,7 +261,6 @@ private fun JournalList(
     onPermissions: () -> Unit,
     revision: Int,
     padding: PaddingValues,
-    onLock: () -> Unit,
     onOpenNote: (String) -> Unit,
     onSessionAt: (String) -> Unit,
     onInsights: () -> Unit,
@@ -303,9 +300,6 @@ private fun JournalList(
                 Text(stringResource(R.string.journal_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
                 IconButton(onClick = onSettings) {
                     Icon(painterResource(R.drawable.ic_tune), contentDescription = stringResource(R.string.settings_title))
-                }
-                IconButton(onClick = onLock) {
-                    Icon(painterResource(R.drawable.ic_lock), contentDescription = stringResource(R.string.lock_now))
                 }
             }
         }
