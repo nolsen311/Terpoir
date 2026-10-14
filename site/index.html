@@ -212,7 +212,15 @@
   .ch { border: 1px solid var(--rule); border-radius: 12px; padding: 18px; background: var(--card); }
   .ch b { display: block; font-family: var(--serif); font-size: 19px; }
   .ch small { font: 500 12px/1.4 var(--mono); color: var(--ink-soft); }
-  .fp { margin-top: 28px; font: 13px/1.6 var(--mono); color: var(--ink-soft); word-break: break-all; }
+  .verify { margin-top: 40px; max-width: 760px; }
+  .verify h3 { margin: 10px 0 10px; }
+  .verify p, .verify dt { color: var(--ink-soft); font-size: 16px; }
+  .verify dl { margin: 0 0 1em; }
+  .verify dt { margin-top: 14px; }
+  .verify dd { margin: 4px 0 0; font: 13px/1.6 var(--mono); word-break: break-all; }
+  .verify code { font: 14px var(--mono); }
+  .verify .small { font-size: 14px; margin: 0; overflow-wrap: anywhere; }
+  .verify pre { margin: 4px 0 16px; font: 13px/1.6 var(--mono); word-break: break-all; white-space: pre-wrap; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 10px; background: var(--card); }
 
   .tester { margin-top: 32px; padding: 24px; border: 1.5px dashed var(--accent); border-radius: 14px; background: var(--card); max-width: 720px; }
   .tester .label { color: var(--accent); }
@@ -425,8 +433,25 @@
       </ol>
       <p class="small">Your email address goes on the test's list in Google Play and is used for nothing else. Testing changes nothing about privacy: your journal stays encrypted on your phone, and we never see it.</p>
     </div>
-    <!-- Publish signing-certificate fingerprints and release hashes here at launch. -->
-    <p class="fp">Signing-certificate fingerprints and release hashes will be published on this page at launch.</p>
+    <div class="verify" id="verify">
+      <span class="label">Verify your download</span>
+      <h3>Check it's really Terpoir.</h3>
+      <p>Official builds are signed with one of these two certificates. Anything signed with another isn't ours, whatever it's called.</p>
+      <dl>
+        <dt>GitHub Releases (and F-Droid, once it's there): the maintainer's key, SHA-256</dt>
+        <dd>55:9B:59:33:95:3E:2F:13:0A:23:DB:5A:4F:61:0D:12:83:D4:B6:A7:1E:E6:7F:9C:DE:CE:3E:C9:B6:EF:2C:A9</dd>
+        <dt>Google Play: Google's app signing key, SHA-256</dt>
+        <dd>B7:6E:05:CD:31:96:52:AC:6F:1F:C3:FE:08:E7:66:ED:4F:E8:F5:45:DE:E7:5E:C1:19:DC:8A:B2:D1:A1:B3:CB</dd>
+      </dl>
+      <p>To check an APK from GitHub Releases, compare the certificate's SHA-256 digest with the first one:</p>
+      <pre>apksigner verify --print-certs terpoir-foss-0.2.2.apk</pre>
+      <p>Each release's <code>SHA256SUMS</code> lists its APK's hash and is signed (<code>SHA256SUMS.sig</code>) with the maintainer's hardware key, as are the release tags. Save this line as <code>allowed_signers</code>:</p>
+      <pre>64344+nolsen311@users.noreply.github.com namespaces="file,git" sk-ssh-ed25519@openssh.com AAAAGnNrLXNzaC1lZDI1NTE5QG9wZW5zc2guY29tAAAAIFof1u6kqeVj0yEtfAVMfSt63zytNiLy6TrDRKGdPKbhAAAAE3NzaDp0ZXJwb2lyLXJlbGVhc2U=</pre>
+      <p>Then, in the folder with the downloads:</p>
+      <pre>ssh-keygen -Y verify -f allowed_signers -I 64344+nolsen311@users.noreply.github.com -n file -s SHA256SUMS.sig &lt; SHA256SUMS
+sha256sum -c SHA256SUMS</pre>
+      <p class="small">The key's fingerprint is SHA256:LCGONnBz4qi3yn8ABDBTtb5lAxpVDR8MaXvtPxyQ7Lc. The same keys are in the README on GitHub, so a change to either place shows up against the other.</p>
+    </div>
   </div>
 </section>
 

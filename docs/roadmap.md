@@ -206,6 +206,15 @@ without it.
       YubiKey (`android/scripts/sign-release.sh`, `docs/releasing.md`).
 - [ ] Reproducible Android builds verified in CI; SBOM; signed release
       hashes published on terpoir.app; signing fingerprints in README.
+  - [x] Both signing-certificate fingerprints (the maintainer's key and
+        Play App Signing) and the release-signing SSH key
+        (`android/release/allowed_signers`) on terpoir.app ("Verify your
+        download") and in the README, with the commands to check an APK,
+        `SHA256SUMS.sig` and the tags. Until 0.7.0 the hashes stay in each
+        release's signed `SHA256SUMS`.
+  - [ ] Backup release-signing SSH key: an `ed25519-sk` key on the backup
+        YubiKey, added to `allowed_signers`, the site and the README
+        (maintainer step; then the backup can sign tags and releases).
 - [ ] Google Play, F-Droid, GitHub Releases.
   - [x] GitHub Releases offer only the foss APK; the signed Play bundle
         goes to Google Play from `release.sh` (`play-upload.sh`, internal
