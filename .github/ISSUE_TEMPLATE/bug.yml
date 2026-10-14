@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+name: Bug report
+description: Something in Terpoir doesn't work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. This page is public: please leave out anything from your journal, your location, and other personal details.
+        No GitHub account? Use "Send a report" in the app, or email terpoirapp@gmail.com.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Terpoir version
+      description: Privacy Center or your phone's app info shows it, e.g. 0.2.1.
+    validations:
+      required: true
+  - type: dropdown
+    id: build
+    attributes:
+      label: Where you got it
+      options:
+        - Google Play
+        - GitHub Releases
+        - F-Droid
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version
+      placeholder: e.g. Android 15
+  - type: textarea
+    id: details
+    attributes:
+      label: Details from the app
+      description: If the app offered "Send a report", you can paste its details block here.
+      render: text
