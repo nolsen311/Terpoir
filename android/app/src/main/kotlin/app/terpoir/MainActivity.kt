@@ -40,6 +40,7 @@ import app.terpoir.alerts.SpotAlerts
 import app.terpoir.capture.LockedCaptureScreen
 import app.terpoir.capture.QuickCapture
 import app.terpoir.capture.ShortcutCard
+import app.terpoir.core.CoreException
 import app.terpoir.core.ExportArchive
 import app.terpoir.core.checkExportArchive
 import app.terpoir.core.coreVersion
@@ -285,7 +286,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 },
-                onUnlock = { message = unlock() },
+                onUnlock = { message = unlock { message = it } },
                 onClose = { newNoteRequested = false },
             )
             return
@@ -364,7 +365,7 @@ class MainActivity : ComponentActivity() {
                 }
                 JournalSession.State.Locked -> {
                     Text(stringResource(R.string.locked))
-                    Button(onClick = { message = unlock() }) { Text(stringResource(R.string.unlock)) }
+                    Button(onClick = { message = unlock { message = it } }) { Text(stringResource(R.string.unlock)) }
                     if (captureSaved) Text(stringResource(R.string.capture_locked_saved))
                 }
                 // Unlocked but in the background: journal content stays hidden.
@@ -431,8 +432,14 @@ class MainActivity : ComponentActivity() {
         return null
     }
 
-    /** Starts unlocking; returns an error message to show, if any. */
-    private fun unlock(): Int? {
+    /**
+     * Starts unlocking; returns an error message to show, if any. [onError]
+     * gets one if opening fails after authentication. The journal stays
+     * locked and untouched: a journal a newer app saved is refused with a
+     * message to update, never reset (docs/design-decisions.md, "Schema
+     * upgrades").
+     */
+    private fun unlock(onError: (Int) -> Unit): Int? {
         val cipher = try {
             app.session.vault.decryptCipher()
         } catch (_: KeyPermanentlyInvalidatedException) {
@@ -440,7 +447,15 @@ class MainActivity : ComponentActivity() {
         } catch (_: Exception) {
             return R.string.error_keystore
         }
-        authenticate(cipher, getString(R.string.unlock_prompt)) { app.session.unlock(it) }
+        authenticate(cipher, getString(R.string.unlock_prompt)) { authorized ->
+            try {
+                app.session.unlock(authorized)
+            } catch (_: CoreException.NewerVersion) {
+                onError(R.string.newer_journal)
+            } catch (_: Exception) {
+                onError(R.string.error_unlock_failed)
+            }
+        }
         return null
     }
 

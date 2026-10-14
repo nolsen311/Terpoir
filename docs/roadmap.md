@@ -178,7 +178,7 @@ without it.
         database from each released version, checked in, and a test that
         every one still opens, migrates and round-trips. A release that
         breaks one fails CI.
-  - [ ] Downgrade: an older app opening a newer database refuses (as
+  - [x] Downgrade: an older app opening a newer database refuses (as
         today) with a message to update, never a crash or a reset.
 - [ ] Bring-your-own-storage sync backends and direct device pairing.
   - [x] First backend: a folder chosen through the system file picker
