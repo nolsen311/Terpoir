@@ -214,6 +214,14 @@
   .ch small { font: 500 12px/1.4 var(--mono); color: var(--ink-soft); }
   .fp { margin-top: 28px; font: 13px/1.6 var(--mono); color: var(--ink-soft); word-break: break-all; }
 
+  .tester { margin-top: 32px; padding: 24px; border: 1.5px dashed var(--accent); border-radius: 14px; background: var(--card); max-width: 720px; }
+  .tester .label { color: var(--accent); }
+  .tester h3 { margin: 10px 0 10px; }
+  .tester p, .tester li { color: var(--ink-soft); font-size: 16px; }
+  .tester ol { margin: 0 0 1em; padding-left: 22px; }
+  .tester li { margin-bottom: 6px; }
+  .tester .small { font-size: 14px; margin: 0; }
+
   footer { border-top: 1px solid var(--rule); padding: 40px 0 60px; font-size: 14px; color: var(--ink-soft); }
   footer .cols { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 18px; }
   footer p { margin: 0 0 6px; }
@@ -233,11 +241,11 @@
   </nav>
 
   <header class="hero">
-    <span class="chip"><span class="dot"></span>Pre-release · Android first · Free &amp; open source</span>
+    <span class="chip"><span class="dot"></span>Testing now · Android first · Free &amp; open source</span>
     <h1>Learn how cannabis<br>affects <em>you</em>.</h1>
     <p class="lede">Terpoir is a private journal for your sessions, products and spots. Over time it shows you the patterns: what actually helps you sleep, what makes you anxious, which shop's stuff tends to work. Your data stays encrypted with a key only you hold.</p>
     <div class="cta">
-      <a class="btn primary" href="https://github.com/nolsen311/Terpoir">Follow the build</a>
+      <a class="btn primary" href="#get">Help test it</a>
       <a class="btn ghost" href="#privacy">How private is it?</a>
     </div>
     <!-- ARTIST: hero illustration or app-icon showcase can sit here or to the right of the headline. -->
@@ -394,12 +402,23 @@
   <div class="wrap">
     <span class="label">Get Terpoir</span>
     <h2>Coming to Android first.</h2>
-    <p class="lede narrow">It's not out yet. Watch the repository to follow along, or check back here. When it ships, it'll be on:</p>
+    <p class="lede narrow">It's in testing now, and you can help. Once it's public, it'll be on:</p>
     <div class="channels">
       <div class="ch"><b>F-Droid</b><small>Built from source, no Google services</small></div>
       <div class="ch"><b>GitHub Releases</b><small>Signed APKs, works with Obtainium</small></div>
       <div class="ch"><b>Google Play</b><small>The usual way</small></div>
       <div class="ch"><b>App Store</b><small>Hopefully, later</small></div>
+    </div>
+    <div class="tester">
+      <span class="label">Help test it</span>
+      <h3>Be one of the first twelve.</h3>
+      <p>Google Play only lets a new app go public after at least 12 people have tested it for 14 days in a row. If you have an Android phone and a Google account, you can be one of them.</p>
+      <ol>
+        <li>Email <a href="mailto:terpoirapp@gmail.com?subject=Terpoir%20tester">terpoirapp@gmail.com</a> from the Google account you use on your phone, and you'll be added to the test.</li>
+        <li>Then open <a href="https://play.google.com/apps/testing/app.terpoir">the testing page on Google Play</a> on that account, tap "Become a tester", then <a href="https://play.google.com/store/apps/details?id=app.terpoir">install Terpoir from Google Play</a>.</li>
+        <li>Keep it installed for at least 14 days. Using it helps too, and so does telling us what's confusing or broken.</li>
+      </ol>
+      <p class="small">Your email address goes on the test's list in Google Play and is used for nothing else. Testing changes nothing about privacy: your journal stays encrypted on your phone, and we never see it.</p>
     </div>
     <!-- Publish signing-certificate fingerprints and release hashes here at launch. -->
     <p class="fp">Signing-certificate fingerprints and release hashes will be published on this page at launch.</p>
