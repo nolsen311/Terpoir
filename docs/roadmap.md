@@ -188,6 +188,8 @@ without it.
 - [ ] Bring-your-own-storage sync backends and direct device pairing.
   - [x] First backend: a folder chosen through the system file picker
         (Syncthing, or cloud drives through their apps); no INTERNET.
+    - [x] Shows it works: a probe file at each sync, and a green check
+          ("Working") after a sync that worked (maintainer, 2026-10-14).
   - [ ] WebDAV / S3-compatible backends (need INTERNET through the gateway).
   - [ ] Direct device pairing (QR code, local transfer).
 - [ ] Privacy Center readability pass (maintainer, 2026-10-12): the screen
@@ -256,6 +258,13 @@ without it.
       `fastlane/metadata/android/en-US/` for the listing. Test with
       `fdroid build` before submitting to `fdroiddata`.
 - [ ] Trademark Statement of Use after launch.
+- [ ] Register the FOSS build's signing certificate for Android developer
+      verification (Play Console, Android developer verification,
+      `app.terpoir`, Add key; proof with
+      `android/scripts/sign-verification-apk.sh` if asked). Deferred by the
+      maintainer (2026-10-14) until enforcement reaches sideloaded and
+      F-Droid installs (global from 2027); the Play build is registered
+      through Play App Signing.
 
 ## Release plan (maintainer, 2026-10-14)
 
