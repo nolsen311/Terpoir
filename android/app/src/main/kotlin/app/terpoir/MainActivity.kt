@@ -412,7 +412,7 @@ class MainActivity : ComponentActivity() {
                 return
             }
         }
-        Branded(state == JournalSession.State.NoJournal) {
+        Branded(state == JournalSession.State.NoJournal || state == JournalSession.State.Locked) {
             Column(
                 modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
@@ -465,7 +465,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Onboarding's first-run screens sit under the brand header ([BrandFrame]). */
+    /** Onboarding's first-run screens and the unlock screen sit under the brand header ([BrandFrame]). */
     @Composable
     private fun Branded(on: Boolean, content: @Composable () -> Unit) = if (on) BrandFrame(content) else content()
 

@@ -61,10 +61,10 @@ private val HeaderHeight = 88.dp
 private const val HEADER_SCALE = 0.5f
 
 /**
- * Onboarding's frame: the brand (the mark, "Terpoir" and the tagline, as in
- * the store's feature graphic) on the icon's green. The first time it
- * appears after a launch, it fills the screen, then slides up into a header
- * band while the page below fades in. Later pages show the header straight
+ * The frame of onboarding and the unlock screen: the brand (the mark,
+ * "Terpoir" and the tagline, as in the store's feature graphic) on the
+ * icon's green. The first time it appears after a launch, it fills the
+ * screen, then slides up into a header band while the page below fades in. Later pages show the header straight
  * away, and with animations turned off in system settings there is no
  * intro.
  */
