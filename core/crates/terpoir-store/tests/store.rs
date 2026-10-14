@@ -509,10 +509,30 @@ fn newer_database_is_refused() {
         .master
         .unwrap_database_key(&journal.wrapped_db_key)
         .unwrap();
-    assert_eq!(
-        Store::open(&journal.db(), &journal.files(), &key).err(),
-        Some(Error::NewerDatabase)
-    );
+    let tables = |conn: &rusqlite::Connection| -> Vec<String> {
+        let mut stmt = conn
+            .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+            .unwrap();
+        stmt.query_map([], |r| r.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
+    };
+    let before = tables(&rusqlite_open(&journal, &key));
+    for _ in 0..2 {
+        assert_eq!(
+            Store::open(&journal.db(), &journal.files(), &key).err(),
+            Some(Error::NewerDatabase)
+        );
+    }
+    // Refusing changes nothing: the newer app finds its database as it
+    // left it (no migration, no reset), however often an older one tries.
+    let conn = rusqlite_open(&journal, &key);
+    let version: i64 = conn
+        .query_row("PRAGMA user_version", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(version, 99);
+    assert_eq!(tables(&conn), before);
 }
 
 fn rusqlite_open(journal: &Journal, key: &DatabaseKey) -> rusqlite::Connection {

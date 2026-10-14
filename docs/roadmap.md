@@ -158,7 +158,7 @@ without it.
       effect, freshness by package date.
 - [x] Purchase prompts on Re-up Spots: dwell-then-exit geofence, discreet
       "Quick log?", no visit log; "Show me" banner alternative.
-- [ ] Schema upgrades without data loss (maintainer, 2026-10-13; ahead of
+- [x] Schema upgrades without data loss (maintainer, 2026-10-13; ahead of
       the remaining sync backends, because a backup that won't load is
       worse than a missing feature). See "Schema upgrades" in the design
       doc.
@@ -180,7 +180,7 @@ without it.
         breaks one fails CI. (v0.1.0's, in
         `core/crates/terpoir-ffi/tests/fixtures/`; v0.2.0 changed no
         format.)
-  - [ ] Downgrade: an older app opening a newer database refuses (as
+  - [x] Downgrade: an older app opening a newer database refuses (as
         today) with a message to update, never a crash or a reset.
 - [ ] Bring-your-own-storage sync backends and direct device pairing.
   - [x] First backend: a folder chosen through the system file picker

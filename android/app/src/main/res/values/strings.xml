@@ -12,6 +12,8 @@
     <string name="lock_now">Lock now</string>
     <string name="error_no_lock_screen">Set up a screen lock on this device first. Terpoir uses it to protect your journal.</string>
     <string name="error_keystore">The device\'s secure key storage did not respond. Try again.</string>
+    <string name="newer_journal">This journal was saved by a newer version of Terpoir. Update the app to open it. Nothing was changed.</string>
+    <string name="error_unlock_failed">The journal couldn\'t be opened. Nothing was changed; try again.</string>
     <string name="error_key_invalidated">Your fingerprints or face changed, so this device\'s key no longer works. Unlock with your recovery key.</string>
 
     <!-- Privacy Center -->
