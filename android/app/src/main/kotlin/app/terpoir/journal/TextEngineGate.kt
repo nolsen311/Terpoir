@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
+import app.terpoir.report.ReportButton
 import app.terpoir.scan.EngineStatus
 import app.terpoir.scan.Scanner
 import kotlinx.coroutines.CancellationException
@@ -79,6 +80,7 @@ fun TextEngineGate(scanner: Scanner, title: String, onClose: () -> Unit, content
                 EngineStatus.NotInstalled, EngineStatus.Failed -> {
                     if (current == EngineStatus.Failed) {
                         Text(stringResource(R.string.ocr_download_failed), style = MaterialTheme.typography.bodySmall)
+                        ReportButton(R.string.ocr_download_failed)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { installing = true }) {

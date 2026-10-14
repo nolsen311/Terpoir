@@ -45,6 +45,7 @@ import app.terpoir.map.MapProvider
 import app.terpoir.map.OnlineMap
 import app.terpoir.privacy.PrivacySettings
 import app.terpoir.privacy.PrivacyToggle
+import app.terpoir.report.ReportButton
 import kotlinx.coroutines.launch
 
 /** The Re-up Spot purpose, which purchase prompts need. */
@@ -231,7 +232,10 @@ fun SpotEditor(
         }
         if (current != null) TextButton(onClick = { fix = null }) { Text(stringResource(R.string.spot_location_clear)) }
         if (locating) Text(stringResource(R.string.spot_locating))
-        locationProblem?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
+        locationProblem?.let {
+            Text(stringResource(it), color = MaterialTheme.colorScheme.error)
+            if (it == R.string.spot_location_failed) ReportButton(it)
+        }
         Text(stringResource(R.string.spot_location_note), style = MaterialTheme.typography.bodySmall)
 
         // Purchase prompts: Re-up Spots with a location, while the feature is on.

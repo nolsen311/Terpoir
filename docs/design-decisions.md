@@ -815,6 +815,16 @@ Scans get better at recognising what the user buys by using what the journal alr
   - No analytics, ads, crash-reporting or attribution SDKs.
   - The app never contacts terpoir.app or any project-run endpoint, and there is no server component.
 
+## Problem reports (decided 2026-10-14, maintainer)
+
+While releases are early, errors offer "Send a report", and the app offers it once after a crash. It may be removed once releases are routine; it is one component (`app.terpoir.report`).
+
+- **By email only, from the user's own email app.** The report opens addressed to terpoirapp@gmail.com and filled in; nothing is sent unless the user sends it, and they can read and edit it first. Terpoir sends nothing itself and gains no network access, so "the app never contacts a project endpoint" still holds. No GitHub route (public, needs an account).
+- **What a report holds:** the app version and build (Play or foss), the Android version, which problem it was (the message's resource name), the error's type (class names of it and its causes, never their messages), and for file problems the storage app's name. Never journal content, keys, locations, file names, the device model or any identifier.
+- **Where it is offered:** failures the user can't fix themselves: export, import, folder sync, restore, unlock and key errors, locked capture, speech recognition, the text-recognition download, and a spot's location fix. Not where the message already says what to do (the wrong file, no screen lock, an update needed, permission denied) or on input validation.
+- **Crashes:** an uncaught error writes a short summary (types and code locations: class, method, file and line, at most 40 frames; never messages) to app-private storage outside backups, then Android handles the crash as before. The next launch offers "Send report" or "Dismiss"; either deletes it. Release builds' names are obfuscated; each release's R8 mapping decodes them.
+- **Privacy policy:** says reports exist, what they hold, and that a sent report reaches the developer with the sender's address.
+
 ## Optional components (decided)
 - The base app ships only what every user needs. Heavy, optional pieces (text-recognition engines, language data, the bundled tagging model, offline catalogs) are downloads the user chooses, each named in the Privacy Center or the feature that uses it, with its size, and removable.
 - **Code** (native libraries, Kotlin/Java): only through the store. Google Play forbids downloading executable code from anywhere else, so on Play it comes as an on-demand feature module. F-Droid has no equivalent, so code the foss build needs is bundled; only data is optional there.

@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import app.terpoir.R
+import app.terpoir.report.ReportButton
 
 /**
  * Speaking a note: the on-device recognizer, the microphone permission and
@@ -139,7 +140,10 @@ fun DictationControls(dictation: Dictation) {
             Button(onClick = dictation::start) { Text(stringResource(R.string.voice_speak)) }
         }
     }
-    dictation.problem?.let { Text(stringResource(it.message), color = MaterialTheme.colorScheme.error) }
+    dictation.problem?.let {
+        Text(stringResource(it.message), color = MaterialTheme.colorScheme.error)
+        if (it == SpeechProblem.OTHER) ReportButton(R.string.voice_failed)
+    }
 }
 
 private val SpeechProblem.message: Int
