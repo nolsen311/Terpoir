@@ -22,6 +22,8 @@
 #                     (default ~/terpoir-releases, outside the repository)
 
 set -euo pipefail
+# A failing command ends the script (set -e): say where, never stop silently.
+trap 'echo "error: release.sh stopped at line $LINENO (exit $?)" >&2' ERR
 
 die() { echo "error: $*" >&2; exit 1; }
 confirm() { read -rp "$1 [y/N] " answer; [[ "$answer" =~ ^[Yy]$ ]]; }
@@ -33,12 +35,16 @@ repo=${TERPOIR_REPO:-nolsen311/Terpoir}
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(git -C "$here" rev-parse --show-toplevel)
 
+echo "Releasing $tag from $repo"
 for tool in git gh; do
     command -v "$tool" >/dev/null || die "$tool not found"
 done
+echo "Checking the GitHub CLI login"
 gh auth status >/dev/null 2>&1 || die "gh is not logged in (gh auth login)"
 
-git -C "$root" fetch --quiet origin main --tags
+# With an SSH remote on a YubiKey key, this waits for a touch.
+echo "Fetching origin (touch the YubiKey if it blinks)"
+git -C "$root" fetch --quiet origin main --tags || die "git fetch failed: check the remote and your SSH key"
 main_sha=$(git -C "$root" rev-parse origin/main)
 
 # 1. The tag.
