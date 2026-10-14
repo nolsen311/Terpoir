@@ -20,7 +20,7 @@
     <string name="report_send">Send a report</string>
     <string name="report_subject">Terpoir problem: %1$s</string>
     <string name="report_describe">What were you doing when this happened? (optional)</string>
-    <string name="report_footer">This report holds nothing from your journal. You can edit or delete anything in it before sending.</string>
+    <string name="report_footer">This report holds nothing from your journal. You can edit or delete anything in it before sending. If it shows a bug, what you wrote and the details above may be posted as a public issue on GitHub, without your name or email address.</string>
     <string name="report_no_email">No email app found. You can write to %1$s.</string>
     <string name="crash_title">Terpoir closed unexpectedly</string>
     <string name="crash_body">Terpoir closed unexpectedly last time. Send a report so it can be fixed? It says only where in the app it happened, nothing from your journal, and opens in your email app so you can check it first.</string>
