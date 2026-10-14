@@ -100,6 +100,34 @@ slug_enum! {
     }
 }
 
+slug_enum! {
+    /// Roughly how much of a terpene a strain has (docs/design-decisions.md,
+    /// "Richer strains"). Never an exact percentage: those stay on products,
+    /// from their labels.
+    TerpeneLevel {
+        /// The strain's main terpene.
+        Dominant => "dominant",
+        /// Clearly present, behind the dominant one.
+        Secondary => "secondary",
+        /// A little.
+        Trace => "trace",
+    }
+}
+
+slug_enum! {
+    /// Cannabinoids besides THC and CBD that a strain can be known for.
+    Cannabinoid {
+        /// Cannabinol.
+        Cbn => "cbn",
+        /// Cannabigerol.
+        Cbg => "cbg",
+        /// Tetrahydrocannabinolic acid.
+        Thca => "thca",
+        /// Cannabidivarin.
+        Cbdv => "cbdv",
+    }
+}
+
 impl Form {
     /// The usual way this form is consumed, as a session's default method.
     /// `None` for a form from a newer app version.
@@ -280,10 +308,63 @@ pub struct Strain {
     pub name: String,
     /// Lineage, free text (for example "OG Kush × Durban Poison").
     pub lineage: Option<String>,
-    /// Dominant terpenes.
+    /// Terpenes the strain is known for.
     pub terpenes: BTreeSet<TagRef>,
     /// Indica/sativa/hybrid label.
     pub strain_type: Option<StrainType>,
+    /// Rough levels for some of [`terpenes`](Self::terpenes); a terpene
+    /// without one is unrated. A level for a terpene no longer in the set
+    /// (after merging edits from two devices) is ignored: see
+    /// [`level`](Self::level).
+    pub terpene_levels: BTreeMap<TagRef, TerpeneLevel>,
+    /// Parent strains (lineage), as strain records. The free-text
+    /// [`lineage`](Self::lineage) stays as a note.
+    pub parents: BTreeSet<RecordId>,
+    /// Cannabinoids besides THC and CBD the strain is known for.
+    pub cannabinoids: BTreeSet<Cannabinoid>,
+}
+
+impl Strain {
+    /// A strain with only a name, as created when a parent is typed in.
+    #[must_use]
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            lineage: None,
+            terpenes: BTreeSet::new(),
+            strain_type: None,
+            terpene_levels: BTreeMap::new(),
+            parents: BTreeSet::new(),
+            cannabinoids: BTreeSet::new(),
+        }
+    }
+
+    /// The level of `terpene`, if it is one of this strain's terpenes and
+    /// has been rated.
+    #[must_use]
+    pub fn level(&self, terpene: &TagRef) -> Option<&TerpeneLevel> {
+        self.terpenes
+            .contains(terpene)
+            .then(|| self.terpene_levels.get(terpene))
+            .flatten()
+    }
+
+    /// The strain's dominant terpene, for insights when a product's label
+    /// lists none: the one rated dominant (the first, in a stable order,
+    /// if several are), or else the only terpene listed.
+    #[must_use]
+    pub fn dominant_terpene(&self) -> Option<&TagRef> {
+        self.terpenes
+            .iter()
+            .find(|t| self.level(t) == Some(&TerpeneLevel::Dominant))
+            .or_else(|| {
+                let mut only = self.terpenes.iter();
+                match (only.next(), only.next()) {
+                    (Some(t), None) => Some(t),
+                    _ => None,
+                }
+            })
+    }
 }
 
 impl Record for Strain {
@@ -296,22 +377,54 @@ impl Record for Strain {
             .tag_set("terpenes", &self.terpenes)
             .opt("type", self.strain_type.as_ref(), |t| {
                 Value::Text(t.slug().to_owned())
-            });
+            })
+            .map(
+                "terpene_levels",
+                &self.terpene_levels,
+                |t| t.to_key(),
+                |l| Value::Text(l.slug().to_owned()),
+            )
+            .id_set("parents", &self.parents)
+            .map(
+                "cannabinoids",
+                self.cannabinoids.iter().map(|c| (c, ())),
+                |c| c.slug().to_owned(),
+                |()| Value::Bool(true),
+            );
         f.finish()
     }
 
     fn from_document(doc: &Document) -> Result<Self> {
         let r = Reader::new::<Self>(doc)?;
+        let mut cannabinoids = BTreeSet::new();
+        for (slug, value) in r.entries("cannabinoids") {
+            match value {
+                Value::Bool(true) => {
+                    cannabinoids.insert(Cannabinoid::from_slug(slug));
+                }
+                _ => return Err(Error::InvalidField("cannabinoids")),
+            }
+        }
         Ok(Self {
             name: r.required_text("name")?,
             lineage: r.text("lineage")?,
             terpenes: r.tag_set("terpenes")?,
             strain_type: r.slug("type", StrainType::from_slug)?,
+            terpene_levels: r.tag_map("terpene_levels", |v| match v {
+                Value::Text(slug) => Some(TerpeneLevel::from_slug(slug)),
+                _ => None,
+            })?,
+            parents: r.id_set("parents")?,
+            cannabinoids,
         })
     }
 
     fn owns_field(key: &str) -> bool {
-        owns(key, &["name", "lineage", "type"], &["terpenes"])
+        owns(
+            key,
+            &["name", "lineage", "type"],
+            &["terpenes", "terpene_levels", "parents", "cannabinoids"],
+        )
     }
 }
 
@@ -413,10 +526,66 @@ mod tests {
             lineage: Some("Blueberry × Haze".into()),
             terpenes: [TagRef::Builtin("myrcene".into())].into(),
             strain_type: Some(StrainType::Hybrid),
+            ..Strain::new(String::new())
+        });
+        let myrcene = TagRef::Builtin("myrcene".into());
+        let pinene = TagRef::Builtin("alpha_pinene".into());
+        round_trip(&Strain {
+            name: "Jack Herer".into(),
+            terpenes: [
+                myrcene.clone(),
+                pinene.clone(),
+                TagRef::Custom(RecordId::from_bytes([7; 16])),
+            ]
+            .into(),
+            terpene_levels: [
+                (myrcene, TerpeneLevel::Secondary),
+                (pinene, TerpeneLevel::Dominant),
+            ]
+            .into(),
+            parents: [RecordId::from_bytes([4; 16]), RecordId::from_bytes([5; 16])].into(),
+            cannabinoids: [
+                Cannabinoid::Cbg,
+                Cannabinoid::Cbdv,
+                Cannabinoid::from_slug("thcv"),
+            ]
+            .into(),
+            ..Strain::new(String::new())
         });
         round_trip(&Brand {
             name: "Acme".into(),
         });
+    }
+
+    #[test]
+    fn levels_count_only_for_listed_terpenes() {
+        let myrcene = TagRef::Builtin("myrcene".into());
+        let limonene = TagRef::Builtin("limonene".into());
+        let mut s = Strain::new("x".into());
+        s.terpenes.insert(myrcene.clone());
+        // Left by a merge after another device removed limonene.
+        s.terpene_levels
+            .insert(limonene.clone(), TerpeneLevel::Dominant);
+        assert_eq!(s.level(&limonene), None);
+        // The only terpene listed is the dominant one, rated or not.
+        assert_eq!(s.dominant_terpene(), Some(&myrcene));
+        s.terpenes.insert(limonene.clone());
+        assert_eq!(s.dominant_terpene(), Some(&limonene));
+        s.terpene_levels.clear();
+        // Two unrated terpenes: no dominant one.
+        assert_eq!(s.dominant_terpene(), None);
+    }
+
+    #[test]
+    fn a_strain_from_before_levels_reads_with_none() {
+        // A strain saved by 0.3 or earlier: no levels, parents or
+        // cannabinoids. Its terpenes stay, unrated.
+        let mut doc = Document::new(RecordId::from_bytes([9; 16]), RecordKind::Strain);
+        doc.set("name", Value::Text("Old".into()), stamp());
+        doc.set("terpenes/myrcene", Value::Bool(true), stamp());
+        let s = Strain::from_document(&doc).unwrap();
+        assert_eq!(s.terpenes.len(), 1);
+        assert!(s.terpene_levels.is_empty() && s.parents.is_empty() && s.cannabinoids.is_empty());
     }
 
     #[test]

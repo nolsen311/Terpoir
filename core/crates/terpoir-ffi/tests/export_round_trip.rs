@@ -150,6 +150,9 @@ fn fill(journal: &Journal) -> Filled {
                 lineage: Some("Blueberry x Haze".into()),
                 terpenes: vec![builtin("myrcene"), builtin("pinene")],
                 strain_type: Some("hybrid".into()),
+                terpene_levels: vec![],
+                parents: vec![],
+                cannabinoids: vec![],
             },
             1,
         )

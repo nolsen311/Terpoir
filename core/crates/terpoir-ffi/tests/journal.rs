@@ -14,9 +14,9 @@ use terpoir_ffi::{
     BrandData, CoreError, ExportArchive, IdentifierData, InsightFeedback, Journal, LocalTimeData,
     NewKeys, ProductData, ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData,
     SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance,
-    TagRefData, check_export_archive, check_recovery_key, create_keys, keys_for_restore,
-    master_key_from_recovery, read_export_archive, readable_blobs, sync_folder_key_file,
-    trackable_data_points,
+    TagRefData, TerpeneLevelData, check_export_archive, check_recovery_key, create_keys,
+    keys_for_restore, master_key_from_recovery, read_export_archive, readable_blobs,
+    sync_folder_key_file, trackable_data_points, vocabulary,
 };
 
 struct Device {
@@ -119,6 +119,9 @@ fn full_lifecycle() {
                 lineage: None,
                 terpenes: vec![builtin("myrcene")],
                 strain_type: Some("hybrid".into()),
+                terpene_levels: vec![],
+                parents: vec![],
+                cannabinoids: vec![],
             },
             1,
         )
@@ -1346,6 +1349,9 @@ fn shop_insights_compare_brands_and_strains_across_shops() {
                 lineage: None,
                 terpenes: vec![],
                 strain_type: None,
+                terpene_levels: vec![],
+                parents: vec![],
+                cannabinoids: vec![],
             },
             2,
         )
@@ -1549,6 +1555,9 @@ fn deleting_a_data_point_clears_it_everywhere() {
                 lineage: None,
                 terpenes: vec![builtin("myrcene")],
                 strain_type: Some("hybrid".into()),
+                terpene_levels: vec![],
+                parents: vec![],
+                cannabinoids: vec![],
             },
             1,
         )
@@ -1803,4 +1812,66 @@ fn a_sync_folder_restores_on_a_new_device() {
         new_phone.import_sync_blob(blob, 20).unwrap();
     }
     assert!(new_phone.get_session(id.clone()).unwrap() == phone.get_session(id).unwrap());
+}
+
+#[test]
+fn strains_keep_levels_parents_and_cannabinoids() {
+    let device = Device::new();
+    let keys = create_keys().unwrap();
+    let journal = device.open(&keys).unwrap();
+    let parent = journal
+        .save_strain(
+            None,
+            StrainData {
+                name: "Haze".into(),
+                lineage: None,
+                terpenes: vec![],
+                strain_type: None,
+                terpene_levels: vec![],
+                parents: vec![],
+                cannabinoids: vec![],
+            },
+            1,
+        )
+        .unwrap();
+    let saved = StrainData {
+        name: "Jack Herer".into(),
+        lineage: Some("Haze × Northern Lights #5 × Shiva Skunk".into()),
+        terpenes: vec![builtin("alpha_pinene"), builtin("myrcene")],
+        strain_type: Some("sativa".into()),
+        terpene_levels: vec![TerpeneLevelData {
+            terpene: builtin("alpha_pinene"),
+            level: "dominant".into(),
+        }],
+        parents: vec![parent.clone()],
+        cannabinoids: vec!["cbg".into()],
+    };
+    let mut with_stray = saved.clone();
+    // A level for a terpene the strain doesn't list is dropped.
+    with_stray.terpene_levels.push(TerpeneLevelData {
+        terpene: builtin("limonene"),
+        level: "trace".into(),
+    });
+    let id = journal.save_strain(None, with_stray, 2).unwrap();
+    // Records have no Debug, so nothing private can reach a log.
+    assert!(journal.get_strain(id).unwrap() == Some(saved));
+
+    // The detail step: Terpenes until chosen, then synced like any choice.
+    assert_eq!(journal.strain_detail().unwrap(), "terpenes");
+    assert_eq!(
+        vocabulary().strain_details,
+        ["simple", "terpenes", "detailed"]
+    );
+    journal.set_strain_detail("detailed".into(), 3).unwrap();
+    assert_eq!(journal.strain_detail().unwrap(), "detailed");
+    assert!(matches!(
+        journal.set_strain_detail("lab_grade".into(), 4),
+        Err(CoreError::InvalidInput)
+    ));
+    // Hiding data points leaves the step alone, and the step leaves them.
+    journal
+        .set_data_point_tracked("brand".into(), false, 5)
+        .unwrap();
+    assert_eq!(journal.strain_detail().unwrap(), "detailed");
+    assert_eq!(journal.hidden_data_points().unwrap(), ["brand"]);
 }

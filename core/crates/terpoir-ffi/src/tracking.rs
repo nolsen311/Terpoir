@@ -12,8 +12,8 @@
 
 use terpoir_crypto::{MasterKey, RecordId};
 use terpoir_model::{
-    Brand, Document, Product, Purchase, Record, Session, Strain, Timeline, TrackedField,
-    TrackingPreferences, migrate,
+    Brand, Document, Product, Purchase, Record, Session, Strain, StrainDetail, Timeline,
+    TrackedField, TrackingPreferences, migrate,
 };
 
 use crate::journal::{Journal, Unlocked};
@@ -235,6 +235,44 @@ impl Journal {
             if !changed {
                 return Ok(());
             }
+            let stamp = u.clock.stamp(now_ms);
+            let mut doc = load(u)?.unwrap_or_else(|| Document::new(id, TrackingPreferences::KIND));
+            doc.update(&prefs, stamp)?;
+            u.store.put(&u.master, &doc)?;
+            u.save_clock()?;
+            Ok(())
+        })
+    }
+
+    /// The journal's strain detail step: `simple`, `terpenes` (until the
+    /// user chooses) or `detailed`. Lower steps hide strain fields in the
+    /// app; they never delete them.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn strain_detail(&self) -> Result<String> {
+        self.with(|u| Ok(preferences(u)?.strain_detail().slug().to_owned()))
+    }
+
+    /// Sets the strain detail step (one of `vocabulary().strain_details`).
+    /// The choice syncs.
+    ///
+    /// # Errors
+    ///
+    /// `InvalidInput` for an unknown step; `Locked` or `Storage`.
+    pub fn set_strain_detail(&self, step: String, now_ms: u64) -> Result<()> {
+        let step = StrainDetail::from_slug(&step);
+        if matches!(step, StrainDetail::Unknown(_)) {
+            return Err(CoreError::InvalidInput);
+        }
+        self.with(|u| {
+            let id = record_id(&u.master)?;
+            let mut prefs = preferences(u)?;
+            if prefs.strain_detail.as_ref() == Some(&step) {
+                return Ok(());
+            }
+            prefs.strain_detail = Some(step);
             let stamp = u.clock.stamp(now_ms);
             let mut doc = load(u)?.unwrap_or_else(|| Document::new(id, TrackingPreferences::KIND));
             doc.update(&prefs, stamp)?;

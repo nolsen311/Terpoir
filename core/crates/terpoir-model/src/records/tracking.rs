@@ -54,15 +54,44 @@ impl TrackedField {
     }
 }
 
+slug_enum! {
+    /// How much a strain records (docs/design-decisions.md, "Richer
+    /// strains"). One choice for the whole journal; a lower step hides the
+    /// extra fields and never deletes them.
+    StrainDetail {
+        /// Indica, sativa or hybrid only.
+        Simple => "simple",
+        /// Also which terpenes the strain is known for.
+        Terpenes => "terpenes",
+        /// Also terpene levels, parent strains and further cannabinoids.
+        Detailed => "detailed",
+    }
+}
+
 /// The hidden data points. Empty (everything tracked) by default.
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub struct TrackingPreferences {
     /// Hidden data points, including any from a newer app version, which
     /// are kept as they are.
     pub hidden: BTreeSet<TrackedField>,
+    /// The strain detail step, if the user chose one; see
+    /// [`strain_detail`](Self::strain_detail).
+    pub strain_detail: Option<StrainDetail>,
 }
 
 impl TrackingPreferences {
+    /// The strain detail step: Terpenes until the user chooses, which is
+    /// what strains recorded before the setting existed. A step from a
+    /// newer app version counts as Detailed, so nothing is hidden.
+    #[must_use]
+    pub fn strain_detail(&self) -> StrainDetail {
+        match &self.strain_detail {
+            None => StrainDetail::Terpenes,
+            Some(StrainDetail::Unknown(_)) => StrainDetail::Detailed,
+            Some(step) => step.clone(),
+        }
+    }
+
     /// Whether `field` is tracked (shown). Hiding purchases also hides
     /// prices and shops.
     #[must_use]
@@ -84,7 +113,10 @@ impl Record for TrackingPreferences {
             self.hidden.iter().map(|h| (h, ())),
             |h| h.slug().to_owned(),
             |()| Value::Bool(true),
-        );
+        )
+        .opt("strain_detail", self.strain_detail.as_ref(), |d| {
+            Value::Text(d.slug().to_owned())
+        });
         f.finish()
     }
 
@@ -100,11 +132,14 @@ impl Record for TrackingPreferences {
                 _ => return Err(Error::InvalidField("hidden")),
             }
         }
-        Ok(Self { hidden })
+        Ok(Self {
+            hidden,
+            strain_detail: r.slug("strain_detail", StrainDetail::from_slug)?,
+        })
     }
 
     fn owns_field(key: &str) -> bool {
-        owns(key, &[], &["hidden"])
+        owns(key, &["strain_detail"], &["hidden"])
     }
 }
 
@@ -132,6 +167,7 @@ mod tests {
                 TrackedField::from_slug("vibes"),
             ]
             .into(),
+            strain_detail: Some(StrainDetail::Detailed),
         };
         let doc = Document::create(&prefs, stamp(1, 1)).unwrap();
         assert_eq!(TrackingPreferences::from_document(&doc).unwrap(), prefs);
@@ -141,6 +177,7 @@ mod tests {
     fn showing_again_writes_a_removal() {
         let mut prefs = TrackingPreferences {
             hidden: [TrackedField::Brand, TrackedField::Dose].into(),
+            strain_detail: None,
         };
         let mut doc = Document::create(&prefs, stamp(1, 1)).unwrap();
         prefs.hidden.remove(&TrackedField::Brand);
@@ -153,11 +190,25 @@ mod tests {
     fn hiding_purchases_hides_prices_and_shops() {
         let prefs = TrackingPreferences {
             hidden: [TrackedField::Purchases].into(),
+            strain_detail: None,
         };
         assert!(!prefs.tracks(&TrackedField::PriceAndShop));
         assert!(!prefs.tracks(&TrackedField::Purchases));
         assert!(prefs.tracks(&TrackedField::Brand));
         assert!(TrackingPreferences::default().tracks(&TrackedField::PriceAndShop));
+    }
+
+    #[test]
+    fn strain_detail_defaults_to_terpenes_and_never_hides_on_unknown() {
+        let mut prefs = TrackingPreferences::default();
+        assert_eq!(prefs.strain_detail(), StrainDetail::Terpenes);
+        prefs.strain_detail = Some(StrainDetail::Simple);
+        assert_eq!(prefs.strain_detail(), StrainDetail::Simple);
+        // A step a newer app added shows everything this app knows.
+        prefs.strain_detail = Some(StrainDetail::from_slug("lab_grade"));
+        assert_eq!(prefs.strain_detail(), StrainDetail::Detailed);
+        let doc = Document::create(&prefs, stamp(1, 1)).unwrap();
+        assert_eq!(TrackingPreferences::from_document(&doc).unwrap(), prefs);
     }
 
     #[test]

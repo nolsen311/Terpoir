@@ -11,10 +11,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use terpoir_model::{
-    Brand, Dose, DoseUnit, Form, IdentifierKind, Intention, LabelAmount, LabelUnit, LocalTime,
-    Location, Method, Price, Product, ProductLine, Provenance, Purchase, PurchaseLine, PurchaseRef,
-    RecordId, Session, Snippet, Social, Spot, Strain, StrainType, SymptomResult, Tag, TagCategory,
-    TagRef, Timeline,
+    Brand, Cannabinoid, Dose, DoseUnit, Form, IdentifierKind, Intention, LabelAmount, LabelUnit,
+    LocalTime, Location, Method, Price, Product, ProductLine, Provenance, Purchase, PurchaseLine,
+    PurchaseRef, RecordId, Session, Snippet, Social, Spot, Strain, StrainType, SymptomResult, Tag,
+    TagCategory, TagRef, TerpeneLevel, Timeline,
 };
 
 use crate::{CoreError, Result};
@@ -438,19 +438,52 @@ pub struct StrainData {
     pub name: String,
     /// Lineage.
     pub lineage: Option<String>,
-    /// Dominant terpenes.
+    /// Terpenes the strain is known for.
     pub terpenes: Vec<TagRefData>,
     /// `indica`, `sativa` or `hybrid`.
     pub strain_type: Option<String>,
+    /// Levels (`dominant`, `secondary`, `trace`) for some of `terpenes`;
+    /// the others are unrated. Levels for terpenes not in `terpenes` are
+    /// dropped when saving.
+    pub terpene_levels: Vec<TerpeneLevelData>,
+    /// Parent strains, as strain IDs.
+    pub parents: Vec<String>,
+    /// Cannabinoids besides THC and CBD the strain is known for (`cbn`,
+    /// `cbg`, `thca`, `cbdv`, or one from a newer app version).
+    pub cannabinoids: Vec<String>,
+}
+
+/// A terpene's rough level in a strain.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct TerpeneLevelData {
+    /// The terpene.
+    pub terpene: TagRefData,
+    /// `dominant`, `secondary` or `trace`.
+    pub level: String,
 }
 
 impl StrainData {
     pub(crate) fn to_model(&self) -> Result<Strain> {
+        let terpenes = tags_to_model(&self.terpenes)?;
+        let mut terpene_levels = BTreeMap::new();
+        for l in &self.terpene_levels {
+            let tag = l.terpene.to_model()?;
+            if terpenes.contains(&tag) {
+                terpene_levels.insert(tag, TerpeneLevel::from_slug(&l.level));
+            }
+        }
         Ok(Strain {
             name: self.name.clone(),
             lineage: self.lineage.clone(),
-            terpenes: tags_to_model(&self.terpenes)?,
+            terpenes,
             strain_type: self.strain_type.as_deref().map(StrainType::from_slug),
+            terpene_levels,
+            parents: parse_ids(&self.parents)?,
+            cannabinoids: self
+                .cannabinoids
+                .iter()
+                .map(|c| Cannabinoid::from_slug(c))
+                .collect(),
         })
     }
 
@@ -460,6 +493,18 @@ impl StrainData {
             lineage: s.lineage.clone(),
             terpenes: tags_from_model(&s.terpenes),
             strain_type: s.strain_type.as_ref().map(|t| t.slug().to_owned()),
+            terpene_levels: s
+                .terpenes
+                .iter()
+                .filter_map(|t| {
+                    s.level(t).map(|l| TerpeneLevelData {
+                        terpene: TagRefData::from_model(t),
+                        level: l.slug().to_owned(),
+                    })
+                })
+                .collect(),
+            parents: ids_to_strings(&s.parents),
+            cannabinoids: s.cannabinoids.iter().map(|c| c.slug().to_owned()).collect(),
         }
     }
 }
