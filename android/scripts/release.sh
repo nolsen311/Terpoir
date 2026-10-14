@@ -11,6 +11,9 @@
 # the manual steps, and each outward-facing one asks first.
 #
 # Usage: android/scripts/release.sh vX.Y.Z
+#   On a desktop whose SSH agent can't use the YubiKey's ed25519-sk key
+#   (the maintainer's), blank it so tag and SHA256SUMS signing reach the
+#   key directly: SSH_AUTH_SOCK= android/scripts/release.sh vX.Y.Z
 #
 # Safe to re-run after an interruption: a tag that is already on the remote
 # is not recreated, and a finished CI run is not waited for again.
