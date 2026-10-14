@@ -345,11 +345,13 @@ class MainActivity : ComponentActivity() {
                             if (app.privacySettings.folderSync) runCatching { app.folderSync.sync(state.journal) }
                         }
                     },
-                ) { onClose ->
+                ) { onClose, settings ->
                     PrivacyCenterScreen(
                         center = app.privacyCenter,
                         onChanged = { ScreenPrivacy.onResume(this, app.privacySettings.screenProtection) },
                         onClose = onClose,
+                        settings = settings,
+                        version = remember { runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull().orEmpty() },
                         sectionExtras = mapOf<PrivacyGroup, @Composable () -> Unit>(
                             PrivacyGroup.LOCATION to { MapProviderCard(repo, app.privacySettings) },
                             PrivacyGroup.OS_INTEGRATION to { ShortcutCard(app.privacySettings) },

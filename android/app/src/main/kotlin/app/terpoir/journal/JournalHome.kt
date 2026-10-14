@@ -74,6 +74,8 @@ import app.terpoir.core.Vocabulary
 import app.terpoir.location.CurrentLocation
 import app.terpoir.location.LocationAccess
 import app.terpoir.privacy.PrivacySettings
+import app.terpoir.privacy.SettingsGroup
+import app.terpoir.privacy.SettingsRow
 import app.terpoir.ui.theme.AppearanceSettings
 import app.terpoir.ui.theme.CardTones
 import app.terpoir.privacy.PrivacyToggle
@@ -104,10 +106,10 @@ private sealed interface Screen {
     data object Insights : Screen
 
     data object WhatITrack : Screen
-    data object Settings : Screen
+    data object Theme : Screen
 }
 
-private enum class Tab { JOURNAL, PRODUCTS, PRIVACY }
+private enum class Tab { JOURNAL, PRODUCTS, SETTINGS }
 
 private enum class Catalog { PRODUCTS, STRAINS, BRANDS, SPOTS }
 
@@ -133,7 +135,7 @@ fun JournalHome(
     newNote: Boolean,
     onNewNoteOpened: () -> Unit,
     onEdited: () -> Unit,
-    privacyCenter: @Composable (onClose: () -> Unit) -> Unit,
+    privacyCenter: @Composable (onClose: () -> Unit, settings: @Composable () -> Unit) -> Unit,
 ) {
     val stack = remember { mutableStateListOf<Screen>(Screen.Home) }
     var tab by remember { mutableStateOf(Tab.JOURNAL) }
@@ -189,7 +191,7 @@ fun JournalHome(
             Screen.Receipt -> ReceiptScreen(repo, scan, pop)
             Screen.Insights -> InsightsScreen(repo, onOpenSession = { stack.add(Screen.Session(it)) }, onClose = pop)
             Screen.WhatITrack -> WhatITrackScreen(repo, onChanged = { revision++ }, onClose = pop)
-            Screen.Settings -> SettingsScreen(appearance, onWhatITrack = { stack.add(Screen.WhatITrack) }, onClose = pop)
+            Screen.Theme -> ThemeScreen(appearance, onClose = pop)
             is Screen.Note -> NoteScreen(repo, settings, vocab, screen.id, pop)
             is Screen.Strain -> StrainEditor(repo, vocab, screen.id, pop)
             is Screen.Brand -> BrandEditor(repo, screen.id, pop)
@@ -198,7 +200,7 @@ fun JournalHome(
                     NavigationBar {
                         NavItem(tab == Tab.JOURNAL, R.drawable.ic_journal, R.string.tab_journal) { tab = Tab.JOURNAL }
                         NavItem(tab == Tab.PRODUCTS, R.drawable.ic_products, R.string.tab_products) { tab = Tab.PRODUCTS }
-                        NavItem(tab == Tab.PRIVACY, R.drawable.ic_privacy, R.string.tab_privacy) { tab = Tab.PRIVACY }
+                        NavItem(tab == Tab.SETTINGS, R.drawable.ic_tune, R.string.tab_settings) { tab = Tab.SETTINGS }
                     }
                 },
                 floatingActionButton = {
@@ -229,13 +231,21 @@ fun JournalHome(
                         onOpenNote = { stack.add(Screen.Note(it)) },
                         onSessionAt = { stack.add(Screen.Session(null, spot = it)) },
                         onInsights = { stack.add(Screen.Insights) },
-                        onSettings = { stack.add(Screen.Settings) },
                         onPurchase = { stack.add(Screen.Receipt) },
                     ) {
                         stack.add(Screen.Session(it))
                     }
                     Tab.PRODUCTS -> CatalogLists(repo, vocab, revision, padding) { stack.add(it) }
-                    Tab.PRIVACY -> Column(Modifier.padding(padding)) { privacyCenter { tab = Tab.JOURNAL } }
+                    Tab.SETTINGS -> Column(Modifier.padding(padding)) {
+                        privacyCenter({ tab = Tab.JOURNAL }) {
+                            SettingsGroup(stringResource(R.string.settings_journal)) {
+                                SettingsRow(stringResource(R.string.track_title), stringResource(R.string.settings_track_hint)) { stack.add(Screen.WhatITrack) }
+                            }
+                            SettingsGroup(stringResource(R.string.settings_phone)) {
+                                SettingsRow(stringResource(R.string.theme_title), stringResource(appearance.theme.title)) { stack.add(Screen.Theme) }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -264,7 +274,6 @@ private fun JournalList(
     onOpenNote: (String) -> Unit,
     onSessionAt: (String) -> Unit,
     onInsights: () -> Unit,
-    onSettings: () -> Unit,
     onPurchase: () -> Unit,
     onOpen: (String) -> Unit,
 ) {
@@ -298,9 +307,6 @@ private fun JournalList(
         item {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.journal_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
-                IconButton(onClick = onSettings) {
-                    Icon(painterResource(R.drawable.ic_tune), contentDescription = stringResource(R.string.settings_title))
-                }
             }
         }
         // Notes written while the journal was locked: anyone holding the
