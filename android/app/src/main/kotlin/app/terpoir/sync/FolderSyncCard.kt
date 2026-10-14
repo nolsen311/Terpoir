@@ -6,9 +6,11 @@ package app.terpoir.sync
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -20,6 +22,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -32,7 +40,9 @@ import kotlinx.coroutines.launch
 
 /**
  * Folder sync in the Privacy Center, while its toggle is on: choose the
- * folder (system picker), sync now, and when it last synced.
+ * folder (system picker), sync, and when it last synced. A green check
+ * shows the last sync worked; each sync first proves the folder keeps a
+ * file ([FolderSync.sync]), and choosing a folder syncs at once.
  */
 @Composable
 fun FolderSyncCard(sync: FolderSync, journal: Journal) {
@@ -85,6 +95,14 @@ fun FolderSyncCard(sync: FolderSync, journal: Journal) {
             return@Column
         }
         val last = revision.let { sync.lastSyncMs }
+        val working = revision.let { sync.working }
+        when {
+            busy -> Text(stringResource(R.string.sync_syncing), style = MaterialTheme.typography.bodySmall)
+            working == true -> WorkingBadge()
+            // A failure here may be from the sync at unlock, not one started on this screen.
+            working == false && message == null ->
+                Text(stringResource(R.string.sync_last_failed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
         Text(
             if (last == 0L) {
                 stringResource(R.string.sync_never)
@@ -107,5 +125,25 @@ fun FolderSyncCard(sync: FolderSync, journal: Journal) {
         }
         if (imported > 0) Text(pluralStringResource(importedTemplate, imported, imported), style = MaterialTheme.typography.bodySmall)
         if (needsUpdate) Text(stringResource(R.string.sync_needs_update), style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+/** A green check in a circle and "Working": the last sync worked. */
+@Composable
+private fun WorkingBadge() {
+    val circle = MaterialTheme.colorScheme.primary
+    val tick = MaterialTheme.colorScheme.onPrimary
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Canvas(Modifier.size(18.dp)) {
+            drawCircle(circle)
+            val w = size.width
+            val check = Path().apply {
+                moveTo(w * 0.28f, w * 0.52f)
+                lineTo(w * 0.44f, w * 0.68f)
+                lineTo(w * 0.73f, w * 0.36f)
+            }
+            drawPath(check, tick, style = Stroke(width = w * 0.12f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        }
+        Text(stringResource(R.string.sync_working), style = MaterialTheme.typography.labelLarge, color = circle)
     }
 }

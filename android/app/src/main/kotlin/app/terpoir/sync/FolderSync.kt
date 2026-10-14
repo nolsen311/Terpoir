@@ -15,6 +15,7 @@ import app.terpoir.core.syncFolderKeyFile
 import app.terpoir.storage.writeNewDocument
 import java.io.IOException
 import java.security.MessageDigest
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -38,6 +39,10 @@ import kotlinx.coroutines.withContext
  *    [masterWrappedByRecovery]) if the folder has none, or replaces the one
  *    this device wrote if its own copy changed. A new device restores from
  *    the folder with the recovery key ([readForRestore]).
+ *
+ * Before these, a small probe file is written, read back and deleted, so a
+ * folder that can't take files fails even when there is nothing new to
+ * write. Whether the last sync worked is kept ([working]) for the card.
  */
 class FolderSync(private val context: Context, private val masterWrappedByRecovery: () -> ByteArray?) {
     private val prefs = context.getSharedPreferences("folder_sync", Context.MODE_PRIVATE)
@@ -54,6 +59,12 @@ class FolderSync(private val context: Context, private val masterWrappedByRecove
 
     /** When the last sync finished, in ms since the epoch, or 0. */
     val lastSyncMs: Long get() = prefs.getLong(KEY_LAST, 0)
+
+    /**
+     * Whether the last sync with this folder worked: `true` after one that
+     * did, `false` after one that failed, `null` before the first.
+     */
+    val working: Boolean? get() = if (prefs.contains(KEY_OK)) prefs.getBoolean(KEY_OK, false) else null
 
     /**
      * Keeps access to [tree], the folder the user picked, across restarts.
@@ -92,9 +103,21 @@ class FolderSync(private val context: Context, private val masterWrappedByRecove
      */
     suspend fun sync(journal: Journal): Outcome? = lock.withLock {
         val tree = folder ?: return@withLock null
+        try {
+            syncWith(tree, journal).also { prefs.edit().putBoolean(KEY_OK, true).apply() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            prefs.edit().putBoolean(KEY_OK, false).apply()
+            throw e
+        }
+    }
+
+    private suspend fun syncWith(tree: Uri, journal: Journal): Outcome =
         withContext(Dispatchers.IO) {
             val resolver = context.contentResolver
             val dir = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+            probe(resolver, tree, dir)
             val seen = prefs.getStringSet(KEY_SEEN, emptySet()).orEmpty().toMutableSet()
             val own = prefs.getStringSet(KEY_OWN, emptySet()).orEmpty()
 
@@ -150,6 +173,21 @@ class FolderSync(private val context: Context, private val masterWrappedByRecove
                 .putLong(KEY_LAST, System.currentTimeMillis())
                 .apply()
             Outcome(imported, written.size, needsUpdate)
+        }
+
+    /**
+     * Writes a small file to the folder, reads it back (in
+     * [writeNewDocument]) and deletes it. Throws if the folder doesn't
+     * keep it. A probe left by an interrupted sync is removed first.
+     */
+    private fun probe(resolver: ContentResolver, tree: Uri, dir: Uri) {
+        child(resolver, tree, PROBE)?.let { runCatching { DocumentsContract.deleteDocument(resolver, it) } }
+        val doc = DocumentsContract.createDocument(resolver, dir, MIME, PROBE)
+            ?: throw IOException("couldn't create a file in the folder")
+        try {
+            writeNewDocument(resolver, doc, PROBE_BYTES)
+        } finally {
+            runCatching { DocumentsContract.deleteDocument(resolver, doc) }
         }
     }
 
@@ -241,6 +279,9 @@ class FolderSync(private val context: Context, private val masterWrappedByRecove
         const val KEY_OWN = "own"
         const val KEY_LAST = "last"
         const val KEY_KEY_WRITTEN = "key_written"
+        const val KEY_OK = "ok"
+        const val PROBE = "terpoir-check.tmp"
+        val PROBE_BYTES = "Terpoir folder check".toByteArray()
         const val KEY_FILE = "terpoir.key"
         const val SUFFIX = ".terpoir"
         const val PARTIAL = ".partial"

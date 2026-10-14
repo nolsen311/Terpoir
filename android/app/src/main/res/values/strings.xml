@@ -74,7 +74,10 @@
     <string name="sync_no_folder">Choose the folder to sync through. Use the same folder on each device.</string>
     <string name="sync_choose">Choose folder</string>
     <string name="sync_change">Change folder</string>
-    <string name="sync_now">Sync now</string>
+    <string name="sync_now">Sync</string>
+    <string name="sync_working">Working</string>
+    <string name="sync_syncing">Syncing…</string>
+    <string name="sync_last_failed">The last sync didn\'t work. Tap Sync to try again.</string>
     <string name="sync_never">Not synced yet.</string>
     <string name="sync_last">Last synced %1$s.</string>
     <string name="sync_done">Synced.</string>
