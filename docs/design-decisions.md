@@ -506,7 +506,7 @@ Making a new note should take one tap from outside the app. Every entry point op
 - No entity requirement; Android ships under a personal developer account. Check current closed-testing requirements for new personal accounts at signup.
 - **First submission (maintainer, 2026-10-13):**
   - **Identity:** developer name "Terpoir", public contact `terpoirapp@gmail.com`, website `https://terpoir.app`, privacy policy `https://terpoir.app/privacy` (`site/privacy.html`).
-  - **Declarations:** health apps declaration for Medication and Treatment Management, and Sleep Management.
+  - **Declarations:** health apps declaration for Sleep Management only (maintainer, 2026-10-14). Medication and Treatment Management was declared at first, but it is in the form's Medical group, which Google expects from organization accounts; Play rejected it for the personal account. An organization account (an LLC plus a D-U-N-S number) stays the fallback if Google later treats Targeted symptoms as medical.
   - **No payments profile yet:** no Connoisseur unlock or tip jar in this release.
   - **No background location** in this release (see "Notify me").
   - **Answers:** every Play Console answer (listing copy, Data safety from the merged manifest and Google's SDK disclosures, IARC, target audience 18+, ads, advertising ID, sign-in details, foreground service) is in `docs/play-listing.md`, checked against the Play Console Help Center (2026-10-13). Store graphics are in `android/release/store/`.
