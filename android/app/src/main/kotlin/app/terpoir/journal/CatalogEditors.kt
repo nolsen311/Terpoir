@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.core.BrandData
+import app.terpoir.core.CannabinoidAmountData
 import app.terpoir.core.IdentifierData
 import app.terpoir.core.ProductData
 import app.terpoir.core.ProductMatch
@@ -78,6 +80,8 @@ fun ProductEditor(
     var thcUnit by remember { mutableStateOf(vocab.labelUnits.first()) }
     var cbd by remember { mutableStateOf("") }
     var cbdUnit by remember { mutableStateOf(vocab.labelUnits.first()) }
+    // Other label cannabinoids (CBN, CBG, THCa, CBDV), as typed.
+    var others by remember { mutableStateOf<List<OtherAmount>>(emptyList()) }
     var batch by remember { mutableStateOf("") }
     var packageDay by remember { mutableStateOf<Long?>(null) }
     var terpenes by remember { mutableStateOf<List<TagIntensity>>(emptyList()) }
@@ -110,6 +114,7 @@ fun ProductEditor(
             p.thcUnit?.let { thcUnit = it }
             cbd = p.cbdMilli?.let(::formatMilli).orEmpty()
             p.cbdUnit?.let { cbdUnit = it }
+            others = p.cannabinoids.map { OtherAmount(it.cannabinoid, formatMilli(it.milli), it.unit) }
             batch = p.batch.orEmpty()
             packageDay = p.packageDateDay
             terpenes = p.terpenes
@@ -198,6 +203,14 @@ fun ProductEditor(
         val thcMilli = parseMilli(thc)
         val cbdMilli = parseMilli(cbd)
         if (thcMilli == Parsed.Invalid || cbdMilli == Parsed.Invalid) return null
+        val cannabinoids = mutableListOf<CannabinoidAmountData>()
+        for (other in others) {
+            when (val parsed = parseMilli(other.text)) {
+                Parsed.Invalid -> return null
+                is Parsed.Milli -> cannabinoids += CannabinoidAmountData(other.cannabinoid, parsed.value, other.unit)
+                Parsed.Empty -> Unit // Cleared: removed.
+            }
+        }
         val thcValue = (thcMilli as? Parsed.Milli)?.value
         val cbdValue = (cbdMilli as? Parsed.Milli)?.value
         return ProductData(
@@ -214,6 +227,7 @@ fun ProductEditor(
             packageDateDay = packageDay,
             identifiers = identifiers,
             shops = shops,
+            cannabinoids = cannabinoids,
         )
     }
 
@@ -289,6 +303,27 @@ fun ProductEditor(
         if (showPotency) {
             LabelRow(stringResource(R.string.product_thc), thc, { thc = it }, vocab, thcUnit) { thcUnit = it }
             LabelRow(stringResource(R.string.product_cbd), cbd, { cbd = it }, vocab, cbdUnit) { cbdUnit = it }
+            for ((i, other) in others.withIndex()) {
+                LabelRow(
+                    label(other.cannabinoid),
+                    other.text,
+                    { text -> others = others.toMutableList().also { it[i] = other.copy(text = text) } },
+                    vocab,
+                    other.unit,
+                ) { unit -> others = others.toMutableList().also { it[i] = other.copy(unit = unit) } }
+            }
+            // The rest, to add; a cleared amount is dropped when saved.
+            val missing = vocab.cannabinoids.filter { c -> others.none { it.cannabinoid == c } }
+            if (missing.isNotEmpty()) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (c in missing) {
+                        AssistChip(
+                            onClick = { others = others + OtherAmount(c, "", vocab.labelUnits.first()) },
+                            label = { Text(stringResource(R.string.product_add_cannabinoid, label(c))) },
+                        )
+                    }
+                }
+            }
         }
         if (showTerpenes) {
             Text(stringResource(R.string.product_terpenes), style = MaterialTheme.typography.labelLarge)
@@ -407,6 +442,9 @@ fun ProductEditor(
 
 private enum class ProductScan { LABEL, CODE }
 
+/** A label cannabinoid amount as typed in the product editor. */
+private data class OtherAmount(val cannabinoid: String, val text: String, val unit: String)
+
 /**
  * "Same product, new batch": keeps the existing product's name, brand and
  * strains, and takes the new batch, package date and label values where
@@ -418,6 +456,7 @@ fun mergeBatch(existing: ProductData, new: ProductData): ProductData = existing.
     thcUnit = if (new.thcMilli != null) new.thcUnit else existing.thcUnit,
     cbdMilli = new.cbdMilli ?: existing.cbdMilli,
     cbdUnit = if (new.cbdMilli != null) new.cbdUnit else existing.cbdUnit,
+    cannabinoids = new.cannabinoids.ifEmpty { existing.cannabinoids },
     terpenes = new.terpenes.ifEmpty { existing.terpenes },
     batch = new.batch ?: existing.batch,
     packageDateDay = new.packageDateDay ?: existing.packageDateDay,

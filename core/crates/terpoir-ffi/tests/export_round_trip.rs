@@ -16,10 +16,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use terpoir_ffi::{
-    BrandData, CoreError, IdentifierData, Journal, LocalTimeData, NewKeys, ProductData,
-    ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData, SnippetData,
-    SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance, TagRefData,
-    create_keys, keys_for_restore, read_export_archive,
+    BrandData, CannabinoidAmountData, CoreError, IdentifierData, Journal, LocalTimeData, NewKeys,
+    ProductData, ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData,
+    SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance,
+    TagRefData, create_keys, keys_for_restore, read_export_archive,
 };
 
 const TYPES: [RecordType; 8] = [
@@ -195,6 +195,11 @@ fn fill(journal: &Journal) -> Filled {
                     kind: "barcode".into(),
                 }],
                 shops: vec![spot.clone()],
+                cannabinoids: vec![CannabinoidAmountData {
+                    cannabinoid: "cbn".into(),
+                    milli: 2_000,
+                    unit: "mg_per_unit".into(),
+                }],
             },
             2,
         )

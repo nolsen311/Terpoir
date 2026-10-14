@@ -438,6 +438,7 @@
     <string name="level_dominant">Dominant</string>
     <string name="level_secondary">Secondary</string>
     <string name="level_trace">Trace</string>
+    <string name="product_add_cannabinoid">Add %1$s</string>
     <string name="cannabinoid_cbn">CBN</string>
     <string name="cannabinoid_cbg">CBG</string>
     <string name="cannabinoid_thca">THCa</string>

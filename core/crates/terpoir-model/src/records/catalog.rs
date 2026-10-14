@@ -115,7 +115,8 @@ slug_enum! {
 }
 
 slug_enum! {
-    /// Cannabinoids besides THC and CBD that a strain can be known for.
+    /// Cannabinoids besides THC and CBD: a strain can be known for them, and
+    /// a product's label can state their amounts.
     Cannabinoid {
         /// Cannabinol.
         Cbn => "cbn",
@@ -191,6 +192,10 @@ pub struct Product {
     pub thc: Option<LabelAmount>,
     /// CBD from the label.
     pub cbd: Option<LabelAmount>,
+    /// Other cannabinoids from the label (CBN, CBG, THCa, CBDV), in the
+    /// same units as THC and CBD. Since 0.5.0; stored per entry, so an older
+    /// app keeps them untouched.
+    pub cannabinoids: BTreeMap<Cannabinoid, LabelAmount>,
     /// Top terpenes from the label, in thousandths of a percent.
     pub terpenes: BTreeMap<TagRef, i64>,
     /// Batch or lot number.
@@ -217,6 +222,7 @@ impl Product {
             strains: BTreeSet::new(),
             thc: None,
             cbd: None,
+            cannabinoids: BTreeMap::new(),
             terpenes: BTreeMap::new(),
             batch: None,
             package_date: None,
@@ -239,6 +245,12 @@ impl Record for Product {
             .id_set("strains", &self.strains)
             .opt("thc", self.thc.as_ref(), label_value)
             .opt("cbd", self.cbd.as_ref(), label_value)
+            .map(
+                "cannabinoid_amounts",
+                &self.cannabinoids,
+                |c| c.slug().to_owned(),
+                label_value,
+            )
             .map(
                 "terpenes",
                 &self.terpenes,
@@ -273,6 +285,14 @@ impl Record for Product {
             strains: r.id_set("strains")?,
             thc: label_from(r.value("thc"), "thc")?,
             cbd: label_from(r.value("cbd"), "cbd")?,
+            cannabinoids: r
+                .entries("cannabinoid_amounts")
+                .filter_map(|(slug, value)| {
+                    label_from(value, "cannabinoid_amounts")
+                        .map(|amount| amount.map(|a| (Cannabinoid::from_slug(slug), a)))
+                        .transpose()
+                })
+                .collect::<Result<_>>()?,
             terpenes: r.tag_map("terpenes", |v| match v {
                 Value::Int(i) => Some(*i),
                 _ => None,
@@ -296,7 +316,13 @@ impl Record for Product {
                 "batch",
                 "package_date",
             ],
-            &["strains", "terpenes", "identifiers", "shops"],
+            &[
+                "strains",
+                "cannabinoid_amounts",
+                "terpenes",
+                "identifiers",
+                "shops",
+            ],
         )
     }
 }

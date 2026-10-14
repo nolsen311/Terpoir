@@ -348,6 +348,22 @@ pub struct ProductData {
     pub identifiers: Vec<IdentifierData>,
     /// Re-up Spot IDs it is bought at ("Where I buy it").
     pub shops: Vec<String>,
+    /// Other cannabinoids from the label (since 0.5.0), at most one amount
+    /// each. Last, with a default, so callers that predate it compile; an
+    /// editor that doesn't show them must pass the saved ones back.
+    #[uniffi(default = [])]
+    pub cannabinoids: Vec<CannabinoidAmountData>,
+}
+
+/// A cannabinoid amount from a product's label.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CannabinoidAmountData {
+    /// `cbn`, `cbg`, `thca`, `cbdv`, or one from a newer app version.
+    pub cannabinoid: String,
+    /// Amount in thousandths of `unit`.
+    pub milli: i64,
+    /// `percent`, `mg_per_unit` or `mg_total`.
+    pub unit: String,
 }
 
 /// A code read from a product's packaging.
@@ -386,6 +402,23 @@ impl ProductData {
             strains: parse_ids(&self.strains)?,
             thc: label(self.thc_milli, self.thc_unit.as_ref())?,
             cbd: label(self.cbd_milli, self.cbd_unit.as_ref())?,
+            cannabinoids: {
+                let mut amounts = BTreeMap::new();
+                for c in &self.cannabinoids {
+                    let amount = LabelAmount {
+                        milli: c.milli,
+                        unit: LabelUnit::from_slug(&c.unit),
+                    };
+                    // One amount per cannabinoid.
+                    if amounts
+                        .insert(Cannabinoid::from_slug(&c.cannabinoid), amount)
+                        .is_some()
+                    {
+                        return Err(CoreError::InvalidInput);
+                    }
+                }
+                amounts
+            },
             terpenes: self
                 .terpenes
                 .iter()
@@ -427,6 +460,15 @@ impl ProductData {
                 })
                 .collect(),
             shops: ids_to_strings(&p.shops),
+            cannabinoids: p
+                .cannabinoids
+                .iter()
+                .map(|(c, a)| CannabinoidAmountData {
+                    cannabinoid: c.slug().to_owned(),
+                    milli: a.milli,
+                    unit: a.unit.slug().to_owned(),
+                })
+                .collect(),
         }
     }
 }

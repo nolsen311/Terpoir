@@ -283,6 +283,7 @@ fn products_csv(docs: &[Document], names: &Names) -> String {
         "thc_unit",
         "cbd",
         "cbd_unit",
+        "other_cannabinoids",
         "terpenes_percent",
         "batch",
         "package_date",
@@ -303,6 +304,11 @@ fn products_csv(docs: &[Document], names: &Names) -> String {
             opt(p.thc.as_ref().map(|a| a.unit.slug().to_owned())),
             opt(p.cbd.as_ref().map(|a| milli(a.milli))),
             opt(p.cbd.as_ref().map(|a| a.unit.slug().to_owned())),
+            join(
+                p.cannabinoids
+                    .iter()
+                    .map(|(c, a)| format!("{}={} {}", c.slug(), milli(a.milli), a.unit.slug())),
+            ),
             join(
                 p.terpenes
                     .iter()
