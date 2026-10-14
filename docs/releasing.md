@@ -153,6 +153,12 @@ The steps, for doing them separately:
    android/scripts/play-upload.sh v0.1.0
    ```
    Then start the rollout in the Play Console, while releases are drafts.
+7. **Compatibility fixtures:** generate a database, an export and sync
+   blobs with the new tag's own code (in a separate checkout with its own
+   `CARGO_TARGET_DIR`) and check them in under
+   `core/crates/terpoir-ffi/tests/fixtures/<version>/` in a PR, as that
+   directory's `README.md` describes. `cargo test` then checks that every
+   later version still opens them. Not done by `release.sh`.
 
 ## Notes
 
