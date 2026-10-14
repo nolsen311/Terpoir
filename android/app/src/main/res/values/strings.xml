@@ -3,6 +3,7 @@
 <!-- Copyright (C) 2026 The Terpoir Authors -->
 <resources>
     <string name="app_name" translatable="false">Terpoir</string>
+    <string name="brand_tagline">A private journal, kept on your phone</string>
     <string name="core_version">Core %1$s</string>
     <string name="setup_explainer">Your journal is encrypted on this device and unlocks with your fingerprint, face or screen lock.</string>
     <string name="setup_prompt">Protect your journal</string>

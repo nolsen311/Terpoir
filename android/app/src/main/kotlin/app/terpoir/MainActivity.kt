@@ -59,6 +59,7 @@ import app.terpoir.journal.ScanServices
 import app.terpoir.map.MapProvider
 import app.terpoir.map.MapProviderCard
 import app.terpoir.onboarding.AgeGate
+import app.terpoir.onboarding.BrandFrame
 import app.terpoir.onboarding.ExistingJournal
 import app.terpoir.onboarding.GoogleMapChoice
 import app.terpoir.onboarding.JournalChoice
@@ -247,25 +248,31 @@ class MainActivity : ComponentActivity() {
         val recoveryKey = onboarding.recoveryKey
         when {
             step == OnboardingStep.AGE -> {
-                AgeGate(Distribution.ageSignals, onAdult = onboarding::passAgeGate)
+                BrandFrame {
+                    AgeGate(Distribution.ageSignals, onAdult = onboarding::passAgeGate)
+                }
                 return
             }
             showContent && step == OnboardingStep.BACKUP && recoveryKey != null -> {
-                RecoveryKeyBackup(recoveryKey, session::checkRecoveryKey, onboarding::backupResolved)
+                BrandFrame {
+                    RecoveryKeyBackup(recoveryKey, session::checkRecoveryKey, onboarding::backupResolved)
+                }
                 return
             }
             showContent && step == OnboardingStep.MAP_CHOICE -> {
                 val scope = rememberCoroutineScope()
-                GoogleMapChoice(
-                    onUseGoogle = {
-                        scope.launch {
-                            app.privacyCenter.toggles.firstOrNull { it.id == ONLINE_MAP }?.set(true)
-                            app.privacySettings.mapProvider = MapProvider.GOOGLE
-                            onboarding.mapChosen()
-                        }
-                    },
-                    onNotNow = onboarding::mapChosen,
-                )
+                BrandFrame {
+                    GoogleMapChoice(
+                        onUseGoogle = {
+                            scope.launch {
+                                app.privacyCenter.toggles.firstOrNull { it.id == ONLINE_MAP }?.set(true)
+                                app.privacySettings.mapProvider = MapProvider.GOOGLE
+                                onboarding.mapChosen()
+                            }
+                        },
+                        onNotNow = onboarding::mapChosen,
+                    )
+                }
                 return
             }
             showContent && step == OnboardingStep.PRIVACY_TOUR -> {
@@ -358,101 +365,109 @@ class MainActivity : ComponentActivity() {
         restoring?.let { archive ->
             if (state == JournalSession.State.NoJournal) {
                 val folder = restoringFolder
-                RestoreScreen(
-                    explainer = if (folder == null) R.string.restore_explainer else R.string.restore_folder_explainer,
-                    check = { typed -> session.checkRecoveryKey(typed, archive.masterWrappedByRecovery) },
-                    onRestore = { typed ->
-                        // From a folder: leave out blobs that don't open (one
-                        // still being written, say); folder sync retries them.
-                        val usable = if (folder == null) archive else runCatching { readableBlobs(typed, archive) }.getOrNull()
-                        // Checked before anything changes: an export a newer
-                        // app wrote is refused whole, never restored partly.
-                        val check = usable?.let { runCatching { checkExportArchive(typed, it) }.getOrNull() }
-                        message = when {
-                            usable == null || check == null -> R.string.restore_failed
-                            folder != null && usable.blobs.isEmpty() && archive.blobs.isNotEmpty() -> R.string.restore_folder_out_of_date
-                            check.newerFormatBlobs > 0uL -> R.string.newer_version_needed
-                            else -> null
-                        }
-                        if (usable == null || message != null) {
-                            restoring = null
-                            restoringFolder = null
-                        } else {
-                            message = restoreJournal(
-                                typed,
-                                usable,
-                                onRestored = {
-                                    // Keep syncing through the folder the user restored from.
-                                    if (folder != null) {
-                                        app.folderSync.adopt(folder)
-                                        screenScope.launch { app.privacyCenter.toggles.firstOrNull { it.id == FOLDER_SYNC }?.set(true) }
-                                    }
-                                },
-                            ) {
-                                message = it
+                BrandFrame {
+                    RestoreScreen(
+                        explainer = if (folder == null) R.string.restore_explainer else R.string.restore_folder_explainer,
+                        check = { typed -> session.checkRecoveryKey(typed, archive.masterWrappedByRecovery) },
+                        onRestore = { typed ->
+                            // From a folder: leave out blobs that don't open (one
+                            // still being written, say); folder sync retries them.
+                            val usable = if (folder == null) archive else runCatching { readableBlobs(typed, archive) }.getOrNull()
+                            // Checked before anything changes: an export a newer
+                            // app wrote is refused whole, never restored partly.
+                            val check = usable?.let { runCatching { checkExportArchive(typed, it) }.getOrNull() }
+                            message = when {
+                                usable == null || check == null -> R.string.restore_failed
+                                folder != null && usable.blobs.isEmpty() && archive.blobs.isNotEmpty() -> R.string.restore_folder_out_of_date
+                                check.newerFormatBlobs > 0uL -> R.string.newer_version_needed
+                                else -> null
+                            }
+                            if (usable == null || message != null) {
                                 restoring = null
                                 restoringFolder = null
+                            } else {
+                                message = restoreJournal(
+                                    typed,
+                                    usable,
+                                    onRestored = {
+                                        // Keep syncing through the folder the user restored from.
+                                        if (folder != null) {
+                                            app.folderSync.adopt(folder)
+                                            screenScope.launch { app.privacyCenter.toggles.firstOrNull { it.id == FOLDER_SYNC }?.set(true) }
+                                        }
+                                    },
+                                ) {
+                                    message = it
+                                    restoring = null
+                                    restoringFolder = null
+                                }
                             }
-                        }
-                    },
-                    onCancel = {
-                        restoring = null
-                        restoringFolder = null
-                    },
-                )
+                        },
+                        onCancel = {
+                            restoring = null
+                            restoringFolder = null
+                        },
+                    )
+                }
                 return
             }
         }
-        Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            when (state) {
-                JournalSession.State.NoJournal -> if (!existing) {
-                    JournalChoice(
-                        onNew = { message = createJournal { message = it } },
-                        onExisting = {
-                            message = null
-                            existing = true
-                        },
-                    )
-                } else {
-                    ExistingJournal(
-                        onExport = { pickExport.launch(arrayOf("*/*")) },
-                        onFolder = { pickFolder.launch(null) },
-                        onBack = {
-                            message = null
-                            existing = false
-                        },
-                    )
-                }
-                JournalSession.State.Locked -> {
-                    // Straight to the unlock prompt, once each time the app
-                    // comes into view. Cancelling leaves this screen, whose
-                    // button asks again.
-                    LaunchedEffect(appearances) {
-                        if (appearances != promptedFor && !prompting) {
-                            promptedFor = appearances
-                            lifecycle.withResumed { message = unlock { message = it } }
-                        }
+        Branded(state == JournalSession.State.NoJournal) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                when (state) {
+                    JournalSession.State.NoJournal -> if (!existing) {
+                        JournalChoice(
+                            onNew = { message = createJournal { message = it } },
+                            onExisting = {
+                                message = null
+                                existing = true
+                            },
+                        )
+                    } else {
+                        ExistingJournal(
+                            onExport = { pickExport.launch(arrayOf("*/*")) },
+                            onFolder = { pickFolder.launch(null) },
+                            onBack = {
+                                message = null
+                                existing = false
+                            },
+                        )
                     }
-                    Text(stringResource(R.string.locked))
-                    Button(onClick = { message = unlock { message = it } }) { Text(stringResource(R.string.unlock)) }
-                    if (captureSaved) Text(stringResource(R.string.capture_locked_saved))
+                    JournalSession.State.Locked -> {
+                        // Straight to the unlock prompt, once each time the app
+                        // comes into view. Cancelling leaves this screen, whose
+                        // button asks again.
+                        LaunchedEffect(appearances) {
+                            if (appearances != promptedFor && !prompting) {
+                                promptedFor = appearances
+                                lifecycle.withResumed { message = unlock { message = it } }
+                            }
+                        }
+                        Text(stringResource(R.string.locked))
+                        Button(onClick = { message = unlock { message = it } }) { Text(stringResource(R.string.unlock)) }
+                        if (captureSaved) Text(stringResource(R.string.capture_locked_saved))
+                    }
+                    // Unlocked but in the background: journal content stays hidden.
+                    is JournalSession.State.Unlocked -> Unit
                 }
-                // Unlocked but in the background: journal content stays hidden.
-                is JournalSession.State.Unlocked -> Unit
+                message?.let {
+                    Text(stringResource(it), color = MaterialTheme.colorScheme.error)
+                    // Failures with no step for the user to take; the others
+                    // (wrong file, no screen lock, an update needed) say what to do.
+                    if (it in REPORTABLE) ReportButton(it)
+                }
+                Text(stringResource(R.string.core_version, core), style = MaterialTheme.typography.bodySmall)
             }
-            message?.let {
-                Text(stringResource(it), color = MaterialTheme.colorScheme.error)
-                // Failures with no step for the user to take; the others
-                // (wrong file, no screen lock, an update needed) say what to do.
-                if (it in REPORTABLE) ReportButton(it)
-            }
-            Text(stringResource(R.string.core_version, core), style = MaterialTheme.typography.bodySmall)
         }
     }
+
+    /** Onboarding's first-run screens sit under the brand header ([BrandFrame]). */
+    @Composable
+    private fun Branded(on: Boolean, content: @Composable () -> Unit) = if (on) BrandFrame(content) else content()
 
     /**
      * Starts journal creation; returns an error message to show, if any.

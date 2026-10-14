@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception -->
+<!-- Copyright (C) 2026 The Terpoir Authors -->
+<!-- The mark on its own, for the brand header: ic_launcher_foreground's
+     open journal and bubbles, cropped to their bounds (x 31 to 77, y 30 to
+     79 of the icon's 108-unit canvas). The pages' bottom edge is the
+     drawable's bottom, so the mark can sit on the wordmark's baseline. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="46dp"
+    android:height="48dp"
+    android:viewportWidth="46"
+    android:viewportHeight="48">
+    <group
+        android:translateX="-31"
+        android:translateY="-30">
+        <path
+            android:fillColor="#FFE8E2D0"
+            android:pathData="M53,58 C47,54 40,53 32,54 L32,74 C40,73 47,74 53,78 Z" />
+        <path
+            android:fillColor="#FFE8E2D0"
+            android:pathData="M55,58 C61,54 68,53 76,54 L76,74 C68,73 61,74 55,78 Z" />
+        <path
+            android:fillColor="#FFD9A441"
+            android:pathData="M50.8,49 A3.2,3.2 0 1,0 57.2,49 A3.2,3.2 0 1,0 50.8,49 Z M46.8,40 A2.2,2.2 0 1,0 51.2,40 A2.2,2.2 0 1,0 46.8,40 Z M55.4,33 A1.6,1.6 0 1,0 58.6,33 A1.6,1.6 0 1,0 55.4,33 Z" />
+    </group>
+</vector>
