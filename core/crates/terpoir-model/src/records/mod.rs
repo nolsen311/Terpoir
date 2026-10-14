@@ -20,7 +20,8 @@ mod tag;
 mod tracking;
 
 pub use catalog::{
-    Brand, Form, IdentifierKind, LabelAmount, LabelUnit, Product, Strain, StrainType, Terpene,
+    Brand, Cannabinoid, Form, IdentifierKind, LabelAmount, LabelUnit, Product, Strain, StrainType,
+    Terpene, TerpeneLevel,
 };
 pub use feedback::InsightFeedbackList;
 pub use purchase::{Price, Purchase, PurchaseLine};
@@ -31,7 +32,7 @@ pub use session::{
 pub use snippet::{Provenance, Snippet};
 pub use spot::{DEFAULT_SPOT_RADIUS_M, Location, MIN_SPOT_RADIUS_M, Spot, SpotPurpose};
 pub use tag::{Flavor, Mood, Tag, TagCategory};
-pub use tracking::{TrackedField, TrackingPreferences};
+pub use tracking::{StrainDetail, TrackedField, TrackingPreferences};
 
 /// The kind of record a document holds. The numeric codes are stored on
 /// disk and synced: never change or reuse them.

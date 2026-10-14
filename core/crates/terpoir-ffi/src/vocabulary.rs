@@ -7,8 +7,8 @@
 //! slug (from a newer app version) is shown as is.
 
 use terpoir_model::{
-    CoreEffect, DoseUnit, Flavor, Form, Intention, LabelUnit, Method, Mood, Social, StrainType,
-    SymptomResult, TargetedSymptom, Terpene,
+    Cannabinoid, CoreEffect, DoseUnit, Flavor, Form, Intention, LabelUnit, Method, Mood, Social,
+    StrainDetail, StrainType, SymptomResult, TargetedSymptom, Terpene, TerpeneLevel,
 };
 
 /// Every built-in vocabulary, each as slugs in display order.
@@ -26,6 +26,12 @@ pub struct Vocabulary {
     pub label_units: Vec<String>,
     /// Indica / sativa / hybrid.
     pub strain_types: Vec<String>,
+    /// A strain's terpene levels, most first.
+    pub terpene_levels: Vec<String>,
+    /// Cannabinoids a strain can be known for, besides THC and CBD.
+    pub cannabinoids: Vec<String>,
+    /// The journal's strain detail steps, least first.
+    pub strain_details: Vec<String>,
     /// Session intentions.
     pub intentions: Vec<String>,
     /// Solo or with others.
@@ -60,6 +66,9 @@ pub fn vocabulary() -> Vocabulary {
         forms: owned(Form::SLUGS),
         label_units: owned(LabelUnit::SLUGS),
         strain_types: owned(StrainType::SLUGS),
+        terpene_levels: owned(TerpeneLevel::SLUGS),
+        cannabinoids: owned(Cannabinoid::SLUGS),
+        strain_details: owned(StrainDetail::SLUGS),
         intentions: owned(Intention::SLUGS),
         social: owned(Social::SLUGS),
         symptom_results: owned(SymptomResult::SLUGS),

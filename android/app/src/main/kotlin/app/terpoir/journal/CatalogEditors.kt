@@ -393,7 +393,7 @@ fun ProductEditor(
                         brand = repo.saveBrand(null, BrandData(text))
                         brands = repo.brands()
                     } else {
-                        val strainId = repo.saveStrain(null, StrainData(text, null, emptyList(), null))
+                        val strainId = repo.saveStrain(null, StrainData(text, null, emptyList(), null, emptyList(), emptyList(), emptyList()))
                         allStrains = repo.strains()
                         strains = strains + strainId
                     }
@@ -477,7 +477,16 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
         onClose = onDone,
         saveEnabled = name.isNotBlank(),
         onSave = {
-            val data = StrainData(name.trim(), lineage.trim().ifEmpty { null }, original?.terpenes.orEmpty(), type)
+            // Fields this editor doesn't show yet are kept as they are.
+            val data = StrainData(
+                name.trim(),
+                lineage.trim().ifEmpty { null },
+                original?.terpenes.orEmpty(),
+                type,
+                original?.terpeneLevels.orEmpty(),
+                original?.parents.orEmpty(),
+                original?.cannabinoids.orEmpty(),
+            )
             scope.launch {
                 repo.saveStrain(id, data)
                 onDone()
