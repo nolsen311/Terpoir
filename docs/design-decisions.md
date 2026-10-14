@@ -532,7 +532,7 @@ Each journal entry records one consumption session, not a product review. Produc
   - Targeted symptoms (optional section, see below).
 - **Product:** name, form (flower, pre-roll, vape cart, concentrate, edible, tincture, beverage, topical), brand, strain(s), label data (THC/CBD % or mg per unit, top terpenes), batch/lot, package date, and optional scanned identifiers (barcode / package tag). Where and for how much it was bought lives on Purchase records, not here.
 - **Purchase (decided):** date, optional Re-up Spot, and line items (map keyed by line ID), each with product, batch, and price. A product links to every purchase of it, so the same product bought at two shops can be compared. Session product lines may reference the purchase line they came from.
-- **Strain / cultivar:** name, lineage, dominant terpenes, indica/sativa/hybrid label. Insights are driven by terpene and cannabinoid profiles, not the label, which is scientifically weak.
+- **Strain / cultivar:** name, lineage, dominant terpenes, indica/sativa/hybrid label (richer detail from 0.4.0: see "Richer strains"). Insights are driven by terpene and cannabinoid profiles, not the label, which is scientifically weak.
 - **Brand.**
 - **Spot:** see Location and saved spots.
 
@@ -624,6 +624,26 @@ Each journal entry records one consumption session, not a product review. Produc
   - **Editing never drops data:** fields an editor does not show yet (activity, spot, symptoms, attachments, product terpenes, package date and identifiers, a line's purchase) are carried over unchanged.
   - **Lock clears everything:** locking replaces the whole UI, open editors included.
 - `Debug` output of documents, values and records is redacted; decrypted text is wiped when a document is dropped.
+
+## Richer strains (decided 2026-10-14, maintainer)
+
+Strains can be described in as much detail as the user wants. Planned for 0.4.0 (detail setting, terpenes, lineage) and 0.5.0 (cannabinoids, grouped insights), after the Privacy Center pass in 0.3.0 and before strain lookups in 0.6.0; see `docs/roadmap.md`, "Release plan".
+
+- **One detail setting for the journal**, synced like "What I track", with three steps:
+  - **Simple:** indica / sativa / hybrid only.
+  - **Terpenes:** also which terpenes the strain is known for. The picker guides the user to 3 or fewer ("pick the ones that stand out"); more is allowed, never blocked.
+  - **Detailed:** also each terpene's rough proportion (dominant, secondary or trace, never exact percentages, which stay on products where a label states them), parent strains (lineage), and further cannabinoids.
+
+  A lower step hides the extra fields; it never deletes them, and stepping up shows them again. Existing journals start at Terpenes, which matches today's strain editor. With terpenes hidden in "What I track", the strain editor shows no terpenes at any step.
+- **Proportions:** a strain's terpenes stay a set (which ones), and each may also have a level. Terpenes logged before 0.4.0 have no level ("unrated") until the user sets one; nothing is guessed.
+- **Lineage:** parents are links to strain records. A parent can be one the user has logged, or a typed name, which creates a minimal strain record to fill in later. The old free-text lineage stays as a note on the strain; it isn't parsed into links.
+- **Cannabinoids (0.5.0):** besides THC and CBD, products can carry label amounts for CBN, CBG, THCa and CBDV, in the same units. A strain can note which of them it is known for. Exact amounts belong to products only.
+- **Insights:**
+  - 0.4.0: when a product's label lists no terpenes, the terpene insights fall back to its strain's dominant terpene (a terpene rated dominant, or the only one listed), and the insight says the profile came from the strain, not a label.
+  - 0.5.0: insights and the shop effect can group strains by shared parent or by dominant terpene, not only by strain record ("Shop insights").
+- **Compatibility:** the new fields are additive (levels, parents and cannabinoids are new fields beside the existing ones), so an older app keeps reading the strain's name, type and terpene set. A 0.4.0 compatibility fixture is checked in with the release (`docs/releasing.md`, step 7).
+- **Lookups (0.6.0):** a strain catalog can fill these fields as suggestions the user confirms ("Catalog lookups").
+- **Shares and export:** the new fields follow the same rules as the old ones: hidden fields are never offered, and the plaintext export includes what the journal holds.
 
 ## Product names (decided 2026-10-12)
 - A product is shown as its brand followed by its own name ("Fire Bros Block Berry Cart") everywhere it appears: the catalog, the timeline, and the product pickers. The stored name stays the product's own, so it needn't repeat the brand. A name that already starts with its brand is shown as it is, never doubled. Display only: the model keeps name and brand as separate fields.
