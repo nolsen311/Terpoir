@@ -9,7 +9,7 @@ use std::collections::BTreeSet;
 use terpoir_model::{Document, RecordId, RecordKind, Value};
 
 /// Map fields whose entry keys are record IDs.
-const ID_KEYED_MAPS: &[&str] = &["strains", "shops"];
+const ID_KEYED_MAPS: &[&str] = &["strains", "shops", "parents"];
 /// Map fields whose entry keys are tag references.
 const TAG_KEYED_MAPS: &[&str] = &["effects", "symptoms", "tags", "purposes", "terpenes"];
 const CUSTOM_TAG_PREFIX: &str = "custom:";
@@ -20,7 +20,8 @@ const MS_PER_DAY: i64 = 86_400_000;
 /// adds an index table): the store then rebuilds the index of every record
 /// on the first unlock after the upgrade. The `rules_match_their_version`
 /// test pins the rules to this number.
-pub(crate) const VERSION: u32 = 1;
+/// 2 (0.4.0): a strain's parent strains are references.
+pub(crate) const VERSION: u32 = 2;
 
 /// Index rows for one record.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -94,7 +95,7 @@ mod tests {
     use super::*;
     use terpoir_model::{
         CoreEffect, DeviceId, Hlc, IdentifierKind, LocalTime, Method, Product, ProductLine,
-        Purchase, PurchaseLine, PurchaseRef, Session, Stamp, TagRef,
+        Purchase, PurchaseLine, PurchaseRef, Session, Stamp, Strain, TagRef,
     };
 
     fn stamp() -> Stamp {
@@ -213,9 +214,12 @@ mod tests {
         product
             .terpenes
             .insert(TagRef::Builtin("myrcene".into()), 2);
+        let mut strain = Strain::new("y".into());
+        strain.parents.insert(id(10));
         let docs = [
             Document::create(&session, stamp()).unwrap(),
             Document::create(&product, stamp()).unwrap(),
+            Document::create(&strain, stamp()).unwrap(),
         ];
         let summary: Vec<_> = docs
             .iter()
@@ -225,7 +229,7 @@ mod tests {
                 (refs, e.day, e.tags.into_iter().collect::<Vec<_>>())
             })
             .collect();
-        assert_eq!(VERSION, 1, "update the expected entries below with VERSION");
+        assert_eq!(VERSION, 2, "update the expected entries below with VERSION");
         assert_eq!(
             summary,
             [
@@ -235,6 +239,7 @@ mod tests {
                     vec![format!("custom:{}", id(4).to_hex()), "relaxed".to_owned()],
                 ),
                 (vec![8, 9], None, vec!["myrcene".to_owned()]),
+                (vec![10], None, vec![]),
             ],
             "the index rules changed: bump index::VERSION"
         );
