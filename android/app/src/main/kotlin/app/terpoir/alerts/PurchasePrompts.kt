@@ -72,7 +72,7 @@ class PurchasePrompts(private val context: Context, private val settings: Privac
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notification = NotificationCompat.Builder(context, CHANNEL)
-            .setSmallIcon(R.drawable.ic_journal)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.prompt_title))
             .setContentText(context.getString(R.string.prompt_text))
             .setContentIntent(open)

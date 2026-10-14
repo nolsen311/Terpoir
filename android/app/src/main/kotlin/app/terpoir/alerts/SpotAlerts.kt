@@ -203,7 +203,7 @@ class SpotAlerts(
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val discreet = NotificationCompat.Builder(context, CHANNEL)
-            .setSmallIcon(R.drawable.ic_journal)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.alert_discreet))
             .setContentText(context.getString(R.string.alert_discreet_text))
             .setContentIntent(open)
@@ -216,7 +216,7 @@ class SpotAlerts(
         // discreet version instead.
         val detail = if (tier == AlertTier.RICH) detail(spot) else null
         return NotificationCompat.Builder(context, CHANNEL)
-            .setSmallIcon(R.drawable.ic_journal)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.alert_named, spot.name))
             .setContentText(detail ?: context.getString(R.string.alert_discreet_text))
             .setContentIntent(open)
