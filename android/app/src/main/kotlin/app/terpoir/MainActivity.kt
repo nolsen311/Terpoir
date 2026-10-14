@@ -7,6 +7,7 @@ package app.terpoir
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -34,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.withResumed
 import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.PurchasePrompts
 import app.terpoir.alerts.SpotAlerts
@@ -102,6 +105,22 @@ class MainActivity : ComponentActivity() {
     /** A note was just written while locked: say so on the lock screen. */
     private var captureSaved by mutableStateOf(false)
 
+    /**
+     * Counts the times the app came into view (launch, or back from the
+     * background). A locked journal asks for the unlock prompt by itself
+     * once per count, so there's no "Unlock" tap first.
+     */
+    private var appearances by mutableIntStateOf(0)
+
+    /** The appearance the unlock prompt was last shown for on its own. */
+    private var promptedFor = 0
+
+    /** An authentication prompt is showing. */
+    private var prompting = false
+
+    /** When the last prompt closed ([SystemClock.elapsedRealtime]). */
+    private var promptClosedAt = 0L
+
     private fun fromAlert(intent: Intent?) {
         when (intent?.action) {
             SpotAlerts.ACTION_NEAR_SPOT -> nearbyRequested = true
@@ -130,6 +149,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // The prompt's own PIN screen can stop and restart this activity;
+        // that isn't the user coming back, and counting it would show the
+        // prompt again right after they cancelled it.
+        if (!prompting && SystemClock.elapsedRealtime() - promptClosedAt > PROMPT_SETTLE_MILLIS) appearances++
     }
 
     override fun onResume() {
@@ -364,6 +391,15 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 JournalSession.State.Locked -> {
+                    // Straight to the unlock prompt, once each time the app
+                    // comes into view. Cancelling leaves this screen, whose
+                    // button asks again.
+                    LaunchedEffect(appearances) {
+                        if (appearances != promptedFor && !prompting) {
+                            promptedFor = appearances
+                            lifecycle.withResumed { message = unlock { message = it } }
+                        }
+                    }
                     Text(stringResource(R.string.locked))
                     Button(onClick = { message = unlock { message = it } }) { Text(stringResource(R.string.unlock)) }
                     if (captureSaved) Text(stringResource(R.string.capture_locked_saved))
@@ -460,14 +496,28 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun authenticate(cipher: Cipher, title: String, then: (Cipher) -> Unit) {
+        prompting = true
+        fun closed() {
+            prompting = false
+            promptClosedAt = SystemClock.elapsedRealtime()
+        }
         UserAuthentication.authenticate(
             activity = this,
             cipher = cipher,
             title = title,
             cancel = getString(android.R.string.cancel),
             strict = app.lockSettings.strictBiometrics,
-            onSuccess = then,
-            onFailure = {},
+            onSuccess = {
+                closed()
+                then(it)
+            },
+            onFailure = { closed() },
         )
     }
 }
+
+/**
+ * How long after a prompt closes a start of the activity still belongs to
+ * that prompt (its PIN screen returning), not to the user coming back.
+ */
+private const val PROMPT_SETTLE_MILLIS = 1500L
