@@ -277,7 +277,7 @@ requirement rather than on features.
         compatibility fixture.
     - [x] Core data model: terpene levels, parent links, "known for"
           cannabinoids and the synced detail step, through the FFI.
-    - [ ] Strain editor and detail setting in the app.
+    - [x] Strain editor and detail setting in the app.
     - [ ] Insights: the strain's dominant terpene when a label has none.
   - [ ] 0.5.0: CBN, CBG, THCa and CBDV label amounts on products and
         "known for" cannabinoids on strains; insights and the shop effect

@@ -35,8 +35,24 @@ enum class DataPoint(val slug: String, @StringRes val title: Int, @StringRes val
  * them. Hiding purchases also hides prices and shops (the core reports
  * both).
  */
+/**
+ * The journal's strain detail step (docs/design-decisions.md, "Richer
+ * strains"); slugs are the core's (`vocabulary().strainDetails`).
+ */
+enum class StrainDetail(val slug: String, @StringRes val title: Int, @StringRes val description: Int) {
+    SIMPLE("simple", R.string.strain_detail_simple, R.string.strain_detail_simple_does),
+    TERPENES("terpenes", R.string.strain_detail_terpenes, R.string.strain_detail_terpenes_does),
+    DETAILED("detailed", R.string.strain_detail_detailed, R.string.strain_detail_detailed_does),
+    ;
+
+    companion object {
+        /** The step for a core slug; one from a newer app shows everything. */
+        fun of(slug: String): StrainDetail = entries.firstOrNull { it.slug == slug } ?: DETAILED
+    }
+}
+
 @Immutable
-data class Tracking(val hidden: Set<String>) {
+data class Tracking(val hidden: Set<String>, val strainDetail: StrainDetail = StrainDetail.TERPENES) {
     /** Whether [point] is shown. */
     fun shows(point: DataPoint): Boolean = point.slug !in hidden
 

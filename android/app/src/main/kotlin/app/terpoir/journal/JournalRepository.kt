@@ -86,7 +86,12 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
     suspend fun saveSnippet(id: String?, data: SnippetData): String = io { journal.saveSnippet(id, data, now()) }
 
     /** "What I track": the data points the user has hidden. */
-    suspend fun tracking(): Tracking = io { Tracking(journal.hiddenDataPoints().toSet()) }
+    suspend fun tracking(): Tracking = io {
+        Tracking(journal.hiddenDataPoints().toSet(), StrainDetail.of(journal.strainDetail()))
+    }
+
+    /** Sets the journal's strain detail step; lower steps hide fields, never delete them. The choice syncs. */
+    suspend fun setStrainDetail(step: StrainDetail) = io { journal.setStrainDetail(step.slug, now()) }
 
     /** Shows or hides a data point; hiding keeps its values. The choice syncs. */
     suspend fun setTracked(point: DataPoint, tracked: Boolean) = io { journal.setDataPointTracked(point.slug, tracked, now()) }

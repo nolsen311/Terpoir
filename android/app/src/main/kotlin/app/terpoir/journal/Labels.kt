@@ -60,6 +60,13 @@ private val LABELS: Map<String, Int> = mapOf(
     "indica" to R.string.strain_indica,
     "sativa" to R.string.strain_sativa,
     "hybrid" to R.string.strain_hybrid,
+    "dominant" to R.string.level_dominant,
+    "secondary" to R.string.level_secondary,
+    "trace" to R.string.level_trace,
+    "cbn" to R.string.cannabinoid_cbn,
+    "cbg" to R.string.cannabinoid_cbg,
+    "thca" to R.string.cannabinoid_thca,
+    "cbdv" to R.string.cannabinoid_cbdv,
     // Intentions
     "sleep" to R.string.intention_sleep,
     "relax" to R.string.intention_relax,
