@@ -158,7 +158,7 @@ without it.
       effect, freshness by package date.
 - [x] Purchase prompts on Re-up Spots: dwell-then-exit geofence, discreet
       "Quick log?", no visit log; "Show me" banner alternative.
-- [ ] Schema upgrades without data loss (maintainer, 2026-10-13; ahead of
+- [x] Schema upgrades without data loss (maintainer, 2026-10-13; ahead of
       the remaining sync backends, because a backup that won't load is
       worse than a missing feature). See "Schema upgrades" in the design
       doc.
@@ -174,10 +174,12 @@ without it.
         the first unlock after an upgrade, with re-linking where the
         rules changed. (Files aren't derived; scan aliases get their
         version when they are built: see the design doc.)
-  - [ ] Compatibility fixtures: an encrypted export, a sync blob and a
+  - [x] Compatibility fixtures: an encrypted export, a sync blob and a
         database from each released version, checked in, and a test that
         every one still opens, migrates and round-trips. A release that
-        breaks one fails CI.
+        breaks one fails CI. (v0.1.0's, in
+        `core/crates/terpoir-ffi/tests/fixtures/`; v0.2.0 changed no
+        format.)
   - [x] Downgrade: an older app opening a newer database refuses (as
         today) with a message to update, never a crash or a reset.
 - [ ] Bring-your-own-storage sync backends and direct device pairing.
@@ -223,6 +225,21 @@ without it.
         `android/ocr-native/build.sh` and sets `terpoir.ocr.aar` for the
         foss build (outline in `android/ocr-native/README.md`); settle
         with F-Droid whether the source tarballs come in as `srclibs`.
+    Tabled 2026-10-14; found while starting, both needed before F-Droid
+    can publish the maintainer-signed APK (builds must match byte for byte):
+    - `release.yml` builds the foss APK with JitPack's prebuilt OCR
+      libraries; it must build `android/ocr-native` and pass
+      `-Pterpoir.ocr.aar` as F-Droid will.
+    - The Rust core library embeds build-machine paths (`$CARGO_HOME`
+      registry sources, OpenSSL's build directory under `core/target`), so
+      it differs between GitHub's runners and F-Droid's build server. Remap
+      them (`--remap-path-prefix`) and extend the reproducible-build check
+      to a different `CARGO_HOME` and to the whole foss APK.
+    - Then: a helper script that installs the pinned Rust toolchain,
+      targets and `cargo-ndk` (like Mullvad's `android/fdroid-build/`), the
+      recipe with `Binaries` and `AllowedAPKSigningKeys`, and
+      `fastlane/metadata/android/en-US/` for the listing. Test with
+      `fdroid build` before submitting to `fdroiddata`.
 - [ ] Trademark Statement of Use after launch.
 
 ## Feature releases (after the first public release)
