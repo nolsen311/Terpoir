@@ -5,6 +5,7 @@
 package app.terpoir.privacy
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -17,8 +18,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,6 +34,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -38,14 +46,19 @@ import app.terpoir.R
 import kotlinx.coroutines.launch
 
 /**
- * The Privacy Center: every toggle with its card, a status summary, and
- * "Restore maximum privacy". Relaxing a protection first shows its
- * disclosure; returning to the private state needs no confirmation.
+ * The Privacy Center: a status summary, the presets, "Restore maximum
+ * privacy", and one row per section, each saying whether everything in it
+ * is private. A section opens on its own page with its toggles, their
+ * cards, and the settings that belong with them ([sectionExtras]).
+ * Relaxing a protection first shows its disclosure; returning to the
+ * private state needs no confirmation.
  *
  * @param onChanged called after any action ran, so the caller can apply
  *   window-level settings at once.
  * @param tour the onboarding tour: an introduction, and closing finishes
  *   setup.
+ * @param sectionExtras settings shown at the end of a section's page, such
+ *   as the map provider under Location.
  */
 @Composable
 fun PrivacyCenterScreen(
@@ -53,7 +66,7 @@ fun PrivacyCenterScreen(
     onChanged: () -> Unit,
     onClose: () -> Unit,
     tour: Boolean = false,
-    footer: @Composable () -> Unit = {},
+    sectionExtras: Map<PrivacyGroup, @Composable () -> Unit> = emptyMap(),
 ) {
     val scope = rememberCoroutineScope()
     // Toggle state lives in settings, not Compose; bumped after each action.
@@ -64,6 +77,7 @@ fun PrivacyCenterScreen(
     // The tour's optional question; never stored.
     var threat by remember { mutableStateOf<Threat?>(null) }
     var readingPolicy by remember { mutableStateOf(false) }
+    var section by remember { mutableStateOf<PrivacyGroup?>(null) }
     fun run(action: suspend () -> Unit) {
         scope.launch {
             action()
@@ -71,71 +85,84 @@ fun PrivacyCenterScreen(
             onChanged()
         }
     }
+    fun switch(toggle: PrivacyToggle, wanted: Boolean) {
+        if (wanted == toggle.privateState) {
+            if (toggle.offChoice != null) turningOff = toggle else run { toggle.set(wanted) }
+        } else {
+            confirming = toggle
+        }
+    }
     // During the tour, Back leaves the app as usual instead of skipping it.
     BackHandler(enabled = !tour, onBack = onClose)
+    // Declared later, so it wins: Back from a section returns to the list.
+    BackHandler(enabled = section != null) { section = null }
     if (readingPolicy) {
         PrivacyPolicyScreen(onClose = { readingPolicy = false })
         return
     }
+    // Every section with a toggle or a setting, in display order.
+    val toggles = center.groups
+    val sections = PrivacyGroup.entries.filter { it in toggles || it in sectionExtras }
 
-    Column(
-        modifier = Modifier.verticalScroll(rememberScrollState()).padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(stringResource(R.string.privacy_center), style = MaterialTheme.typography.headlineMedium)
-        if (tour) Text(stringResource(R.string.privacy_tour_intro))
-        val relaxed = revision.let { center.relaxedCount() }
-        Text(
-            if (relaxed == 0) {
-                stringResource(R.string.privacy_all_on)
-            } else {
-                pluralStringResource(R.plurals.privacy_relaxed, relaxed, relaxed)
-            },
+    val open = section
+    if (open != null) {
+        SectionPage(
+            group = open,
+            toggles = toggles[open].orEmpty(),
+            revision = revision,
+            onSwitch = ::switch,
+            onBack = { section = null },
+            extras = sectionExtras[open],
         )
-        val preset = revision.let { center.currentPreset() }
-        Text(
-            stringResource(R.string.preset_status, preset?.let { stringResource(it.title) } ?: stringResource(R.string.preset_custom)),
-            style = MaterialTheme.typography.labelLarge,
-        )
-        if (tour) ThreatQuestion(threat, onAnswer = { threat = it }) { suggested -> center.presets.firstOrNull { it.id == suggested }?.let { choosing = it } }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (option in center.presets) {
-                OutlinedButton(onClick = { choosing = option }) { Text(stringResource(option.title)) }
-            }
-        }
-        Button(onClick = { run { center.restoreMaximumPrivacy() } }) {
-            Text(stringResource(R.string.privacy_restore))
-        }
-        for ((group, toggles) in center.groups) {
-            Text(stringResource(group.title), style = MaterialTheme.typography.titleMedium)
-            for (toggle in toggles) {
-                val on = revision.let { toggle.isOn() }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(stringResource(toggle.card.title))
-                    Switch(
-                        checked = on,
-                        onCheckedChange = { wanted ->
-                            if (wanted == toggle.privateState) {
-                                if (toggle.offChoice != null) turningOff = toggle else run { toggle.set(wanted) }
-                            } else {
-                                confirming = toggle
-                            }
+    } else {
+        Column(
+            modifier = Modifier.verticalScroll(rememberScrollState()).padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(stringResource(R.string.privacy_center), style = MaterialTheme.typography.headlineMedium)
+            if (tour) Text(stringResource(R.string.privacy_tour_intro))
+            val relaxed = revision.let { center.relaxedCount() }
+            val preset = revision.let { center.currentPreset() }
+            Surface(
+                color = if (relaxed == 0) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.tertiaryContainer,
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        if (relaxed == 0) {
+                            stringResource(R.string.privacy_all_on)
+                        } else {
+                            pluralStringResource(R.plurals.privacy_relaxed, relaxed, relaxed)
                         },
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        stringResource(R.string.preset_status, preset?.let { stringResource(it.title) } ?: stringResource(R.string.preset_custom)),
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
-                Card(toggle.card)
             }
-        }
-        footer()
-        OutlinedButton(onClick = { readingPolicy = true }) { Text(stringResource(R.string.privacy_policy)) }
-        if (tour) {
-            Button(onClick = onClose) { Text(stringResource(R.string.privacy_tour_finish)) }
-        } else {
-            TextButton(onClick = onClose) { Text(stringResource(R.string.privacy_close)) }
+            if (tour) ThreatQuestion(threat, onAnswer = { threat = it }) { suggested -> center.presets.firstOrNull { it.id == suggested }?.let { choosing = it } }
+            PresetButtons(center.presets) { choosing = it }
+            Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.medium) {
+                Column {
+                    sections.forEachIndexed { i, group ->
+                        if (i > 0) HorizontalDivider()
+                        val inGroup = toggles[group].orEmpty()
+                        val on = revision.let { inGroup.count { !it.isPrivate } }
+                        SectionRow(group, inGroup.map { stringResource(it.card.title) }, on) { section = group }
+                    }
+                }
+            }
+            Button(onClick = { run { center.restoreMaximumPrivacy() } }) {
+                Text(stringResource(R.string.privacy_restore))
+            }
+            OutlinedButton(onClick = { readingPolicy = true }) { Text(stringResource(R.string.privacy_policy)) }
+            if (tour) {
+                Button(onClick = onClose) { Text(stringResource(R.string.privacy_tour_finish)) }
+            } else {
+                TextButton(onClick = onClose) { Text(stringResource(R.string.privacy_close)) }
+            }
         }
     }
 
@@ -260,13 +287,134 @@ private fun ThreatQuestion(answer: Threat?, onAnswer: (Threat) -> Unit, onReview
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Card(card: PrivacyCard) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        for (line in listOf(card.whatItDoes, card.whatLeaves, card.whoCanSee, card.howToUndo)) {
-            Text(stringResource(line), style = MaterialTheme.typography.bodySmall)
+private fun PresetButtons(presets: List<PrivacyPreset>, onChoose: (PrivacyPreset) -> Unit) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (option in presets) {
+            OutlinedButton(onClick = { onChoose(option) }) { Text(stringResource(option.title)) }
         }
     }
+}
+
+/** A section on the main page: its name, its toggles, and whether any is relaxed. */
+@Composable
+private fun SectionRow(group: PrivacyGroup, toggleTitles: List<String>, relaxed: Int, onOpen: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(stringResource(group.title), style = MaterialTheme.typography.titleMedium)
+            if (toggleTitles.isNotEmpty()) {
+                Text(toggleTitles.joinToString(", "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (relaxed > 0) {
+            StatusPill(pluralStringResource(R.plurals.privacy_section_on, relaxed, relaxed), MaterialTheme.colorScheme.tertiaryContainer)
+        } else {
+            StatusPill(stringResource(R.string.privacy_section_private), MaterialTheme.colorScheme.secondaryContainer)
+        }
+        Text("›", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun StatusPill(text: String, color: Color) {
+    Surface(color = color, shape = MaterialTheme.shapes.small) {
+        Text(text, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+    }
+}
+
+/**
+ * One section's page: its toggles in one card, each with its switch and
+ * what it does, then the section's own settings. A relaxed toggle's
+ * details (what leaves, who can see, how to undo) are always open, since
+ * they say what is leaving the phone; a private one's open on request.
+ */
+@Composable
+private fun SectionPage(
+    group: PrivacyGroup,
+    toggles: List<PrivacyToggle>,
+    revision: Int,
+    onSwitch: (PrivacyToggle, Boolean) -> Unit,
+    onBack: () -> Unit,
+    extras: (@Composable () -> Unit)?,
+) {
+    var expanded by remember(group) { mutableStateOf(setOf<String>()) }
+    Column(
+        modifier = Modifier.verticalScroll(rememberScrollState()).padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        TextButton(onClick = onBack) { Text(stringResource(R.string.privacy_back)) }
+        Text(stringResource(group.title), style = MaterialTheme.typography.headlineMedium)
+        if (toggles.isNotEmpty()) {
+            Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.large) {
+                Column {
+                    toggles.forEachIndexed { i, toggle ->
+                        if (i > 0) HorizontalDivider()
+                        val on = revision.let { toggle.isOn() }
+                        val relaxed = on != toggle.privateState
+                        val open = relaxed || toggle.id in expanded
+                        ToggleRow(toggle, on, open, canCollapse = !relaxed, onSwitch = { onSwitch(toggle, it) }) {
+                            expanded = if (toggle.id in expanded) expanded - toggle.id else expanded + toggle.id
+                        }
+                    }
+                }
+            }
+        }
+        extras?.invoke()
+        TextButton(onClick = onBack) { Text(stringResource(R.string.privacy_back)) }
+    }
+}
+
+@Composable
+private fun ToggleRow(
+    toggle: PrivacyToggle,
+    on: Boolean,
+    open: Boolean,
+    canCollapse: Boolean,
+    onSwitch: (Boolean) -> Unit,
+    onExpand: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(stringResource(toggle.card.title), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(toggle.card.whatItDoes), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(checked = on, onCheckedChange = onSwitch)
+        }
+        if (open) {
+            CardLine(R.string.privacy_card_leaves, toggle.card.whatLeaves)
+            CardLine(R.string.privacy_card_who, toggle.card.whoCanSee)
+            CardLine(R.string.privacy_card_undo, toggle.card.howToUndo)
+        }
+        if (canCollapse) {
+            Text(
+                stringResource(if (open) R.string.privacy_card_hide else R.string.privacy_card_show),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable(onClick = onExpand).padding(vertical = 4.dp),
+            )
+        }
+    }
+}
+
+/** One part of a toggle's card, with its label in bold. */
+@Composable
+private fun CardLine(label: Int, text: Int) {
+    val heading = stringResource(label)
+    val body = stringResource(text)
+    Text(
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append(heading) }
+            append(" ")
+            append(body)
+        },
+        style = MaterialTheme.typography.bodySmall,
+    )
 }
 
 private val PrivacyGroup.title: Int

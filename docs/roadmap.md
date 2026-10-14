@@ -193,6 +193,9 @@ without it.
       is visually dense and hard to scan. Review it and try a few layout
       options for the maintainer to pick from. Next, as 0.3.0
       (maintainer, 2026-10-14).
+  - [x] Options shown; the maintainer chose sections you open (B,
+        2026-10-14).
+  - [ ] Built and checked on a device.
 
 ## Phase 4: Release
 

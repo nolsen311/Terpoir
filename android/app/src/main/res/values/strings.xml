@@ -24,6 +24,17 @@
         <item quantity="other">%d protections relaxed</item>
     </plurals>
     <string name="privacy_restore">Restore maximum privacy</string>
+    <string name="privacy_section_private">Private</string>
+    <plurals name="privacy_section_on">
+        <item quantity="one">%d on</item>
+        <item quantity="other">%d on</item>
+    </plurals>
+    <string name="privacy_back">Back to Privacy Center</string>
+    <string name="privacy_card_show">What it shares ▾</string>
+    <string name="privacy_card_hide">Hide details ▴</string>
+    <string name="privacy_card_leaves">What leaves the phone:</string>
+    <string name="privacy_card_who">Who can see it:</string>
+    <string name="privacy_card_undo">To undo:</string>
     <string name="privacy_close">Done</string>
     <string name="privacy_policy">Privacy policy</string>
     <string name="continue_label">Continue</string>
