@@ -415,6 +415,12 @@ the background-location declaration and a video
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.2.2** (353 characters):
+    ```
+    <en-US>
+    A clearer Privacy Center: each area opens on its own page, and anything you've turned on shows what it shares. Exports and folder sync now check every file was saved, and say so if your storage app didn't keep it. If something goes wrong, you can send a report from your email app; nothing from your journal is in it. Notifications use the Terpoir icon.
+    </en-US>
+    ```
   - **0.2.1** (336 characters):
     ```
     <en-US>
