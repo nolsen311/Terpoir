@@ -41,16 +41,35 @@ fun FolderSyncCard(sync: FolderSync, journal: Journal) {
     var failed by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var needsUpdate by remember { mutableStateOf(false) }
-    val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri != null) {
-            sync.choose(uri)
+    val doneText = stringResource(R.string.sync_done)
+    val failedText = stringResource(R.string.sync_failed)
+    val noAccessText = stringResource(R.string.sync_no_access)
+    val importedTemplate = R.plurals.sync_imported
+    var imported by remember { mutableIntStateOf(-1) }
+    fun syncNow() {
+        busy = true
+        scope.launch {
+            val outcome = runCatching { sync.sync(journal) }.getOrNull()
+            failed = outcome == null
+            imported = outcome?.imported ?: -1
+            needsUpdate = outcome?.needsUpdate == true
+            message = if (outcome == null) failedText else doneText
+            busy = false
             revision++
         }
     }
-    val doneText = stringResource(R.string.sync_done)
-    val failedText = stringResource(R.string.sync_failed)
-    val importedTemplate = R.plurals.sync_imported
-    var imported by remember { mutableIntStateOf(-1) }
+    // A new folder syncs at once, so a folder that doesn't keep the files
+    // shows up now rather than at the next unlock.
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        if (sync.choose(uri)) {
+            syncNow()
+        } else {
+            failed = true
+            message = noAccessText
+            revision++
+        }
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(R.string.sync_title), style = MaterialTheme.typography.titleMedium)
@@ -58,6 +77,7 @@ fun FolderSyncCard(sync: FolderSync, journal: Journal) {
         if (folder == null) {
             Text(stringResource(R.string.sync_no_folder), style = MaterialTheme.typography.bodySmall)
             Button(onClick = { pick.launch(null) }) { Text(stringResource(R.string.sync_choose)) }
+            message?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
             return@Column
         }
         val last = revision.let { sync.lastSyncMs }
@@ -73,18 +93,7 @@ fun FolderSyncCard(sync: FolderSync, journal: Journal) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
                 enabled = !busy,
-                onClick = {
-                    busy = true
-                    scope.launch {
-                        val outcome = runCatching { sync.sync(journal) }.getOrNull()
-                        failed = outcome == null
-                        imported = outcome?.imported ?: -1
-                        needsUpdate = outcome?.needsUpdate == true
-                        message = if (outcome == null) failedText else doneText
-                        busy = false
-                        revision++
-                    }
-                },
+                onClick = ::syncNow,
             ) { Text(stringResource(R.string.sync_now)) }
             OutlinedButton(onClick = { pick.launch(null) }) { Text(stringResource(R.string.sync_change)) }
         }

@@ -27,6 +27,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.core.CoreException
+import app.terpoir.storage.IncompleteDocument
+import app.terpoir.storage.writeNewDocument
 import java.time.LocalDate
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -62,9 +64,11 @@ fun DataCard(repo: JournalRepository, masterWrappedByRecovery: () -> ByteArray) 
             result = try {
                 val bytes = repo.exportArchive(masterWrappedByRecovery())
                 withContext(Dispatchers.IO) {
-                    checkNotNull(context.contentResolver.openOutputStream(uri, "wt")).use { it.write(bytes) }
+                    writeNewDocument(context.contentResolver, uri, bytes)
                 }
                 DataResult.Saved
+            } catch (_: IncompleteDocument) {
+                DataResult.Failed(R.string.export_incomplete)
             } catch (_: Exception) {
                 DataResult.Failed(R.string.export_failed)
             }
@@ -77,7 +81,7 @@ fun DataCard(repo: JournalRepository, masterWrappedByRecovery: () -> ByteArray) 
             result = try {
                 val files = repo.exportPlaintext()
                 withContext(Dispatchers.IO) {
-                    checkNotNull(context.contentResolver.openOutputStream(uri, "wt")).use { out ->
+                    writeNewDocument(context.contentResolver, uri) { out ->
                         ZipOutputStream(out).use { zip ->
                             for (file in files) {
                                 zip.putNextEntry(ZipEntry(file.name))
@@ -90,6 +94,8 @@ fun DataCard(repo: JournalRepository, masterWrappedByRecovery: () -> ByteArray) 
                     }
                 }
                 DataResult.SavedPlaintext
+            } catch (_: IncompleteDocument) {
+                DataResult.Failed(R.string.export_incomplete)
             } catch (_: Exception) {
                 DataResult.Failed(R.string.export_failed)
             }
