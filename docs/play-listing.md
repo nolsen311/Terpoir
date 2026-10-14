@@ -412,10 +412,13 @@ the background-location declaration and a video
 - **Release notes** (en-US, the "What's new" box, 500 characters at most).
   `play-upload.sh` doesn't send them: paste them into the release in the
   Play Console before rolling it out.
-  - **0.2.1** (223 characters):
+  - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
+    release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
+    a Play build without the key doesn't offer Google Maps.
+  - **0.2.1** (336 characters):
     ```
     <en-US>
-    Unlocking is quicker: the fingerprint or face prompt now appears as soon as you open the app, with no extra tap. If a journal was made by a newer version of Terpoir, the app now says to update instead of failing to open it.
+    New: Google Maps for picking a spot's location. It's optional and off until you choose it, and it tells you what Google sees first. Unlocking is quicker: the fingerprint or face prompt now appears as soon as you open the app. If a journal was made by a newer version of Terpoir, the app now says to update instead of failing to open it.
     </en-US>
     ```
   - **0.2.0** (296 characters):
