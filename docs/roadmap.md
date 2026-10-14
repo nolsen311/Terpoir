@@ -303,11 +303,15 @@ requirement rather than on features.
         grouped by shared parent or dominant terpene.
 - [ ] Strain lookups, 0.6.0 (`docs/design-decisions.md`, "Catalog
       lookups"; maintainer, 2026-10-14: Leafly and a seed database).
-  - [ ] Research, during 0.4.0: for each candidate (Leafly, seed
+  - [x] Research, during 0.4.0: for each candidate (Leafly, seed
         databases, open strain datasets), whether it has an API or a
         downloadable dataset, its terms on caching and offline
         redistribution, its licence, and what a lookup reveals. A short
-        comparison for the maintainer to choose from.
+        comparison for the maintainer to choose from:
+        `docs/research/strain-lookups.md`. Done with gaps: only
+        GitHub-hosted sources could be read, so the providers' terms are
+        unverified until their domains are allowed (`docs/follow-ups.md`).
+  - [ ] The maintainer picks the sources.
   - [ ] An offline catalog: downloaded in one piece, searched on the
         device, filling a strain's type, terpenes, lineage and
         cannabinoids as suggestions the user confirms.
@@ -333,6 +337,15 @@ requirement rather than on features.
 
 Ideas the maintainer wants kept, to be designed and scheduled later.
 
+- [ ] More themes (maintainer, 2026-10-14), each a choice next to
+      System, Light and Dark on the Theme page, with its sample controls:
+      - a Material 3 theme from the wallpaper (dynamic color, Android 12
+        and later), following the phone's light or dark setting;
+      - the same wallpaper colors with light and dark reversed: dark when
+        the phone is light, light when it is dark.
+      To design: how these combine with the light/dark choice, what older
+      Android versions show, and keeping every text color at WCAG AA
+      (`ThemeContrastTest` can't check colors taken from a wallpaper).
 - [ ] Personal gear for consumption methods (maintainer, 2026-10-12): let
       users name their own pieces (a favorite bong, a favorite pipe, a
       particular vaporizer) and pick one on a session's product line, so
