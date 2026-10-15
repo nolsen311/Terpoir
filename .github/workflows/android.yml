@@ -113,7 +113,19 @@ jobs:
           GOOGLE_MAPS_API_KEY_DEBUG: ${{ secrets.GOOGLE_MAPS_API_KEY_DEBUG }}
         run: |
           export JAVA_HOME="$JAVA_HOME_21_X64"
-          ./gradlew --no-daemon --no-build-cache assemble check lintFossRelease lintPlayRelease
+          ./gradlew --no-daemon --no-build-cache --profile assemble check lintFossRelease lintPlayRelease
+
+      # Gradle's own timing report (task names and durations only), to see
+      # what makes this job slow. It stays with the run; no build scan is
+      # uploaded anywhere.
+      - name: Upload build profile
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-build-profile
+          path: android/build/reports/profile
+          if-no-files-found: ignore
+          retention-days: 14
 
       # Debug builds to install for testing (debug-signed, logging kept).
       # Use the foss one: the Play debug build lacks text recognition,
@@ -190,11 +202,8 @@ jobs:
         working-directory: .
         run: .github/scripts/setup-android-core.sh
 
-      - name: Build app and test APKs
-        run: |
-          export JAVA_HOME="$JAVA_HOME_21_X64"
-          ./gradlew --no-daemon --no-build-cache assembleFossDebug assembleFossDebugAndroidTest
-
+      # The emulator boots while the app builds: start it first, wait for
+      # it after the build.
       - name: Start emulator
         run: |
           set -euo pipefail
@@ -208,6 +217,25 @@ jobs:
           echo no | "$sdk/avdmanager" create avd -n ci -k "$SYSTEM_IMAGE"
           nohup "$ANDROID_HOME/emulator/emulator" -avd ci -no-window -no-audio \
             -no-boot-anim -no-snapshot -gpu swiftshader_indirect >"$RUNNER_TEMP/emulator.log" 2>&1 &
+
+      # The emulator is x86_64, so the Rust core is built for that ABI only.
+      - name: Build app and test APKs
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          ./gradlew --no-daemon --no-build-cache --profile -Pterpoir.abis=x86_64 assembleFossDebug assembleFossDebugAndroidTest
+
+      - name: Upload build profile
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: instrumented-build-profile
+          path: android/build/reports/profile
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Wait for the emulator
+        run: |
+          set -euo pipefail
           adb="$ANDROID_HOME/platform-tools/adb"
           timeout 300 "$adb" wait-for-device
           timeout 600 sh -c "until [ \"\$($adb shell getprop sys.boot_completed | tr -d '\r')\" = 1 ]; do sleep 5; done"

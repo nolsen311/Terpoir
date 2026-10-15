@@ -50,7 +50,10 @@ android {
 
         ndk {
             // 64-bit only. buildRustCore builds the core for exactly these.
-            abiFilters += listOf("arm64-v8a", "x86_64")
+            // CI's emulator job narrows them with -Pterpoir.abis=x86_64 to
+            // skip a Rust build it can't run; releases never set it.
+            abiFilters += providers.gradleProperty("terpoir.abis").orNull?.split(",")?.map(String::trim)
+                ?: listOf("arm64-v8a", "x86_64")
         }
     }
 
