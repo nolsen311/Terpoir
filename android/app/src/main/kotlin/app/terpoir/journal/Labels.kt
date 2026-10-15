@@ -148,13 +148,38 @@ fun formatWhen(unixMs: Long, utcOffsetMin: Short): String =
  * Bros Block Berry Cart"), so the name needn't repeat the brand. A name that
  * already starts with the brand is shown as it is.
  */
-fun productLabel(name: String, brand: String?): String {
+fun productLabel(name: String, brand: String?): String = productLabel(name, brand, emptyList())
+
+/**
+ * [productLabel], for a product that may have no name of its own (names are
+ * optional, maintainer 2026-10-15): its strains stand in for the name.
+ */
+fun productLabel(name: String, brand: String?, strains: List<String>): String {
+    val n = name.trim().ifEmpty { strains.filter { it.isNotBlank() }.joinToString(" / ") }
     val b = brand?.trim().orEmpty()
-    val n = name.trim()
     return when {
         b.isEmpty() -> n
         n.isEmpty() -> b
         n.startsWith(b, ignoreCase = true) -> n
         else -> "$b $n"
     }
+}
+
+/** How a product shows in the catalog: [title] over [subtitle]. */
+data class ProductTitle(val title: String, val subtitle: String)
+
+/**
+ * A product's catalog entry (maintainer, 2026-10-15): its strains as the
+ * title, and below them its brand, type, own name and anything else known
+ * ([details]: potency, say). With no strain, its own name is the title; with
+ * neither, its brand, then its type.
+ */
+fun productTitle(name: String, strains: List<String>, brand: String?, form: String?, details: List<String> = emptyList()): ProductTitle {
+    val ownName = name.trim()
+    val strainText = strains.filter { it.isNotBlank() }.joinToString(" / ")
+    val b = brand?.trim().orEmpty()
+    val f = form?.trim().orEmpty()
+    val title = strainText.ifEmpty { ownName }.ifEmpty { b }.ifEmpty { f }
+    val below = listOf(b, f, ownName).filter { it.isNotEmpty() && it != title } + details
+    return ProductTitle(title, below.distinct().joinToString(" · "))
 }

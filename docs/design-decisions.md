@@ -671,6 +671,8 @@ How strong a session felt over time replaces asking for onset, peak and duration
 
 ## Product names (decided 2026-10-12)
 - A product is shown as its brand followed by its own name ("Fire Bros Block Berry Cart") everywhere it appears: the catalog, the timeline, and the product pickers. The stored name stays the product's own, so it needn't repeat the brand. A name that already starts with its brand is shown as it is, never doubled. Display only: the model keeps name and brand as separate fields.
+- **Optional names, strain first (maintainer, 2026-10-15):** a product's own name is optional ("Name (optional)"); it needs a name, a strain, a brand or a type. In the Products list a product is titled by its strains, with its brand, type, own name and potency (THC, CBD; while potency is tracked) below; with no strain, its own name, then its brand, then its type is the title. Elsewhere (pickers, the timeline) the label stays brand then name, with the strains standing in for a missing name.
+- **"New" is a floating button (maintainer, 2026-10-15):** on the Products tab, "New product", "New strain", "New brand" or "New spot", for the list showing, is the screen's floating action button; "Scan receipt" stays at the top of the products list.
 
 ## Rapid product entry (decided)
 - **Receipt scan:** one photo fills in several products with prices, the date, and the shop.

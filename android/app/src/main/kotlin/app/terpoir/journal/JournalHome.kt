@@ -139,6 +139,8 @@ fun JournalHome(
 ) {
     val stack = remember { mutableStateListOf<Screen>(Screen.Home) }
     var tab by remember { mutableStateOf(Tab.JOURNAL) }
+    // The Products tab's list, here so its "New" button can be the FAB.
+    var catalog by remember { mutableStateOf(Catalog.PRODUCTS) }
     // Bumped whenever an editor closes, so lists reload.
     var revision by remember { mutableIntStateOf(0) }
     val pop: () -> Unit = {
@@ -204,6 +206,34 @@ fun JournalHome(
                     }
                 },
                 floatingActionButton = {
+                    // Products: "New" for whichever list is showing.
+                    if (tab == Tab.PRODUCTS) {
+                        ExtendedFloatingActionButton(
+                            onClick = {
+                                stack.add(
+                                    when (catalog) {
+                                        Catalog.PRODUCTS -> Screen.Product(null)
+                                        Catalog.STRAINS -> Screen.Strain(null)
+                                        Catalog.BRANDS -> Screen.Brand(null)
+                                        Catalog.SPOTS -> Screen.Spot(null)
+                                    },
+                                )
+                            },
+                            icon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
+                            text = {
+                                Text(
+                                    stringResource(
+                                        when (catalog) {
+                                            Catalog.PRODUCTS -> R.string.product_new
+                                            Catalog.STRAINS -> R.string.strain_new
+                                            Catalog.BRANDS -> R.string.brand_new
+                                            Catalog.SPOTS -> R.string.spot_new
+                                        },
+                                    ),
+                                )
+                            },
+                        )
+                    }
                     if (tab == Tab.JOURNAL) {
                         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             SmallFloatingActionButton(onClick = { stack.add(Screen.Session(null)) }) {
@@ -235,7 +265,7 @@ fun JournalHome(
                     ) {
                         stack.add(Screen.Session(it))
                     }
-                    Tab.PRODUCTS -> CatalogLists(repo, vocab, revision, padding) { stack.add(it) }
+                    Tab.PRODUCTS -> CatalogLists(repo, revision, padding, catalog, { catalog = it }) { stack.add(it) }
                     Tab.SETTINGS -> Column(Modifier.padding(padding)) {
                         privacyCenter({ tab = Tab.JOURNAL }) {
                             SettingsGroup(stringResource(R.string.settings_journal)) {
@@ -480,12 +510,12 @@ private fun Stars(rating: Int) {
 @Composable
 private fun CatalogLists(
     repo: JournalRepository,
-    vocab: Vocabulary,
     revision: Int,
     padding: PaddingValues,
+    catalog: Catalog,
+    onCatalog: (Catalog) -> Unit,
     onOpen: (Screen) -> Unit,
 ) {
-    var catalog by remember { mutableStateOf(Catalog.PRODUCTS) }
     // "What I track": hidden strains or brands lose their lists.
     val tracking = LocalTracking.current
     val catalogs = Catalog.entries.filter {
@@ -495,7 +525,7 @@ private fun CatalogLists(
             else -> true
         }
     }
-    if (catalog !in catalogs) catalog = Catalog.PRODUCTS
+    if (catalog !in catalogs) onCatalog(Catalog.PRODUCTS)
     var products by remember { mutableStateOf<List<Entry<ProductData>>>(emptyList()) }
     var strains by remember { mutableStateOf<List<Entry<StrainData>>>(emptyList()) }
     var brands by remember { mutableStateOf<List<Entry<BrandData>>>(emptyList()) }
@@ -508,9 +538,28 @@ private fun CatalogLists(
     }
     // A product shows without its brand when brands are hidden.
     val brandNames = if (tracking.shows(DataPoint.BRAND)) brands.associate { it.id to it.data.name } else emptyMap()
+    val strainNames = if (tracking.shows(DataPoint.STRAIN)) strains.associate { it.id to it.data.name } else emptyMap()
+    val showPotency = tracking.shows(DataPoint.POTENCY)
+    @Composable
+    fun amount(milli: Long, unit: String?): String =
+        if (unit == "percent") "${formatMilli(milli)}%" else listOfNotNull(formatMilli(milli), unit?.let { label(it) }).joinToString(" ")
+    // Each product titled by its strains, with brand, type, name and potency below.
+    val productRows = products.map { p ->
+        val d = p.data
+        val potency = if (!showPotency) {
+            emptyList()
+        } else {
+            listOfNotNull(
+                d.thcMilli?.let { stringResource(R.string.catalog_thc, amount(it, d.thcUnit)) },
+                d.cbdMilli?.let { stringResource(R.string.catalog_cbd, amount(it, d.cbdUnit)) },
+            )
+        }
+        p.id to productTitle(d.name, d.strains.mapNotNull(strainNames::get), d.brand?.let(brandNames::get), d.form?.let { label(it) }, potency)
+    }.sortedBy { it.second.title.lowercase() }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(padding),
-        contentPadding = PaddingValues(16.dp),
+        // Room at the bottom so the "New" button doesn't cover the last row.
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
@@ -518,7 +567,7 @@ private fun CatalogLists(
                 catalogs.forEachIndexed { index, c ->
                     SegmentedButton(
                         selected = catalog == c,
-                        onClick = { catalog = c },
+                        onClick = { onCatalog(c) },
                         shape = SegmentedButtonDefaults.itemShape(index, catalogs.size),
                         // No checkmark: the fill already marks the selection, and
                         // the icon squeezed "Products" onto two lines.
@@ -543,43 +592,16 @@ private fun CatalogLists(
                 }
             }
         }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            androidx.compose.material3.OutlinedButton(onClick = {
-                onOpen(
-                    when (catalog) {
-                        Catalog.PRODUCTS -> Screen.Product(null)
-                        Catalog.STRAINS -> Screen.Strain(null)
-                        Catalog.BRANDS -> Screen.Brand(null)
-                        Catalog.SPOTS -> Screen.Spot(null)
-                    },
-                )
-            }) {
-                Text(
-                    stringResource(
-                        when (catalog) {
-                            Catalog.PRODUCTS -> R.string.product_new
-                            Catalog.STRAINS -> R.string.strain_new
-                            Catalog.BRANDS -> R.string.brand_new
-                            Catalog.SPOTS -> R.string.spot_new
-                        },
-                    ),
-                )
-            }
-            if (catalog == Catalog.PRODUCTS && tracking.shows(DataPoint.PURCHASES)) {
+        if (catalog == Catalog.PRODUCTS && tracking.shows(DataPoint.PURCHASES)) {
+            item {
                 androidx.compose.material3.OutlinedButton(onClick = { onOpen(Screen.Receipt) }) {
                     Text(stringResource(R.string.scan_receipt))
                 }
             }
-            }
         }
         when (catalog) {
-            Catalog.PRODUCTS -> items(
-                products.sortedBy { productLabel(it.data.name, it.data.brand?.let(brandNames::get)).lowercase() },
-                key = { it.id },
-            ) { p ->
-                val detail = p.data.form?.let { label(it) }.orEmpty()
-                CatalogRow(productLabel(p.data.name, p.data.brand?.let(brandNames::get)), detail) { onOpen(Screen.Product(p.id)) }
+            Catalog.PRODUCTS -> items(productRows, key = { it.first }) { (id, row) ->
+                CatalogRow(row.title, row.subtitle) { onOpen(Screen.Product(id)) }
             }
             Catalog.STRAINS -> items(strains, key = { it.id }) { s ->
                 CatalogRow(s.data.name, s.data.strainType?.let { label(it) }.orEmpty()) { onOpen(Screen.Strain(s.id)) }

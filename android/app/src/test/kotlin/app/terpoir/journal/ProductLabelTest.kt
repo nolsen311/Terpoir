@@ -24,4 +24,24 @@ class ProductLabelTest {
     fun aNameStartingWithTheBrandIsNotDoubled() {
         assertEquals("fire bros block berry", productLabel("fire bros block berry", "Fire Bros"))
     }
+
+    @Test
+    fun anUnnamedProductIsKnownByItsStrains() {
+        assertEquals("Fire Bros Blue Dream", productLabel("", "Fire Bros", listOf("Blue Dream")))
+        assertEquals("Blue Dream / Haze", productLabel(" ", null, listOf("Blue Dream", "Haze")))
+        // Its own name wins over its strains.
+        assertEquals("Fire Bros Cart", productLabel("Cart", "Fire Bros", listOf("Blue Dream")))
+    }
+
+    @Test
+    fun theCatalogTitlesAProductByItsStrain() {
+        assertEquals(
+            ProductTitle("Blue Dream", "Fire Bros · Vape cart · Block Berry · THC 85%"),
+            productTitle("Block Berry", listOf("Blue Dream"), "Fire Bros", "Vape cart", listOf("THC 85%")),
+        )
+        // No strain: its own name, then brand, then type, as the title.
+        assertEquals(ProductTitle("Block Berry", "Fire Bros · Flower"), productTitle("Block Berry", emptyList(), "Fire Bros", "Flower"))
+        assertEquals(ProductTitle("Fire Bros", "Flower"), productTitle("", emptyList(), "Fire Bros", "Flower"))
+        assertEquals(ProductTitle("Flower", ""), productTitle("", emptyList(), null, "Flower"))
+    }
 }
