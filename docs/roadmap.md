@@ -236,7 +236,7 @@ without it.
         Play App Signing) and the release-signing SSH key
         (`android/release/allowed_signers`) on terpoir.app ("Verify your
         download") and in the README, with the commands to check an APK,
-        `SHA256SUMS.sig` and the tags. Until 0.7.0 the hashes stay in each
+        `SHA256SUMS.sig` and the tags. Until 0.8.0 the hashes stay in each
         release's signed `SHA256SUMS`.
   - [ ] Backup release-signing SSH key: an `ed25519-sk` key on the backup
         YubiKey, added to `allowed_signers`, the site and the README
@@ -305,8 +305,9 @@ requirement rather than on features.
 | 0.5.1 | Richer strains II, part 2 (moved from 0.5.0, maintainer 2026-10-15): insights and shop effect grouped by lineage or terpene profile. |
 | 0.5.2 | Fixes: the Keystore "did not respond" error (one unlock operation at a time), folder sync's card showing at once. The unlock screen in brand green; the Products tab's floating New button and strain-first titles; New entry as the journal's main button, Insights as a lightbulb, swipe-away location cards (maintainer, 2026-10-15). |
 | 0.5.3 | Fixes: Google text recognition in Play release builds (R8 removed ML Kit's registrar constructors), the crash turning it off or restoring maximum privacy, a chosen sync folder or export file lost behind the system picker, the OCR download's error code in problem reports, the keyboard as an inset. The rating as faces; swipeable Products lists; Scan receipt and the product editor's Scan as floating buttons; the session timeline in shares; the receipt-scanning core (maintainer, 2026-10-15). |
-| 0.6.0 | Strain lookups: an offline strain and seed catalog first, then online sources (such as Leafly or a seed database) each behind its own toggle, as "Catalog lookups" requires. Which providers depends on their terms and APIs, researched during 0.4.0. |
-| 0.7.0 | F-Droid groundwork: OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app. |
+| 0.6.0 | Simpler receipt scanning and product subtypes, together (maintainer, 2026-10-15): both change the synced format and share the scanning vocabulary, so one compatibility fixture and one update. |
+| 0.7.0 | Strain lookups: an offline strain and seed catalog first, then online sources (such as Leafly or a seed database) each behind its own toggle, as "Catalog lookups" requires. Which providers depends on their terms and APIs, researched during 0.4.0. Moved from 0.6.0 (maintainer, 2026-10-15): it waits on the sources' replies and the maintainer's choice. |
+| 0.8.0 | F-Droid groundwork: OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app. Moved from 0.7.0 (maintainer, 2026-10-15). |
 | any | "Notify me" on Play, in the first release after the maintainer files the background-location declaration and video. |
 | 1.0.0 | Public launch: Play production access, F-Droid submission, "Get Terpoir" with real links and fingerprints. |
 | 1.x | WebDAV / S3 sync; direct device pairing; scan recognition from the journal; personal gear; lock-screen capture. Order to be set after 1.0. |
@@ -334,7 +335,7 @@ requirement rather than on features.
           "Known for" cannabinoids on strains shipped in 0.4.0.
     - [x] 0.5.1: insights and the shop effect grouped by shared parent or
           dominant terpene.
-- [ ] Strain lookups, 0.6.0 (`docs/design-decisions.md`, "Catalog
+- [ ] Strain lookups, 0.7.0 (`docs/design-decisions.md`, "Catalog
       lookups"; maintainer, 2026-10-14: Leafly and a seed database).
   - [x] Research, during 0.4.0: for each candidate (Leafly, seed
         databases, open strain datasets), whether it has an API or a
@@ -352,7 +353,8 @@ requirement rather than on features.
         default) with a disclosure card; search on submit only.
 
 - [ ] Product subtypes (maintainer, 2026-10-15; `docs/design-decisions.md`,
-      "Product subtypes"). Version to be set by the maintainer.
+      "Product subtypes"). In 0.6.0, with simpler receipt scanning
+      (maintainer, 2026-10-15).
   - [x] The maintainer confirms the Transdermal timing (12 hours, points
         at 1, 2, 4, 8 and 12 hours, a check-in after 2 hours).
   - [ ] Core: subtypes under each type (built-in list and the user's
@@ -394,7 +396,7 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       insights (tabled by the maintainer, 2026-10-15: possibly useful, but
       subtypes may be enough; `docs/design-decisions.md`, "Product
       subtypes").
-- [ ] Simpler receipt scanning (maintainer, 2026-10-15): text recognition
+- [ ] Simpler receipt scanning (maintainer, 2026-10-15; in 0.6.0): text recognition
       should fill the right parts of a new entry (brand, strain, form,
       size, price, shop, date) with less checking and typing. Options in
       `docs/research/receipt-scan-options.md` (scan-and-review cards, tap to
