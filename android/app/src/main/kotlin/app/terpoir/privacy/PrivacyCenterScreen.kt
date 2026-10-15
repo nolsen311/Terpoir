@@ -59,6 +59,10 @@ import kotlinx.coroutines.launch
  *   setup.
  * @param sectionExtras settings shown at the end of a section's page, such
  *   as the map provider under Location.
+ * @param settings when set, this is the Settings tab (maintainer,
+ *   2026-10-14, option A): titled Settings, with the privacy part first and
+ *   these groups (journal and phone settings) after it, then About with the
+ *   privacy policy and [version]. Not used in the tour.
  */
 @Composable
 fun PrivacyCenterScreen(
@@ -67,7 +71,10 @@ fun PrivacyCenterScreen(
     onClose: () -> Unit,
     tour: Boolean = false,
     sectionExtras: Map<PrivacyGroup, @Composable () -> Unit> = emptyMap(),
+    settings: (@Composable () -> Unit)? = null,
+    version: String = "",
 ) {
+    val asSettings = settings != null && !tour
     val scope = rememberCoroutineScope()
     // Toggle state lives in settings, not Compose; bumped after each action.
     var revision by remember { mutableIntStateOf(0) }
@@ -119,8 +126,9 @@ fun PrivacyCenterScreen(
             modifier = Modifier.verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(stringResource(R.string.privacy_center), style = MaterialTheme.typography.headlineMedium)
+            Text(stringResource(if (asSettings) R.string.settings_title else R.string.privacy_center), style = MaterialTheme.typography.headlineMedium)
             if (tour) Text(stringResource(R.string.privacy_tour_intro))
+            if (asSettings) SettingsGroupTitle(stringResource(R.string.settings_privacy))
             val relaxed = revision.let { center.relaxedCount() }
             val preset = revision.let { center.currentPreset() }
             Surface(
@@ -157,10 +165,19 @@ fun PrivacyCenterScreen(
             Button(onClick = { run { center.restoreMaximumPrivacy() } }) {
                 Text(stringResource(R.string.privacy_restore))
             }
-            OutlinedButton(onClick = { readingPolicy = true }) { Text(stringResource(R.string.privacy_policy)) }
+            if (asSettings) {
+                settings?.invoke()
+                SettingsGroup(stringResource(R.string.settings_about)) {
+                    SettingsRow(stringResource(R.string.privacy_policy), null) { readingPolicy = true }
+                    HorizontalDivider()
+                    SettingsRow(stringResource(R.string.settings_version, version), null, onClick = null)
+                }
+            } else {
+                OutlinedButton(onClick = { readingPolicy = true }) { Text(stringResource(R.string.privacy_policy)) }
+            }
             if (tour) {
                 Button(onClick = onClose) { Text(stringResource(R.string.privacy_tour_finish)) }
-            } else {
+            } else if (!asSettings) {
                 TextButton(onClick = onClose) { Text(stringResource(R.string.privacy_close)) }
             }
         }
@@ -294,6 +311,40 @@ private fun PresetButtons(presets: List<PrivacyPreset>, onChoose: (PrivacyPreset
         for (option in presets) {
             OutlinedButton(onClick = { onChoose(option) }) { Text(stringResource(option.title)) }
         }
+    }
+}
+
+/** A group label on the Settings page. */
+@Composable
+fun SettingsGroupTitle(text: String) {
+    Text(text.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/** A titled group of [SettingsRow]s on the Settings page, in one card. */
+@Composable
+fun SettingsGroup(title: String, rows: @Composable () -> Unit) {
+    SettingsGroupTitle(title)
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.medium) {
+        Column { rows() }
+    }
+}
+
+/** One row of a [SettingsGroup]: a title, an optional line under it, and a chevron when it opens something. */
+@Composable
+fun SettingsRow(title: String, subtitle: String?, onClick: (() -> Unit)?) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (onClick != null) Text("›", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
