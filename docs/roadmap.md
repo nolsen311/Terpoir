@@ -375,7 +375,10 @@ requirement rather than on features.
       - [ ] Phone and licence numbers on spots (synced, with a fixture).
       - [ ] A second photo for long receipts, joined on overlapping rows.
       - [ ] Android: review cards with chips, the shop header card, "Join
-            with next line" and "Split here", the cut-off warning.
+            with next line" and "Split here", the cut-off warning, and
+            zoom on the photo (pinch, plus visible + / − and "Fit").
+            Today's review screen uses neither the automatic joining
+            nor the row groups yet.
 
 - [ ] Product subtypes (maintainer, 2026-10-15; `docs/design-decisions.md`,
       "Product subtypes"). In 0.6.0, with simpler receipt scanning
