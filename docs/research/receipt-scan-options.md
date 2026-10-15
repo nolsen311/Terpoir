@@ -463,6 +463,16 @@ maintainer's own test with a real receipt:
   deletion, keeping ambiguous ones as choices, and (to confirm) needing two
   confirmations before an alias fills in automatically, per shop first.
 
-Still open: two confirmations and per shop first for aliases; where size
-and quantity are stored; when "Start an entry with…" is offered.
+Settled the same day:
+
+- **No alias list.** Removing known product terms first (PR, 1G, HYB) and
+  matching what's left by initials, letters in order and cut-off names
+  finds the strain on every scan, so nothing needs storing per strain. The
+  only learned data is the already-decided exact receipt line on the
+  product. This replaces the confirmation counts and per-shop alias rules
+  above.
+- **Size and quantity on the purchase line,** with an optional default
+  size on the product from its label.
+- **No "Start an entry with…" hand-off:** the app doesn't assume when a
+  purchase is used.
 
