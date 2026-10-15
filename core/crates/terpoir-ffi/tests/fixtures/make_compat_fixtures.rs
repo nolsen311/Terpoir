@@ -22,7 +22,7 @@ use std::sync::Arc;
 
 use terpoir_crypto::{DatabaseKey, MasterKey, RecoveryKey};
 use terpoir_ffi::{
-    BrandData, IdentifierData, InsightFeedback, Journal, LocalTimeData, ProductData,
+    BrandData, CannabinoidAmountData, IdentifierData, InsightFeedback, Journal, LocalTimeData, ProductData,
     ProductLineData, PurchaseData, PurchaseLineData, SessionData, SnippetData, SpotData,
     StrainData, SymptomData, TagData, TagIntensity, TagProvenance, TagRefData,
     TerpeneLevelData, seal_capture, wrap_master_key_with_passphrase,
@@ -218,6 +218,12 @@ fn main() {
                     kind: "barcode".into(),
                 }],
                 shops: vec![spot.clone()],
+                // Since 0.5.0.
+                cannabinoids: vec![CannabinoidAmountData {
+                    cannabinoid: "cbn".into(),
+                    milli: 2_000,
+                    unit: "mg_per_unit".into(),
+                }],
             },
             T0 + 5,
         )
@@ -443,6 +449,7 @@ fn main() {
   "recovery_key": "{RECOVERY_KEY}",
   "passphrase": "{PASSPHRASE}",
   "maptiler_key": "{MAPTILER_KEY}",
+  "product_cannabinoids": true,
   "ids": {{
     "brand": "{brand}",
     "deleted_brand": "{deleted_brand}",

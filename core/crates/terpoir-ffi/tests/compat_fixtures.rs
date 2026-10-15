@@ -20,11 +20,11 @@ use std::sync::Arc;
 
 use serde_json::Value;
 use terpoir_ffi::{
-    BrandData, IdentifierData, Journal, LocalTimeData, PassphraseWrapped, ProductData,
-    ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData, SnippetData,
-    SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance, TagRefData,
-    TerpeneLevelData, check_export_archive, keys_for_restore, master_key_from_passphrase,
-    master_key_from_recovery, read_export_archive,
+    BrandData, CannabinoidAmountData, IdentifierData, Journal, LocalTimeData, PassphraseWrapped,
+    ProductData, ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData,
+    SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance,
+    TagRefData, TerpeneLevelData, check_export_archive, keys_for_restore,
+    master_key_from_passphrase, master_key_from_recovery, read_export_archive,
 };
 
 /// Every fixture version directory, oldest name first.
@@ -320,6 +320,16 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
                 kind: "barcode".into(),
             }],
             shops: vec![id("spot")],
+            // Since 0.5.0; older fixtures have none.
+            cannabinoids: if fixture.manifest["product_cannabinoids"].as_bool() == Some(true) {
+                vec![CannabinoidAmountData {
+                    cannabinoid: "cbn".into(),
+                    milli: 2_000,
+                    unit: "mg_per_unit".into(),
+                }]
+            } else {
+                vec![]
+            },
         },
     );
     check(

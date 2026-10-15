@@ -192,13 +192,13 @@ without it.
           ("Working") after a sync that worked (maintainer, 2026-10-14).
   - [ ] WebDAV / S3-compatible backends (need INTERNET through the gateway).
   - [ ] Direct device pairing (QR code, local transfer).
-- [ ] Privacy Center readability pass (maintainer, 2026-10-12): the screen
+- [x] Privacy Center readability pass (maintainer, 2026-10-12): the screen
       is visually dense and hard to scan. Review it and try a few layout
       options for the maintainer to pick from. Next, as 0.3.0
       (maintainer, 2026-10-14).
   - [x] Options shown; the maintainer chose sections you open (B,
         2026-10-14).
-  - [ ] Built and checked on a device.
+  - [x] Built, and shipped in 0.2.2 (in testers' hands since).
 
 ## Phase 4: Release
 
@@ -301,6 +301,11 @@ requirement rather than on features.
   - [ ] 0.5.0: CBN, CBG, THCa and CBDV label amounts on products and
         "known for" cannabinoids on strains; insights and the shop effect
         grouped by shared parent or dominant terpene.
+    - [x] Label amounts for CBN, CBG, THCa and CBDV on products (core,
+          plaintext export, product editor), and a fixture that writes one.
+          "Known for" cannabinoids on strains shipped in 0.4.0.
+    - [ ] Insights and the shop effect grouped by shared parent or
+          dominant terpene.
 - [ ] Strain lookups, 0.6.0 (`docs/design-decisions.md`, "Catalog
       lookups"; maintainer, 2026-10-14: Leafly and a seed database).
   - [ ] Research, during 0.4.0: for each candidate (Leafly, seed

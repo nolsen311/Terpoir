@@ -57,9 +57,9 @@ pub use keys::{
 };
 pub use plaintext::ExportFile;
 pub use records::{
-    BrandData, IdentifierData, LocalTimeData, ProductData, ProductLineData, PurchaseData,
-    PurchaseLineData, SessionData, SnippetData, SpotData, StrainData, SymptomData, TagData,
-    TagIntensity, TagProvenance, TagRefData, TerpeneLevelData,
+    BrandData, CannabinoidAmountData, IdentifierData, LocalTimeData, ProductData, ProductLineData,
+    PurchaseData, PurchaseLineData, SessionData, SnippetData, SpotData, StrainData, SymptomData,
+    TagData, TagIntensity, TagProvenance, TagRefData, TerpeneLevelData,
 };
 pub use scan::{
     LabelScanData, ReceiptItemData, ReceiptScan, ScannedCodeData, classify_code, parse_label,

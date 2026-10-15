@@ -11,11 +11,11 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use terpoir_ffi::{
-    BrandData, CoreError, ExportArchive, IdentifierData, InsightFeedback, Journal, LocalTimeData,
-    NewKeys, ProductData, ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData,
-    SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance,
-    TagRefData, TerpeneLevelData, check_export_archive, check_recovery_key, create_keys,
-    keys_for_restore, master_key_from_recovery, read_export_archive, readable_blobs,
+    BrandData, CannabinoidAmountData, CoreError, ExportArchive, IdentifierData, InsightFeedback,
+    Journal, LocalTimeData, NewKeys, ProductData, ProductLineData, PurchaseData, PurchaseLineData,
+    RecordType, SessionData, SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity,
+    TagProvenance, TagRefData, TerpeneLevelData, check_export_archive, check_recovery_key,
+    create_keys, keys_for_restore, master_key_from_recovery, read_export_archive, readable_blobs,
     sync_folder_key_file, trackable_data_points, vocabulary,
 };
 
@@ -146,6 +146,7 @@ fn full_lifecycle() {
                     kind: "qr".into(),
                 }],
                 shops: vec![],
+                cannabinoids: vec![],
             },
             1,
         )
@@ -789,6 +790,7 @@ fn the_plaintext_export_has_every_record_readably() {
                 package_date_day: Some(20_737),
                 identifiers: vec![],
                 shops: vec![],
+                cannabinoids: vec![],
             },
             2,
         )
@@ -901,6 +903,7 @@ fn insights_need_evidence_and_respect_feedback() {
         package_date_day: None,
         identifiers: vec![],
         shops: vec![],
+        cannabinoids: vec![],
     };
     let heavy = journal
         .save_product(None, product("Heavy", "myrcene"), 1)
@@ -1003,6 +1006,7 @@ fn with_terpene_insights(journal: &Journal) {
                     package_date_day: None,
                     identifiers: vec![],
                     shops: vec![],
+                    cannabinoids: vec![],
                 },
                 1,
             )
@@ -1193,6 +1197,7 @@ fn shop_insights_attribute_sessions_to_where_products_were_bought() {
                     package_date_day: Some(20_340),
                     identifiers: vec![],
                     shops: vec![],
+                    cannabinoids: vec![],
                 },
                 2,
             )
@@ -1375,6 +1380,7 @@ fn shop_insights_compare_brands_and_strains_across_shops() {
                     package_date_day: None,
                     identifiers: vec![],
                     shops: vec![shop.clone()],
+                    cannabinoids: vec![],
                 },
                 3,
             )
@@ -1597,6 +1603,7 @@ fn deleting_a_data_point_clears_it_everywhere() {
                 package_date_day: Some(20_300),
                 identifiers: vec![],
                 shops: vec![spot.clone()],
+                cannabinoids: vec![],
             },
             1,
         )
@@ -1907,6 +1914,7 @@ fn insights_fall_back_to_a_strains_dominant_terpene() {
         package_date_day: None,
         identifiers: vec![],
         shops: vec![],
+        cannabinoids: vec![],
     };
     let sleepy = journal
         .save_strain(None, strain("Sleepy", "myrcene"), 1)
@@ -1950,4 +1958,59 @@ fn insights_fall_back_to_a_strains_dominant_terpene() {
     journal.set_strain_detail("simple".into(), 20).unwrap();
     let simple = journal.insights().unwrap();
     assert!(simple.iter().all(|i| i.key != "terpene:myrcene"));
+}
+
+#[test]
+fn products_keep_label_cannabinoids() {
+    let device = Device::new();
+    let keys = create_keys().unwrap();
+    let journal = device.open(&keys).unwrap();
+    let amount = |c: &str, milli: i64| CannabinoidAmountData {
+        cannabinoid: c.into(),
+        milli,
+        unit: "percent".into(),
+    };
+    let product = ProductData {
+        name: "Sleepy Flower".into(),
+        form: Some("flower".into()),
+        brand: None,
+        strains: vec![],
+        thc_milli: Some(18_000),
+        thc_unit: Some("percent".into()),
+        cbd_milli: None,
+        cbd_unit: None,
+        terpenes: vec![],
+        batch: None,
+        package_date_day: None,
+        identifiers: vec![],
+        shops: vec![],
+        cannabinoids: vec![amount("cbg", 1_200), amount("cbn", 400)],
+    };
+    let id = journal.save_product(None, product.clone(), 1).unwrap();
+    // Read back in cannabinoid order (cbn before cbg is not guaranteed by
+    // input order), so compare as sets.
+    let saved = journal.get_product(id.clone()).unwrap().unwrap();
+    let mut got: Vec<_> = saved
+        .cannabinoids
+        .iter()
+        .map(|c| (c.cannabinoid.clone(), c.milli))
+        .collect();
+    got.sort();
+    assert_eq!(got, [("cbg".to_owned(), 1_200), ("cbn".to_owned(), 400)]);
+
+    // Two amounts for one cannabinoid are refused.
+    let mut twice = product.clone();
+    twice.cannabinoids.push(amount("cbg", 900));
+    assert!(matches!(
+        journal.save_product(None, twice, 2),
+        Err(CoreError::InvalidInput)
+    ));
+
+    // Removing one keeps the other.
+    let mut fewer = saved.clone();
+    fewer.cannabinoids.retain(|c| c.cannabinoid == "cbn");
+    journal.save_product(Some(id.clone()), fewer, 3).unwrap();
+    let after = journal.get_product(id).unwrap().unwrap();
+    assert_eq!(after.cannabinoids.len(), 1);
+    assert_eq!(after.cannabinoids[0].cannabinoid, "cbn");
 }
