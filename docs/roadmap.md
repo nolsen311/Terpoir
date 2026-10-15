@@ -37,7 +37,7 @@ per item or small group of items. Keep this file updated as items land.
         `terpoirapp`); mark it as a bot ("automated account") in its
         profile settings.
   - [ ] Preferences → Development → New application, with only the
-        `write:statuses` scope; copy its access token.
+        `write:statuses` and `write:media` scopes; copy its access token.
   - [ ] Add the token as `MASTODON_TOKEN` in the Terpoir repository's
         `announce` environment (Settings → Environments), after
         Terpoir-infra has created it.

@@ -4,10 +4,14 @@
 #
 # Posts each published release to the project's Mastodon account
 # (docs/design-decisions.md, "Release announcements"): a first line, the
-# version's Play release notes (docs/play-listing.md) and a link to the
-# release page. Pre-releases (the rolling dev-build) are never posted.
+# version's Play release notes (docs/play-listing.md), a link to the
+# release page and the hashtags, with a branded image: the logo, the
+# version and the release's headline (its "Headline:" line in
+# docs/play-listing.md), drawn by android/release/store/render.py with the
+# app's own fonts. Pre-releases (the rolling dev-build) are never posted.
 #
-# The account's token, allowed to post statuses only, is the secret
+# The account's token, allowed to post statuses and upload media only, is
+# the secret
 # MASTODON_TOKEN of the `announce` environment, which only v* tags can use
 # (Terpoir-infra creates the environment; the maintainer sets the token by
 # hand, so it never enters Terraform state). Until the token is set, the
@@ -47,7 +51,36 @@ jobs:
           sparse-checkout: |
             .github/scripts
             docs/play-listing.md
+            android/release/store/render.py
+            android/app/src/main/res/font
           sparse-checkout-cone-mode: false
+
+      - name: Check the tag
+        run: |
+          case "$TAG" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "not a release tag: $TAG" >&2; exit 1 ;; esac
+
+      # Pillow from Ubuntu's own archive, for the system Python.
+      - name: Install Pillow
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-pil
+
+      - name: Draw the release image
+        run: |
+          set -euo pipefail
+          version=${TAG#v}
+          headline=$(.github/scripts/release-headline.sh "$version")
+          /usr/bin/python3 android/release/store/render.py --card "$RUNNER_TEMP/release.png" \
+            "$version" "$headline" \
+            android/app/src/main/res/font/fraunces.ttf android/app/src/main/res/font/work_sans.ttf
+          echo "HEADLINE=$headline" >> "$GITHUB_ENV"
+
+      - name: Keep the image with the run
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-image
+          path: ${{ runner.temp }}/release.png
+          retention-days: 14
 
       - name: Post to Mastodon
         env:
@@ -59,17 +92,25 @@ jobs:
             echo "::warning::MASTODON_TOKEN is not set in the announce environment; nothing posted."
             exit 0
           fi
-          case "$TAG" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "not a release tag: $TAG" >&2; exit 1 ;; esac
           version=${TAG#v}
           status=$(.github/scripts/release-post.sh "$version" "https://github.com/${REPO}/releases/tag/${TAG}")
           printf '%s\n' "$status"
-          # The tag as idempotency key: a re-run within an hour doesn't
-          # post twice.
+          api="${MASTODON_INSTANCE%/}/api"
+          # The image first, with its alt text.
+          media=$(curl -sSf --proto '=https' --tlsv1.2 \
+            -H "Authorization: Bearer ${MASTODON_TOKEN}" \
+            -F "file=@${RUNNER_TEMP}/release.png;type=image/png" \
+            --form-string "description=The Terpoir logo, an open book with three rising bubbles beside the word Terpoir, on dark green. Below it: Version ${version}. ${HEADLINE}." \
+            "${api}/v2/media" | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])')
+          # Then the post. The tag is its idempotency key: a re-run within
+          # an hour doesn't post twice (a re-run may upload the image
+          # again, which Mastodon discards unused).
           curl -sSf --proto '=https' --tlsv1.2 \
             -H "Authorization: Bearer ${MASTODON_TOKEN}" \
             -H "Idempotency-Key: terpoir-${TAG}" \
             --data-urlencode "status=${status}" \
+            --data-urlencode "media_ids[]=${media}" \
             --data-urlencode "visibility=public" \
             --data-urlencode "language=en" \
-            "${MASTODON_INSTANCE%/}/api/v1/statuses" -o /dev/null
+            "${api}/v1/statuses" -o /dev/null
           echo "Posted ${TAG} to ${MASTODON_INSTANCE}"

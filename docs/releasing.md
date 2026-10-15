@@ -137,7 +137,9 @@ fetches use HTTPS, so nothing else needs the agent.
 The steps, for doing them separately:
 
 1. **Version:** a PR raises `versionCode` and sets `versionName` in
-   `android/app/build.gradle.kts`. Merge it.
+   `android/app/build.gradle.kts`, and adds the version's release notes and
+   its **Headline:** line to `docs/play-listing.md` (the Mastodon post and
+   its image use both). Merge it.
 2. **Tag** that commit on `main`, signed with the YubiKey's SSH key, and
    push the tag:
    ```bash
@@ -167,7 +169,8 @@ The steps, for doing them separately:
      signed APK and `SHA256SUMS`.
 
    The signed bundle stays local.
-5. **Publish:** check the draft, then publish it:
+5. **Publish:** check the draft, then publish it (this also posts it to
+   Mastodon, `announce.yml`):
    ```bash
    gh release edit v0.1.0 --draft=false
    ```
