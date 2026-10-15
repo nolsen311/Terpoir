@@ -46,7 +46,7 @@
 //! weights (`3.5C` is 3.5 g), and letters inside a number only after a
 //! real digit (`1O0MG` is 100 mg; `1O` alone is not a size).
 
-use terpoir_model::{Form, StrainType, Subtype};
+use terpoir_model::{Form, PackageSize, SizeAmount, StrainType, Subtype};
 
 use crate::number::trailing_price;
 
@@ -69,6 +69,17 @@ impl SizeUnit {
             Self::Gram => "g",
             Self::Milligram => "mg",
             Self::Millilitre => "ml",
+        }
+    }
+}
+
+impl From<SizeUnit> for terpoir_model::SizeUnit {
+    /// The purchase line's unit: the same slug.
+    fn from(unit: SizeUnit) -> Self {
+        match unit {
+            SizeUnit::Gram => Self::Gram,
+            SizeUnit::Milligram => Self::Milligram,
+            SizeUnit::Millilitre => Self::Millilitre,
         }
     }
 }
@@ -103,6 +114,22 @@ pub struct ItemBreakdown {
     /// Other known words taken out (`INDOOR`, `THC`, `25%`, a second size),
     /// as printed.
     pub other: Vec<String>,
+}
+
+impl ItemBreakdown {
+    /// The size and pack count as a purchase line or product stores them
+    /// ([`PackageSize`]), or `None` when the line prints neither.
+    #[must_use]
+    pub fn package_size(&self) -> Option<PackageSize> {
+        let size = PackageSize {
+            amount: self.size.map(|s| SizeAmount {
+                milli: s.milli,
+                unit: s.unit.into(),
+            }),
+            pack: self.pack,
+        };
+        size.is_valid().then_some(size)
+    }
 }
 
 /// A built-in term and what it means.
@@ -732,6 +759,26 @@ mod tests {
         assert_eq!(d.strain_type, Some(StrainType::Hybrid));
         assert_eq!(d.size, grams(3_500));
         assert_eq!(d.other, ["INDOOR"]);
+    }
+
+    #[test]
+    fn package_sizes_map_onto_the_purchase_line() {
+        let size = describe_item("BD PR 5PK 0.5G").package_size().unwrap();
+        let amount = size.amount.unwrap();
+        assert_eq!(
+            (amount.milli, amount.unit, size.pack),
+            (500, terpoir_model::SizeUnit::Gram, Some(5))
+        );
+        let size = describe_item("GUMMIES 100MG").package_size().unwrap();
+        assert_eq!(
+            size.amount.unwrap().unit,
+            terpoir_model::SizeUnit::Milligram
+        );
+        assert_eq!(describe_item("BD HYB").package_size(), None);
+        // The units' slugs are the purchase line's.
+        for unit in [SizeUnit::Gram, SizeUnit::Milligram, SizeUnit::Millilitre] {
+            assert_eq!(terpoir_model::SizeUnit::from(unit).slug(), unit.slug());
+        }
     }
 
     #[test]

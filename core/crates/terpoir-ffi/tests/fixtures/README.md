@@ -50,11 +50,16 @@ Written by `make_compat_fixtures.rs` with fixed contents and clock:
   levels (myrcene dominant, pinene secondary), parent "Haze" (a name-only
   strain, `parent_strain` in the manifest) and the cannabinoid CBG;
 - spot "Corner shop" (purpose, coordinates, radius, purchase prompts on);
+  since 0.6.0 also the phone number 5550102030 and the licence number
+  C100000123LIC (`receipt_formats` in the manifest);
 - product "Gummies" (form, brand, strain, THC/CBD, terpene, batch, package
   date, barcode, shop); since 0.5.0 also a CBN label amount
   (`product_cannabinoids` in the manifest); since 0.6.0 also the subtype
-  gummy (`product_subtypes` in the manifest);
-- a purchase of it at the spot (batch, price);
+  gummy (`product_subtypes` in the manifest), and a default size of 10
+  pieces, 100 mg, and the learned receipt name "ACME GUMMIES 10PK 100MG"
+  (`receipt_formats`);
+- a purchase of it at the spot (batch, price); since 0.6.0 its line also
+  has that size and a quantity of 2 (`receipt_formats`);
 - tags "giggly" (effect) and "jaw tension" (symptom); since 0.6.0 also
   "Lozenge", a custom subtype under edible with tincture as its method
   (`subtype_tag` in the manifest);

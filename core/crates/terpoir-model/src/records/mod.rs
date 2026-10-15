@@ -20,11 +20,11 @@ mod tag;
 mod tracking;
 
 pub use catalog::{
-    Brand, Cannabinoid, Form, IdentifierKind, LabelAmount, LabelUnit, Product, Strain, StrainType,
-    Subtype, Terpene, TerpeneLevel, usual_method,
+    Brand, Cannabinoid, Form, IdentifierKind, LabelAmount, LabelUnit, MAX_RECEIPT_NAME_CHARS,
+    Product, Strain, StrainType, Subtype, Terpene, TerpeneLevel, receipt_name_key, usual_method,
 };
 pub use feedback::InsightFeedbackList;
-pub use purchase::{Price, Purchase, PurchaseLine};
+pub use purchase::{PackageSize, Price, Purchase, PurchaseLine, SizeAmount, SizeUnit};
 pub use session::{
     CoreEffect, Dose, DoseUnit, Intention, Method, ProductLine, PurchaseRef, Session, Social,
     SymptomResult, TargetedSymptom, Timeline, TimelinePlan, check_in_minutes_for,
@@ -318,6 +318,16 @@ impl Fields {
         )
     }
 
+    /// A set of strings: one `prefix/<text>` entry each, set to `true`.
+    pub(crate) fn text_set(&mut self, prefix: &str, texts: &BTreeSet<String>) -> &mut Self {
+        self.map(
+            prefix,
+            texts.iter().map(|t| (t, ())),
+            |t| (*t).clone(),
+            |()| Value::Bool(true),
+        )
+    }
+
     pub(crate) fn finish(&mut self) -> BTreeMap<String, Value> {
         core::mem::take(&mut self.0)
     }
@@ -408,6 +418,15 @@ impl<'a> Reader<'a> {
         self.entries(prefix)
             .map(|(k, v)| match v {
                 Value::Bool(true) => RecordId::from_hex(k).map_err(|_| Error::InvalidField(prefix)),
+                _ => Err(Error::InvalidField(prefix)),
+            })
+            .collect()
+    }
+
+    pub(crate) fn text_set(&self, prefix: &'static str) -> Result<BTreeSet<String>> {
+        self.entries(prefix)
+            .map(|(k, v)| match v {
+                Value::Bool(true) if !k.is_empty() => Ok(k.to_owned()),
                 _ => Err(Error::InvalidField(prefix)),
             })
             .collect()

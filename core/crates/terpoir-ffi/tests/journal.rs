@@ -12,12 +12,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use terpoir_ffi::{
     BrandData, CannabinoidAmountData, CoreError, ExportArchive, IdentifierData, InsightFeedback,
-    Journal, LocalTimeData, NewKeys, ProductData, ProductLineData, PurchaseData, PurchaseLineData,
-    RecordType, SessionData, SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity,
-    TagProvenance, TagRefData, TerpeneLevelData, TimelineLevelData, check_export_archive,
-    check_in_minutes_for_methods, check_recovery_key, create_keys, keys_for_restore,
-    master_key_from_recovery, read_export_archive, readable_blobs, subtypes_for_form,
-    sync_folder_key_file, timeline_plan_for_methods, trackable_data_points, vocabulary,
+    Journal, LocalTimeData, NewKeys, PackageSizeData, ProductData, ProductLineData, PurchaseData,
+    PurchaseLineData, RecordType, SessionData, SnippetData, SpotData, StrainData, SymptomData,
+    TagData, TagIntensity, TagProvenance, TagRefData, TerpeneLevelData, TimelineLevelData,
+    check_export_archive, check_in_minutes_for_methods, check_recovery_key, create_keys,
+    keys_for_restore, master_key_from_recovery, read_export_archive, readable_blobs,
+    subtypes_for_form, sync_folder_key_file, timeline_plan_for_methods, trackable_data_points,
+    vocabulary,
 };
 
 struct Device {
@@ -151,6 +152,8 @@ fn full_lifecycle() {
                 shops: vec![],
                 cannabinoids: vec![],
                 subtype: None,
+                default_size: None,
+                receipt_names: vec![],
             },
             1,
         )
@@ -200,6 +203,8 @@ fn full_lifecycle() {
                 accuracy_m: Some(500),
                 radius_m: Some(150),
                 purchase_prompts: true,
+                phones: vec![],
+                licences: vec![],
             },
             3,
         )
@@ -261,6 +266,8 @@ fn full_lifecycle() {
                     batch: Some("B-7".into()),
                     price_minor_units: Some(2_000),
                     price_currency: Some("USD".into()),
+                    size: None,
+                    quantity: 1,
                 }],
             },
             4,
@@ -798,6 +805,8 @@ fn the_plaintext_export_has_every_record_readably() {
                 shops: vec![],
                 cannabinoids: vec![],
                 subtype: None,
+                default_size: None,
+                receipt_names: vec![],
             },
             2,
         )
@@ -1113,6 +1122,8 @@ fn insights_need_evidence_and_respect_feedback() {
         shops: vec![],
         cannabinoids: vec![],
         subtype: None,
+        default_size: None,
+        receipt_names: vec![],
     };
     let heavy = journal
         .save_product(None, product("Heavy", "myrcene"), 1)
@@ -1217,6 +1228,8 @@ fn with_terpene_insights(journal: &Journal) {
                     shops: vec![],
                     cannabinoids: vec![],
                     subtype: None,
+                    default_size: None,
+                    receipt_names: vec![],
                 },
                 1,
             )
@@ -1382,6 +1395,8 @@ fn shop_insights_attribute_sessions_to_where_products_were_bought() {
                     accuracy_m: None,
                     radius_m: None,
                     purchase_prompts: false,
+                    phones: vec![],
+                    licences: vec![],
                 },
                 1,
             )
@@ -1409,6 +1424,8 @@ fn shop_insights_attribute_sessions_to_where_products_were_bought() {
                     shops: vec![],
                     cannabinoids: vec![],
                     subtype: None,
+                    default_size: None,
+                    receipt_names: vec![],
                 },
                 2,
             )
@@ -1431,6 +1448,8 @@ fn shop_insights_attribute_sessions_to_where_products_were_bought() {
                         batch: None,
                         price_minor_units: None,
                         price_currency: None,
+                        size: None,
+                        quantity: 1,
                     }],
                 },
                 3,
@@ -1542,6 +1561,8 @@ fn shop_insights_compare_brands_and_strains_across_shops() {
                     accuracy_m: None,
                     radius_m: None,
                     purchase_prompts: false,
+                    phones: vec![],
+                    licences: vec![],
                 },
                 1,
             )
@@ -1593,6 +1614,8 @@ fn shop_insights_compare_brands_and_strains_across_shops() {
                     shops: vec![shop.clone()],
                     cannabinoids: vec![],
                     subtype: None,
+                    default_size: None,
+                    receipt_names: vec![],
                 },
                 3,
             )
@@ -1791,6 +1814,8 @@ fn deleting_a_data_point_clears_it_everywhere() {
                 accuracy_m: None,
                 radius_m: None,
                 purchase_prompts: false,
+                phones: vec![],
+                licences: vec![],
             },
             1,
         )
@@ -1817,6 +1842,8 @@ fn deleting_a_data_point_clears_it_everywhere() {
                 shops: vec![spot.clone()],
                 cannabinoids: vec![],
                 subtype: None,
+                default_size: None,
+                receipt_names: vec![],
             },
             1,
         )
@@ -1836,6 +1863,8 @@ fn deleting_a_data_point_clears_it_everywhere() {
                     batch: Some("B-7".into()),
                     price_minor_units: Some(2_000),
                     price_currency: Some("USD".into()),
+                    size: None,
+                    quantity: 1,
                 }],
             },
             2,
@@ -2129,6 +2158,8 @@ fn insights_fall_back_to_a_strains_dominant_terpene() {
         shops: vec![],
         cannabinoids: vec![],
         subtype: None,
+        default_size: None,
+        receipt_names: vec![],
     };
     let sleepy = journal
         .save_strain(None, strain("Sleepy", "myrcene"), 1)
@@ -2211,6 +2242,8 @@ fn strain_product(name: &str, strain: String, shops: Vec<String>) -> ProductData
         shops,
         cannabinoids: vec![],
         subtype: None,
+        default_size: None,
+        receipt_names: vec![],
     }
 }
 
@@ -2283,6 +2316,8 @@ fn the_shop_effect_compares_strain_families_and_terpenes() {
                     accuracy_m: None,
                     radius_m: None,
                     purchase_prompts: false,
+                    phones: vec![],
+                    licences: vec![],
                 },
                 1,
             )
@@ -2378,6 +2413,8 @@ fn products_keep_label_cannabinoids() {
         shops: vec![],
         cannabinoids: vec![amount("cbg", 1_200), amount("cbn", 400)],
         subtype: None,
+        default_size: None,
+        receipt_names: vec![],
     };
     let id = journal.save_product(None, product.clone(), 1).unwrap();
     // Read back in cannabinoid order (cbn before cbg is not guaranteed by
@@ -2445,6 +2482,8 @@ fn receipt_items_and_shops_are_matched_against_the_journal() {
                     accuracy_m: None,
                     radius_m: None,
                     purchase_prompts: false,
+                    phones: vec![],
+                    licences: vec![],
                 },
                 2,
             )
@@ -2480,6 +2519,8 @@ fn receipt_items_and_shops_are_matched_against_the_journal() {
                 shops: vec![],
                 cannabinoids: vec![],
                 subtype: None,
+                default_size: None,
+                receipt_names: vec![],
             },
             4,
         )
@@ -2499,6 +2540,8 @@ fn receipt_items_and_shops_are_matched_against_the_journal() {
                     batch: None,
                     price_minor_units: Some(3_500),
                     price_currency: Some("USD".into()),
+                    size: None,
+                    quantity: 1,
                 }],
             },
             5,
@@ -2576,4 +2619,367 @@ fn receipt_items_and_shops_are_matched_against_the_journal() {
         journal.match_receipt_shop(vec![]),
         Err(CoreError::Locked)
     ));
+}
+
+fn plain_product(name: &str) -> ProductData {
+    ProductData {
+        name: name.into(),
+        form: None,
+        brand: None,
+        strains: vec![],
+        thc_milli: None,
+        thc_unit: None,
+        cbd_milli: None,
+        cbd_unit: None,
+        terpenes: vec![],
+        batch: None,
+        package_date_day: None,
+        identifiers: vec![],
+        shops: vec![],
+        cannabinoids: vec![],
+        subtype: None,
+        default_size: None,
+        receipt_names: vec![],
+    }
+}
+
+fn plain_spot(name: &str) -> SpotData {
+    SpotData {
+        name: name.into(),
+        purposes: vec![builtin("re_up")],
+        lat_e7: None,
+        lon_e7: None,
+        accuracy_m: None,
+        radius_m: None,
+        purchase_prompts: false,
+        phones: vec![],
+        licences: vec![],
+    }
+}
+
+fn grams(milli: i64) -> PackageSizeData {
+    PackageSizeData {
+        milli: Some(milli),
+        unit: Some("g".into()),
+        pack: None,
+    }
+}
+
+#[test]
+fn purchase_lines_keep_size_and_quantity_and_products_a_default_size() {
+    let device = Device::new();
+    let keys = create_keys().unwrap();
+    let journal = device.open(&keys).unwrap();
+    let mut data = plain_product("Blue Dream");
+    data.default_size = Some(grams(3_500));
+    let product = journal.save_product(None, data, 1).unwrap();
+    let saved = journal.get_product(product.clone()).unwrap().unwrap();
+    assert!(saved.default_size == Some(grams(3_500)));
+
+    // A scanned line's breakdown maps straight onto the purchase line.
+    let item = terpoir_ffi::describe_receipt_item("2 X BD PR 5PK 0.5G".into());
+    let size = PackageSizeData {
+        milli: item.size_milli,
+        unit: item.size_unit.clone(),
+        pack: item.pack,
+    };
+    let line = |size: Option<PackageSizeData>, quantity: u32| PurchaseLineData {
+        line_id: None,
+        product: Some(product.clone()),
+        batch: None,
+        price_minor_units: None,
+        price_currency: None,
+        size,
+        quantity,
+    };
+    let purchase = |lines| PurchaseData {
+        when: LocalTimeData {
+            unix_ms: 1_759_900_000_000,
+            utc_offset_min: -420,
+        },
+        spot: None,
+        lines,
+    };
+    let id = journal
+        .save_purchase(
+            None,
+            purchase(vec![
+                line(Some(size.clone()), item.quantity.unwrap()),
+                line(None, 1),
+            ]),
+            2,
+        )
+        .unwrap();
+    let saved = journal.get_purchase(id.clone()).unwrap().unwrap();
+    let mut got: Vec<(Option<PackageSizeData>, u32)> = saved
+        .lines
+        .iter()
+        .map(|l| (l.size.clone(), l.quantity))
+        .collect();
+    got.sort_by_key(|(_, q)| *q);
+    assert!(got == [(None, 1), (Some(size.clone()), 2)]);
+    assert!(size.milli == Some(500) && size.unit.as_deref() == Some("g") && size.pack == Some(5));
+
+    // The CSVs carry them.
+    let files = journal.export_plaintext(10).unwrap();
+    let products_csv = String::from_utf8(files[2].bytes.clone()).unwrap();
+    assert!(
+        products_csv
+            .lines()
+            .next()
+            .unwrap()
+            .ends_with(",shops,default_size,default_size_unit,default_pack,receipt_names")
+    );
+    assert!(products_csv.contains(",3.5,g,,"));
+    let purchases_csv = String::from_utf8(files[3].bytes.clone()).unwrap();
+    assert!(
+        purchases_csv
+            .lines()
+            .next()
+            .unwrap()
+            .ends_with(",currency,size,size_unit,pack,quantity")
+    );
+    assert!(purchases_csv.contains(",0.5,g,5,2\r\n"));
+    assert!(purchases_csv.contains(",,,,1\r\n"));
+
+    // Malformed sizes and quantities are refused.
+    for (size, quantity) in [
+        (None, 0),
+        (
+            Some(PackageSizeData {
+                milli: Some(1_000),
+                unit: None,
+                pack: None,
+            }),
+            1,
+        ),
+        (
+            Some(PackageSizeData {
+                milli: None,
+                unit: None,
+                pack: None,
+            }),
+            1,
+        ),
+        (Some(grams(0)), 1),
+        (
+            Some(PackageSizeData {
+                milli: None,
+                unit: None,
+                pack: Some(0),
+            }),
+            1,
+        ),
+    ] {
+        assert_eq!(
+            journal.save_purchase(None, purchase(vec![line(size, quantity)]), 3),
+            Err(CoreError::InvalidInput)
+        );
+    }
+    let mut bad = plain_product("x");
+    bad.default_size = Some(grams(-1));
+    assert_eq!(
+        journal.save_product(None, bad, 3),
+        Err(CoreError::InvalidInput)
+    );
+}
+
+#[test]
+fn learned_receipt_names_link_exactly_and_automatically() {
+    let keys = create_keys().unwrap();
+    let phone_dir = Device::new();
+    let tablet_dir = Device::new();
+    let phone = phone_dir.open(&keys).unwrap();
+    let blue_dream = phone
+        .save_product(None, plain_product("Blue Dream"), 1)
+        .unwrap();
+    let bubba = phone
+        .save_product(None, plain_product("Bubba Diesel"), 1)
+        .unwrap();
+
+    // Before learning, BD is only a suggestion.
+    let found = phone
+        .suggest_for_receipt_item("BD 3.5G HYB".into(), None)
+        .unwrap();
+    assert!(!found.is_empty() && found.iter().all(|s| !s.learned));
+
+    // The user links the line to Blue Dream: the exact text is kept.
+    phone
+        .learn_receipt_name(blue_dream.clone(), "bd  3.5g hyb ".into(), 2)
+        .unwrap();
+    let saved = phone.get_product(blue_dream.clone()).unwrap().unwrap();
+    assert_eq!(saved.receipt_names, ["BD 3.5G HYB"]);
+    let found = phone
+        .suggest_for_receipt_item("BD 3.5G  HYB".into(), None)
+        .unwrap();
+    assert_eq!(found[0].id, blue_dream);
+    assert!(found[0].learned && !found[0].close);
+    assert_eq!(found[0].match_kind, "learned");
+    assert_eq!(found[0].record_type, "product");
+    // Listed once, ahead of the ranked suggestions.
+    assert_eq!(found.iter().filter(|s| s.id == blue_dream).count(), 1);
+    assert!(found[1..].iter().all(|s| !s.learned));
+    // A line that differs by anything but case and spacing (here a
+    // recognition confusion) is only a suggestion.
+    let found = phone
+        .suggest_for_receipt_item("BD 3.5C HYB".into(), None)
+        .unwrap();
+    assert!(found.iter().all(|s| !s.learned));
+
+    // It syncs with the product.
+    let tablet = second_device(&keys, &tablet_dir);
+    sync(&phone, &tablet, 3);
+    let found = tablet
+        .suggest_for_receipt_item("BD 3.5G HYB".into(), None)
+        .unwrap();
+    assert!(found[0].learned && found[0].id == blue_dream);
+
+    // Linking the same line elsewhere moves it.
+    phone
+        .learn_receipt_name(bubba.clone(), "BD 3.5G HYB".into(), 4)
+        .unwrap();
+    assert!(
+        phone
+            .get_product(blue_dream.clone())
+            .unwrap()
+            .unwrap()
+            .receipt_names
+            .is_empty()
+    );
+    let found = phone
+        .suggest_for_receipt_item("BD 3.5G HYB".into(), None)
+        .unwrap();
+    assert!(found[0].learned && found[0].id == bubba);
+    // Two products that learned one line on different devices are offered
+    // as equal choices, not linked.
+    tablet
+        .learn_receipt_name(blue_dream.clone(), "GSC 1/8".into(), 5)
+        .unwrap();
+    phone
+        .learn_receipt_name(bubba.clone(), "GSC 1/8".into(), 5)
+        .unwrap();
+    sync(&tablet, &phone, 6);
+    let found = phone
+        .suggest_for_receipt_item("GSC 1/8".into(), None)
+        .unwrap();
+    assert!(found[..2].iter().all(|s| s.learned && s.close));
+
+    // Undo forgets it.
+    assert!(
+        phone
+            .forget_receipt_name(bubba.clone(), "bd 3.5g hyb".into(), 7)
+            .unwrap()
+    );
+    assert!(
+        !phone
+            .forget_receipt_name(bubba.clone(), "bd 3.5g hyb".into(), 7)
+            .unwrap()
+    );
+    let found = phone
+        .suggest_for_receipt_item("BD 3.5G HYB".into(), None)
+        .unwrap();
+    assert!(found.iter().all(|s| !s.learned));
+
+    // Learned names are part of the product (and the editor keeps them),
+    // and an empty text is refused.
+    assert_eq!(
+        phone.learn_receipt_name(bubba.clone(), "  ".into(), 8),
+        Err(CoreError::InvalidInput)
+    );
+    assert_eq!(
+        phone.learn_receipt_name("00".repeat(16), "X".into(), 8),
+        Err(CoreError::NotFound)
+    );
+    let mut data = plain_product("Bubba Diesel");
+    data.receipt_names = vec!["bubba  1g".into()];
+    phone.save_product(Some(bubba.clone()), data, 9).unwrap();
+    assert_eq!(
+        phone.get_product(bubba).unwrap().unwrap().receipt_names,
+        ["BUBBA 1G"]
+    );
+    let mut bad = plain_product("x");
+    bad.receipt_names = vec![" ".into()];
+    assert_eq!(
+        phone.save_product(None, bad, 10),
+        Err(CoreError::InvalidInput)
+    );
+}
+
+#[test]
+fn a_confirmed_shop_is_recognised_strongly_by_its_numbers() {
+    let device = Device::new();
+    let keys = create_keys().unwrap();
+    let journal = device.open(&keys).unwrap();
+    let green_leaf = journal
+        .save_spot(None, plain_spot("Green Leaf"), 1)
+        .unwrap();
+    let header = vec![
+        "GREEN LEAF DISPENSARY".to_owned(),
+        "Tel (555) 010-2030".to_owned(),
+        "Lic# C10-0000123-LIC".to_owned(),
+        "BD 3.5G HYB 35.00".to_owned(),
+    ];
+    // By name only: a guess.
+    let shop = journal.match_receipt_shop(header.clone()).unwrap();
+    assert!(shop.spot.as_ref() == Some(&green_leaf) && !shop.strong);
+
+    // Confirmed once: its numbers are kept.
+    assert_eq!(
+        journal
+            .remember_receipt_shop(green_leaf.clone(), header.clone(), 2)
+            .unwrap(),
+        2
+    );
+    assert_eq!(
+        journal
+            .remember_receipt_shop(green_leaf.clone(), header.clone(), 3)
+            .unwrap(),
+        0
+    );
+    let saved = journal.get_spot(green_leaf.clone()).unwrap().unwrap();
+    assert_eq!(saved.phones, ["5550102030"]);
+    assert_eq!(saved.licences, ["C100000123LIC"]);
+
+    // Its next receipt, under another name, is recognised by phone.
+    let shop = journal
+        .match_receipt_shop(vec![
+            "GL CANNABIS CO".into(),
+            "+1 555 010 2030".into(),
+            "BD 3.5G HYB 35.00".into(),
+        ])
+        .unwrap();
+    assert!(shop.spot.as_ref() == Some(&green_leaf) && shop.strong);
+    assert_eq!(shop.kind.as_deref(), Some("phone"));
+    assert_eq!(shop.row, Some(1));
+    // Or by licence.
+    let shop = journal
+        .match_receipt_shop(vec!["SOMEWHERE".into(), "License: C10-0000123-LIC".into()])
+        .unwrap();
+    assert!(shop.strong && shop.kind.as_deref() == Some("licence"));
+
+    // Typed numbers are normalised as receipts read them; others refused.
+    let mut data = plain_spot("Corner");
+    data.phones = vec!["(555) 999-0000".into(), "1-555-999-0000".into()];
+    data.licences = vec!["ocm-aucp-23-000123".into()];
+    let corner = journal.save_spot(None, data, 4).unwrap();
+    let saved = journal.get_spot(corner).unwrap().unwrap();
+    assert_eq!(saved.phones, ["5559990000"]);
+    assert_eq!(saved.licences, ["OCMAUCP23000123"]);
+    for (phones, licences) in [
+        (vec!["123".to_owned()], vec![]),
+        (vec!["555 CALL NOW".to_owned()], vec![]),
+        (vec![], vec!["A-1".to_owned()]),
+    ] {
+        let mut data = plain_spot("Bad");
+        data.phones = phones;
+        data.licences = licences;
+        assert_eq!(
+            journal.save_spot(None, data, 5),
+            Err(CoreError::InvalidInput)
+        );
+    }
+    assert_eq!(
+        journal.remember_receipt_shop("00".repeat(16), header, 6),
+        Err(CoreError::NotFound)
+    );
 }

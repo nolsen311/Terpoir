@@ -44,7 +44,8 @@ mod wrap;
 pub use code::{ScannedCode, classify_code, is_package_tag};
 pub use date::Date;
 pub use header::{
-    HEADER_LINES, ShopCandidate, ShopHeader, ShopMatch, ShopMatchKind, match_shop, read_header,
+    HEADER_LINES, ShopCandidate, ShopHeader, ShopMatch, ShopMatchKind, match_shop,
+    normalize_licence, normalize_phone, read_header,
 };
 pub use label::{LabelAmountGuess, LabelScan, parse_label};
 pub use layout::{TextPiece, TextRow, group_rows};

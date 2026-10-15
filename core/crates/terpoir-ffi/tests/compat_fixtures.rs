@@ -20,11 +20,11 @@ use std::sync::Arc;
 
 use serde_json::Value;
 use terpoir_ffi::{
-    BrandData, CannabinoidAmountData, IdentifierData, Journal, LocalTimeData, PassphraseWrapped,
-    ProductData, ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData,
-    SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance,
-    TagRefData, TerpeneLevelData, TimelineLevelData, check_export_archive, keys_for_restore,
-    master_key_from_passphrase, master_key_from_recovery, read_export_archive,
+    BrandData, CannabinoidAmountData, IdentifierData, Journal, LocalTimeData, PackageSizeData,
+    PassphraseWrapped, ProductData, ProductLineData, PurchaseData, PurchaseLineData, RecordType,
+    SessionData, SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity,
+    TagProvenance, TagRefData, TerpeneLevelData, TimelineLevelData, check_export_archive,
+    keys_for_restore, master_key_from_passphrase, master_key_from_recovery, read_export_archive,
 };
 
 /// Every fixture version directory, oldest name first.
@@ -180,6 +180,15 @@ fn builtin(slug: &str) -> TagRefData {
     TagRefData::Builtin { slug: slug.into() }
 }
 
+/// Since 0.6.0: the gummies' package size, 10 pieces and 100 mg.
+fn gummies_size() -> PackageSizeData {
+    PackageSizeData {
+        milli: Some(100_000),
+        unit: Some("mg".into()),
+        pack: Some(10),
+    }
+}
+
 fn at(unix_ms: i64) -> LocalTimeData {
     LocalTimeData {
         unix_ms,
@@ -219,6 +228,9 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
     // Since 0.6.0, a custom subtype tag too.
     let subtype_tag = fixture.optional_id("subtype_tag");
     let subtypes = fixture.manifest["product_subtypes"].as_bool() == Some(true);
+    // Since 0.6.0, sizes and quantities, learned receipt names and shop
+    // numbers.
+    let receipt_formats = fixture.manifest["receipt_formats"].as_bool() == Some(true);
     assert_eq!(
         count(RecordType::Tag),
         2 + usize::from(subtype_tag.is_some())
@@ -300,6 +312,17 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
             accuracy_m: Some(25),
             radius_m: Some(150),
             purchase_prompts: true,
+            // Since 0.6.0; older fixtures have none.
+            phones: if receipt_formats {
+                vec!["5550102030".to_owned()]
+            } else {
+                vec![]
+            },
+            licences: if receipt_formats {
+                vec!["C100000123LIC".to_owned()]
+            } else {
+                vec![]
+            },
         },
     );
     check(
@@ -338,6 +361,12 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
             },
             // Since 0.6.0; older fixtures have none.
             subtype: subtypes.then(|| builtin("gummy")),
+            default_size: receipt_formats.then(gummies_size),
+            receipt_names: if receipt_formats {
+                vec!["ACME GUMMIES 10PK 100MG".to_owned()]
+            } else {
+                vec![]
+            },
         },
     );
     check(
@@ -353,9 +382,32 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
                 batch: Some("B-7".into()),
                 price_minor_units: Some(2_000),
                 price_currency: Some("USD".into()),
+                // Since 0.6.0; older fixtures have none, which reads as 1.
+                size: receipt_formats.then(gummies_size),
+                quantity: if receipt_formats { 2 } else { 1 },
             }],
         },
     );
+    if receipt_formats {
+        // The spot is recognised strongly by its phone number, and the
+        // product's learned name links automatically.
+        let shop = journal
+            .match_receipt_shop(vec!["Tel 555-010-2030".into()])
+            .unwrap();
+        assert!(
+            shop.strong && shop.spot == Some(id("spot")),
+            "{}: shop numbers",
+            fixture.name()
+        );
+        let found = journal
+            .suggest_for_receipt_item("acme gummies 10pk 100mg".into(), None)
+            .unwrap();
+        assert!(
+            found[0].learned && found[0].id == id("product"),
+            "{}: learned receipt name",
+            fixture.name()
+        );
+    }
     check(
         fixture,
         "effect tag",

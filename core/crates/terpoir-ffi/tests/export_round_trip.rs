@@ -168,6 +168,8 @@ fn fill(journal: &Journal) -> Filled {
                 accuracy_m: Some(25),
                 radius_m: Some(150),
                 purchase_prompts: true,
+                phones: vec![],
+                licences: vec![],
             },
             1,
         )
@@ -201,6 +203,8 @@ fn fill(journal: &Journal) -> Filled {
                     unit: "mg_per_unit".into(),
                 }],
                 subtype: None,
+                default_size: None,
+                receipt_names: vec![],
             },
             2,
         )
@@ -217,6 +221,8 @@ fn fill(journal: &Journal) -> Filled {
                     batch: Some("B-7".into()),
                     price_minor_units: Some(2_000),
                     price_currency: Some("USD".into()),
+                    size: None,
+                    quantity: 1,
                 }],
             },
             2,

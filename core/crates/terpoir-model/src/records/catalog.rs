@@ -8,7 +8,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use terpoir_crypto::RecordId;
 
 use super::{
-    Fields, Method, Reader, Record, RecordKind, Tag, TagCategory, TagRef, owns, slug_enum,
+    Fields, Method, PackageSize, Reader, Record, RecordKind, Tag, TagCategory, TagRef, owns,
+    slug_enum,
 };
 use crate::{Document, Error, Result, Value};
 
@@ -372,6 +373,35 @@ pub struct Product {
     /// Re-up Spots the user buys it at ("Where I buy it"): added when a
     /// receipt from a spot lists it, and editable at any time.
     pub shops: BTreeSet<RecordId>,
+    /// The usual package size, from its label: pre-fills a new purchase
+    /// of it (since 0.6.0; a scalar field, so an older app keeps it
+    /// untouched).
+    pub default_size: Option<PackageSize>,
+    /// Learned receipt names (docs/design-decisions.md, "Learned receipt
+    /// names"): the exact receipt line texts the user linked to this
+    /// product, normalised by [`receipt_name_key`]. A receipt line with
+    /// one of these texts links to it automatically. Since 0.6.0; stored
+    /// per entry (`receipt_names/<text>`), so an older app keeps them
+    /// untouched and two devices' names merge. Never indexed.
+    pub receipt_names: BTreeSet<String>,
+}
+
+/// The longest learned receipt name kept, in characters.
+pub const MAX_RECEIPT_NAME_CHARS: usize = 200;
+
+/// A receipt line's text as a learned receipt name: upper case, with
+/// single spaces and nothing else changed, so a line links on its own
+/// only when it prints exactly the same words (`bd  3.5g hyb` and
+/// `BD 3.5G HYB` are one name; `BD 3.5C HYB` is another). `None` for a
+/// line with no text, or longer than [`MAX_RECEIPT_NAME_CHARS`].
+#[must_use]
+pub fn receipt_name_key(text: &str) -> Option<String> {
+    let key = text
+        .split_whitespace()
+        .map(str::to_uppercase)
+        .collect::<Vec<_>>()
+        .join(" ");
+    (!key.is_empty() && key.chars().count() <= MAX_RECEIPT_NAME_CHARS).then_some(key)
 }
 
 impl Product {
@@ -392,6 +422,8 @@ impl Product {
             package_date: None,
             identifiers: BTreeMap::new(),
             shops: BTreeSet::new(),
+            default_size: None,
+            receipt_names: BTreeSet::new(),
         }
     }
 }
@@ -432,7 +464,13 @@ impl Record for Product {
                 |code| (*code).clone(),
                 |kind| Value::Text(kind.slug().to_owned()),
             )
-            .id_set("shops", &self.shops);
+            .id_set("shops", &self.shops)
+            .opt(
+                "default_size",
+                self.default_size.as_ref(),
+                PackageSize::to_value,
+            )
+            .text_set("receipt_names", &self.receipt_names);
         f.finish()
     }
 
@@ -472,6 +510,11 @@ impl Record for Product {
             package_date: r.int_in("package_date", i64::MIN..=i64::MAX)?,
             identifiers,
             shops: r.id_set("shops")?,
+            default_size: match r.value("default_size") {
+                Value::Null => None,
+                v => Some(PackageSize::from_value(v).ok_or(Error::InvalidField("default_size"))?),
+            },
+            receipt_names: r.text_set("receipt_names")?,
         })
     }
 
@@ -487,6 +530,7 @@ impl Record for Product {
                 "cbd",
                 "batch",
                 "package_date",
+                "default_size",
             ],
             &[
                 "strains",
@@ -494,6 +538,7 @@ impl Record for Product {
                 "terpenes",
                 "identifiers",
                 "shops",
+                "receipt_names",
             ],
         )
     }
@@ -752,6 +797,58 @@ mod tests {
             Product::from_document(&doc).err(),
             Some(Error::InvalidField("subtype"))
         );
+    }
+
+    #[test]
+    fn default_size_and_receipt_names_round_trip_and_sit_beside_older_fields() {
+        use super::super::{SizeAmount, SizeUnit};
+        let mut p = Product::new("Blue Dream".into());
+        p.default_size = Some(PackageSize {
+            amount: Some(SizeAmount {
+                milli: 3_500,
+                unit: SizeUnit::Gram,
+            }),
+            pack: None,
+        });
+        p.receipt_names.insert("BD 3.5G HYB".into());
+        p.receipt_names.insert("BD 1/8 HYB".into());
+        round_trip(&p);
+        let doc = Document::create(&p, stamp()).unwrap();
+        assert_eq!(doc.value("receipt_names/BD 1/8 HYB"), &Value::Bool(true));
+        assert!(Product::owns_field("default_size"));
+        assert!(Product::owns_field("receipt_names/BD 3.5G HYB"));
+        // Saved before 0.6.0: none of either.
+        let mut old = Document::new(RecordId::from_bytes([9; 16]), RecordKind::Product);
+        old.set("name", Value::Text("Old".into()), stamp());
+        let read = Product::from_document(&old).unwrap();
+        assert_eq!(read.default_size, None);
+        assert!(read.receipt_names.is_empty());
+        // A malformed size is refused.
+        old.set("default_size", Value::Int(1), stamp());
+        assert_eq!(
+            Product::from_document(&old).err(),
+            Some(Error::InvalidField("default_size"))
+        );
+    }
+
+    #[test]
+    fn receipt_name_keys_fold_only_case_and_spaces() {
+        assert_eq!(
+            receipt_name_key("  bd   3.5g\tHyb ").as_deref(),
+            Some("BD 3.5G HYB")
+        );
+        // Recognition confusions and punctuation are kept: exact only.
+        assert_ne!(
+            receipt_name_key("BD 3.5C HYB"),
+            receipt_name_key("BD 3.5G HYB")
+        );
+        assert_ne!(receipt_name_key("BD-1G"), receipt_name_key("BD 1G"));
+        assert_eq!(receipt_name_key(" \t "), None);
+        assert_eq!(
+            receipt_name_key(&"A".repeat(MAX_RECEIPT_NAME_CHARS + 1)),
+            None
+        );
+        assert!(receipt_name_key(&"A".repeat(MAX_RECEIPT_NAME_CHARS)).is_some());
     }
 
     #[test]

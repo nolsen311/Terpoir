@@ -107,8 +107,8 @@ fn local_day(value: &Value) -> Option<i64> {
 mod tests {
     use super::*;
     use terpoir_model::{
-        CoreEffect, DeviceId, Hlc, IdentifierKind, LocalTime, Method, Product, ProductLine,
-        Purchase, PurchaseLine, PurchaseRef, Session, Stamp, Strain, TagRef,
+        CoreEffect, DeviceId, Hlc, IdentifierKind, LocalTime, Method, PackageSize, Product,
+        ProductLine, Purchase, PurchaseLine, PurchaseRef, Session, Spot, Stamp, Strain, TagRef,
     };
 
     fn stamp() -> Stamp {
@@ -178,6 +178,11 @@ mod tests {
                 product: Some(id(2)),
                 batch: Some("secret batch".into()),
                 price: None,
+                size: Some(PackageSize {
+                    amount: None,
+                    pack: Some(5),
+                }),
+                quantity: 2,
             },
         );
         let doc = Document::create(&p, stamp()).unwrap();
@@ -193,6 +198,29 @@ mod tests {
         p.identifiers
             .insert("0123456789012".into(), IdentifierKind::Barcode);
         let doc = Document::create(&p, stamp()).unwrap();
+        assert_eq!(IndexEntries::from_document(&doc), IndexEntries::default());
+    }
+
+    #[test]
+    fn receipt_names_and_shop_numbers_are_not_indexed() {
+        let mut p = Product::new("x".into());
+        p.receipt_names.insert("BD 3.5G HYB".into());
+        p.default_size = Some(PackageSize {
+            amount: None,
+            pack: Some(5),
+        });
+        let doc = Document::create(&p, stamp()).unwrap();
+        assert_eq!(IndexEntries::from_document(&doc), IndexEntries::default());
+        let spot = Spot {
+            name: "x".into(),
+            purposes: BTreeSet::new(),
+            location: None,
+            radius_m: None,
+            purchase_prompts: false,
+            phones: ["5550102030".into()].into(),
+            licences: ["C100000123LIC".into()].into(),
+        };
+        let doc = Document::create(&spot, stamp()).unwrap();
         assert_eq!(IndexEntries::from_document(&doc), IndexEntries::default());
     }
 
