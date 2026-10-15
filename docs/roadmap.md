@@ -351,7 +351,7 @@ requirement rather than on features.
   - [x] Points per method, the hold-and-flick indicator, the chart with
         guessed points, "You last updated", in the session editor and the
         check-in screen; stored as levels per minute in the core.
-  - [ ] The timeline in shares.
+  - [x] The timeline in shares.
   - [ ] Insights that use the timeline (for example, how fast it comes on).
 
 ## Phase 5: Stretch

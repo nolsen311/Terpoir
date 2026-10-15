@@ -836,7 +836,7 @@
     <string name="track_dose">Dose</string>
     <string name="track_dose_does">How much you had.</string>
     <string name="track_timeline">Timeline</string>
-    <string name="track_timeline_does">Onset, peak and duration.</string>
+    <string name="track_timeline_does">How strong it felt over time.</string>
     <string name="track_mood">Mood</string>
     <string name="track_mood_does">How you felt before and after.</string>
     <string name="track_intention">Intention</string>

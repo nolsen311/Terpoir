@@ -26,18 +26,20 @@ import app.terpoir.journal.DataPoint
 import app.terpoir.journal.JournalRepository
 import app.terpoir.journal.LocalTracking
 import app.terpoir.journal.Tracking
+import app.terpoir.journal.durationLabel
 import app.terpoir.journal.formatMilli
 import app.terpoir.journal.formatWhen
 import app.terpoir.journal.label
 import app.terpoir.journal.productLabel
 import app.terpoir.journal.tagLabel
+import app.terpoir.journal.timelineShareValue
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 /** What the user may add to a session share; the first four start included. */
-private val SESSION_OPTIONS = listOf(
+internal val SESSION_OPTIONS = listOf(
     ShareOption("product", R.string.share_field_product, true),
     ShareOption("strain", R.string.share_field_strain, true),
     ShareOption("ratings", R.string.share_field_ratings, true),
@@ -118,7 +120,7 @@ fun SessionShare(repo: JournalRepository, id: String, symptomsOn: Boolean, onClo
     }
     val loaded = source ?: return
     ShareScreen(
-        options = (if (symptomsOn && loaded.session.symptoms.isNotEmpty()) SESSION_OPTIONS + SYMPTOMS_OPTION else SESSION_OPTIONS).tracked(tracking),
+        options = sessionOptions(loaded.session, symptomsOn).tracked(tracking),
         onClose = onClose,
         extra = {
             Text(stringResource(R.string.share_field_date), style = MaterialTheme.typography.labelLarge)
@@ -129,6 +131,18 @@ fun SessionShare(repo: JournalRepository, id: String, symptomsOn: Boolean, onClo
             }
         },
     ) { chosen, mark -> sessionShare(loaded, chosen, date, mark, showDose = tracking.shows(DataPoint.DOSE)) }
+}
+
+/**
+ * The options a session offers: the timeline only when it has something
+ * to show (points the user set, or an older onset, peak or duration), and
+ * targeted symptoms only while their section is on and the session has some.
+ */
+internal fun sessionOptions(session: SessionData, symptomsOn: Boolean): List<ShareOption> {
+    val timeline = session.timelineLevels.isNotEmpty() ||
+        listOf(session.onsetMin, session.peakMin, session.durationMin).any { it != null }
+    val options = if (timeline) SESSION_OPTIONS else SESSION_OPTIONS.filter { it.id != "timeline" }
+    return if (symptomsOn && session.symptoms.isNotEmpty()) options + SYMPTOMS_OPTION else options
 }
 
 @Composable
@@ -166,12 +180,18 @@ private fun sessionShare(source: SessionSource, chosen: Set<String>, date: DateS
             if (effects.isNotEmpty()) add(ShareLine(stringResource(R.string.share_field_effects), effects.joinToString(", ")))
         }
         if ("timeline" in chosen) {
-            val parts = listOfNotNull(
+            // The set points only; the chart's guesses are never shared.
+            val labels = s.timelineLevels.associate { it.minute.toInt() to durationLabel(it.minute.toInt()) }
+            val points = s.timelineLevels.associate { it.minute.toInt() to it.level.toInt() }
+                .takeIf { it.isNotEmpty() }
+                ?.let { levels -> timelineShareValue(levels) { labels.getValue(it) } }
+            val older = listOfNotNull(
                 s.onsetMin?.let { stringResource(R.string.share_onset, it.toInt()) },
                 s.peakMin?.let { stringResource(R.string.share_peak, it.toInt()) },
                 s.durationMin?.let { stringResource(R.string.share_duration, it.toInt()) },
-            )
-            if (parts.isNotEmpty()) add(ShareLine(stringResource(R.string.share_field_timeline), parts.joinToString(", ")))
+            ).takeIf { it.isNotEmpty() }?.joinToString(", ")
+            val parts = listOfNotNull(points, older)
+            if (parts.isNotEmpty()) add(ShareLine(stringResource(R.string.share_field_timeline), parts.joinToString("; ")))
         }
         if ("spot" in chosen) source.spot?.let { add(ShareLine(stringResource(R.string.share_field_spot), it)) }
         if ("symptoms" in chosen && s.symptoms.isNotEmpty()) {

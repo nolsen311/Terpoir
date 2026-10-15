@@ -861,6 +861,18 @@ fn sessions_keep_their_timeline_levels() {
     assert!(saved.timeline_levels == data.timeline_levels);
     assert_eq!(saved.timeline_updated_ms, data.timeline_updated_ms);
 
+    // The plaintext export carries the set points, and only those: in the
+    // JSON as one entry per minute, in sessions.csv as "minute=level".
+    let files = journal.export_plaintext(10).unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&files[0].bytes).unwrap();
+    let levels = &json["records"]["sessions"][0]["fields"]["timeline_levels"];
+    assert_eq!(levels["20"], 3);
+    assert_eq!(levels["40"], 5);
+    assert_eq!(levels.as_object().unwrap().len(), 2);
+    let sessions_csv = String::from_utf8(files[1].bytes.clone()).unwrap();
+    let row = sessions_csv.split("\r\n").nth(1).unwrap();
+    assert!(row.ends_with(",20=3; 40=5"));
+
     // A level above 5, or a minute twice, is refused.
     let mut bad = data.clone();
     bad.timeline_levels[1].level = 6;
