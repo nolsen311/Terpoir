@@ -221,6 +221,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 - **Info card:** keyboards see everything typed before encryption; third-party keyboards can log and transmit keystrokes (on iOS when granted Full Access); system keyboards learn new words, and the iOS keyboard dictionary can sync via iCloud. On Android the app cannot control which keyboard is used, and third-party keyboards may ignore the no-learning request. Words already learned stay until the user resets the keyboard dictionary in system settings (link provided).
 
 ### Voice-first new notes
+- **Journal buttons (maintainer, 2026-10-15):** "New entry" (a session) is the journal's main floating button; the new-note button is the small one above it, with the notebook icon.
 - The **new-note FAB opens voice mode by default**: speak, and the transcript becomes a stream snippet ready for tag suggestions. A keyboard button in the capture sheet switches to typing; the FAB can be set to text-first.
 - **First-use card:** transcription happens on the phone and is never sent anywhere; keyboards can see typing, on-device voice can't be seen by anyone else; others nearby can hear you. The user then picks voice or text as the default.
 - **Engine tiers:**

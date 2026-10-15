@@ -236,14 +236,16 @@ fun JournalHome(
                     }
                     if (tab == Tab.JOURNAL) {
                         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            SmallFloatingActionButton(onClick = { stack.add(Screen.Session(null)) }) {
-                                Icon(painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.session_new))
+                            // A note is the secondary action (maintainer, 2026-10-15);
+                            // it still opens by voice unless the user chose typing.
+                            SmallFloatingActionButton(onClick = { stack.add(Screen.Note(null)) }) {
+                                Icon(painterResource(R.drawable.ic_note_add), contentDescription = stringResource(R.string.note_new))
                             }
-                            // The new-note button: voice first unless the user chose typing.
+                            // A new session is the main action.
                             ExtendedFloatingActionButton(
-                                onClick = { stack.add(Screen.Note(null)) },
-                                icon = { Icon(painterResource(R.drawable.ic_mic), contentDescription = null) },
-                                text = { Text(stringResource(R.string.note_new)) },
+                                onClick = { stack.add(Screen.Session(null)) },
+                                icon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
+                                text = { Text(stringResource(R.string.session_new)) },
                             )
                         }
                     }
