@@ -415,10 +415,10 @@ the background-location declaration and a video
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
-  - **0.5.2** (430 characters):
+  - **0.5.2** (388 characters):
     ```
     <en-US>
-    Fixes "secure key storage did not respond" when unlocking, which could keep coming back until the phone restarted. The unlock screen is now all Terpoir green and shows the app's version. Turning on folder sync shows its folder and Sync buttons right away. On Products, the New button floats at the bottom and products are listed by strain; a product no longer needs a name of its own. In the journal, New entry is the main button.
+    Fixes "secure key storage did not respond" when unlocking. The unlock screen is now Terpoir green and shows the app's version. Folder sync shows its Sync button right away. On Products, New floats at the bottom and products are listed by strain; a name is optional. In the journal, New entry is the main button, Insights is the lightbulb at the top, and location cards can be swiped away.
     </en-US>
     ```
   - **0.5.1** (404 characters):
