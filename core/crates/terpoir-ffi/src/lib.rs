@@ -69,8 +69,8 @@ pub use scan::{
 };
 pub use tracking::trackable_data_points;
 pub use vocabulary::{
-    Vocabulary, default_method_for_form, dose_units_for_method, timeline_plan_for_methods,
-    vocabulary,
+    Vocabulary, check_in_minutes_for_methods, default_method_for_form, dose_units_for_method,
+    subtype_parent, subtypes_for_form, timeline_plan_for_methods, vocabulary,
 };
 
 uniffi::setup_scaffolding!();

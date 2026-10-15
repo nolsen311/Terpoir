@@ -9,8 +9,9 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 use terpoir_crypto::{MasterKey, RecoveryKey, WrappedKey};
 use terpoir_model::{
-    Brand, DeviceId, Document, Hlc, Location, Product, Purchase, Record, RecordId, RecordKind,
-    Session, Snippet, Spot, Strain, Tag, TagCategory, TagRef, TrackingPreferences, migrate,
+    Brand, DeviceId, Document, Form, Hlc, Location, Product, Purchase, Record, RecordId,
+    RecordKind, Session, Snippet, Spot, Strain, Tag, TagCategory, TagRef, TrackingPreferences,
+    migrate, usual_method,
 };
 use terpoir_scan::{names_match, normalize_name};
 use terpoir_store::Store;
@@ -1031,6 +1032,37 @@ impl Journal {
     pub fn save_tag(&self, id: Option<String>, tag: TagData, now_ms: u64) -> Result<String> {
         let record = tag.to_model();
         self.with(|u| u.save(id, &record, now_ms))
+    }
+
+    /// The usual method (slug) for a product of `form` and `subtype`, as a
+    /// new session line's default (docs/design-decisions.md, "Product
+    /// subtypes"): the subtype's own method when it is under that form (a
+    /// patch is transdermal; a custom subtype's chosen method), else the
+    /// form's usual one. Reads a custom subtype's tag; a missing one counts
+    /// as no subtype. `None` with neither, or for a form from a newer app
+    /// version.
+    ///
+    /// # Errors
+    ///
+    /// `InvalidInput` for a malformed subtype, `WrongType` if a custom
+    /// subtype's ID is another kind of record, `Locked` or `Storage`.
+    pub fn usual_method(
+        &self,
+        form: Option<String>,
+        subtype: Option<TagRefData>,
+    ) -> Result<Option<String>> {
+        let subtype = subtype.as_ref().map(TagRefData::to_model).transpose()?;
+        let form = form.as_deref().map(Form::from_slug);
+        self.with(|u| {
+            let custom = match &subtype {
+                Some(TagRef::Custom(id)) => u.store.get_record::<Tag>(&u.master, id)?,
+                _ => None,
+            };
+            Ok(
+                usual_method(form.as_ref(), subtype.as_ref(), custom.as_ref())
+                    .map(|m| m.slug().to_owned()),
+            )
+        })
     }
 
     /// A custom tag, if it exists.

@@ -141,6 +141,15 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
 
     suspend fun product(id: String): ProductData? = io { journal.getProduct(id) }
 
+    /**
+     * Each product's usual method (from its type and subtype; a patch is
+     * transdermal), as a new session line's default, by ID. Products with
+     * none are left out.
+     */
+    suspend fun usualMethods(products: List<Entry<ProductData>>): Map<String, String> = io {
+        products.mapNotNull { p -> journal.usualMethod(p.data.form, p.data.subtype)?.let { p.id to it } }.toMap()
+    }
+
     suspend fun strain(id: String): StrainData? = io { journal.getStrain(id) }
 
     suspend fun brand(id: String): BrandData? = io { journal.getBrand(id) }

@@ -352,17 +352,43 @@ requirement rather than on features.
   - [ ] Online sources the maintainer picks, each its own toggle (off by
         default) with a disclosure card; search on submit only.
 
+- [ ] Simpler receipt scanning, 0.6.0 (maintainer, 2026-10-15): text
+      recognition should fill the right parts of a new entry (brand,
+      strain, form, size, price, shop, date) with less checking and
+      typing. Options in
+      `docs/research/receipt-scan-options.md` (scan-and-review cards, tap to
+      assign on the photo, label first, learning from corrections).
+      Chosen (2026-10-15): A with D behind it, plus shop-first header,
+      wrapped-line joining, cut-off detection, abbreviation matching
+      without an alias list, and size and quantity on the purchase line
+      (`docs/design-decisions.md`, "Simpler review").
+      Overlaps "Scan recognition from the journal".
+      - [x] Core, first slice: wrapped names joined by layout with each
+            item's rows, re-read from the user's grouping; cut-off
+            detection; item breakdown from a built-in vocabulary;
+            strain, brand and product suggestions by initials, letters
+            in order and cut-off names, ranked by the shop; the shop
+            matched from the header by name, phone and licence numbers.
+      - [ ] Learned receipt names (exact line on the product).
+      - [ ] Size and quantity on the purchase line, default size on the
+            product (synced, with a compatibility fixture).
+      - [ ] Phone and licence numbers on spots (synced, with a fixture).
+      - [ ] A second photo for long receipts, joined on overlapping rows.
+      - [ ] Android: review cards with chips, the shop header card, "Join
+            with next line" and "Split here", the cut-off warning.
+
 - [ ] Product subtypes (maintainer, 2026-10-15; `docs/design-decisions.md`,
       "Product subtypes"). In 0.6.0, with simpler receipt scanning
       (maintainer, 2026-10-15).
   - [x] The maintainer confirms the Transdermal timing (12 hours, points
         at 1, 2, 4, 8 and 12 hours, a check-in after 2 hours).
-  - [ ] Core: subtypes under each type (built-in list and the user's
+  - [x] Core: subtypes under each type (built-in list and the user's
         own), a subtype's suggested method, the Transdermal method, uneven
-        timeline points; through the FFI; a compatibility fixture.
+        timeline points; through the FFI; the compatibility fixture maker
+        (the v0.6.0 fixture itself is written from the release tag).
   - [ ] Product editor: subtype chips under the type, and adding one's
         own with its usual method.
-  - [ ] Scanning terms for subtypes.
+  - [x] Scanning terms for subtypes.
 
 - [ ] Scan recognition from the journal (`docs/design-decisions.md`,
       "Scan recognition from the journal"): learned receipt names with
@@ -396,30 +422,6 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       insights (tabled by the maintainer, 2026-10-15: possibly useful, but
       subtypes may be enough; `docs/design-decisions.md`, "Product
       subtypes").
-- [ ] Simpler receipt scanning (maintainer, 2026-10-15; in 0.6.0): text recognition
-      should fill the right parts of a new entry (brand, strain, form,
-      size, price, shop, date) with less checking and typing. Options in
-      `docs/research/receipt-scan-options.md` (scan-and-review cards, tap to
-      assign on the photo, label first, learning from corrections).
-      Chosen (2026-10-15): A with D behind it, plus shop-first header,
-      wrapped-line joining, cut-off detection, abbreviation matching
-      without an alias list, and size and quantity on the purchase line
-      (`docs/design-decisions.md`, "Simpler review").
-      Overlaps "Scan recognition from the journal".
-      - [x] Core, first slice: wrapped names joined by layout with each
-            item's rows, re-read from the user's grouping; cut-off
-            detection; item breakdown from a built-in vocabulary;
-            strain, brand and product suggestions by initials, letters
-            in order and cut-off names, ranked by the shop; the shop
-            matched from the header by name, phone and licence numbers.
-      - [ ] Learned receipt names (exact line on the product).
-      - [ ] Size and quantity on the purchase line, default size on the
-            product (synced, with a compatibility fixture).
-      - [ ] Phone and licence numbers on spots (synced, with a fixture).
-      - [ ] A second photo for long receipts, joined on overlapping rows.
-      - [ ] Android: review cards with chips, the shop header card, "Join
-            with next line" and "Split here", the cut-off warning.
-
 - [ ] More themes (maintainer, 2026-10-14), each a choice next to
       System, Light and Dark on the Theme page, with its sample controls:
       - a Material 3 theme from the wallpaper (dynamic color, Android 12

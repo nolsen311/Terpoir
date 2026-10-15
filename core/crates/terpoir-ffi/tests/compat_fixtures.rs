@@ -216,7 +216,13 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
     assert_eq!(count(RecordType::Brand), 1);
     assert_eq!(count(RecordType::Spot), 1);
     assert_eq!(count(RecordType::Snippet), 2);
-    assert_eq!(count(RecordType::Tag), 2);
+    // Since 0.6.0, a custom subtype tag too.
+    let subtype_tag = fixture.optional_id("subtype_tag");
+    let subtypes = fixture.manifest["product_subtypes"].as_bool() == Some(true);
+    assert_eq!(
+        count(RecordType::Tag),
+        2 + usize::from(subtype_tag.is_some())
+    );
     assert_eq!(count(RecordType::Purchase), 1);
     assert_eq!(journal.pending_record_count().unwrap(), 0);
 
@@ -330,6 +336,8 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
             } else {
                 vec![]
             },
+            // Since 0.6.0; older fixtures have none.
+            subtype: subtypes.then(|| builtin("gummy")),
         },
     );
     check(
@@ -355,6 +363,8 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
         TagData {
             name: "giggly".into(),
             category: "effect".into(),
+            form: None,
+            method: None,
         },
     );
     check(
@@ -364,33 +374,67 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
         TagData {
             name: "jaw tension".into(),
             category: "symptom".into(),
+            form: None,
+            method: None,
         },
     );
-    let session = journal.get_session(id("session")).unwrap();
+    if let Some(subtype_tag) = &subtype_tag {
+        check(
+            fixture,
+            "subtype tag",
+            journal.get_tag(subtype_tag.clone()).unwrap(),
+            TagData {
+                name: "Lozenge".into(),
+                category: "subtype".into(),
+                form: Some("edible".into()),
+                method: Some("tincture".into()),
+            },
+        );
+    }
+    let mut session = journal.get_session(id("session")).unwrap();
     let timeline = fixture.manifest["session_timeline"].as_bool() == Some(true);
-    // The session line's ID is not in the manifest; it is whatever the
-    // release made.
-    let line_id = session
-        .as_ref()
-        .and_then(|s| s.lines.first())
-        .and_then(|l| l.line_id.clone());
-    assert!(line_id.is_some(), "{}: session line", fixture.name());
+    // The session lines' IDs are not in the manifest; they are whatever
+    // the release made, so lines are compared without them, by method.
+    if let Some(s) = &mut session {
+        for line in &mut s.lines {
+            assert!(
+                line.line_id.take().is_some(),
+                "{}: session line",
+                fixture.name()
+            );
+        }
+        s.lines.sort_by(|a, b| a.method.cmp(&b.method));
+    }
+    let mut lines = vec![ProductLineData {
+        line_id: None,
+        product: Some(id("product")),
+        method: "edible".into(),
+        dose_milli: Some(5_000),
+        dose_unit: Some("mg".into()),
+        purchase_id: Some(id("purchase")),
+        purchase_line_id: Some(id("purchase_line")),
+        shop: None,
+    }];
+    // Since 0.6.0, a patch too.
+    if subtypes {
+        lines.push(ProductLineData {
+            line_id: None,
+            product: None,
+            method: "transdermal".into(),
+            dose_milli: Some(10_000),
+            dose_unit: Some("mg".into()),
+            purchase_id: None,
+            purchase_line_id: None,
+            shop: None,
+        });
+    }
     check(
         fixture,
         "session",
         session,
         SessionData {
             when: at(1_760_000_000_000),
-            lines: vec![ProductLineData {
-                line_id,
-                product: Some(id("product")),
-                method: "edible".into(),
-                dose_milli: Some(5_000),
-                dose_unit: Some("mg".into()),
-                purchase_id: Some(id("purchase")),
-                purchase_line_id: Some(id("purchase_line")),
-                shop: None,
-            }],
+            lines,
             activity: Some("movie night".into()),
             intention: Some("relax".into()),
             mood_before: Some(3),

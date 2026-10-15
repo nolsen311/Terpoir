@@ -85,7 +85,7 @@ pub enum TagRefData {
 }
 
 impl TagRefData {
-    fn to_model(&self) -> Result<TagRef> {
+    pub(crate) fn to_model(&self) -> Result<TagRef> {
         match self {
             Self::Builtin { slug } if !slug.is_empty() && !slug.starts_with("custom:") => {
                 Ok(TagRef::Builtin(slug.clone()))
@@ -396,6 +396,12 @@ pub struct ProductData {
     /// editor that doesn't show them must pass the saved ones back.
     #[uniffi(default = [])]
     pub cannabinoids: Vec<CannabinoidAmountData>,
+    /// Subtype under the form (since 0.6.0): a built-in subtype slug or a
+    /// custom tag of category `subtype`. Last, with a default, so callers
+    /// that predate it compile; an editor that doesn't show it must pass
+    /// the saved one back.
+    #[uniffi(default = None)]
+    pub subtype: Option<TagRefData>,
 }
 
 /// A cannabinoid amount from a product's label.
@@ -441,6 +447,11 @@ impl ProductData {
         Ok(Product {
             name: self.name.clone(),
             form: self.form.as_deref().map(Form::from_slug),
+            subtype: self
+                .subtype
+                .as_ref()
+                .map(TagRefData::to_model)
+                .transpose()?,
             brand: opt_id(self.brand.as_ref())?,
             strains: parse_ids(&self.strains)?,
             thc: label(self.thc_milli, self.thc_unit.as_ref())?,
@@ -512,6 +523,7 @@ impl ProductData {
                     unit: a.unit.slug().to_owned(),
                 })
                 .collect(),
+            subtype: p.subtype.as_ref().map(TagRefData::from_model),
         }
     }
 }
@@ -790,9 +802,18 @@ impl SnippetData {
 pub struct TagData {
     /// Display name.
     pub name: String,
-    /// `effect`, `terpene`, `flavor`, `mood`, `symptom`, `spot_purpose` or
-    /// `other`.
+    /// `effect`, `terpene`, `flavor`, `mood`, `symptom`, `spot_purpose`,
+    /// `subtype` or `other`.
     pub category: String,
+    /// A subtype's parent form slug (since 0.6.0). Last, with defaults, so
+    /// callers that predate them compile; an editor that doesn't show them
+    /// must pass the saved ones back.
+    #[uniffi(default = None)]
+    pub form: Option<String>,
+    /// A subtype's usual method slug, when it differs from its form's
+    /// (since 0.6.0).
+    #[uniffi(default = None)]
+    pub method: Option<String>,
 }
 
 impl TagData {
@@ -800,6 +821,8 @@ impl TagData {
         Tag {
             name: self.name.clone(),
             category: TagCategory::from_slug(&self.category),
+            form: self.form.as_deref().map(Form::from_slug),
+            method: self.method.as_deref().map(Method::from_slug),
         }
     }
 
@@ -807,6 +830,8 @@ impl TagData {
         Self {
             name: t.name.clone(),
             category: t.category.slug().to_owned(),
+            form: t.form.as_ref().map(|f| f.slug().to_owned()),
+            method: t.method.as_ref().map(|m| m.slug().to_owned()),
         }
     }
 }

@@ -163,6 +163,20 @@ class JournalRepositoryTest {
     }
 
     @Test
+    fun aPatchDefaultsToTransdermal() = runBlocking {
+        fun topical(name: String, subtype: String) = ProductData(
+            name, "topical", null, emptyList(), null, null, null, null, emptyList(), null, null, emptyList(), emptyList(),
+            subtype = TagRefData.Builtin(subtype),
+        )
+        val patch = repo.saveProduct(null, topical("Relief patch", "patch"))
+        val balm = repo.saveProduct(null, topical("Relief balm", "balm"))
+        val methods = repo.usualMethods(repo.products())
+        assertEquals("transdermal", methods[patch])
+        assertEquals("topical", methods[balm])
+        assertEquals(TagRefData.Builtin("patch"), repo.product(patch)?.subtype)
+    }
+
+    @Test
     fun sessionsListNewestFirstWithTheirProducts() = runBlocking {
         val brand = repo.saveBrand(null, BrandData("Acme"))
         val product = repo.saveProduct(

@@ -730,6 +730,7 @@
     <string name="method_tincture">Tincture</string>
     <string name="method_beverage">Drink</string>
     <string name="method_topical">Topical</string>
+    <string name="method_transdermal">Transdermal</string>
     <string name="unit_hits">hits</string>
     <string name="unit_bowls">bowls</string>
     <string name="unit_puffs">puffs</string>

@@ -40,6 +40,7 @@ private val LABELS: Map<String, Int> = mapOf(
     "tincture" to R.string.method_tincture,
     "beverage" to R.string.method_beverage,
     "topical" to R.string.method_topical,
+    "transdermal" to R.string.method_transdermal,
     // Dose units
     "hits" to R.string.unit_hits,
     "bowls" to R.string.unit_bowls,

@@ -224,6 +224,8 @@ fn main() {
                     milli: 2_000,
                     unit: "mg_per_unit".into(),
                 }],
+                // Since 0.6.0.
+                subtype: Some(builtin("gummy")),
             },
             T0 + 5,
         )
@@ -259,6 +261,8 @@ fn main() {
             TagData {
                 name: "giggly".into(),
                 category: "effect".into(),
+                form: None,
+                method: None,
             },
             T0 + 7,
         )
@@ -269,6 +273,21 @@ fn main() {
             TagData {
                 name: "jaw tension".into(),
                 category: "symptom".into(),
+                form: None,
+                method: None,
+            },
+            T0 + 8,
+        )
+        .unwrap();
+    // Since 0.6.0: a custom subtype, with its parent form and own method.
+    let subtype_tag = journal
+        .save_tag(
+            None,
+            TagData {
+                name: "Lozenge".into(),
+                category: "subtype".into(),
+                form: Some("edible".into()),
+                method: Some("tincture".into()),
             },
             T0 + 8,
         )
@@ -278,16 +297,29 @@ fn main() {
             None,
             SessionData {
                 when: at(1_760_000_000_000),
-                lines: vec![ProductLineData {
-                    line_id: None,
-                    product: Some(product.clone()),
-                    method: "edible".into(),
-                    dose_milli: Some(5_000),
-                    dose_unit: Some("mg".into()),
-                    purchase_id: Some(purchase.clone()),
-                    purchase_line_id: Some(purchase_line.clone()),
-                    shop: None,
-                }],
+                lines: vec![
+                    ProductLineData {
+                        line_id: None,
+                        product: Some(product.clone()),
+                        method: "edible".into(),
+                        dose_milli: Some(5_000),
+                        dose_unit: Some("mg".into()),
+                        purchase_id: Some(purchase.clone()),
+                        purchase_line_id: Some(purchase_line.clone()),
+                        shop: None,
+                    },
+                    // Since 0.6.0: a patch.
+                    ProductLineData {
+                        line_id: None,
+                        product: None,
+                        method: "transdermal".into(),
+                        dose_milli: Some(10_000),
+                        dose_unit: Some("mg".into()),
+                        purchase_id: None,
+                        purchase_line_id: None,
+                        shop: None,
+                    },
+                ],
                 activity: Some("movie night".into()),
                 intention: Some("relax".into()),
                 mood_before: Some(3),
@@ -455,6 +487,7 @@ fn main() {
   "passphrase": "{PASSPHRASE}",
   "maptiler_key": "{MAPTILER_KEY}",
   "product_cannabinoids": true,
+  "product_subtypes": true,
   "ids": {{
     "brand": "{brand}",
     "deleted_brand": "{deleted_brand}",
@@ -466,6 +499,7 @@ fn main() {
     "purchase_line": "{purchase_line}",
     "tag": "{tag}",
     "symptom_tag": "{symptom_tag}",
+    "subtype_tag": "{subtype_tag}",
     "session": "{session}",
     "snippet": "{snippet}",
     "captured_note": "{captured_note}",
