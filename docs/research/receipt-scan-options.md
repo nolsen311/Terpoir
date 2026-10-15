@@ -6,9 +6,9 @@
 For the maintainer's request of 2026-10-15: "We should work on some options
 for the receipt scanning to make it much simpler and intuitive for text
 recognition to populate the right parts of a new entry." Written 2026-10-15
-from the code as of version 0.5.2. Nothing here is decided. The maintainer
-picks an option (or a mix), and the choice then goes into
-`docs/design-decisions.md`, "Rapid product entry".
+from the code as of version 0.5.2. The maintainer's direction (2026-10-15)
+is at the end, under "Maintainer's direction", and in
+`docs/design-decisions.md`, "Rapid product entry" ("Simpler review").
 
 Every option keeps the rules that already apply: text recognition and parsing
 run on the device; parsing and matching live in the Rust core (`terpoir-scan`,
@@ -435,3 +435,34 @@ the journal" roadmap item), then "Scan label" on a card (C's parser work).
 live; whether learned abbreviations are per shop only or also used for every
 shop once confirmed; whether the hand-off to "New entry" is offered every
 time or only from "Quick log?".
+
+## Maintainer's direction (2026-10-15)
+
+The recommendation path is accepted: A, with D behind it. From the
+maintainer's own test with a real receipt:
+
+- **Item names that wrap onto a second printed line** came out as separate
+  items. The core now joins them first, by layout (an item ends at a price
+  on the right; a priceless, indented or broken line continues it), with
+  "Join with next line" and "Split here" on the cards, and the shop
+  remembering its wrap direction.
+- **A receipt cut off at the photo's edge** (not what the maintainer hit,
+  kept anyway): a warning to retake, and an optional second photo joined on
+  overlapping lines.
+- **The shop wasn't corrected, and press-and-hold was never shown.** The
+  shop becomes a header card at the top of the review ("✓", "?" or "Which
+  shop is this?" with the receipt's top lines as tappable boxes), matched by
+  name, phone and licence number, and learned after one confirmation when
+  the phone or licence number matches. No hidden gestures anywhere in
+  scanning.
+- **Several abbreviations for one strain** (BD, BDM for Blue Dream): many
+  aliases to one strain, suggested before any learning from the user's own
+  strains (initials, letters in order, cut-off names), confirmed into
+  learned aliases. The maintainer's worry, a list that fills with junk, is
+  met by normalising before storing, showing every alias for review and
+  deletion, keeping ambiguous ones as choices, and (to confirm) needing two
+  confirmations before an alias fills in automatically, per shop first.
+
+Still open: two confirmations and per shop first for aliases; where size
+and quantity are stored; when "Start an entry with…" is offered.
+

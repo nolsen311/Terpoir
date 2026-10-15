@@ -359,8 +359,10 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       size, price, shop, date) with less checking and typing. Options in
       `docs/research/receipt-scan-options.md` (scan-and-review cards, tap to
       assign on the photo, label first, learning from corrections, and a
-      hand-off to "New entry"); maintainer to pick. Overlaps "Scan
-      recognition from the journal".
+      hand-off to "New entry"). Chosen (2026-10-15): A with D behind it,
+      plus shop-first header, wrapped-line joining, cut-off detection and
+      many-to-one aliases (`docs/design-decisions.md`, "Simpler review").
+      Overlaps "Scan recognition from the journal".
 
 - [ ] More themes (maintainer, 2026-10-14), each a choice next to
       System, Light and Dark on the Theme page, with its sample controls:
