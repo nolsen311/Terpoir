@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.core.CoreException
 import app.terpoir.report.ReportButton
+import app.terpoir.session.HandOff
 import app.terpoir.storage.IncompleteDocument
 import app.terpoir.storage.writeNewDocument
 import java.time.LocalDate
@@ -124,8 +125,8 @@ fun DataCard(repo: JournalRepository, masterWrappedByRecovery: () -> ByteArray) 
         Text(stringResource(R.string.data_title), style = MaterialTheme.typography.titleMedium)
         Text(stringResource(R.string.data_explainer), style = MaterialTheme.typography.bodySmall)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { save.launch("terpoir-${LocalDate.now()}.terpoir") }) { Text(stringResource(R.string.export_button)) }
-            OutlinedButton(onClick = { open.launch(arrayOf("*/*")) }) { Text(stringResource(R.string.import_button)) }
+            Button(onClick = { HandOff.launch(save, "terpoir-${LocalDate.now()}.terpoir") }) { Text(stringResource(R.string.export_button)) }
+            OutlinedButton(onClick = { HandOff.launch(open, arrayOf("*/*")) }) { Text(stringResource(R.string.import_button)) }
         }
         TextButton(onClick = { warnPlaintext = true }) { Text(stringResource(R.string.plaintext_button)) }
         when (val r = result) {
@@ -158,7 +159,7 @@ fun DataCard(repo: JournalRepository, masterWrappedByRecovery: () -> ByteArray) 
             confirmButton = {
                 TextButton(onClick = {
                     warnPlaintext = false
-                    savePlaintext.launch("terpoir-plaintext-${LocalDate.now()}.zip")
+                    HandOff.launch(savePlaintext, "terpoir-plaintext-${LocalDate.now()}.zip")
                 }) { Text(stringResource(R.string.plaintext_confirm), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {

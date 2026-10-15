@@ -84,6 +84,7 @@ import app.terpoir.report.ReportButton
 import app.terpoir.scan.Scanner
 import app.terpoir.security.UserAuthentication
 import app.terpoir.session.AutoLockCard
+import app.terpoir.session.HandOff
 import app.terpoir.session.JournalSession
 import app.terpoir.sync.FolderSyncCard
 import app.terpoir.ui.theme.TerpoirTheme
@@ -203,6 +204,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        HandOff.end()
         ScreenPrivacy.onResume(this, app.privacySettings.screenProtection)
     }
 

@@ -59,4 +59,23 @@ class AutoLockPolicyTest {
     fun clockGoingBackwardsLocks() {
         assertTrue(AutoLockPolicy(LockTimeout.ONE_MINUTE).lockOnReturn(10_000, 5_000, false))
     }
+
+    @Test
+    fun pickerHandOffGivesImmediatelyAGracePeriod() {
+        val policy = AutoLockPolicy(LockTimeout.IMMEDIATELY)
+        val grace = AutoLockPolicy.HAND_OFF_GRACE_MILLIS
+        assertFalse(policy.lockOnBackground(handedOff = true))
+        assertEquals(grace, policy.backgroundDelayMillis(handedOff = true))
+        assertFalse(policy.lockOnReturn(backgroundedAt = 1_000, now = 1_000 + grace - 1, deviceLocked = false, handedOff = true))
+        assertTrue(policy.lockOnReturn(backgroundedAt = 1_000, now = 1_000 + grace, deviceLocked = false, handedOff = true))
+    }
+
+    @Test
+    fun pickerHandOffKeepsOtherTimeoutsAndDeviceLock() {
+        val policy = AutoLockPolicy(LockTimeout.ONE_MINUTE)
+        assertEquals(60_000L, policy.backgroundDelayMillis(handedOff = true))
+        assertTrue(policy.lockOnReturn(backgroundedAt = 1_000, now = 61_000, deviceLocked = false, handedOff = true))
+        assertNull(AutoLockPolicy(LockTimeout.WITH_DEVICE).backgroundDelayMillis(handedOff = true))
+        assertTrue(AutoLockPolicy(LockTimeout.IMMEDIATELY).lockOnReturn(1_000, 1_001, deviceLocked = true, handedOff = true))
+    }
 }
