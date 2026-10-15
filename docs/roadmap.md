@@ -277,7 +277,8 @@ requirement rather than on features.
 | 0.2.1 | Google Maps on Play (first build with the release Maps key), unlock prompt on open, newer-journal message. Rolling out 2026-10-14. |
 | 0.3.0 | Privacy Center readability pass: layout options for the maintainer to pick from, then the chosen one. Shipped early, in 0.2.2; no 0.3.0 release. |
 | 0.4.0 | Richer strains I: detail setting, terpene levels, lineage links, strain-profile fallback in insights. |
-| 0.5.0 | Richer strains II: more cannabinoids, insights and shop effect grouped by lineage or terpene profile. |
+| 0.5.0 | Richer strains II, part 1: CBN, CBG, THCa and CBDV label amounts. Also the session timeline (hold-and-flick) and the session editor redesign, one Settings tab with a theme choice, folder sync's working check, and a fix for a crash when the journal locks while loading. |
+| 0.5.1 | Richer strains II, part 2 (moved from 0.5.0, maintainer 2026-10-15): insights and shop effect grouped by lineage or terpene profile. |
 | 0.6.0 | Strain lookups: an offline strain and seed catalog first, then online sources (such as Leafly or a seed database) each behind its own toggle, as "Catalog lookups" requires. Which providers depends on their terms and APIs, researched during 0.4.0. |
 | 0.7.0 | F-Droid groundwork: OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app. |
 | any | "Notify me" on Play, in the first release after the maintainer files the background-location declaration and video. |
@@ -298,13 +299,14 @@ requirement rather than on features.
           cannabinoids and the synced detail step, through the FFI.
     - [x] Strain editor and detail setting in the app.
     - [x] Insights: the strain's dominant terpene when a label has none.
-  - [ ] 0.5.0: CBN, CBG, THCa and CBDV label amounts on products and
-        "known for" cannabinoids on strains; insights and the shop effect
-        grouped by shared parent or dominant terpene.
+  - [ ] 0.5.0 and 0.5.1: CBN, CBG, THCa and CBDV label amounts on
+        products and "known for" cannabinoids on strains (0.5.0); insights
+        and the shop effect grouped by shared parent or dominant terpene
+        (0.5.1; moved by the maintainer, 2026-10-15).
     - [x] Label amounts for CBN, CBG, THCa and CBDV on products (core,
           plaintext export, product editor), and a fixture that writes one.
           "Known for" cannabinoids on strains shipped in 0.4.0.
-    - [ ] Insights and the shop effect grouped by shared parent or
+    - [ ] 0.5.1: insights and the shop effect grouped by shared parent or
           dominant terpene.
 - [ ] Strain lookups, 0.6.0 (`docs/design-decisions.md`, "Catalog
       lookups"; maintainer, 2026-10-14: Leafly and a seed database).
