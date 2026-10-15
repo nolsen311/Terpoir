@@ -48,8 +48,8 @@ pub use capture::{capture_ready, seal_capture};
 pub use error::{CoreError, Result};
 pub use insights::{InsightData, InsightFeedback, ShopEffectData, ShopInsightData};
 pub use journal::{
-    ImportResult, Journal, NearbySpot, ProductMatch, PromptFence, RecordType, SyncBlob,
-    TagSuggestion,
+    ImportResult, Journal, NearbySpot, ProductMatch, PromptFence, ReceiptShopMatch, RecordType,
+    ScanSuggestion, SyncBlob, TagSuggestion,
 };
 pub use keys::{
     NewKeys, PassphraseWrapped, RotatedKeys, check_recovery_key, create_keys,
@@ -63,8 +63,9 @@ pub use records::{
     TimelinePlanData,
 };
 pub use scan::{
-    LabelScanData, ReceiptItemData, ReceiptScan, ScannedCodeData, classify_code, parse_label,
-    parse_receipt,
+    CutOffData, ItemBreakdownData, LabelScanData, ReceiptItemData, ReceiptRowItemData,
+    ReceiptRowsScan, ReceiptScan, ScannedCodeData, classify_code, describe_receipt_item,
+    parse_label, parse_receipt, parse_receipt_row_groups, parse_receipt_rows, receipt_cut_off,
 };
 pub use tracking::trackable_data_points;
 pub use vocabulary::{

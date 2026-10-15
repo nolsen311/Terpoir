@@ -55,7 +55,7 @@ pub struct Receipt {
 
 /// Lines containing any of these (lower case) are never items: totals,
 /// payment, discounts, staff, and personal or account details.
-const NOT_ITEMS: &[&str] = &[
+pub(crate) const NOT_ITEMS: &[&str] = &[
     "total",
     "subtotal",
     "tax",
@@ -114,7 +114,7 @@ const NOT_SHOP: &[&str] = &[
 /// Whether `lower` mentions a keyword: a word starting with it (`saving`
 /// matches `savings`, `fee` does not match `coffee`), or the phrase for
 /// keywords with spaces or symbols.
-fn mentions(lower: &str, keywords: &[&str]) -> bool {
+pub(crate) fn mentions(lower: &str, keywords: &[&str]) -> bool {
     keywords.iter().any(|k| {
         if k.chars().all(char::is_alphanumeric) {
             lower
@@ -126,12 +126,12 @@ fn mentions(lower: &str, keywords: &[&str]) -> bool {
     })
 }
 
-fn is_total(lower: &str) -> bool {
+pub(crate) fn is_total(lower: &str) -> bool {
     lower.contains("total") && !lower.contains("sub")
 }
 
 /// Splits a leading quantity (`2 x Gummies`, `2x Gummies`, `2 @ Gummies`).
-fn quantity(name: &str) -> (u32, &str) {
+pub(crate) fn quantity(name: &str) -> (u32, &str) {
     let trimmed = name.trim_start();
     let digits = trimmed.bytes().take_while(u8::is_ascii_digit).count();
     if digits == 0 || digits > 3 {
@@ -147,11 +147,11 @@ fn quantity(name: &str) -> (u32, &str) {
     }
 }
 
-fn letters(text: &str) -> usize {
+pub(crate) fn letters(text: &str) -> usize {
     text.chars().filter(|c| c.is_alphabetic()).count()
 }
 
-fn looks_like_shop(line: &str) -> bool {
+pub(crate) fn looks_like_shop(line: &str) -> bool {
     let lower = line.to_lowercase();
     let digits = line.chars().filter(char::is_ascii_digit).count();
     letters(line) >= 3

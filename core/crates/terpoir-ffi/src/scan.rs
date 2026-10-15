@@ -114,6 +114,180 @@ pub struct ScannedCodeData {
     pub link: Option<String>,
 }
 
+/// What an item's text says, broken down with the built-in vocabulary.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ItemBreakdownData {
+    /// What is left once known terms are taken out (upper case): usually
+    /// the brand and strain, often abbreviated.
+    pub name: String,
+    /// Package size in thousandths of `size_unit` (3.5 g is 3500).
+    pub size_milli: Option<i64>,
+    /// `g`, `mg` or `ml` (ounces are converted to grams).
+    pub size_unit: Option<String>,
+    /// A product form slug (`flower`, `pre_roll`, `vape_cart`, …).
+    pub form: Option<String>,
+    /// `indica`, `sativa` or `hybrid`.
+    pub strain_type: Option<String>,
+    /// Units bought, when printed.
+    pub quantity: Option<u32>,
+    /// Units in one package (`5PK`), when printed.
+    pub pack: Option<u32>,
+    /// Other known words taken out (`INDOOR`, `THC`, `25%`), as printed.
+    pub other: Vec<String>,
+}
+
+impl ItemBreakdownData {
+    fn from_scan(b: terpoir_scan::ItemBreakdown) -> Self {
+        Self {
+            name: b.name,
+            size_milli: b.size.map(|s| s.milli),
+            size_unit: b.size.map(|s| s.unit.slug().to_owned()),
+            form: b.form.map(|f| f.slug().to_owned()),
+            strain_type: b.strain_type.map(|t| t.slug().to_owned()),
+            quantity: b.quantity,
+            pack: b.pack,
+            other: b.other,
+        }
+    }
+}
+
+/// One item read from a receipt's printed rows.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ReceiptRowItemData {
+    /// The item text as printed, wrapped rows joined, without the price or
+    /// a leading quantity.
+    pub name: String,
+    /// Units bought; 1 when not printed.
+    pub quantity: u32,
+    /// The price in minor units (`None` only for a group the user made
+    /// without one).
+    pub price_minor: Option<i64>,
+    /// The rows it was read from, top to bottom (indices into the rows
+    /// given).
+    pub rows: Vec<u32>,
+    /// The item text broken down.
+    pub breakdown: ItemBreakdownData,
+}
+
+/// What a receipt's printed rows seem to say; every field is a suggestion.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ReceiptRowsScan {
+    /// Shop name from the header.
+    pub shop: Option<String>,
+    /// The row the shop name was read from.
+    pub shop_row: Option<u32>,
+    /// Phone numbers printed in the header, digits only.
+    pub phones: Vec<String>,
+    /// Licence numbers printed in the header, letters and digits only.
+    pub licences: Vec<String>,
+    /// Purchase date, in days since 1970-01-01.
+    pub date_day: Option<i64>,
+    /// Printed total, in minor units.
+    pub total_minor: Option<i64>,
+    /// Items, in printed order.
+    pub items: Vec<ReceiptRowItemData>,
+}
+
+/// Which edges of the photo recognized text touches (part of the receipt
+/// may be cut off: "Part of the receipt is cut off. Retake?").
+#[derive(Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct CutOffData {
+    /// The left edge.
+    pub left: bool,
+    /// The top edge.
+    pub top: bool,
+    /// The right edge.
+    pub right: bool,
+    /// The bottom edge.
+    pub bottom: bool,
+}
+
+fn text_rows(rows: Vec<TextRowData>) -> Vec<terpoir_scan::TextRow> {
+    rows.into_iter()
+        .map(|r| terpoir_scan::TextRow {
+            text: r.text,
+            left: r.left,
+            top: r.top,
+            right: r.right,
+            bottom: r.bottom,
+            pieces: Vec::new(),
+        })
+        .collect()
+}
+
+fn rows_scan(r: terpoir_scan::RowReceipt) -> ReceiptRowsScan {
+    ReceiptRowsScan {
+        shop: r.shop,
+        shop_row: r.shop_row.map(line_number),
+        phones: r.phones,
+        licences: r.licences,
+        date_day: r.date.map(terpoir_scan::Date::days_since_epoch),
+        total_minor: r.total_minor,
+        items: r
+            .items
+            .into_iter()
+            .map(|i| ReceiptRowItemData {
+                name: i.name,
+                quantity: i.quantity,
+                price_minor: i.price_minor,
+                rows: i.rows.into_iter().map(line_number).collect(),
+                breakdown: ItemBreakdownData::from_scan(i.breakdown),
+            })
+            .collect(),
+    }
+}
+
+/// Reads a receipt from its printed rows (as `group_text_rows` returns
+/// them), joining item names that wrap onto another row. Each item reports
+/// the rows it came from.
+#[uniffi::export]
+#[must_use]
+pub fn parse_receipt_rows(rows: Vec<TextRowData>) -> ReceiptRowsScan {
+    rows_scan(terpoir_scan::parse_receipt_rows(&text_rows(rows)))
+}
+
+/// Reads a receipt from its printed rows with each item's rows given, as
+/// after "Join with next line" or "Split here". Nothing in a group is
+/// filtered out; indices out of range are ignored.
+#[uniffi::export]
+#[must_use]
+pub fn parse_receipt_row_groups(rows: Vec<TextRowData>, groups: Vec<Vec<u32>>) -> ReceiptRowsScan {
+    let groups: Vec<Vec<usize>> = groups
+        .into_iter()
+        .map(|g| {
+            g.into_iter()
+                .filter_map(|i| usize::try_from(i).ok())
+                .collect()
+        })
+        .collect();
+    rows_scan(terpoir_scan::parse_receipt_row_groups(
+        &text_rows(rows),
+        &groups,
+    ))
+}
+
+/// Which edges of a `width` × `height` photo the rows touch or cross
+/// (within 1% of the side), in the rows' coordinates.
+#[uniffi::export]
+#[must_use]
+pub fn receipt_cut_off(rows: Vec<TextRowData>, width: i32, height: i32) -> CutOffData {
+    let cut = terpoir_scan::find_cut_off(&text_rows(rows), width, height);
+    CutOffData {
+        left: cut.left,
+        top: cut.top,
+        right: cut.right,
+        bottom: cut.bottom,
+    }
+}
+
+/// Breaks an item's text into size, form, strain type, pack count,
+/// quantity, and the name that is left (`BD PR 1G` leaves `BD`).
+#[uniffi::export]
+#[must_use]
+pub fn describe_receipt_item(text: String) -> ItemBreakdownData {
+    ItemBreakdownData::from_scan(terpoir_scan::describe_item(&text))
+}
+
 /// Parses text recognized from a receipt photo.
 #[uniffi::export]
 #[must_use]
@@ -252,6 +426,38 @@ mod tests {
                     slug: "limonene".into()
                 }
         );
+
+        let row = |text: &str, left, top| TextRowData {
+            text: text.into(),
+            left,
+            top,
+            right: left + 300,
+            bottom: top + 30,
+        };
+        let rows = vec![
+            row("Shop", 100, 20),
+            row("BLUE DREAM 3.5G HYBRID FLOWE 35.00", 20, 60),
+            row("R - INDOOR", 20, 100),
+        ];
+        let r = parse_receipt_rows(rows.clone());
+        assert_eq!(r.shop_row, Some(0));
+        assert_eq!(r.items.len(), 1);
+        assert_eq!(r.items[0].rows, [1, 2]);
+        let b = &r.items[0].breakdown;
+        assert_eq!(b.name, "BLUE DREAM");
+        assert_eq!(
+            (b.size_milli, b.size_unit.as_deref()),
+            (Some(3_500), Some("g"))
+        );
+        assert_eq!(b.form.as_deref(), Some("flower"));
+        assert_eq!(b.strain_type.as_deref(), Some("hybrid"));
+        let split = parse_receipt_row_groups(rows.clone(), vec![vec![1], vec![2]]);
+        assert_eq!(split.items.len(), 2);
+        assert!(!receipt_cut_off(rows.clone(), 1000, 1000).left);
+        assert!(receipt_cut_off(rows, 300, 1000).right);
+        let d = describe_receipt_item("2 X BD PR 1G".into());
+        assert_eq!((d.name.as_str(), d.quantity), ("BD", Some(2)));
+        assert_eq!(d.form.as_deref(), Some("pre_roll"));
 
         let c = classify_code("https://lab.example/x".into(), true).unwrap();
         assert_eq!(c.kind, "qr");
