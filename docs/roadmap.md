@@ -374,6 +374,8 @@ requirement rather than on features.
             product (synced, with a compatibility fixture).
       - [ ] Phone and licence numbers on spots (synced, with a fixture).
       - [ ] A second photo for long receipts, joined on overlapping rows.
+            Core done (`join_receipt_photos`); the camera's "Add the
+            rest" step comes with the Android review.
       - [ ] Android: review cards with chips, the shop header card, "Join
             with next line" and "Split here", the cut-off warning.
 

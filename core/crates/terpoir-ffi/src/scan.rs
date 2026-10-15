@@ -285,6 +285,46 @@ pub fn receipt_cut_off(rows: Vec<TextRowData>, width: i32, height: i32) -> CutOf
     }
 }
 
+/// A long receipt's two photos joined: the first photo's rows through the
+/// rows both show, then the second's below them, in the first photo's
+/// coordinates.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct JoinedRowsData {
+    /// The joined rows, top to bottom; read them with `parse_receipt_rows`.
+    pub rows: Vec<TextRowData>,
+    /// How many rows both photos show.
+    pub overlap: u32,
+    /// How many of `rows` came from the first photo.
+    pub from_first: u32,
+}
+
+/// Joins a long receipt's second photo to the first where their rows
+/// overlap (tolerating a row cut by either edge and the same row read a
+/// little differently twice), or `None` when no overlap is found.
+#[uniffi::export]
+#[must_use]
+pub fn join_receipt_photos(
+    first: Vec<TextRowData>,
+    second: Vec<TextRowData>,
+) -> Option<JoinedRowsData> {
+    let joined = terpoir_scan::join_receipt_photos(&text_rows(first), &text_rows(second))?;
+    Some(JoinedRowsData {
+        rows: joined
+            .rows
+            .into_iter()
+            .map(|r| TextRowData {
+                text: r.text,
+                left: r.left,
+                top: r.top,
+                right: r.right,
+                bottom: r.bottom,
+            })
+            .collect(),
+        overlap: line_number(joined.overlap),
+        from_first: line_number(joined.from_first),
+    })
+}
+
 /// Breaks an item's text into size, form, strain type, pack count,
 /// quantity, and the name that is left (`BD PR 1G` leaves `BD`).
 #[uniffi::export]
@@ -473,5 +513,36 @@ mod tests {
         let c = classify_code("https://lab.example/x".into(), true).unwrap();
         assert_eq!(c.kind, "qr");
         assert!(c.link.is_some());
+    }
+
+    #[test]
+    fn joins_two_photos_and_reads_the_items_across_the_seam() {
+        let row = |text: &str, top| TextRowData {
+            text: text.into(),
+            left: 20,
+            top,
+            right: 320,
+            bottom: top + 30,
+        };
+        let first = vec![
+            row("Green Leaf", 20),
+            row("BLUE DREAM 3.5G HYBRID FLOWE 35.00", 60),
+            row("ACME GUMMIES 10PK 20.00", 100),
+        ];
+        let second = vec![
+            row("ACME GUMMIES 10PK 20.00", 10),
+            row("FIRE OG PR 1G 12.00", 50),
+            row("TOTAL 67.00", 90),
+        ];
+        let joined = join_receipt_photos(first, second).unwrap();
+        assert_eq!(joined.overlap, 1);
+        assert_eq!(joined.from_first, 3);
+        let r = parse_receipt_rows(joined.rows);
+        let names: Vec<&str> = r.items.iter().map(|i| i.name.as_str()).collect();
+        assert_eq!(names.len(), 3, "{names:?}");
+        assert_eq!(r.total_minor, Some(6700));
+        assert!(
+            join_receipt_photos(vec![row("Green Leaf", 0)], vec![row("TOTAL 67.00", 0)]).is_none()
+        );
     }
 }

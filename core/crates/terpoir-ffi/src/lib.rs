@@ -63,9 +63,10 @@ pub use records::{
     TimelinePlanData,
 };
 pub use scan::{
-    CutOffData, ItemBreakdownData, LabelScanData, ReceiptItemData, ReceiptRowItemData,
-    ReceiptRowsScan, ReceiptScan, ScannedCodeData, classify_code, describe_receipt_item,
-    parse_label, parse_receipt, parse_receipt_row_groups, parse_receipt_rows, receipt_cut_off,
+    CutOffData, ItemBreakdownData, JoinedRowsData, LabelScanData, ReceiptItemData,
+    ReceiptRowItemData, ReceiptRowsScan, ReceiptScan, ScannedCodeData, classify_code,
+    describe_receipt_item, join_receipt_photos, parse_label, parse_receipt,
+    parse_receipt_row_groups, parse_receipt_rows, receipt_cut_off,
 };
 pub use tracking::trackable_data_points;
 pub use vocabulary::{

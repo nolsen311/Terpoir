@@ -38,6 +38,7 @@ mod matching;
 mod name;
 mod number;
 mod receipt;
+mod stitch;
 mod terms;
 mod wrap;
 
@@ -53,6 +54,7 @@ pub use matching::{
 };
 pub use name::{names_match, normalize_name};
 pub use receipt::{Receipt, ReceiptItem, ReceiptLine, parse_receipt, parse_receipt_line};
+pub use stitch::{JoinedRows, join_receipt_photos};
 pub use terms::{ItemBreakdown, Size, SizeUnit, describe_item};
 pub use wrap::{
     CutOff, RowItem, RowReceipt, find_cut_off, item_row_groups, parse_receipt_row_groups,
