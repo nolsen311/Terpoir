@@ -369,10 +369,13 @@ requirement rather than on features.
             strain, brand and product suggestions by initials, letters
             in order and cut-off names, ranked by the shop; the shop
             matched from the header by name, phone and licence numbers.
-      - [ ] Learned receipt names (exact line on the product).
-      - [ ] Size and quantity on the purchase line, default size on the
+      - [x] Learned receipt names (exact line on the product), in the
+            core: learned, forgotten, synced and linked automatically;
+            the "matched" chip and "Seen on receipts as" come with the
+            Android cards.
+      - [x] Size and quantity on the purchase line, default size on the
             product (synced, with a compatibility fixture).
-      - [ ] Phone and licence numbers on spots (synced, with a fixture).
+      - [x] Phone and licence numbers on spots (synced, with a fixture).
       - [ ] A second photo for long receipts, joined on overlapping rows.
       - [ ] Android: review cards with chips, the shop header card, "Join
             with next line" and "Split here", the cut-off warning.
