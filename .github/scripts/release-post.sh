@@ -6,39 +6,30 @@
 # Usage: release-post.sh VERSION URL
 #
 # Prints the Mastodon post announcing release VERSION (for example 0.5.2):
-# a first line, that version's Play release notes from
-# docs/play-listing.md, URL (the GitHub release) and the hashtags (in
-# CamelCase, which screen readers read as words). Mastodon allows 500
-# characters and counts any link as 23, so notes that don't fit are cut at
-# a word and end with "…". Fails if docs/play-listing.md has no notes for
-# VERSION.
+# a first line, that version's summary as points (release-summary.sh; short
+# on purpose, the details are on the release page), URL (the GitHub
+# release) and the hashtags (in CamelCase, which screen readers read as
+# words). Mastodon allows 500 characters and counts any link as 23; a post
+# that doesn't fit fails, so the summary is shortened in
+# docs/play-listing.md rather than cut here.
 
 set -eu
 
 version=$1
 url=$2
-listing=docs/play-listing.md
 
-# The notes are the line after "<en-US>" in the block that follows the
-# version's "**X.Y.Z**" heading.
-notes=$(awk -v v="**${version}**" '
-    index($0, v) { found = 1; next }
-    found && /<en-US>/ { getline; sub(/^[ \t]+/, ""); print; exit }
-' "$listing")
-[ -n "$notes" ] || { echo "no release notes for ${version} in ${listing}" >&2; exit 1; }
+points=$(.github/scripts/release-summary.sh "$version" | sed 's/^/• /')
 
 head="🌿 Terpoir ${version} is out."
 tags="#Terpoir #Android #FOSS #Privacy #DataPrivacy #SelfAwareness"
-# 500, less the first line, the link (23), the hashtags and the three
-# blank lines between the four parts.
-room=$((500 - ${#head} - 23 - ${#tags} - 6))
-notes=$(printf '%s' "$notes" | python3 -c '
+post=$(printf '%s\n\n%s\n\n%s\n\n%s' "$head" "$points" "$url" "$tags")
+# Mastodon counts characters (code points), and any link as 23.
+length=$(printf '%s' "$post" | python3 -c '
 import sys
-room = int(sys.argv[1])
-text = sys.stdin.read().strip()
-if len(text) > room:
-    text = text[: room - 1].rsplit(" ", 1)[0].rstrip(" ,;:") + "…"
-print(text, end="")
-' "$room")
+url = sys.argv[1]
+text = sys.stdin.read()
+print(len(text) - len(url) + 23)
+' "$url")
+[ "$length" -le 500 ] || { echo "post for ${version} is ${length} characters; shorten its Summary: line" >&2; exit 1; }
 
-printf '%s\n\n%s\n\n%s\n\n%s\n' "$head" "$notes" "$url" "$tags"
+printf '%s\n' "$post"

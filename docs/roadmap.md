@@ -298,11 +298,13 @@ requirement rather than on features.
 | Version | Contents |
 |---|---|
 | 0.2.1 | Google Maps on Play (first build with the release Maps key), unlock prompt on open, newer-journal message. Rolling out 2026-10-14. |
+| 0.2.2 | The Privacy Center readability pass (planned as 0.3.0), problem reports by email with an offer to report the last crash, exports and folder sync checking every file was saved, the app icon in notifications. |
 | 0.3.0 | Privacy Center readability pass: layout options for the maintainer to pick from, then the chosen one. Shipped early, in 0.2.2; no 0.3.0 release. |
 | 0.4.0 | Richer strains I: detail setting, terpene levels, lineage links, strain-profile fallback in insights. |
 | 0.5.0 | Richer strains II, part 1: CBN, CBG, THCa and CBDV label amounts. Also the session timeline (hold-and-flick) and the session editor redesign, one Settings tab with a theme choice, folder sync's working check, and a fix for a crash when the journal locks while loading. |
 | 0.5.1 | Richer strains II, part 2 (moved from 0.5.0, maintainer 2026-10-15): insights and shop effect grouped by lineage or terpene profile. |
 | 0.5.2 | Fixes: the Keystore "did not respond" error (one unlock operation at a time), folder sync's card showing at once. The unlock screen in brand green; the Products tab's floating New button and strain-first titles; New entry as the journal's main button, Insights as a lightbulb, swipe-away location cards (maintainer, 2026-10-15). |
+| 0.5.3 | Fixes: Google text recognition in Play release builds (R8 removed ML Kit's registrar constructors), the crash turning it off or restoring maximum privacy, a chosen sync folder or export file lost behind the system picker, the OCR download's error code in problem reports, the keyboard as an inset. The rating as faces; swipeable Products lists; Scan receipt and the product editor's Scan as floating buttons; the session timeline in shares; the receipt-scanning core (maintainer, 2026-10-15). |
 | 0.6.0 | Strain lookups: an offline strain and seed catalog first, then online sources (such as Leafly or a seed database) each behind its own toggle, as "Catalog lookups" requires. Which providers depends on their terms and APIs, researched during 0.4.0. |
 | 0.7.0 | F-Droid groundwork: OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app. |
 | any | "Notify me" on Play, in the first release after the maintainer files the background-location declaration and video. |

@@ -67,3 +67,11 @@
 -keepclassmembers class com.googlecode.tesseract.android.TessBaseAPI {
     void onProgressValues(int, int, int, int, int, int, int, int, int);
 }
+
+# ML Kit (Play builds) finds its components by reading registrar class
+# names from the manifest and creating each one by reflection. R8 cannot
+# see that, so it removed the constructors, ML Kit started with no
+# components, and TextRecognition.getClient threw a NullPointerException.
+-keep class * implements com.google.firebase.components.ComponentRegistrar {
+    public <init>();
+}

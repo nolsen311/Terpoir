@@ -138,8 +138,8 @@ The steps, for doing them separately:
 
 1. **Version:** a PR raises `versionCode` and sets `versionName` in
    `android/app/build.gradle.kts`, and adds the version's release notes and
-   its **Headline:** line to `docs/play-listing.md` (the Mastodon post and
-   its image use both). Merge it.
+   its **Headline:** and **Summary:** lines to `docs/play-listing.md` (the
+   release image uses the headline, the Mastodon post the summary). Merge it.
 2. **Tag** that commit on `main`, signed with the YubiKey's SSH key, and
    push the tag:
    ```bash
@@ -147,9 +147,12 @@ The steps, for doing them separately:
    git push origin v0.1.0
    ```
 3. **CI** (`.github/workflows/release.yml`):
-   - checks the tag is on `main` and matches `versionName`;
+   - checks the tag is on `main` and matches `versionName`, and that
+     `docs/play-listing.md` has the version's release notes, headline and
+     summary, and that its Mastodon post fits;
    - builds the unsigned foss APK and Play bundle, and runs every check;
-   - creates a draft release holding them and `UNSIGNED-SHA256SUMS`.
+   - creates a draft release holding them and `UNSIGNED-SHA256SUMS`, its
+     page opening with the release notes under "What's new".
 
    The build runs in the `release` environment, which holds the release
    Google Maps key once Terpoir-infra provides it. Without the key, the
