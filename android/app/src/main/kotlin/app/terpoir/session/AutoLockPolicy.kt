@@ -49,13 +49,17 @@ enum class LockTimeout(val millis: Long?) {
  * - With [LockTimeout.WITH_DEVICE] (the default) there is no timer.
  * - Locking the device locks the journal immediately, whatever the
  *   setting.
+ * - While handed off to a system picker the user opened ([HandOff]),
+ *   [LockTimeout.IMMEDIATELY] waits [HAND_OFF_GRACE_MILLIS] instead, so
+ *   the picker's answer isn't lost. The other timeouts apply as they are.
  */
 class AutoLockPolicy(private val timeout: LockTimeout) {
     /** Whether to lock right away when the app goes to the background. */
-    fun lockOnBackground(): Boolean = timeout == LockTimeout.IMMEDIATELY
+    fun lockOnBackground(handedOff: Boolean = false): Boolean = backgroundDelayMillis(handedOff) == 0L
 
     /** Delay before the background timer locks the journal, or `null` for no timer. */
-    fun backgroundDelayMillis(): Long? = timeout.millis
+    fun backgroundDelayMillis(handedOff: Boolean = false): Long? =
+        if (handedOff && timeout == LockTimeout.IMMEDIATELY) HAND_OFF_GRACE_MILLIS else timeout.millis
 
     /**
      * Whether to lock when the app returns to the foreground.
@@ -65,14 +69,21 @@ class AutoLockPolicy(private val timeout: LockTimeout) {
      * @param now current elapsed-realtime.
      * @param deviceLocked whether the device was locked meanwhile or is
      *   locked now.
+     * @param handedOff whether the app left for a system picker the user
+     *   opened ([HandOff]).
      */
-    fun lockOnReturn(backgroundedAt: Long?, now: Long, deviceLocked: Boolean): Boolean {
+    fun lockOnReturn(backgroundedAt: Long?, now: Long, deviceLocked: Boolean, handedOff: Boolean = false): Boolean {
         if (deviceLocked) return true
-        val limit = timeout.millis ?: return false
+        val limit = backgroundDelayMillis(handedOff) ?: return false
         if (backgroundedAt == null) return false
         // A clock that went backwards (it should not: elapsed-realtime is
         // monotonic) is treated as expired, the safe side.
         val away = now - backgroundedAt
         return away < 0 || away >= limit
+    }
+
+    companion object {
+        /** How long "Immediately" waits while a system picker is open. */
+        const val HAND_OFF_GRACE_MILLIS = 120_000L
     }
 }

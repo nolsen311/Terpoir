@@ -35,6 +35,7 @@ import app.terpoir.R
 import app.terpoir.core.Journal
 import app.terpoir.journal.formatWhen
 import app.terpoir.report.ReportButton
+import app.terpoir.session.HandOff
 import java.time.ZoneId
 import kotlinx.coroutines.launch
 
@@ -90,7 +91,7 @@ fun FolderSyncCard(sync: FolderSync, journal: Journal) {
         val folder = revision.let { sync.folder }
         if (folder == null) {
             Text(stringResource(R.string.sync_no_folder), style = MaterialTheme.typography.bodySmall)
-            Button(onClick = { pick.launch(null) }) { Text(stringResource(R.string.sync_choose)) }
+            Button(onClick = { HandOff.launch(pick, null) }) { Text(stringResource(R.string.sync_choose)) }
             message?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
             return@Column
         }
@@ -117,7 +118,7 @@ fun FolderSyncCard(sync: FolderSync, journal: Journal) {
                 enabled = !busy,
                 onClick = ::syncNow,
             ) { Text(stringResource(R.string.sync_now)) }
-            OutlinedButton(onClick = { pick.launch(null) }) { Text(stringResource(R.string.sync_change)) }
+            OutlinedButton(onClick = { HandOff.launch(pick, null) }) { Text(stringResource(R.string.sync_change)) }
         }
         message?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)

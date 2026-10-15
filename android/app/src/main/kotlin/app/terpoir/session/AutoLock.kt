@@ -19,7 +19,8 @@ import androidx.lifecycle.ProcessLifecycleOwner
 
 /**
  * Applies [AutoLockPolicy] to the whole app process: hides content when the
- * app leaves the foreground, wipes the master key after an opt-in timeout,
+ * app leaves the foreground (not for a system picker the user opened, see
+ * [HandOff]), wipes the master key after an opt-in timeout,
  * and locks immediately when the screen turns off or the device is locked
  * (the only trigger with the default, [LockTimeout.WITH_DEVICE]).
  */
@@ -55,13 +56,16 @@ class AutoLock(
     }
 
     override fun onStop(owner: LifecycleOwner) {
-        session.hideContent()
+        // A picker the user opened is part of what they're doing here: the
+        // screen that opened it must stay, or its answer is lost.
+        val handedOff = HandOff.active
+        if (!handedOff) session.hideContent()
         backgroundedAt = SystemClock.elapsedRealtime()
         val policy = AutoLockPolicy(settings.timeout)
-        if (policy.lockOnBackground()) {
+        if (policy.lockOnBackground(handedOff)) {
             session.lock()
         } else {
-            policy.backgroundDelayMillis()?.let { handler.postDelayed(lockNow, it) }
+            policy.backgroundDelayMillis(handedOff)?.let { handler.postDelayed(lockNow, it) }
         }
     }
 
@@ -72,6 +76,7 @@ class AutoLock(
             backgroundedAt = backgroundedAt,
             now = SystemClock.elapsedRealtime(),
             deviceLocked = screenWentOff || keyguard.isDeviceLocked,
+            handedOff = HandOff.active,
         )
         if (lock) session.lock()
         backgroundedAt = null
