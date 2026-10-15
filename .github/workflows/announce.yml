@@ -10,8 +10,8 @@
 # The account's token, allowed to post statuses only, is the secret
 # MASTODON_TOKEN of the `announce` environment, which only v* tags can use
 # (Terpoir-infra creates the environment; the maintainer sets the token by
-# hand, so it never enters Terraform state). Until MASTODON_INSTANCE below
-# is set, nothing is posted. The app itself never contacts Mastodon; this
+# hand, so it never enters Terraform state). Until the token is set, the
+# run posts nothing and says so. The app itself never contacts Mastodon; this
 # runs in CI, after the maintainer publishes a release.
 
 name: Announce
@@ -36,8 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: announce
     env:
-      # The project account's server, for example https://mastodon.social.
-      MASTODON_INSTANCE: ""
+      # The project account's server (terpoirapp@mastodon.social).
+      MASTODON_INSTANCE: https://mastodon.social
       TAG: ${{ github.event.release.tag_name || github.ref_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -55,12 +55,11 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          if [ -z "$MASTODON_INSTANCE" ]; then
-            echo "::notice::No Mastodon account set up yet (MASTODON_INSTANCE in announce.yml); nothing posted."
+          if [ -z "$MASTODON_TOKEN" ]; then
+            echo "::warning::MASTODON_TOKEN is not set in the announce environment; nothing posted."
             exit 0
           fi
           case "$TAG" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "not a release tag: $TAG" >&2; exit 1 ;; esac
-          [ -n "$MASTODON_TOKEN" ] || { echo "MASTODON_TOKEN is not set in the announce environment" >&2; exit 1; }
           version=${TAG#v}
           status=$(.github/scripts/release-post.sh "$version" "https://github.com/${REPO}/releases/tag/${TAG}")
           printf '%s\n' "$status"
