@@ -449,11 +449,11 @@ them; the other activities belong to Google's libraries.
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
-  - **0.5.3** (355 characters):
+  - **0.5.3** (450 characters):
     Headline: Rate sessions with faces, and a crash fixed
     ```
     <en-US>
-    Google text recognition works in receipt scanning again, and turning it off or restoring maximum privacy no longer crashes. Rate a session with faces from meh to mind-blown. On Products, swipe between lists; Scan receipt and Scan label are now floating buttons. Share a session's timeline (off by default). The keyboard no longer pushes the screen around.
+    Google text recognition works in receipt scanning again, and turning it off or restoring maximum privacy no longer crashes. A chosen sync folder is saved again, and export and import no longer lose the file you picked. Rate a session with faces from meh to mind-blown. On Products, swipe between lists; Scan receipt and Scan label are now floating buttons. Share a session's timeline (off by default). The keyboard no longer pushes the screen around.
     </en-US>
     ```
   - **0.5.2** (388 characters):
