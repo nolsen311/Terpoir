@@ -31,6 +31,17 @@ per item or small group of items. Keep this file updated as items land.
       the first release that includes it. Not needed for the first Play
       release, which leaves background location out (maintainer,
       2026-10-13).
+- [ ] Mastodon account for release announcements (2026-10-15;
+      `docs/design-decisions.md`, "Release announcements"):
+  - [ ] Create the account on the chosen server; mark it as a bot
+        ("automated account") in its profile settings.
+  - [ ] Preferences → Development → New application, with only the
+        `write:statuses` scope; copy its access token.
+  - [ ] Add the token as `MASTODON_TOKEN` in the Terpoir repository's
+        `announce` environment (Settings → Environments), after
+        Terpoir-infra has created it.
+  - [ ] Set `MASTODON_INSTANCE` in `.github/workflows/announce.yml` to the
+        server's address (a one-line pull request).
 
 ## Phase 0: Repository and CI foundations
 

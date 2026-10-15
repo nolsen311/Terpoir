@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# Posts each published release to the project's Mastodon account
+# (docs/design-decisions.md, "Release announcements"): a first line, the
+# version's Play release notes (docs/play-listing.md) and a link to the
+# release page. Pre-releases (the rolling dev-build) are never posted.
+#
+# The account's token, allowed to post statuses only, is the secret
+# MASTODON_TOKEN of the `announce` environment, which only v* tags can use
+# (Terpoir-infra creates the environment; the maintainer sets the token by
+# hand, so it never enters Terraform state). Until MASTODON_INSTANCE below
+# is set, nothing is posted. The app itself never contacts Mastodon; this
+# runs in CI, after the maintainer publishes a release.
+
+name: Announce
+
+on:
+  release:
+    types: [published]
+  # A re-post by hand, for example after a failed run: run it on the
+  # release's tag ("Use workflow from" the tag).
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: announce-${{ github.event.release.tag_name || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  mastodon:
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    environment: announce
+    env:
+      # The project account's server, for example https://mastodon.social.
+      MASTODON_INSTANCE: ""
+      TAG: ${{ github.event.release.tag_name || github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.release.tag_name || github.ref_name }}
+          sparse-checkout: |
+            .github/scripts
+            docs/play-listing.md
+          sparse-checkout-cone-mode: false
+
+      - name: Post to Mastodon
+        env:
+          MASTODON_TOKEN: ${{ secrets.MASTODON_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "$MASTODON_INSTANCE" ]; then
+            echo "::notice::No Mastodon account set up yet (MASTODON_INSTANCE in announce.yml); nothing posted."
+            exit 0
+          fi
+          case "$TAG" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "not a release tag: $TAG" >&2; exit 1 ;; esac
+          [ -n "$MASTODON_TOKEN" ] || { echo "MASTODON_TOKEN is not set in the announce environment" >&2; exit 1; }
+          version=${TAG#v}
+          status=$(.github/scripts/release-post.sh "$version" "https://github.com/${REPO}/releases/tag/${TAG}")
+          printf '%s\n' "$status"
+          # The tag as idempotency key: a re-run within an hour doesn't
+          # post twice.
+          curl -sSf --proto '=https' --tlsv1.2 \
+            -H "Authorization: Bearer ${MASTODON_TOKEN}" \
+            -H "Idempotency-Key: terpoir-${TAG}" \
+            --data-urlencode "status=${status}" \
+            --data-urlencode "visibility=public" \
+            --data-urlencode "language=en" \
+            "${MASTODON_INSTANCE%/}/api/v1/statuses" -o /dev/null
+          echo "Posted ${TAG} to ${MASTODON_INSTANCE}"
