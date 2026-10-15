@@ -3,7 +3,7 @@
 
 # Strain lookups: data source research
 
-For the roadmap item "Strain lookups, 0.6.0". The hosts this research could
+For the roadmap item "Strain lookups, 0.7.0" (planned as 0.6.0 when written). The hosts this research could
 not reach are listed in `docs/follow-ups.md`, "Blocked network sources".
 
 Researched 2026-10-14. **Read this caveat first:** the session's network proxy
@@ -49,7 +49,7 @@ Recommendation; the maintainer picks one:
    in the app's licences screen), limited to name, type, breeder and the few
    filled crosses and cannabinoid fields. Re-check provenance before shipping
    (see Kushy below). Evaluate **Wikidata (CC0)** as the long-term, refreshable
-   source once `wikidata.org` is reachable. No online toggle in 0.6.0.
+   source once `wikidata.org` is reachable. No online toggle in the first lookups release.
 2. **Option 1 plus a link out.** A "Look up on the web" action opens the
    user's browser on a site they pick (SeedFinder, Kannapedia, AllBud). The
    app fetches nothing and fills nothing, so no site's terms on apps apply.
