@@ -234,6 +234,9 @@ fun ProductEditor(
             identifiers = identifiers,
             shops = shops,
             cannabinoids = cannabinoids,
+            // Not edited here yet: kept as saved, unless the type changed
+            // (a subtype belongs to one type).
+            subtype = original?.subtype?.takeIf { original?.form == form },
         )
     }
 
@@ -485,6 +488,7 @@ fun mergeBatch(existing: ProductData, new: ProductData): ProductData = existing.
     packageDateDay = new.packageDateDay ?: existing.packageDateDay,
     identifiers = existing.identifiers + new.identifiers.filter { n -> existing.identifiers.none { it.code == n.code } },
     shops = (existing.shops + new.shops).distinct(),
+    subtype = existing.subtype ?: new.subtype.takeIf { existing.form == null || existing.form == new.form },
 )
 
 private enum class NewKind { BRAND, STRAIN }
