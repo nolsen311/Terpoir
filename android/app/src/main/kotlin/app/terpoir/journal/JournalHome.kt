@@ -35,8 +35,10 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -54,7 +56,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -141,6 +145,9 @@ fun JournalHome(
     var tab by remember { mutableStateOf(Tab.JOURNAL) }
     // The Products tab's list, here so its "New" button can be the FAB.
     var catalog by remember { mutableStateOf(Catalog.PRODUCTS) }
+    // Location cards swiped away on the journal page. Kept in memory only,
+    // so they come back after the next unlock.
+    val dismissed = remember { mutableStateListOf<String>() }
     // Bumped whenever an editor closes, so lists reload.
     var revision by remember { mutableIntStateOf(0) }
     val pop: () -> Unit = {
@@ -257,6 +264,7 @@ fun JournalHome(
                         settings,
                         alerts,
                         checkNearby,
+                        dismissed,
                         onEdited,
                         revision,
                         padding,
@@ -300,6 +308,7 @@ private fun JournalList(
     settings: PrivacySettings,
     alerts: SpotAlerts,
     checkNearby: Boolean,
+    dismissed: MutableList<String>,
     onPermissions: () -> Unit,
     revision: Int,
     padding: PaddingValues,
@@ -339,6 +348,12 @@ private fun JournalList(
         item {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.journal_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                // Insights are computed only when opened, and only while turned on.
+                if (settings.insights) {
+                    IconButton(onClick = onInsights) {
+                        Icon(painterResource(R.drawable.ic_lightbulb), contentDescription = stringResource(R.string.insights_open))
+                    }
+                }
             }
         }
         // Notes written while the journal was locked: anyone holding the
@@ -361,16 +376,13 @@ private fun JournalList(
             }
         }
         // Purchase prompts use the same geofencing, so they need the same permissions.
-        if (settings.notifyNearSpots || settings.purchasePrompts) item { NotifySetupCard(alerts, onPermissions) }
+        // Each location card can be swiped away (maintainer, 2026-10-15).
+        if ((settings.notifyNearSpots || settings.purchasePrompts) && NOTIFY_SETUP !in dismissed) {
+            item(key = NOTIFY_SETUP) { Dismissible({ dismissed += NOTIFY_SETUP }) { NotifySetupCard(alerts, onPermissions) } }
+        }
         // "Show me", or the tap on a "Notify me" alert: which spot is near.
-        if (settings.showNearbySpots || checkNearby) item { NearbyBanner(repo, onSessionAt, onPurchase.takeIf { purchases }) }
-        // Insights are computed only when opened, and only while turned on.
-        if (settings.insights) {
-            item {
-                androidx.compose.material3.OutlinedButton(onClick = onInsights, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.insights_open))
-                }
-            }
+        if (settings.showNearbySpots || checkNearby) {
+            item { NearbyBanner(repo, dismissed, onSessionAt, onPurchase.takeIf { purchases }) }
         }
         val list = sessions
         // One timeline: sessions and standalone notes, newest first.
@@ -625,7 +637,12 @@ private fun CatalogLists(
  * the fix is not kept.
  */
 @Composable
-private fun NearbyBanner(repo: JournalRepository, onSessionAt: (String) -> Unit, onPurchase: (() -> Unit)?) {
+private fun NearbyBanner(
+    repo: JournalRepository,
+    dismissed: MutableList<String>,
+    onSessionAt: (String) -> Unit,
+    onPurchase: (() -> Unit)?,
+) {
     val context = LocalContext.current
     var access by remember { mutableStateOf(CurrentLocation.access(context)) }
     var near by remember { mutableStateOf<List<NearbySpot>>(emptyList()) }
@@ -638,17 +655,26 @@ private fun NearbyBanner(repo: JournalRepository, onSessionAt: (String) -> Unit,
         }
     }
     if (access == LocationAccess.NONE) {
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.show_nearby_needs_location))
-                androidx.compose.material3.OutlinedButton(onClick = { ask.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION)) }) {
-                    Text(stringResource(R.string.show_nearby_allow))
+        if (NEARBY_ACCESS in dismissed) return
+        Dismissible({ dismissed += NEARBY_ACCESS }) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.show_nearby_needs_location))
+                    androidx.compose.material3.OutlinedButton(onClick = { ask.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION)) }) {
+                        Text(stringResource(R.string.show_nearby_allow))
+                    }
                 }
             }
         }
         return
     }
-    val spot = near.firstOrNull() ?: return
+    // Swiping a spot away hides that spot only; another nearby one shows.
+    val spot = near.firstOrNull { NEARBY_SPOT + it.id !in dismissed } ?: return
+    Dismissible({ dismissed += NEARBY_SPOT + spot.id }) { NearbySpotCard(spot, onSessionAt, onPurchase) }
+}
+
+@Composable
+private fun NearbySpotCard(spot: NearbySpot, onSessionAt: (String) -> Unit, onPurchase: (() -> Unit)?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
@@ -666,6 +692,33 @@ private fun NearbyBanner(repo: JournalRepository, onSessionAt: (String) -> Unit,
             }
         }
     }
+}
+
+/** Keys for the location cards swiped away (see JournalHome). */
+private const val NOTIFY_SETUP = "notify-setup"
+private const val NEARBY_ACCESS = "nearby-access"
+private const val NEARBY_SPOT = "nearby-spot:"
+
+/**
+ * A card that can be swiped away in either direction. Screen readers get a
+ * "Dismiss" action instead of the swipe.
+ */
+@Composable
+private fun Dismissible(onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    val dismissLabel = stringResource(R.string.dismiss)
+    SwipeToDismissBox(
+        state = rememberSwipeToDismissBoxState(),
+        backgroundContent = {},
+        modifier = Modifier.semantics {
+            customActions = listOf(
+                CustomAccessibilityAction(dismissLabel) {
+                    onDismiss()
+                    true
+                },
+            )
+        },
+        onDismiss = { onDismiss() },
+    ) { content() }
 }
 
 /**

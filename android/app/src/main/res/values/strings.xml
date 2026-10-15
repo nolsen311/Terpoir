@@ -340,6 +340,7 @@
     <string name="scale_low">Low</string>
     <string name="scale_high">Great</string>
     <string name="insights_open">Insights</string>
+    <string name="dismiss">Dismiss</string>
     <string name="insights_title">Insights</string>
     <string name="insights_explainer">Plain averages of your own ratings. One shows only when at least 5 rated sessions on each side differ by a star or more. Patterns, not advice.</string>
     <string name="insights_none">No insights yet. Keep rating sessions; they appear once there is enough to compare.</string>
