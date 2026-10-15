@@ -5,6 +5,8 @@
 package app.terpoir.journal
 
 import app.terpoir.core.IdentifierData
+import app.terpoir.core.ItemBreakdownData
+import app.terpoir.core.PackageSizeData
 import app.terpoir.core.ProductData
 import app.terpoir.core.TagIntensity
 import app.terpoir.core.TagRefData
@@ -60,5 +62,25 @@ class ScanHelpersTest {
         assertNull(parsePrice("12.5", "JPY"))
         assertNull(parsePrice("12.555", "USD"))
         assertNull(parsePrice("abc", "USD"))
+    }
+
+    private fun breakdown(milli: Long?, unit: String?, pack: UInt?) = ItemBreakdownData(
+        name = "BD",
+        sizeMilli = milli,
+        sizeUnit = unit,
+        form = null,
+        strainType = null,
+        quantity = null,
+        pack = pack,
+        other = emptyList(),
+    )
+
+    @Test
+    fun aReceiptLinesSizeMapsOntoThePurchaseLine() {
+        assertEquals(PackageSizeData(500, "g", 5u), breakdown(500, "g", 5u).packageSize())
+        assertEquals(PackageSizeData(100_000, "mg", null), breakdown(100_000, "mg", null).packageSize())
+        assertEquals(PackageSizeData(null, null, 10u), breakdown(null, null, 10u).packageSize())
+        assertNull(breakdown(null, null, null).packageSize())
+        assertNull(breakdown(0, "g", 0u).packageSize())
     }
 }

@@ -43,13 +43,16 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
+import app.terpoir.core.ItemBreakdownData
 import app.terpoir.core.LocalTimeData
+import app.terpoir.core.PackageSizeData
 import app.terpoir.core.ProductData
 import app.terpoir.core.PurchaseData
 import app.terpoir.core.PurchaseLineData
 import app.terpoir.core.SpotData
 import app.terpoir.core.TagRefData
 import app.terpoir.core.TextRowData
+import app.terpoir.core.describeReceiptItem
 import app.terpoir.core.parseReceipt
 import app.terpoir.core.parseReceiptLine
 import app.terpoir.scan.CameraScreen
@@ -98,6 +101,17 @@ private fun localCurrency(): String =
  *
  * @property rows the photo's rows it was read from; empty when typed in.
  */
+/**
+ * The size and pack count a receipt line prints, as a purchase line keeps
+ * them (the units are the same), or null when it prints neither.
+ */
+internal fun ItemBreakdownData.packageSize(): PackageSizeData? {
+    val milli = sizeMilli?.takeIf { it > 0 && sizeUnit != null }
+    val pack = pack?.takeIf { it > 0u }
+    if (milli == null && pack == null) return null
+    return PackageSizeData(milli, sizeUnit.takeIf { milli != null }, pack)
+}
+
 private class ItemDraft(name: String, price: String, product: String?, val rows: List<Int> = emptyList()) {
     var include by mutableStateOf(true)
     var name by mutableStateOf(name)
@@ -238,7 +252,17 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                             null,
                             ProductData(item.name.trim(), null, null, emptyList(), null, null, null, null, emptyList(), null, null, emptyList(), emptyList()),
                         )
-                        PurchaseLineData(null, product, null, price, code.takeIf { price != null })
+                        // Size, pack and quantity as the line prints them.
+                        val breakdown = describeReceiptItem(item.name)
+                        PurchaseLineData(
+                            null,
+                            product,
+                            null,
+                            price,
+                            code.takeIf { price != null },
+                            size = breakdown.packageSize(),
+                            quantity = breakdown.quantity?.takeIf { it > 0u } ?: 1u,
+                        )
                     }
                     val date = LocalDate.ofEpochDay(day ?: LocalDate.now().toEpochDay())
                     val zoned = date.atTime(LocalTime.NOON).atZone(ZoneId.systemDefault())

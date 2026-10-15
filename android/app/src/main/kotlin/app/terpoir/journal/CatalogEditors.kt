@@ -237,6 +237,9 @@ fun ProductEditor(
             // Not edited here yet: kept as saved, unless the type changed
             // (a subtype belongs to one type).
             subtype = original?.subtype?.takeIf { original?.form == form },
+            // Not edited here yet: kept as saved.
+            defaultSize = original?.defaultSize,
+            receiptNames = original?.receiptNames ?: emptyList(),
         )
     }
 
