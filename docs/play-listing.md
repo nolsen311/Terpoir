@@ -415,6 +415,12 @@ the background-location declaration and a video
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.5.0** (472 characters):
+    ```
+    <en-US>
+    New ways to log a session: hold the bud and flick it to show how it's hitting, then fill in the rest of the timeline later. The date, spot, reminder and notes are now quick icons, and closing asks before throwing anything away. Products can record CBN, CBG, THCa and CBDV from the label. Settings is now one tab, with a theme choice (phone, light or dark) and clearer cards in dark mode. Folder sync shows when it's working. Fixes a crash when the app locks while loading.
+    </en-US>
+    ```
   - **0.4.0** (411 characters):
     ```
     <en-US>
