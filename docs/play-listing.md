@@ -415,6 +415,12 @@ the background-location declaration and a video
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.5.1** (404 characters):
+    ```
+    <en-US>
+    Insights now group strains by family: a parent strain and the strains bred from it, so you can see how a whole family works for you, not just one strain at a time. Shop insights also compare strain families and a product's main terpene, so a shop's difference shows up even when you never bought the same strain in two places. Families use parent strains, which show at the Detailed step in What I track.
+    </en-US>
+    ```
   - **0.5.0** (472 characters):
     ```
     <en-US>
