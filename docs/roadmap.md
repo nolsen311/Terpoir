@@ -38,8 +38,9 @@ per item or small group of items. Keep this file updated as items land.
         saved as a Gmail draft.
   - [ ] AllBud, `legal@allbud.com`: saved as a Gmail draft.
   - [ ] SeedFinder.eu: no address published; send through its contact
-        form (draft text in the session, 2026-10-15).
-  - [ ] TerpHunter: no address published; send through its contact form.
+        form. Its text is a Gmail draft with no recipient.
+  - [ ] TerpHunter: no address published; send through its contact form
+        (text saved as a Gmail draft with no recipient).
         Also ask about the coming Pro API and where its strain profiles
         come from.
 
