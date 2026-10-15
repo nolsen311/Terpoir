@@ -353,7 +353,7 @@ requirement rather than on features.
 
 - [ ] Product subtypes (maintainer, 2026-10-15; `docs/design-decisions.md`,
       "Product subtypes"). Version to be set by the maintainer.
-  - [ ] The maintainer confirms the Transdermal timing (12 hours, points
+  - [x] The maintainer confirms the Transdermal timing (12 hours, points
         at 1, 2, 4, 8 and 12 hours, a check-in after 2 hours).
   - [ ] Core: subtypes under each type (built-in list and the user's
         own), a subtype's suggested method, the Transdermal method, uneven
