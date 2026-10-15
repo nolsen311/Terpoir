@@ -351,6 +351,17 @@ requirement rather than on features.
   - [ ] Online sources the maintainer picks, each its own toggle (off by
         default) with a disclosure card; search on submit only.
 
+- [ ] Product subtypes (maintainer, 2026-10-15; `docs/design-decisions.md`,
+      "Product subtypes"). Version to be set by the maintainer.
+  - [ ] The maintainer confirms the Transdermal timing (12 hours, points
+        at 1, 2, 4, 8 and 12 hours, a check-in after 2 hours).
+  - [ ] Core: subtypes under each type (built-in list and the user's
+        own), a subtype's suggested method, the Transdermal method, uneven
+        timeline points; through the FFI; a compatibility fixture.
+  - [ ] Product editor: subtype chips under the type, and adding one's
+        own with its usual method.
+  - [ ] Scanning terms for subtypes.
+
 - [ ] Scan recognition from the journal (`docs/design-decisions.md`,
       "Scan recognition from the journal"): learned receipt names with
       automatic linking on an exact match; OCR-tolerant suggestions
@@ -379,6 +390,10 @@ requirement rather than on features.
 
 Ideas the maintainer wants kept, to be designed and scheduled later.
 
+- [ ] Solventless and solvent-based concentrates as a grouping for
+      insights (tabled by the maintainer, 2026-10-15: possibly useful, but
+      subtypes may be enough; `docs/design-decisions.md`, "Product
+      subtypes").
 - [ ] Simpler receipt scanning (maintainer, 2026-10-15): text recognition
       should fill the right parts of a new entry (brand, strain, form,
       size, price, shop, date) with less checking and typing. Options in

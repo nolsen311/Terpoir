@@ -555,6 +555,22 @@ Each journal entry records one consumption session, not a product review. Produc
 - Method-specific units: hits or bowl fraction (flower), puffs (carts), dab size (concentrates), mg (edibles), ml or mg (tinctures).
 - Where label data allows, the core also estimates **mg THC** so sessions compare across methods.
 
+### Product subtypes (maintainer, 2026-10-15)
+- **What:** an optional subtype on a product, under its type: bubble hash and shatter are concentrates, an infused pre-roll is a pre-roll. Each subtype has exactly one parent type, and everything the type drives (its usual method, and through that the dose units, timeline and check-in delay; insights; filters) includes its subtypes.
+- **On the product, not the session:** a product *is* bubble hash. The product editor shows the type as now and the type's subtypes as chips under it; none is required.
+- **Built-in list plus the user's own (maintainer):** the user can add a subtype under any type; it syncs like a custom tag, with its parent type. The built-in list to start:
+  - Pre-roll: joint, blunt, infused pre-roll, mini pre-rolls.
+  - Concentrate: shatter, wax or badder, crumble, live resin, rosin, bubble hash, dry sift or kief, pressed hash, diamonds, sauce, distillate, RSO.
+  - Vape: cartridge, disposable, all-in-one (AIO), pod.
+  - Edible: gummy, chocolate, baked good, mint, capsule.
+  - Beverage: soda, seltzer, tea or coffee, shot.
+  - Topical: balm or lotion, transdermal patch.
+- **Timing comes from the method, never the subtype (maintainer):** a subtype can suggest its own usual method, falling back to its type's, and the session can always change it. The method keeps owning dose units, the timeline and the check-in delay, so sessions by one method compare cleanly. A user's own subtype picks its usual method (or keeps the type's) when it is added; there are no per-subtype timers.
+- **Transdermal, a new method, for patches:** a patch reaches the bloodstream, unlike a lotion, and acts for hours. Proposed (for the maintainer to confirm): a 12-hour timeline with points at 1, 2, 4, 8 and 12 hours, a check-in after 2 hours, and mg per patch as the dose. Its points are uneven, so timeline plans gain uneven spacing, which other methods may use later.
+- **Receipt and label scanning:** scanning terms map to a type and subtype (ROSIN, SHATTER, BADDER, AIO, INFUSED PR).
+- **Tabled (maintainer):** grouping concentrate subtypes as solventless or solvent-based for insights. Possibly useful later; subtypes alone may be enough.
+- **Format:** products gain an optional subtype (a built-in slug or a custom tag), and custom subtypes carry their parent type; a synced format change with its compatibility fixture. Older app versions keep what they can't read until they're updated.
+
 ### Targeted symptoms (decided)
 - Optional section, **off by default**, enabled in the Privacy Center; hidden until enabled.
 - Symptoms, never conditions or diagnoses: suggestions (sleep, pain, anxiety, appetite, nausea, focus) plus custom.
