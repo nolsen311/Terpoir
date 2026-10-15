@@ -354,6 +354,14 @@ requirement rather than on features.
 
 Ideas the maintainer wants kept, to be designed and scheduled later.
 
+- [ ] Simpler receipt scanning (maintainer, 2026-10-15): text recognition
+      should fill the right parts of a new entry (brand, strain, form,
+      size, price, shop, date) with less checking and typing. Options in
+      `docs/research/receipt-scan-options.md` (scan-and-review cards, tap to
+      assign on the photo, label first, learning from corrections, and a
+      hand-off to "New entry"); maintainer to pick. Overlaps "Scan
+      recognition from the journal".
+
 - [ ] More themes (maintainer, 2026-10-14), each a choice next to
       System, Light and Dark on the Theme page, with its sample controls:
       - a Material 3 theme from the wallpaper (dynamic color, Android 12
