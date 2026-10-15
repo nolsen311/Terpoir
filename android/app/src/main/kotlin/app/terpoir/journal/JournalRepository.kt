@@ -45,7 +45,11 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
     suspend fun productLabels(): Map<String, String> {
         // A product shows without its brand when brands are hidden ("What I track").
         val brands = if (tracking().shows(DataPoint.BRAND)) brands().associate { it.id to it.data.name } else emptyMap()
-        return products().associate { it.id to productLabel(it.data.name, it.data.brand?.let(brands::get)) }
+        // A product with no name of its own is known by its strains.
+        val strains = if (tracking().shows(DataPoint.STRAIN)) strains().associate { it.id to it.data.name } else emptyMap()
+        return products().associate { p ->
+            p.id to productLabel(p.data.name, p.data.brand?.let(brands::get), p.data.strains.mapNotNull(strains::get))
+        }
     }
 
     /** Products, by name. */

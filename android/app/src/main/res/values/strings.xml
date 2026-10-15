@@ -250,6 +250,8 @@
     <string name="tab_products">Products</string>
     <string name="tab_settings">Settings</string>
     <string name="catalog_strains">Strains</string>
+    <string name="catalog_thc">THC %1$s</string>
+    <string name="catalog_cbd">CBD %1$s</string>
     <string name="catalog_brands">Brands</string>
     <string name="catalog_spots">Spots</string>
     <string name="journal_title">Your journal</string>
@@ -441,7 +443,7 @@
     <string name="effect_unknown_custom">Removed effect</string>
     <string name="product_new">New product</string>
     <string name="product_edit">Edit product</string>
-    <string name="product_name">Name</string>
+    <string name="product_name">Name (optional)</string>
     <string name="product_form">Form</string>
     <string name="product_brand">Brand</string>
     <string name="product_no_brand">No brand</string>

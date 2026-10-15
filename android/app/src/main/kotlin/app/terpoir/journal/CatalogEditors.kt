@@ -234,7 +234,9 @@ fun ProductEditor(
     EditorScaffold(
         title = stringResource(if (id == null) R.string.product_new else R.string.product_edit),
         onClose = onDone,
-        saveEnabled = name.isNotBlank() && !reading,
+        // The name is optional (maintainer, 2026-10-15): a product can be
+        // known by its strain, brand or type instead; it needs one of them.
+        saveEnabled = !reading && (name.isNotBlank() || strains.isNotEmpty() || brand != null || form != null),
         onSave = {
             val data = data()
             if (data == null) {
