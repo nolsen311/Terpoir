@@ -31,6 +31,17 @@ per item or small group of items. Keep this file updated as items land.
       the first release that includes it. Not needed for the first Play
       release, which leaves background location out (maintainer,
       2026-10-13).
+- [ ] Strain data permission requests (2026-10-15;
+      `docs/research/strain-lookups.md`). Fill in your name, send, then
+      record each answer in the research doc:
+  - [ ] Kannapedia / Medicinal Genomics, `info@medicinalgenomics.com`:
+        saved as a Gmail draft.
+  - [ ] AllBud, `legal@allbud.com`: saved as a Gmail draft.
+  - [ ] SeedFinder.eu: no address published; send through its contact
+        form (draft text in the session, 2026-10-15).
+  - [ ] TerpHunter: no address published; send through its contact form.
+        Also ask about the coming Pro API and where its strain profiles
+        come from.
 
 ## Phase 0: Repository and CI foundations
 
