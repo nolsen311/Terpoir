@@ -509,6 +509,7 @@
     <string name="scan_code">Scan code</string>
     <string name="scan_code_hint">Point at a barcode, QR code or package tag. It is read on your phone; nothing is photographed.</string>
     <string name="scan_receipt">Scan receipt</string>
+    <string name="product_scan">Scan the label or package code</string>
     <string name="scan_receipt_hint">Fit the whole receipt in the frame. It is read on your phone and never saved: you check it on screen, and it is gone when you leave. Only the lines you confirm are saved.</string>
     <string name="scan_take_photo">Take photo</string>
     <string name="scan_reading">Reading…</string>

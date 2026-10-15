@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -54,10 +56,12 @@ fun EditorScaffold(
     onClose: () -> Unit,
     onSave: () -> Unit,
     saveEnabled: Boolean = true,
+    floatingActionButton: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     BackHandler(onBack = onClose)
     Scaffold(
+        floatingActionButton = { floatingActionButton?.invoke() },
         topBar = {
             TopAppBar(
                 title = { Text(title) },
@@ -75,8 +79,11 @@ fun EditorScaffold(
         Column(
             modifier = Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = content,
-        )
+        ) {
+            content()
+            // Room so a floating button doesn't cover the last field.
+            if (floatingActionButton != null) Spacer(Modifier.height(72.dp))
+        }
     }
 }
 

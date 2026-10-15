@@ -5,6 +5,7 @@
 package app.terpoir.journal
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -12,7 +13,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -26,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -257,11 +263,26 @@ fun ProductEditor(
                 }
             }
         },
+        // One "Scan" button for the label or the package code (maintainer, 2026-10-15).
+        floatingActionButton = {
+            var choosing by remember { mutableStateOf(false) }
+            Box {
+                FloatingActionButton(onClick = { if (!reading) choosing = true }) {
+                    Icon(painterResource(R.drawable.ic_scan), contentDescription = stringResource(R.string.product_scan))
+                }
+                DropdownMenu(expanded = choosing, onDismissRequest = { choosing = false }) {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.scan_label)) }, onClick = {
+                        choosing = false
+                        camera = ProductScan.LABEL
+                    })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.scan_code)) }, onClick = {
+                        choosing = false
+                        camera = ProductScan.CODE
+                    })
+                }
+            }
+        },
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { camera = ProductScan.LABEL }, enabled = !reading) { Text(stringResource(R.string.scan_label)) }
-            OutlinedButton(onClick = { camera = ProductScan.CODE }, enabled = !reading) { Text(stringResource(R.string.scan_code)) }
-        }
         if (reading) Text(stringResource(R.string.scan_reading))
         scanNote?.let { Text(stringResource(it), style = MaterialTheme.typography.bodySmall) }
 
