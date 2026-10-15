@@ -29,6 +29,9 @@ slug_enum! {
         Beverage => "beverage",
         /// Applied to the skin.
         Topical => "topical",
+        /// A transdermal patch: through the skin into the bloodstream, for
+        /// hours (unlike a topical).
+        Transdermal => "transdermal",
     }
 }
 
@@ -116,17 +119,47 @@ impl Method {
             Self::Smoked | Self::VapedFlower => &[DoseUnit::Hits, DoseUnit::Bowls],
             Self::VapeCart => &[DoseUnit::Puffs],
             Self::Dabbed => &[DoseUnit::Dabs],
-            Self::Edible | Self::Beverage => &[DoseUnit::Milligrams],
+            Self::Edible | Self::Beverage | Self::Transdermal => &[DoseUnit::Milligrams],
             Self::Tincture => &[DoseUnit::Millilitres, DoseUnit::Milligrams],
             Self::Topical => &[],
             Self::Unknown(_) => &ALL_DOSE_UNITS,
         }
     }
+
+    /// The default delay of a follow-up check-in after this method, in
+    /// minutes, or `None` for no check-in by default: edibles and drinks
+    /// take longest to come on, patches act over hours, tinctures come on
+    /// sooner; inhaled and topical need none, nor does a method from a
+    /// newer app version.
+    #[must_use]
+    pub const fn check_in_minutes(&self) -> Option<u32> {
+        match self {
+            Self::Edible | Self::Beverage => Some(90),
+            Self::Transdermal => Some(120),
+            Self::Tincture => Some(45),
+            Self::Smoked
+            | Self::VapedFlower
+            | Self::VapeCart
+            | Self::Dabbed
+            | Self::Topical
+            | Self::Unknown(_) => None,
+        }
+    }
 }
 
-/// How a method's timeline is asked for: its length, how many evenly
-/// spaced points it has (the last at the end), and how many of them the
-/// first gesture sets (docs/design-decisions.md, "Session timeline").
+/// The default check-in delay for a session with these methods: the
+/// longest of theirs; `None` when none of them asks for one.
+pub fn check_in_minutes_for<'a>(methods: impl IntoIterator<Item = &'a Method>) -> Option<u32> {
+    methods
+        .into_iter()
+        .filter_map(Method::check_in_minutes)
+        .max()
+}
+
+/// How a method's timeline is asked for: its length, how many points it
+/// has (evenly spaced unless [`at`](Self::at) places them, the last at the
+/// end), and how many of them the first gesture sets
+/// (docs/design-decisions.md, "Session timeline").
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct TimelinePlan {
     /// Length in minutes.
@@ -135,33 +168,48 @@ pub struct TimelinePlan {
     pub points: u32,
     /// Points the first gesture sets.
     pub gesture_points: u32,
+    /// The points' times in minutes, for uneven spacing (ascending, as
+    /// many as [`points`](Self::points), the last at the end). Empty for
+    /// evenly spaced points.
+    pub at: &'static [u32],
 }
 
 impl TimelinePlan {
-    /// The points' times in minutes, evenly spaced, the last at the end.
+    /// The points' times in minutes: [`at`](Self::at) when set, else
+    /// evenly spaced, the last at the end.
     #[must_use]
     pub fn point_minutes(&self) -> Vec<u32> {
+        if !self.at.is_empty() {
+            return self.at.to_vec();
+        }
         (1..=self.points)
             .map(|i| self.minutes * i / self.points.max(1))
             .collect()
     }
 }
 
+/// A patch's points: 1, 2, 4, 8 and 12 hours (maintainer, 2026-10-15).
+const TRANSDERMAL_POINTS: &[u32] = &[60, 120, 240, 480, 720];
+
 impl Method {
     /// The timeline asked for after this method (maintainer, 2026-10-15).
     /// A method from a newer app version gets the smoked one.
     #[must_use]
     pub const fn timeline_plan(&self) -> TimelinePlan {
-        let (minutes, points, gesture_points) = match self {
-            Self::Dabbed => (60, 3, 1),
-            Self::Smoked | Self::VapedFlower | Self::VapeCart | Self::Unknown(_) => (120, 4, 2),
-            Self::Edible | Self::Beverage | Self::Tincture => (240, 5, 2),
-            Self::Topical => (120, 3, 2),
+        let (minutes, points, gesture_points, at): (u32, u32, u32, &'static [u32]) = match self {
+            Self::Dabbed => (60, 3, 1, &[]),
+            Self::Smoked | Self::VapedFlower | Self::VapeCart | Self::Unknown(_) => {
+                (120, 4, 2, &[])
+            }
+            Self::Edible | Self::Beverage | Self::Tincture => (240, 5, 2, &[]),
+            Self::Topical => (120, 3, 2, &[]),
+            Self::Transdermal => (720, 5, 2, TRANSDERMAL_POINTS),
         };
         TimelinePlan {
             minutes,
             points,
             gesture_points,
+            at,
         }
     }
 }
@@ -591,6 +639,7 @@ mod tests {
         }
         assert_eq!(Method::Smoked.dose_units()[0], DoseUnit::Hits);
         assert_eq!(Method::VapeCart.dose_units(), &[DoseUnit::Puffs]);
+        assert_eq!(Method::Transdermal.dose_units(), &[DoseUnit::Milligrams]);
         // A method from a newer app version offers every unit.
         assert_eq!(
             Method::from_slug("nebulized").dose_units().len(),
@@ -738,6 +787,22 @@ mod tests {
             Method::Topical.timeline_plan().point_minutes(),
             [40, 80, 120]
         );
+        // A patch's points are uneven.
+        let patch = Method::Transdermal.timeline_plan();
+        assert_eq!(patch.point_minutes(), [60, 120, 240, 480, 720]);
+        assert_eq!(
+            (patch.minutes, patch.points, patch.gesture_points),
+            (720, 5, 2)
+        );
+        // Every plan has as many points as it says, ascending, the last at
+        // the end.
+        for slug in Method::SLUGS {
+            let plan = Method::from_slug(slug).timeline_plan();
+            let points = plan.point_minutes();
+            assert_eq!(points.len(), plan.points as usize, "{slug}");
+            assert!(points.windows(2).all(|w| w[0] < w[1]), "{slug}");
+            assert_eq!(points.last(), Some(&plan.minutes), "{slug}");
+        }
         // A session takes its longest method's plan; with none, smoked's.
         let mut s = Session::new(LocalTime {
             unix_ms: 0,
@@ -757,6 +822,49 @@ mod tests {
             );
         }
         assert_eq!(s.timeline_plan(), Method::Beverage.timeline_plan());
+        // The longest plan wins: a patch's.
+        s.lines.insert(
+            RecordId::random().unwrap(),
+            ProductLine {
+                product: None,
+                method: Method::Transdermal,
+                dose: None,
+                purchase: None,
+                shop: None,
+            },
+        );
+        assert_eq!(s.timeline_plan(), Method::Transdermal.timeline_plan());
+    }
+
+    #[test]
+    fn check_ins_follow_the_slowest_method() {
+        assert_eq!(Method::Edible.check_in_minutes(), Some(90));
+        assert_eq!(Method::Beverage.check_in_minutes(), Some(90));
+        assert_eq!(Method::Tincture.check_in_minutes(), Some(45));
+        assert_eq!(Method::Transdermal.check_in_minutes(), Some(120));
+        for method in [
+            Method::Smoked,
+            Method::VapedFlower,
+            Method::VapeCart,
+            Method::Dabbed,
+            Method::Topical,
+            Method::from_slug("nebulized"),
+        ] {
+            assert_eq!(method.check_in_minutes(), None);
+        }
+        assert_eq!(
+            check_in_minutes_for(&[Method::Tincture, Method::Edible, Method::Smoked]),
+            Some(90)
+        );
+        assert_eq!(
+            check_in_minutes_for(&[Method::Edible, Method::Transdermal]),
+            Some(120)
+        );
+        assert_eq!(
+            check_in_minutes_for(&[Method::Smoked, Method::Topical]),
+            None
+        );
+        assert_eq!(check_in_minutes_for(&[]), None);
     }
 
     #[test]

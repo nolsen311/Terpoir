@@ -13,14 +13,20 @@
 //!
 //! | Kind | Printed as | Becomes |
 //! |---|---|---|
-//! | Form | `PR`, `PREROLL`, `PRE-ROLL`, `JOINT`, `BLUNT` | pre-roll |
-//! | Form | `CART`, `CARTRIDGE`, `VAPE`, `DISPO`, `POD` | vape cart |
+//! | Form | `PR`, `PREROLL`, `PRE-ROLL` | pre-roll |
+//! | Form | `VAPE` | vape cart |
 //! | Form | `FLWR`, `FLOWER`, `BUD`, `SMALLS`, `SHAKE` | flower |
-//! | Form | `EDIBLE`, `GUMMY`, `GUMMIES`, `CHOC`, `CHEWS` | edible |
-//! | Form | `CONC`, `WAX`, `SHATTER`, `BADDER`, `ROSIN`, `RESIN`, `LR`, `LIVE RESIN`, `HASH`, `KIEF` | concentrate |
+//! | Form | `EDIBLE`, `CHEWS` | edible |
+//! | Form | `CONC`, `RESIN` | concentrate |
 //! | Form | `TINCT`, `TINCTURE`, `DROPS` | tincture |
-//! | Form | `TOPICAL`, `BALM`, `LOTION`, `SALVE` | topical |
-//! | Form | `DRINK`, `BEV`, `BEVERAGE`, `SODA`, `SELTZER` | beverage |
+//! | Form | `TOPICAL`, `SALVE` | topical |
+//! | Form | `DRINK`, `BEV`, `BEVERAGE` | beverage |
+//! | Subtype | `JOINT`; `BLUNT`; `INFUSED PR`, `INFUSED PRE ROLL` | joint, blunt, infused pre-roll (pre-roll) |
+//! | Subtype | `CART`, `CARTRIDGE`; `DISPO`, `DISPOSABLE`; `AIO`, `ALL IN ONE`; `POD` | cartridge, disposable, all-in-one, pod (vape cart) |
+//! | Subtype | `GUMMY`, `GUMMIES`; `CHOC`, `CHOCOLATE` | gummy, chocolate (edible) |
+//! | Subtype | `SHATTER`; `WAX`, `BADDER`, `BUDDER`; `CRUMBLE`; `LR`, `LIVE RESIN`; `ROSIN`; `BUBBLE HASH`; `HASH`; `KIEF`; `DIAMONDS`; `SAUCE`; `DISTILLATE`; `RSO` | shatter, wax, crumble, live resin, rosin, bubble hash, pressed hash, dry sift, diamonds, sauce, distillate, RSO (concentrate) |
+//! | Subtype | `SODA`; `SELTZER` | soda, seltzer (beverage) |
+//! | Subtype | `BALM`, `LOTION`; `PATCH` | balm, patch (topical) |
 //! | Strain type | `HYB`, `HYBRID`; `IND`, `INDICA`; `SAT`, `SATIVA` | hybrid, indica, sativa |
 //! | Strain type | `IND DOM`, `INDICA HYBRID`, `I/H` (and the sativa forms) | the side it leans to |
 //! | Strain type | `50/50`, `60/40` (two numbers adding up to 100) | hybrid, unless a type word follows |
@@ -30,15 +36,17 @@
 //! | Quantity | `2 X`, `2X`, `X2`, `QTY 2`, `2 @`, a leading count (`2 BD PR`) | units bought |
 //! | Other | `INDOOR`, `OUTDOOR`, `GREENHOUSE`, `SUNGROWN`, `INFUSED`, `THC`, `CBD`, `25%` | kept aside |
 //!
-//! When a line names several forms, the more specific wins: edible,
-//! beverage, tincture, topical, vape cart, pre-roll, concentrate, flower
-//! (`LIVE RESIN CART` is a cart, `INFUSED PR` with `KIEF` a pre-roll).
+//! A subtype also gives its form. When a line names several forms, the
+//! more specific wins: edible, beverage, tincture, topical, vape cart,
+//! pre-roll, concentrate, flower (`LIVE RESIN CART` is a cart,
+//! `INFUSED PR` with `KIEF` a pre-roll). The subtype is the first one the
+//! line names under the form that won (`LIVE RESIN CART` is a cartridge).
 //! An ounce is counted as 28 g and an eighth as 3.5 g, as dispensaries do.
 //! In a size, a `C` read for a `G` is accepted only for the usual flower
 //! weights (`3.5C` is 3.5 g), and letters inside a number only after a
 //! real digit (`1O0MG` is 100 mg; `1O` alone is not a size).
 
-use terpoir_model::{Form, StrainType};
+use terpoir_model::{Form, StrainType, Subtype};
 
 use crate::number::trailing_price;
 
@@ -84,6 +92,8 @@ pub struct ItemBreakdown {
     pub size: Option<Size>,
     /// The product form.
     pub form: Option<Form>,
+    /// The subtype under [`form`](Self::form), when the line names one.
+    pub subtype: Option<Subtype>,
     /// The strain type.
     pub strain_type: Option<StrainType>,
     /// Units bought, when printed.
@@ -99,6 +109,8 @@ pub struct ItemBreakdown {
 #[derive(Clone, Copy)]
 enum Meaning {
     Form(&'static str),
+    /// A subtype (slug), which also gives its parent form.
+    Subtype(&'static str),
     Type(&'static str),
     Other,
 }
@@ -112,21 +124,31 @@ const TERMS: &[(&str, Meaning)] = &[
     ("PREROLLS", Meaning::Form("pre_roll")),
     ("PRE ROLL", Meaning::Form("pre_roll")),
     ("PRE ROLLS", Meaning::Form("pre_roll")),
-    ("JOINT", Meaning::Form("pre_roll")),
-    ("JOINTS", Meaning::Form("pre_roll")),
-    ("BLUNT", Meaning::Form("pre_roll")),
-    ("BLUNTS", Meaning::Form("pre_roll")),
+    ("JOINT", Meaning::Subtype("joint")),
+    ("JOINTS", Meaning::Subtype("joint")),
+    ("BLUNT", Meaning::Subtype("blunt")),
+    ("BLUNTS", Meaning::Subtype("blunt")),
+    ("INFUSED PR", Meaning::Subtype("infused_pre_roll")),
+    ("INFUSED PRS", Meaning::Subtype("infused_pre_roll")),
+    ("INFUSED PREROLL", Meaning::Subtype("infused_pre_roll")),
+    ("INFUSED PREROLLS", Meaning::Subtype("infused_pre_roll")),
+    ("INFUSED PRE ROLL", Meaning::Subtype("infused_pre_roll")),
+    ("INFUSED PRE ROLLS", Meaning::Subtype("infused_pre_roll")),
     // Vapes.
-    ("CART", Meaning::Form("vape_cart")),
-    ("CARTS", Meaning::Form("vape_cart")),
-    ("CARTRIDGE", Meaning::Form("vape_cart")),
-    ("CARTRIDGES", Meaning::Form("vape_cart")),
+    ("CART", Meaning::Subtype("cartridge")),
+    ("CARTS", Meaning::Subtype("cartridge")),
+    ("CARTRIDGE", Meaning::Subtype("cartridge")),
+    ("CARTRIDGES", Meaning::Subtype("cartridge")),
     ("VAPE", Meaning::Form("vape_cart")),
     ("VAPES", Meaning::Form("vape_cart")),
-    ("DISPO", Meaning::Form("vape_cart")),
-    ("DISPOSABLE", Meaning::Form("vape_cart")),
-    ("POD", Meaning::Form("vape_cart")),
-    ("PODS", Meaning::Form("vape_cart")),
+    ("DISPO", Meaning::Subtype("disposable")),
+    ("DISPOSABLE", Meaning::Subtype("disposable")),
+    ("POD", Meaning::Subtype("pod")),
+    ("PODS", Meaning::Subtype("pod")),
+    ("DISPOS", Meaning::Subtype("disposable")),
+    ("DISPOSABLES", Meaning::Subtype("disposable")),
+    ("AIO", Meaning::Subtype("all_in_one")),
+    ("ALL IN ONE", Meaning::Subtype("all_in_one")),
     // Flower.
     ("FLWR", Meaning::Form("flower")),
     ("FLW", Meaning::Form("flower")),
@@ -142,34 +164,38 @@ const TERMS: &[(&str, Meaning)] = &[
     ("EDIBLE", Meaning::Form("edible")),
     ("EDIBLES", Meaning::Form("edible")),
     ("EDBL", Meaning::Form("edible")),
-    ("GUMMY", Meaning::Form("edible")),
-    ("GUMMIES", Meaning::Form("edible")),
-    ("GUMMIE", Meaning::Form("edible")),
-    ("GUMMI", Meaning::Form("edible")),
-    ("GUMM", Meaning::Form("edible")),
-    ("GUMMS", Meaning::Form("edible")),
-    ("CHOCOLATE", Meaning::Form("edible")),
-    ("CHOC", Meaning::Form("edible")),
+    ("GUMMY", Meaning::Subtype("gummy")),
+    ("GUMMIES", Meaning::Subtype("gummy")),
+    ("GUMMIE", Meaning::Subtype("gummy")),
+    ("GUMMI", Meaning::Subtype("gummy")),
+    ("GUMM", Meaning::Subtype("gummy")),
+    ("GUMMS", Meaning::Subtype("gummy")),
+    ("CHOCOLATE", Meaning::Subtype("chocolate")),
+    ("CHOC", Meaning::Subtype("chocolate")),
     ("CHEW", Meaning::Form("edible")),
     ("CHEWS", Meaning::Form("edible")),
     // Concentrates.
     ("CONC", Meaning::Form("concentrate")),
     ("CONCENTRATE", Meaning::Form("concentrate")),
-    ("WAX", Meaning::Form("concentrate")),
-    ("SHATTER", Meaning::Form("concentrate")),
-    ("BADDER", Meaning::Form("concentrate")),
-    ("BATTER", Meaning::Form("concentrate")),
-    ("BUDDER", Meaning::Form("concentrate")),
-    ("ROSIN", Meaning::Form("concentrate")),
+    ("WAX", Meaning::Subtype("wax")),
+    ("SHATTER", Meaning::Subtype("shatter")),
+    ("BADDER", Meaning::Subtype("wax")),
+    ("BATTER", Meaning::Subtype("wax")),
+    ("BUDDER", Meaning::Subtype("wax")),
+    ("ROSIN", Meaning::Subtype("rosin")),
     ("RESIN", Meaning::Form("concentrate")),
-    ("LR", Meaning::Form("concentrate")),
-    ("LIVE RESIN", Meaning::Form("concentrate")),
-    ("LIVE ROSIN", Meaning::Form("concentrate")),
-    ("HASH", Meaning::Form("concentrate")),
-    ("KIEF", Meaning::Form("concentrate")),
-    ("DIAMONDS", Meaning::Form("concentrate")),
-    ("SAUCE", Meaning::Form("concentrate")),
-    ("CRUMBLE", Meaning::Form("concentrate")),
+    ("LR", Meaning::Subtype("live_resin")),
+    ("LIVE RESIN", Meaning::Subtype("live_resin")),
+    ("LIVE ROSIN", Meaning::Subtype("rosin")),
+    ("HASH", Meaning::Subtype("pressed_hash")),
+    ("KIEF", Meaning::Subtype("dry_sift")),
+    ("DIAMONDS", Meaning::Subtype("diamonds")),
+    ("SAUCE", Meaning::Subtype("sauce")),
+    ("CRUMBLE", Meaning::Subtype("crumble")),
+    ("BUBBLE HASH", Meaning::Subtype("bubble_hash")),
+    ("DISTILLATE", Meaning::Subtype("distillate")),
+    ("DISTY", Meaning::Subtype("distillate")),
+    ("RSO", Meaning::Subtype("rso")),
     // Tinctures, topicals, drinks.
     ("TINC", Meaning::Form("tincture")),
     ("TINCT", Meaning::Form("tincture")),
@@ -178,15 +204,17 @@ const TERMS: &[(&str, Meaning)] = &[
     ("DROPS", Meaning::Form("tincture")),
     ("TOPICAL", Meaning::Form("topical")),
     ("TOPICALS", Meaning::Form("topical")),
-    ("BALM", Meaning::Form("topical")),
-    ("LOTION", Meaning::Form("topical")),
+    ("BALM", Meaning::Subtype("balm")),
+    ("LOTION", Meaning::Subtype("balm")),
     ("SALVE", Meaning::Form("topical")),
+    ("PATCH", Meaning::Subtype("patch")),
+    ("PATCHES", Meaning::Subtype("patch")),
     ("DRINK", Meaning::Form("beverage")),
     ("DRINKS", Meaning::Form("beverage")),
     ("BEV", Meaning::Form("beverage")),
     ("BEVERAGE", Meaning::Form("beverage")),
-    ("SODA", Meaning::Form("beverage")),
-    ("SELTZER", Meaning::Form("beverage")),
+    ("SODA", Meaning::Subtype("soda")),
+    ("SELTZER", Meaning::Subtype("seltzer")),
     // Strain types.
     ("HY", Meaning::Type("hybrid")),
     ("HYB", Meaning::Type("hybrid")),
@@ -579,6 +607,7 @@ pub(crate) fn describe(text: &str) -> Described {
     // Then the terms.
     let folded: Vec<String> = words.iter().map(|w| fold_term(w)).collect();
     let mut forms: Vec<&str> = Vec::new();
+    let mut subtypes: Vec<Subtype> = Vec::new();
     let mut i = 0;
     while i < words.len() {
         if used[i] {
@@ -597,6 +626,13 @@ pub(crate) fn describe(text: &str) -> Described {
         };
         match meaning {
             Meaning::Form(slug) => forms.push(slug),
+            Meaning::Subtype(slug) => {
+                let subtype = Subtype::from_slug(slug);
+                if let Some(parent) = subtype.parent() {
+                    forms.push(form_slug(&parent));
+                }
+                subtypes.push(subtype);
+            }
             Meaning::Type(slug) => {
                 out.strain_type
                     .get_or_insert_with(|| StrainType::from_slug(slug));
@@ -614,11 +650,23 @@ pub(crate) fn describe(text: &str) -> Described {
         .iter()
         .find(|slug| forms.contains(slug))
         .map(|slug| Form::from_slug(slug));
+    out.subtype = subtypes
+        .into_iter()
+        .find(|s| out.form.is_some() && s.parent() == out.form);
     out.name = join_unused(&words, &used);
     Described {
         breakdown: out,
         with_terms,
     }
+}
+
+/// A known form's slug, borrowed from the form order.
+fn form_slug(form: &Form) -> &'static str {
+    FORM_ORDER
+        .iter()
+        .find(|slug| **slug == form.slug())
+        .copied()
+        .unwrap_or("")
 }
 
 fn join_unused(words: &[String], used: &[bool]) -> String {
@@ -802,6 +850,7 @@ mod tests {
         assert_eq!(describe_item("CBD TINCT 30ML").form, Some(Form::Tincture));
         assert_eq!(describe_item("Relief balm").form, Some(Form::Topical));
         assert_eq!(describe_item("Lemon BEV 10mg").form, Some(Form::Beverage));
+        assert_eq!(describe_item("BD BLUNT 1G").form, Some(Form::PreRoll));
         let d = describe_item("GDP INDICA DOMINANT 1/8");
         assert_eq!(d.strain_type, Some(StrainType::Indica));
         assert_eq!(d.name, "GDP");
@@ -819,6 +868,72 @@ mod tests {
         let d = describe_item("BD THC 25% 1:1");
         assert_eq!(d.name, "BD");
         assert_eq!(d.other, ["25%", "1:1", "THC"]);
+    }
+
+    #[test]
+    fn reads_subtypes_with_their_forms() {
+        let read = |text: &str| {
+            let d = describe_item(text);
+            (d.form, d.subtype, d.name)
+        };
+        for (text, form, subtype, name) in [
+            ("GG4 ROSIN 1G", Form::Concentrate, Subtype::Rosin, "GG4"),
+            (
+                "Live Resin Sugar 1g",
+                Form::Concentrate,
+                Subtype::LiveResin,
+                "SUGAR",
+            ),
+            ("LR BADDER 1G", Form::Concentrate, Subtype::LiveResin, ""),
+            ("Sherb Badder", Form::Concentrate, Subtype::Wax, "SHERB"),
+            ("BUDDER", Form::Concentrate, Subtype::Wax, ""),
+            ("SHATTER", Form::Concentrate, Subtype::Shatter, ""),
+            ("CRUMBLE", Form::Concentrate, Subtype::Crumble, ""),
+            ("Diamonds", Form::Concentrate, Subtype::Diamonds, ""),
+            ("Sauce", Form::Concentrate, Subtype::Sauce, ""),
+            ("Distillate", Form::Concentrate, Subtype::Distillate, ""),
+            ("RSO 1G", Form::Concentrate, Subtype::Rso, ""),
+            ("Bubble Hash", Form::Concentrate, Subtype::BubbleHash, ""),
+            (
+                "Temple Ball Hash",
+                Form::Concentrate,
+                Subtype::PressedHash,
+                "TEMPLE BALL",
+            ),
+            ("KIEF 1G", Form::Concentrate, Subtype::DrySift, ""),
+            ("BD AIO 1G", Form::VapeCart, Subtype::AllInOne, "BD"),
+            ("All In One Vape", Form::VapeCart, Subtype::AllInOne, ""),
+            ("BD DISPO 0.5G", Form::VapeCart, Subtype::Disposable, "BD"),
+            ("Disposable", Form::VapeCart, Subtype::Disposable, ""),
+            ("Live Resin Cart 1g", Form::VapeCart, Subtype::Cartridge, ""),
+            ("Pod", Form::VapeCart, Subtype::Pod, ""),
+            ("INFUSED PR 1G", Form::PreRoll, Subtype::InfusedPreRoll, ""),
+            (
+                "Infused Pre-Roll Kief",
+                Form::PreRoll,
+                Subtype::InfusedPreRoll,
+                "",
+            ),
+            ("BD BLUNT 1G", Form::PreRoll, Subtype::Blunt, "BD"),
+            ("JOINT", Form::PreRoll, Subtype::Joint, ""),
+            ("Mango Gummies", Form::Edible, Subtype::Gummy, "MANGO"),
+            ("Dark CHOC 100MG", Form::Edible, Subtype::Chocolate, "DARK"),
+            ("Chocolate", Form::Edible, Subtype::Chocolate, ""),
+            ("Relief PATCH 20MG", Form::Topical, Subtype::Patch, "RELIEF"),
+            ("Relief balm", Form::Topical, Subtype::Balm, "RELIEF"),
+            ("Lime Seltzer", Form::Beverage, Subtype::Seltzer, "LIME"),
+        ] {
+            assert_eq!(
+                read(text),
+                (Some(form), Some(subtype), name.to_owned()),
+                "{text}"
+            );
+        }
+        // A form named without a subtype has none.
+        assert_eq!(read("PR GG4").1, None);
+        assert_eq!(read("CONC").1, None);
+        // INFUSED alone is still kept aside.
+        assert_eq!(describe_item("INFUSED GUMMY").other, ["INFUSED"]);
     }
 
     #[test]

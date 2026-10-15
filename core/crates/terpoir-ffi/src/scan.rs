@@ -134,6 +134,10 @@ pub struct ItemBreakdownData {
     pub pack: Option<u32>,
     /// Other known words taken out (`INDOOR`, `THC`, `25%`), as printed.
     pub other: Vec<String>,
+    /// A built-in subtype slug under `form` (`rosin`, `all_in_one`, …).
+    /// Last, with a default, so callers that predate it compile.
+    #[uniffi(default = None)]
+    pub subtype: Option<String>,
 }
 
 impl ItemBreakdownData {
@@ -147,6 +151,7 @@ impl ItemBreakdownData {
             quantity: b.quantity,
             pack: b.pack,
             other: b.other,
+            subtype: b.subtype.map(|s| s.slug().to_owned()),
         }
     }
 }
@@ -458,6 +463,12 @@ mod tests {
         let d = describe_receipt_item("2 X BD PR 1G".into());
         assert_eq!((d.name.as_str(), d.quantity), ("BD", Some(2)));
         assert_eq!(d.form.as_deref(), Some("pre_roll"));
+        assert_eq!(d.subtype, None);
+        let d = describe_receipt_item("GG4 ROSIN 1G".into());
+        assert_eq!(
+            (d.form.as_deref(), d.subtype.as_deref()),
+            (Some("concentrate"), Some("rosin"))
+        );
 
         let c = classify_code("https://lab.example/x".into(), true).unwrap();
         assert_eq!(c.kind, "qr");

@@ -7,7 +7,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 use terpoir_crypto::RecordId;
 
-use super::{Fields, Method, Reader, Record, RecordKind, TagRef, owns, slug_enum};
+use super::{
+    Fields, Method, Reader, Record, RecordKind, Tag, TagCategory, TagRef, owns, slug_enum,
+};
 use crate::{Document, Error, Result, Value};
 
 slug_enum! {
@@ -29,6 +31,78 @@ slug_enum! {
         Beverage => "beverage",
         /// Topical.
         Topical => "topical",
+    }
+}
+
+slug_enum! {
+    /// Built-in product subtypes (docs/design-decisions.md, "Product
+    /// subtypes"): each under exactly one [`Form`], its parent. A product's
+    /// subtype is one of these or a custom tag of
+    /// [`TagCategory::Subtype`]. Slugs are unique across every built-in
+    /// vocabulary.
+    Subtype {
+        /// A joint (pre-roll).
+        Joint => "joint",
+        /// A blunt (pre-roll).
+        Blunt => "blunt",
+        /// An infused pre-roll.
+        InfusedPreRoll => "infused_pre_roll",
+        /// Mini pre-rolls.
+        MiniPreRolls => "mini_pre_rolls",
+        /// Shatter (concentrate).
+        Shatter => "shatter",
+        /// Wax or badder (concentrate).
+        Wax => "wax",
+        /// Crumble (concentrate).
+        Crumble => "crumble",
+        /// Live resin (concentrate).
+        LiveResin => "live_resin",
+        /// Rosin (concentrate).
+        Rosin => "rosin",
+        /// Bubble hash (concentrate).
+        BubbleHash => "bubble_hash",
+        /// Dry sift or kief (concentrate).
+        DrySift => "dry_sift",
+        /// Pressed hash (concentrate).
+        PressedHash => "pressed_hash",
+        /// Diamonds (concentrate).
+        Diamonds => "diamonds",
+        /// Sauce (concentrate).
+        Sauce => "sauce",
+        /// Distillate (concentrate).
+        Distillate => "distillate",
+        /// RSO, Rick Simpson oil (concentrate).
+        Rso => "rso",
+        /// A cartridge (vape).
+        Cartridge => "cartridge",
+        /// A disposable (vape).
+        Disposable => "disposable",
+        /// An all-in-one, AIO (vape).
+        AllInOne => "all_in_one",
+        /// A pod (vape).
+        Pod => "pod",
+        /// A gummy (edible).
+        Gummy => "gummy",
+        /// Chocolate (edible).
+        Chocolate => "chocolate",
+        /// A baked good (edible).
+        BakedGood => "baked_good",
+        /// A mint (edible).
+        Mint => "mint",
+        /// A capsule (edible).
+        Capsule => "capsule",
+        /// Soda (beverage).
+        Soda => "soda",
+        /// Seltzer (beverage).
+        Seltzer => "seltzer",
+        /// Tea or coffee (beverage).
+        TeaCoffee => "tea_coffee",
+        /// A shot (beverage).
+        Shot => "shot",
+        /// A balm or lotion (topical).
+        Balm => "balm",
+        /// A transdermal patch (topical).
+        Patch => "patch",
     }
 }
 
@@ -147,6 +221,91 @@ impl Form {
     }
 }
 
+impl Subtype {
+    /// The form this subtype is under. `None` for a subtype from a newer
+    /// app version.
+    #[must_use]
+    pub fn parent(&self) -> Option<Form> {
+        Some(match self {
+            Self::Joint | Self::Blunt | Self::InfusedPreRoll | Self::MiniPreRolls => Form::PreRoll,
+            Self::Shatter
+            | Self::Wax
+            | Self::Crumble
+            | Self::LiveResin
+            | Self::Rosin
+            | Self::BubbleHash
+            | Self::DrySift
+            | Self::PressedHash
+            | Self::Diamonds
+            | Self::Sauce
+            | Self::Distillate
+            | Self::Rso => Form::Concentrate,
+            Self::Cartridge | Self::Disposable | Self::AllInOne | Self::Pod => Form::VapeCart,
+            Self::Gummy | Self::Chocolate | Self::BakedGood | Self::Mint | Self::Capsule => {
+                Form::Edible
+            }
+            Self::Soda | Self::Seltzer | Self::TeaCoffee | Self::Shot => Form::Beverage,
+            Self::Balm | Self::Patch => Form::Topical,
+            Self::Unknown(_) => return None,
+        })
+    }
+
+    /// The subtype's own usual method, when it differs from its form's:
+    /// only a patch has one (transdermal). `None` means the form's
+    /// [`default_method`](Form::default_method).
+    #[must_use]
+    pub const fn suggested_method(&self) -> Option<Method> {
+        match self {
+            Self::Patch => Some(Method::Transdermal),
+            _ => None,
+        }
+    }
+
+    /// The built-in subtypes under `form`, in display order.
+    pub fn of(form: &Form) -> impl Iterator<Item = Self> + '_ {
+        Self::SLUGS
+            .iter()
+            .map(|slug| Self::from_slug(slug))
+            .filter(move |s| s.parent().as_ref() == Some(form))
+    }
+}
+
+/// The usual method for a product of `form` and `subtype`
+/// (docs/design-decisions.md, "Product subtypes"): the subtype's own
+/// method when its parent is the form (a built-in subtype's
+/// [`suggested_method`](Subtype::suggested_method), or a custom subtype's
+/// [`Tag::method`]), else the form's [`default_method`](Form::default_method).
+/// A product with a subtype but no form takes the subtype's parent as its
+/// form.
+///
+/// `custom` is the tag record of a custom `subtype`, if it could be read;
+/// a tag of another category counts as no subtype.
+#[must_use]
+pub fn usual_method(
+    form: Option<&Form>,
+    subtype: Option<&TagRef>,
+    custom: Option<&Tag>,
+) -> Option<Method> {
+    let (parent, own) = match subtype {
+        Some(TagRef::Builtin(slug)) => {
+            let s = Subtype::from_slug(slug);
+            (s.parent(), s.suggested_method())
+        }
+        Some(TagRef::Custom(_)) => match custom {
+            Some(tag) if tag.category == TagCategory::Subtype => {
+                (tag.form.clone(), tag.method.clone())
+            }
+            _ => (None, None),
+        },
+        None => (None, None),
+    };
+    let form = form.or(parent.as_ref())?;
+    match own {
+        Some(method) if parent.as_ref() == Some(form) => Some(method),
+        _ => form.default_method(),
+    }
+}
+
 /// A cannabinoid amount from a label.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct LabelAmount {
@@ -184,6 +343,10 @@ pub struct Product {
     pub name: String,
     /// Form.
     pub form: Option<Form>,
+    /// Subtype under the form: a built-in [`Subtype`] slug or a custom tag
+    /// of [`TagCategory::Subtype`]. Since 0.6.0; a scalar field, so an
+    /// older app keeps it untouched.
+    pub subtype: Option<TagRef>,
     /// Brand.
     pub brand: Option<RecordId>,
     /// Strains it contains.
@@ -218,6 +381,7 @@ impl Product {
         Self {
             name,
             form: None,
+            subtype: None,
             brand: None,
             strains: BTreeSet::new(),
             thc: None,
@@ -240,6 +404,9 @@ impl Record for Product {
         f.put("name", Value::Text(self.name.clone()))
             .opt("form", self.form.as_ref(), |v| {
                 Value::Text(v.slug().to_owned())
+            })
+            .opt("subtype", self.subtype.as_ref(), |t| {
+                Value::Text(t.to_key())
             })
             .opt("brand", self.brand, Value::Id)
             .id_set("strains", &self.strains)
@@ -281,6 +448,10 @@ impl Record for Product {
         Ok(Self {
             name: r.required_text("name")?,
             form: r.slug("form", Form::from_slug)?,
+            subtype: r
+                .text("subtype")?
+                .map(|key| TagRef::from_key(&key).ok_or(Error::InvalidField("subtype")))
+                .transpose()?,
             brand: r.id("brand")?,
             strains: r.id_set("strains")?,
             thc: label_from(r.value("thc"), "thc")?,
@@ -310,6 +481,7 @@ impl Record for Product {
             &[
                 "name",
                 "form",
+                "subtype",
                 "brand",
                 "thc",
                 "cbd",
@@ -518,6 +690,7 @@ mod tests {
     fn product_round_trips() {
         let mut p = Product::new("Blue Dream 3.5g".into());
         p.form = Some(Form::Flower);
+        p.subtype = Some(TagRef::Custom(RecordId::from_bytes([4; 16])));
         p.brand = Some(RecordId::from_bytes([1; 16]));
         p.strains.insert(RecordId::from_bytes([2; 16]));
         p.thc = Some(LabelAmount {
@@ -543,6 +716,146 @@ mod tests {
             .insert("https://example.test/coa/42".into(), IdentifierKind::Qr);
         round_trip(&p);
         round_trip(&Product::new("bare".into()));
+        let mut patch = Product::new("Patch".into());
+        patch.form = Some(Form::Topical);
+        patch.subtype = Some(TagRef::Builtin("patch".into()));
+        round_trip(&patch);
+        // A subtype from a newer app version round-trips as is.
+        patch.subtype = Some(TagRef::Builtin("microdose_strip".into()));
+        round_trip(&patch);
+    }
+
+    #[test]
+    fn a_product_from_before_subtypes_reads_with_none_and_keeps_newer_fields() {
+        // Saved by 0.5 or earlier: no subtype.
+        let mut doc = Document::new(RecordId::from_bytes([9; 16]), RecordKind::Product);
+        doc.set("name", Value::Text("Old".into()), stamp());
+        doc.set("form", Value::Text("edible".into()), stamp());
+        let p = Product::from_document(&doc).unwrap();
+        assert_eq!(p.subtype, None);
+        // An app without subtypes (here, one that doesn't own a field a
+        // newer app wrote) leaves it as written when it saves the product.
+        doc.set("future_field", Value::Text("x".into()), stamp());
+        let mut edited = p;
+        edited.name = "Renamed".into();
+        doc.update(&edited, stamp()).unwrap();
+        assert_eq!(doc.value("future_field"), &Value::Text("x".into()));
+        // The subtype is a scalar field holding the tag key.
+        let mut with = edited.clone();
+        with.subtype = Some(TagRef::Builtin("gummy".into()));
+        doc.update(&with, stamp()).unwrap();
+        assert_eq!(doc.value("subtype"), &Value::Text("gummy".into()));
+        assert!(Product::owns_field("subtype"));
+        // A malformed one is refused.
+        doc.set("subtype", Value::Text("custom:zz".into()), stamp());
+        assert_eq!(
+            Product::from_document(&doc).err(),
+            Some(Error::InvalidField("subtype"))
+        );
+    }
+
+    #[test]
+    fn every_subtype_has_one_parent_form() {
+        for slug in Subtype::SLUGS {
+            let s = Subtype::from_slug(slug);
+            assert!(!matches!(s, Subtype::Unknown(_)), "{slug}");
+            assert!(
+                matches!(s.parent(), Some(f) if !matches!(f, Form::Unknown(_))),
+                "{slug}"
+            );
+        }
+        // Every subtype is listed under exactly its parent.
+        let listed: usize = Form::SLUGS
+            .iter()
+            .map(|f| Subtype::of(&Form::from_slug(f)).count())
+            .sum();
+        assert_eq!(listed, Subtype::SLUGS.len());
+        assert_eq!(
+            Subtype::of(&Form::Topical).collect::<Vec<_>>(),
+            [Subtype::Balm, Subtype::Patch]
+        );
+        assert_eq!(Subtype::of(&Form::Flower).count(), 0);
+        assert_eq!(Subtype::from_slug("strip").parent(), None);
+        // Only the patch has a method of its own.
+        for slug in Subtype::SLUGS {
+            let s = Subtype::from_slug(slug);
+            let expected = (s == Subtype::Patch).then_some(Method::Transdermal);
+            assert_eq!(s.suggested_method(), expected, "{slug}");
+        }
+    }
+
+    #[test]
+    fn usual_method_comes_from_the_subtype_then_the_form() {
+        let builtin = |s: &str| TagRef::Builtin(s.into());
+        let topical = Some(&Form::Topical);
+        // A patch is transdermal; a balm, like any topical, topical.
+        assert_eq!(
+            usual_method(topical, Some(&builtin("patch")), None),
+            Some(Method::Transdermal)
+        );
+        assert_eq!(
+            usual_method(topical, Some(&builtin("balm")), None),
+            Some(Method::Topical)
+        );
+        assert_eq!(usual_method(topical, None, None), Some(Method::Topical));
+        // A subtype under another form: the form decides.
+        assert_eq!(
+            usual_method(Some(&Form::Edible), Some(&builtin("patch")), None),
+            Some(Method::Edible)
+        );
+        // No form: the subtype's parent stands in.
+        assert_eq!(
+            usual_method(None, Some(&builtin("patch")), None),
+            Some(Method::Transdermal)
+        );
+        assert_eq!(
+            usual_method(None, Some(&builtin("rosin")), None),
+            Some(Method::Dabbed)
+        );
+        assert_eq!(usual_method(None, None, None), None);
+        // A subtype from a newer app version: the form's.
+        assert_eq!(
+            usual_method(topical, Some(&builtin("future")), None),
+            Some(Method::Topical)
+        );
+        // A custom subtype with its own method, under its parent only.
+        let custom = TagRef::Custom(RecordId::from_bytes([3; 16]));
+        let strip = Tag {
+            name: "Strip".into(),
+            category: TagCategory::Subtype,
+            form: Some(Form::Edible),
+            method: Some(Method::Tincture),
+        };
+        assert_eq!(
+            usual_method(Some(&Form::Edible), Some(&custom), Some(&strip)),
+            Some(Method::Tincture)
+        );
+        assert_eq!(
+            usual_method(Some(&Form::Beverage), Some(&custom), Some(&strip)),
+            Some(Method::Beverage)
+        );
+        // One that keeps its form's method, or is missing, or isn't a
+        // subtype tag.
+        let kept = Tag {
+            method: None,
+            ..strip.clone()
+        };
+        assert_eq!(
+            usual_method(Some(&Form::Edible), Some(&custom), Some(&kept)),
+            Some(Method::Edible)
+        );
+        assert_eq!(
+            usual_method(Some(&Form::Edible), Some(&custom), None),
+            Some(Method::Edible)
+        );
+        let effect = Tag {
+            category: TagCategory::Effect,
+            ..strip
+        };
+        assert_eq!(
+            usual_method(Some(&Form::Edible), Some(&custom), Some(&effect)),
+            Some(Method::Edible)
+        );
     }
 
     #[test]

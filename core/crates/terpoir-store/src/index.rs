@@ -12,6 +12,8 @@ use terpoir_model::{Document, RecordId, RecordKind, Value};
 const ID_KEYED_MAPS: &[&str] = &["strains", "shops", "parents"];
 /// Map fields whose entry keys are tag references.
 const TAG_KEYED_MAPS: &[&str] = &["effects", "symptoms", "tags", "purposes", "terpenes"];
+/// Scalar fields holding a tag reference key as text.
+const TAG_SCALARS: &[&str] = &["subtype"];
 const CUSTOM_TAG_PREFIX: &str = "custom:";
 const MS_PER_DAY: i64 = 86_400_000;
 
@@ -21,7 +23,8 @@ const MS_PER_DAY: i64 = 86_400_000;
 /// on the first unlock after the upgrade. The `rules_match_their_version`
 /// test pins the rules to this number.
 /// 2 (0.4.0): a strain's parent strains are references.
-pub(crate) const VERSION: u32 = 2;
+/// 3 (0.6.0): a product's subtype is a tag (and a custom one a reference).
+pub(crate) const VERSION: u32 = 3;
 
 /// Index rows for one record.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -39,6 +42,11 @@ impl IndexEntries {
                 continue;
             }
             collect_ids(&field.value, &mut entries.refs);
+            if TAG_SCALARS.contains(&key.as_str())
+                && let Value::Text(tag) = &field.value
+            {
+                add_tag(tag, &mut entries);
+            }
             let Some((map, entry)) = key.split_once('/') else {
                 continue;
             };
@@ -48,12 +56,7 @@ impl IndexEntries {
                 entries.refs.insert(id);
             }
             if TAG_KEYED_MAPS.contains(&map) {
-                if let Some(hex) = entry.strip_prefix(CUSTOM_TAG_PREFIX)
-                    && let Ok(id) = RecordId::from_hex(hex)
-                {
-                    entries.refs.insert(id);
-                }
-                entries.tags.insert(entry.to_owned());
+                add_tag(entry, &mut entries);
             }
         }
         entries.refs.remove(&doc.id());
@@ -66,6 +69,16 @@ impl IndexEntries {
         entries.day = date_field.and_then(|f| local_day(doc.value(f)));
         entries
     }
+}
+
+/// Indexes a tag key; a custom tag is also a reference.
+fn add_tag(tag: &str, entries: &mut IndexEntries) {
+    if let Some(hex) = tag.strip_prefix(CUSTOM_TAG_PREFIX)
+        && let Ok(id) = RecordId::from_hex(hex)
+    {
+        entries.refs.insert(id);
+    }
+    entries.tags.insert(tag.to_owned());
 }
 
 fn collect_ids(value: &Value, out: &mut BTreeSet<RecordId>) {
@@ -214,6 +227,7 @@ mod tests {
         product
             .terpenes
             .insert(TagRef::Builtin("myrcene".into()), 2);
+        product.subtype = Some(TagRef::Custom(id(11)));
         let mut strain = Strain::new("y".into());
         strain.parents.insert(id(10));
         let docs = [
@@ -229,7 +243,7 @@ mod tests {
                 (refs, e.day, e.tags.into_iter().collect::<Vec<_>>())
             })
             .collect();
-        assert_eq!(VERSION, 2, "update the expected entries below with VERSION");
+        assert_eq!(VERSION, 3, "update the expected entries below with VERSION");
         assert_eq!(
             summary,
             [
@@ -238,7 +252,11 @@ mod tests {
                     Some(20_371),
                     vec![format!("custom:{}", id(4).to_hex()), "relaxed".to_owned()],
                 ),
-                (vec![8, 9], None, vec!["myrcene".to_owned()]),
+                (
+                    vec![8, 9, 11],
+                    None,
+                    vec![format!("custom:{}", id(11).to_hex()), "myrcene".to_owned()]
+                ),
                 (vec![10], None, vec![]),
             ],
             "the index rules changed: bump index::VERSION"
