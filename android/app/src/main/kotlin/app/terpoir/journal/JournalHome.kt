@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -20,6 +21,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
@@ -215,31 +218,40 @@ fun JournalHome(
                 floatingActionButton = {
                     // Products: "New" for whichever list is showing.
                     if (tab == Tab.PRODUCTS) {
-                        ExtendedFloatingActionButton(
-                            onClick = {
-                                stack.add(
-                                    when (catalog) {
-                                        Catalog.PRODUCTS -> Screen.Product(null)
-                                        Catalog.STRAINS -> Screen.Strain(null)
-                                        Catalog.BRANDS -> Screen.Brand(null)
-                                        Catalog.SPOTS -> Screen.Spot(null)
-                                    },
-                                )
-                            },
-                            icon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
-                            text = {
-                                Text(
-                                    stringResource(
+                        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            // Scanning a receipt is the products list's second action
+                            // (maintainer, 2026-10-15), while purchases are tracked.
+                            if (catalog == Catalog.PRODUCTS && tracking.shows(DataPoint.PURCHASES)) {
+                                SmallFloatingActionButton(onClick = { stack.add(Screen.Receipt) }) {
+                                    Icon(painterResource(R.drawable.ic_scan), contentDescription = stringResource(R.string.scan_receipt))
+                                }
+                            }
+                            ExtendedFloatingActionButton(
+                                onClick = {
+                                    stack.add(
                                         when (catalog) {
-                                            Catalog.PRODUCTS -> R.string.product_new
-                                            Catalog.STRAINS -> R.string.strain_new
-                                            Catalog.BRANDS -> R.string.brand_new
-                                            Catalog.SPOTS -> R.string.spot_new
+                                            Catalog.PRODUCTS -> Screen.Product(null)
+                                            Catalog.STRAINS -> Screen.Strain(null)
+                                            Catalog.BRANDS -> Screen.Brand(null)
+                                            Catalog.SPOTS -> Screen.Spot(null)
                                         },
-                                    ),
-                                )
-                            },
-                        )
+                                    )
+                                },
+                                icon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
+                                text = {
+                                    Text(
+                                        stringResource(
+                                            when (catalog) {
+                                                Catalog.PRODUCTS -> R.string.product_new
+                                                Catalog.STRAINS -> R.string.strain_new
+                                                Catalog.BRANDS -> R.string.brand_new
+                                                Catalog.SPOTS -> R.string.spot_new
+                                            },
+                                        ),
+                                    )
+                                },
+                            )
+                        }
                     }
                     if (tab == Tab.JOURNAL) {
                         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -570,18 +582,20 @@ private fun CatalogLists(
         }
         p.id to productTitle(d.name, d.strains.mapNotNull(strainNames::get), d.brand?.let(brandNames::get), d.form?.let { label(it) }, potency)
     }.sortedBy { it.second.title.lowercase() }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(padding),
-        // Room at the bottom so the "New" button doesn't cover the last row.
-        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 96.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item {
+    // The lists swipe sideways (maintainer, 2026-10-15). The buttons above
+    // follow the swipe, and tapping one scrolls to its list.
+    val pager = rememberPagerState(initialPage = catalogs.indexOf(catalog).coerceAtLeast(0)) { catalogs.size }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(pager.currentPage, catalogs) {
+        catalogs.getOrNull(pager.currentPage)?.let { if (it != catalog) onCatalog(it) }
+    }
+    Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Box(modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 8.dp)) {
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 catalogs.forEachIndexed { index, c ->
                     SegmentedButton(
                         selected = catalog == c,
-                        onClick = { onCatalog(c) },
+                        onClick = { scope.launch { pager.animateScrollToPage(index) } },
                         shape = SegmentedButtonDefaults.itemShape(index, catalogs.size),
                         // No checkmark: the fill already marks the selection, and
                         // the icon squeezed "Products" onto two lines.
@@ -606,26 +620,28 @@ private fun CatalogLists(
                 }
             }
         }
-        if (catalog == Catalog.PRODUCTS && tracking.shows(DataPoint.PURCHASES)) {
-            item {
-                androidx.compose.material3.OutlinedButton(onClick = { onOpen(Screen.Receipt) }) {
-                    Text(stringResource(R.string.scan_receipt))
+        HorizontalPager(state = pager, modifier = Modifier.fillMaxSize(), key = { catalogs[it] }) { page ->
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                // Room at the bottom so the floating buttons don't cover the last row.
+                contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 160.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                when (catalogs[page]) {
+                    Catalog.PRODUCTS -> items(productRows, key = { it.first }) { (id, row) ->
+                        CatalogRow(row.title, row.subtitle) { onOpen(Screen.Product(id)) }
+                    }
+                    Catalog.STRAINS -> items(strains, key = { it.id }) { s ->
+                        CatalogRow(s.data.name, s.data.strainType?.let { label(it) }.orEmpty()) { onOpen(Screen.Strain(s.id)) }
+                    }
+                    Catalog.BRANDS -> items(brands, key = { it.id }) { b ->
+                        CatalogRow(b.data.name, "") { onOpen(Screen.Brand(b.id)) }
+                    }
+                    Catalog.SPOTS -> items(spots, key = { it.id }) { sp ->
+                        val purposes = sp.data.purposes.mapNotNull { (it as? TagRefData.Builtin)?.slug }.map { label(it) }
+                        CatalogRow(sp.data.name, purposes.joinToString(" · ")) { onOpen(Screen.Spot(sp.id)) }
+                    }
                 }
-            }
-        }
-        when (catalog) {
-            Catalog.PRODUCTS -> items(productRows, key = { it.first }) { (id, row) ->
-                CatalogRow(row.title, row.subtitle) { onOpen(Screen.Product(id)) }
-            }
-            Catalog.STRAINS -> items(strains, key = { it.id }) { s ->
-                CatalogRow(s.data.name, s.data.strainType?.let { label(it) }.orEmpty()) { onOpen(Screen.Strain(s.id)) }
-            }
-            Catalog.BRANDS -> items(brands, key = { it.id }) { b ->
-                CatalogRow(b.data.name, "") { onOpen(Screen.Brand(b.id)) }
-            }
-            Catalog.SPOTS -> items(spots, key = { it.id }) { sp ->
-                val purposes = sp.data.purposes.mapNotNull { (it as? TagRefData.Builtin)?.slug }.map { label(it) }
-                CatalogRow(sp.data.name, purposes.joinToString(" · ")) { onOpen(Screen.Spot(sp.id)) }
             }
         }
     }
