@@ -418,7 +418,10 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       - [ ] Phone and licence numbers on spots (synced, with a fixture).
       - [ ] A second photo for long receipts, joined on overlapping rows.
       - [ ] Android: review cards with chips, the shop header card, "Join
-            with next line" and "Split here", the cut-off warning.
+            with next line" and "Split here", the cut-off warning, and
+            zoom on the photo (pinch, plus visible + / − and "Fit").
+            Today's review screen uses neither the automatic joining
+            nor the row groups yet.
 
 - [ ] More themes (maintainer, 2026-10-14), each a choice next to
       System, Light and Dark on the Theme page, with its sample controls:
