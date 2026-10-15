@@ -51,12 +51,15 @@ Written by `make_compat_fixtures.rs` with fixed contents and clock:
   strain, `parent_strain` in the manifest) and the cannabinoid CBG;
 - spot "Corner shop" (purpose, coordinates, radius, purchase prompts on);
 - product "Gummies" (form, brand, strain, THC/CBD, terpene, batch, package
-  date, barcode, shop);
+  date, barcode, shop); since 0.5.0 also a CBN label amount
+  (`product_cannabinoids` in the manifest);
 - a purchase of it at the spot (batch, price);
 - tags "giggly" (effect) and "jaw tension" (symptom);
 - a session using the product from that purchase line, with every field
   set: effects (built-in and custom), symptoms (built-in and custom),
-  timeline, moods, rating 4 then edited to 5, spot, one attachment;
+  timeline, moods, rating 4 then edited to 5, spot, one attachment; since
+  0.5.0 also timeline levels and their update time (`session_timeline` in
+  the manifest);
 - a note on the session, and a note captured while locked and merged;
 - "What I track" with terpenes hidden (since 0.4.0, also the Detailed
   strain step), and one insight dismissed.
