@@ -262,8 +262,7 @@
     </plurals>
     <string name="session_new">New entry</string>
     <string name="session_edit">Edit entry</string>
-    <string name="session_change_date">Change date</string>
-    <string name="session_change_time">Change time</string>
+    <string name="session_change_when">Change date and time</string>
     <string name="session_products">What you had</string>
     <string name="session_product">Product</string>
     <string name="session_line_from">From</string>
@@ -287,6 +286,7 @@
     <string name="symptom_nausea">Nausea</string>
     <string name="symptom_focus">Focus</string>
     <string name="session_new_effect">Your own effect</string>
+    <string name="session_add_effect">Add your own effect</string>
     <string name="session_timeline">Timeline</string>
     <string name="session_onset">Onset</string>
     <string name="session_peak">Peak</string>
@@ -298,6 +298,12 @@
     <string name="session_would_repeat">Would do again</string>
     <string name="session_delete">Delete entry</string>
     <string name="session_delete_title">Delete this entry?</string>
+    <string name="session_discard_title">Discard this session?</string>
+    <string name="session_discard_changes_title">Discard your changes?</string>
+    <string name="session_discard_body">What you entered here won\'t be saved.</string>
+    <string name="session_discard_saved_body">It was saved when you added a note. Discarding deletes it, notes included, and its key is destroyed.</string>
+    <string name="discard">Discard</string>
+    <string name="keep_editing">Keep editing</string>
     <string name="session_delete_body">Its key is destroyed, so it can\'t be recovered, even from old backups or synced copies. Products stay.</string>
     <string name="scale_low">Low</string>
     <string name="scale_high">Great</string>
@@ -476,9 +482,10 @@
     <string name="check_in_channel_description">Reminders to note how a session went.</string>
     <string name="check_in_title">Quick check-in?</string>
     <string name="check_in_text">Tap to note how it\'s going.</string>
-    <string name="check_in_section">Check-in</string>
+    <string name="remind_me">Remind me</string>
     <string name="check_in_later">Check in later</string>
     <string name="check_in_after">Minutes after</string>
+    <string name="remind_me_in">Remind me in %1$d min</string>
     <string name="check_in_needs_notifications">The reminder needs permission to show notifications.</string>
     <string name="check_in_screen">Check-in</string>
     <string name="check_in_prompt">How\'s it going? Update what you feel now.</string>
@@ -549,6 +556,7 @@
     <string name="tag_group_terpenes">Terpenes</string>
     <string name="session_spot">Spot</string>
     <string name="session_no_spot">No spot</string>
+    <string name="session_spot_set">Spot: %1$s</string>
     <string name="spot_new">New spot</string>
     <string name="spot_edit">Edit spot</string>
     <string name="spot_default_prefix">Spot</string>
@@ -587,7 +595,7 @@
     <string name="prompt_title">Quick log?</string>
     <string name="prompt_text">Tap to scan the receipt.</string>
     <string name="session_notes">Notes</string>
-    <string name="session_notes_after_save">Save the session first to add notes to it.</string>
+    <string name="session_notes_count">Notes (%1$d)</string>
     <string name="voice_mic_why">Speaking a note uses the microphone. Your phone\'s own speech recognizer turns it into text on the phone; the recording isn\'t kept or sent anywhere. Android will ask you to allow the microphone next.</string>
     <string name="voice_on_device">Speech is turned into text on your phone. Nothing is sent anywhere, and the recording isn\'t kept.</string>
     <string name="voice_listening">Listening…</string>

@@ -9,25 +9,39 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -42,8 +56,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -81,6 +106,9 @@ fun SessionEditor(
 ) {
     val scope = rememberCoroutineScope()
     var draft by remember { mutableStateOf<SessionDraft?>(null) }
+    // The draft as loaded, to tell whether anything was entered.
+    var initial by remember { mutableStateOf<SessionDraft?>(null) }
+    var confirmDiscard by remember { mutableStateOf(false) }
     var products by remember { mutableStateOf<List<Entry<ProductData>>>(emptyList()) }
     var productLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var customEffects by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
@@ -96,6 +124,8 @@ fun SessionEditor(
     var checkInChoice by remember { mutableStateOf<Boolean?>(null) }
     var checkInMinutes by remember { mutableStateOf<String?>(null) }
     var sharing by remember { mutableStateOf(false) }
+    // The saved session: `id`, or the new session once saved to add a note.
+    var sessionId by remember(id) { mutableStateOf(id) }
 
     LaunchedEffect(id) {
         products = repo.products()
@@ -108,16 +138,18 @@ fun SessionEditor(
             currentOffsetMin(System.currentTimeMillis()),
             spot = spotForNew,
         )
+        initial = draft
     }
-    LaunchedEffect(id, openNote) { if (id != null && openNote == null) notes = repo.sessionSnippets(id) }
+    LaunchedEffect(sessionId, openNote) { sessionId?.let { if (openNote == null) notes = repo.sessionSnippets(it) } }
     val current = draft ?: return
     val tracking = LocalTracking.current
-    if (sharing && id != null) {
-        SessionShare(repo, id, settings.targetedSymptoms) { sharing = false }
+    val shared = sessionId
+    if (sharing && shared != null) {
+        SessionShare(repo, shared, settings.targetedSymptoms) { sharing = false }
         return
     }
     openNote?.let { target ->
-        NoteScreen(repo, settings, vocab, target.id, onDone = { openNote = null }, session = id)
+        NoteScreen(repo, settings, vocab, target.id, onDone = { openNote = null }, session = sessionId)
         return
     }
 
@@ -125,20 +157,31 @@ fun SessionEditor(
     val checkIn = settings.followUpCheckIns && (checkInChoice ?: (checkInDefault != null))
     val checkInAfter = checkInMinutes ?: (checkInDefault ?: DEFAULT_CHECK_IN_MIN).toString()
 
+    fun save() {
+        when (val result = current.toData()) {
+            is SessionDraft.Result.Invalid -> error = result.error
+            is SessionDraft.Result.Valid -> scope.launch {
+                val saved = repo.saveSession(sessionId, result.data)
+                val minutes = checkInAfter.trim().toIntOrNull()?.takeIf { it > 0 }
+                if (checkIn && minutes != null) checkIns.schedule(saved, current.whenMs + minutes * 60_000L)
+                onDone()
+            }
+        }
+    }
+
     EditorScaffold(
-        title = stringResource(if (id == null) R.string.session_new else R.string.session_edit),
-        onClose = onDone,
-        onSave = {
-            when (val result = current.toData()) {
-                is SessionDraft.Result.Invalid -> error = result.error
-                is SessionDraft.Result.Valid -> scope.launch {
-                    val saved = repo.saveSession(id, result.data)
-                    val minutes = checkInAfter.trim().toIntOrNull()?.takeIf { it > 0 }
-                    if (checkIn && minutes != null) checkIns.schedule(saved, current.whenMs + minutes * 60_000L)
-                    onDone()
-                }
+        title = stringResource(if (sessionId == null) R.string.session_new else R.string.session_edit),
+        // Close: a session with a reminder set is saved, so the reminder
+        // isn't lost; otherwise anything entered is only dropped after
+        // asking.
+        onClose = {
+            when {
+                checkIn -> save()
+                current != initial || sessionId != id -> confirmDiscard = true
+                else -> onDone()
             }
         },
+        onSave = ::save,
     ) {
         WhenRow(current.whenMs, current.utcOffsetMin) { ms, offset -> draft = current.copy(whenMs = ms, utcOffsetMin = offset) }
 
@@ -236,39 +279,37 @@ fun SessionEditor(
             )
         }
 
-        SectionTitle(stringResource(R.string.session_spot))
-        Dropdown(
-            label = stringResource(R.string.session_spot),
-            options = listOf<Pair<String?, String>>(null to stringResource(R.string.session_no_spot)) + spots.map { it.id to it.data.name },
-            selected = current.spot,
-            onSelect = { draft = current.copy(spot = it) },
-        )
-
-        if (settings.followUpCheckIns) {
-            SectionTitle(stringResource(R.string.check_in_section))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                FilterChip(
-                    selected = checkIn,
-                    onClick = { checkInChoice = !checkIn },
-                    label = { Text(stringResource(R.string.check_in_later)) },
+        // Spot, check-in and notes: one row of icons, each opening its own
+        // menu or dialog.
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            SpotAction(spots, current.spot) { draft = current.copy(spot = it) }
+            if (settings.followUpCheckIns) {
+                CheckInAction(
+                    on = checkIn,
+                    minutes = checkInAfter,
+                    onToggle = { checkInChoice = it },
+                    onMinutes = { checkInMinutes = it },
                 )
-                if (checkIn) {
-                    MinutesField(stringResource(R.string.check_in_after), checkInAfter, Modifier.weight(1f)) { checkInMinutes = it }
-                }
             }
-            if (checkIn) NotificationPermission()
-        }
-
-        SectionTitle(stringResource(R.string.session_notes))
-        if (id == null) {
-            Text(stringResource(R.string.session_notes_after_save), style = MaterialTheme.typography.bodySmall)
-        } else {
-            for (note in notes) {
-                TextButton(onClick = { openNote = NoteTarget(note.id) }) {
-                    Text(note.data.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
-            }
-            OutlinedButton(onClick = { openNote = NoteTarget(null) }) { Text(stringResource(R.string.note_new)) }
+            NotesAction(
+                notes = notes,
+                onOpen = { openNote = NoteTarget(it) },
+                onNew = {
+                    // A note belongs to a saved session, so a new session is
+                    // saved first; the editor stays open.
+                    if (sessionId != null) {
+                        openNote = NoteTarget(null)
+                    } else {
+                        when (val result = current.toData()) {
+                            is SessionDraft.Result.Invalid -> error = result.error
+                            is SessionDraft.Result.Valid -> scope.launch {
+                                sessionId = repo.saveSession(null, result.data)
+                                openNote = NoteTarget(null)
+                            }
+                        }
+                    }
+                },
+            )
         }
 
         error?.let {
@@ -277,7 +318,7 @@ fun SessionEditor(
                 color = MaterialTheme.colorScheme.error,
             )
         }
-        if (id != null) {
+        if (sessionId != null) {
             // Shares what is saved, not unsaved edits.
             OutlinedButton(onClick = { sharing = true }) { Text(stringResource(R.string.share)) }
             TextButton(onClick = { confirmDelete = true }) {
@@ -286,7 +327,36 @@ fun SessionEditor(
         }
     }
 
-    if (confirmDelete && id != null) {
+    if (confirmDiscard) {
+        // A new session saved to hold a note is deleted on discard; an
+        // existing one just keeps what was saved.
+        val autoSaved = id == null && sessionId != null
+        AlertDialog(
+            onDismissRequest = { confirmDiscard = false },
+            title = { Text(stringResource(if (id == null) R.string.session_discard_title else R.string.session_discard_changes_title)) },
+            text = { Text(stringResource(if (autoSaved) R.string.session_discard_saved_body else R.string.session_discard_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDiscard = false
+                    val saved = sessionId
+                    if (autoSaved && saved != null) {
+                        scope.launch {
+                            // Deleting a session leaves its notes, so they go first.
+                            for (note in repo.sessionSnippets(saved)) repo.delete(note.id)
+                            repo.delete(saved)
+                            onDone()
+                        }
+                    } else {
+                        onDone()
+                    }
+                }) { Text(stringResource(R.string.discard), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text(stringResource(R.string.keep_editing)) } },
+        )
+    }
+
+    val deleting = sessionId
+    if (confirmDelete && deleting != null) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text(stringResource(R.string.session_delete_title)) },
@@ -295,7 +365,7 @@ fun SessionEditor(
                 TextButton(onClick = {
                     confirmDelete = false
                     scope.launch {
-                        repo.delete(id)
+                        repo.delete(deleting)
                         onDone()
                     }
                 }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
@@ -490,6 +560,7 @@ internal fun EffectsEditor(
 ) {
     val names = custom.associate { it.id to it.data.name }
     val all = vocab.coreEffects.map { TagRefData.Builtin(it) } + custom.map { TagRefData.Custom(it.id) }
+    var adding by remember { mutableStateOf(false) }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         for (tag in all) {
             val selected = tag in effects
@@ -498,6 +569,9 @@ internal fun EffectsEditor(
                 onClick = { onChange(if (selected) effects - tag else effects + (tag to DEFAULT_INTENSITY)) },
                 label = { Text(tagLabel(tag, names)) },
             )
+        }
+        IconButton(onClick = { adding = true }, modifier = Modifier.align(Alignment.CenterVertically)) {
+            Icon(painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.session_add_effect))
         }
     }
     for ((tag, intensity) in effects) {
@@ -513,23 +587,37 @@ internal fun EffectsEditor(
             Text(intensity.toString(), style = MaterialTheme.typography.labelLarge)
         }
     }
-    var newEffect by remember { mutableStateOf("") }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
-            value = newEffect,
-            onValueChange = { newEffect = it },
-            label = { Text(stringResource(R.string.session_new_effect)) },
-            singleLine = true,
-            modifier = Modifier.weight(1f),
-        )
-        TextButton(
-            onClick = {
-                onNewEffect(newEffect.trim())
-                newEffect = ""
-            },
-            enabled = newEffect.isNotBlank(),
-        ) { Text(stringResource(R.string.add)) }
+    if (adding) NewEffectDialog(onDismiss = { adding = false }) { name ->
+        adding = false
+        onNewEffect(name)
     }
+}
+
+/** Asks for the name of the user's own effect. */
+@Composable
+private fun NewEffectDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.session_add_effect)) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(stringResource(R.string.session_new_effect)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { if (name.isNotBlank()) onAdd(name.trim()) }),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onAdd(name.trim()) }, enabled = name.isNotBlank()) { Text(stringResource(R.string.add)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
 }
 
 @Composable
@@ -545,17 +633,22 @@ private fun MinutesField(label: String, value: String, modifier: Modifier, onCha
     )
 }
 
-/** Date and time buttons with their pickers. Times are local to the device's zone at that moment. */
+/**
+ * The session's date and time, with a calendar button that opens the date
+ * picker and then the time picker. Times are local to the device's zone at
+ * that moment.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WhenRow(whenMs: Long, offsetMin: Short, onChange: (Long, Short) -> Unit) {
     var pickDate by remember { mutableStateOf(false) }
     var pickTime by remember { mutableStateOf(false) }
     val local = Instant.ofEpochMilli(whenMs).atOffset(ZoneOffset.ofTotalSeconds(offsetMin * 60)).toLocalDateTime()
-    Text(formatWhen(whenMs, offsetMin), style = MaterialTheme.typography.titleLarge)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { pickDate = true }) { Text(stringResource(R.string.session_change_date)) }
-        OutlinedButton(onClick = { pickTime = true }) { Text(stringResource(R.string.session_change_time)) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(formatWhen(whenMs, offsetMin), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+        IconButton(onClick = { pickDate = true }) {
+            Icon(painterResource(R.drawable.ic_calendar), contentDescription = stringResource(R.string.session_change_when))
+        }
     }
     if (pickDate) {
         val state = rememberDatePickerState(initialSelectedDateMillis = local.toLocalDate().atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli())
@@ -568,6 +661,8 @@ private fun WhenRow(whenMs: Long, offsetMin: Short, onChange: (Long, Short) -> U
                         val date = Instant.ofEpochMilli(it).atOffset(ZoneOffset.UTC).toLocalDate()
                         emit(LocalDateTime.of(date, local.toLocalTime()), onChange)
                     }
+                    // The time comes next; cancelling it keeps the new date.
+                    pickTime = true
                 }) { Text(stringResource(R.string.ok)) }
             },
             dismissButton = { TextButton(onClick = { pickDate = false }) { Text(stringResource(R.string.cancel)) } },
@@ -602,6 +697,161 @@ const val EFFECT_CATEGORY = "effect"
 
 internal const val DEFAULT_INTENSITY = 3
 private const val MAX_INTENSITY = 5
+
+/**
+ * One of the icons under a session, with a label below. When something is
+ * set, a small green badge sits on the icon: a check, or the count when
+ * there is more than one. [description] is what a screen reader says.
+ */
+@Composable
+private fun SessionAction(icon: Int, label: String, description: String, count: Int, onClick: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(96.dp)) {
+        Box {
+            OutlinedIconButton(onClick = onClick) { Icon(painterResource(icon), contentDescription = description) }
+            if (count > 0) SetBadge(count, Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp))
+        }
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.clearAndSetSemantics { },
+        )
+    }
+}
+
+/** A green circle with a check (one) or the number (more than one), as on the sync card. */
+@Composable
+private fun SetBadge(count: Int, modifier: Modifier) {
+    val circle = MaterialTheme.colorScheme.primary
+    val mark = MaterialTheme.colorScheme.onPrimary
+    Box(modifier.size(18.dp).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
+        Canvas(Modifier.matchParentSize()) {
+            drawCircle(circle)
+            if (count == 1) {
+                val w = size.width
+                val check = Path().apply {
+                    moveTo(w * 0.28f, w * 0.52f)
+                    lineTo(w * 0.44f, w * 0.68f)
+                    lineTo(w * 0.73f, w * 0.36f)
+                }
+                drawPath(check, mark, style = Stroke(width = w * 0.12f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            }
+        }
+        if (count > 1) {
+            Text(
+                if (count > 9) "9+" else count.toString(),
+                color = mark,
+                // Fixed in dp, like the circle it sits in.
+                fontSize = with(LocalDensity.current) { 11.dp.toSp() },
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+    }
+}
+
+/** The session's spot: a pin that opens the list of spots. */
+@Composable
+private fun SpotAction(spots: List<Entry<SpotData>>, spot: String?, onSelect: (String?) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val name = spots.firstOrNull { it.id == spot }?.data?.name
+    Box {
+        val label = stringResource(R.string.session_spot)
+        val description = name?.let { stringResource(R.string.session_spot_set, it) } ?: label
+        SessionAction(R.drawable.ic_spot_add, label, description, count = if (name != null) 1 else 0) { open = true }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(text = { Text(stringResource(R.string.session_no_spot)) }, onClick = {
+                open = false
+                onSelect(null)
+            })
+            for (entry in spots) {
+                DropdownMenuItem(text = { Text(entry.data.name) }, onClick = {
+                    open = false
+                    onSelect(entry.id)
+                })
+            }
+        }
+    }
+}
+
+/** The follow-up check-in: an alarm clock that opens its switch and delay. */
+@Composable
+private fun CheckInAction(on: Boolean, minutes: String, onToggle: (Boolean) -> Unit, onMinutes: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val delay = minutes.trim().toIntOrNull()?.takeIf { it > 0 }
+    val label = stringResource(R.string.remind_me)
+    val description = if (on && delay != null) stringResource(R.string.remind_me_in, delay) else label
+    Box {
+        SessionAction(R.drawable.ic_check_in, label, description, count = if (on) 1 else 0) { open = true }
+    }
+    if (open) {
+        AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text(label) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.check_in_later), modifier = Modifier.weight(1f))
+                        Switch(checked = on, onCheckedChange = onToggle)
+                    }
+                    if (on) {
+                        MinutesField(stringResource(R.string.check_in_after), minutes, Modifier.fillMaxWidth(), onMinutes)
+                        NotificationPermission()
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.ok)) } },
+        )
+    }
+}
+
+/**
+ * The session's notes: a notebook that starts a new note (by voice or text,
+ * as the user prefers), or, once there are notes, lists them with a button
+ * for a new one. A new session is saved first ([onNew] does that).
+ */
+@Composable
+private fun NotesAction(notes: List<Entry<SnippetData>>, onOpen: (String) -> Unit, onNew: () -> Unit) {
+    var list by remember { mutableStateOf(false) }
+    val title = stringResource(R.string.session_notes)
+    val description = if (notes.isEmpty()) stringResource(R.string.note_new) else stringResource(R.string.session_notes_count, notes.size)
+    SessionAction(R.drawable.ic_note_add, title, description, count = notes.size) {
+        if (notes.isEmpty()) onNew() else list = true
+    }
+    if (list) {
+        AlertDialog(
+            onDismissRequest = { list = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, modifier = Modifier.weight(1f))
+                    IconButton(onClick = {
+                        list = false
+                        onNew()
+                    }) { Icon(painterResource(R.drawable.ic_note_add), contentDescription = stringResource(R.string.note_new)) }
+                }
+            },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    for (note in notes) {
+                        Text(
+                            note.data.text,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    list = false
+                                    onOpen(note.id)
+                                }
+                                .padding(vertical = 12.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { list = false }) { Text(stringResource(R.string.close)) } },
+        )
+    }
+}
 
 /** A note to open over the session editor; `id` null for a new one. */
 private data class NoteTarget(val id: String?)
