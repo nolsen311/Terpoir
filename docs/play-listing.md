@@ -443,16 +443,21 @@ them; the other activities belong to Google's libraries.
 - **Release notes** (en-US, the "What's new" box, 500 characters at most).
   `play-upload.sh` doesn't send them: paste them into the release in the
   Play Console before rolling it out. The same notes open the GitHub
-  release page (`release.yml`) and the Mastodon post
-  (`.github/scripts/release-notes.sh` reads them for both).
+  release page (`release.yml`, through `.github/scripts/release-notes.sh`).
   Each version also has a **Headline:** line under its heading, a few
   words for the release image posted to Mastodon (`announce.yml`; at most
-  two lines on the image, about 60 characters).
+  two lines on the image, about 60 characters), and a **Summary:** line
+  for public posts (the Mastodon post), its points separated by " ; ".
+  Posts are short on purpose: a few words per change, no details, which
+  the release page has (maintainer, 2026-10-15). For example "fixed crash
+  in Google text recognition", or "receipt & label scanning → floating
+  buttons".
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
   - **0.5.3** (487 characters):
     Headline: Rate sessions with faces, and a crash fixed
+    Summary: fixed crash in Google text recognition ; sync folder & export picks are saved again ; rate sessions with faces 🫤 → 🤯 ; swipe between Products lists ; receipt & label scanning → floating buttons ; session timeline in shares ; keyboard no longer shifts the screen
     ```
     <en-US>
     Google text recognition works in receipt scanning again, and turning it off or restoring maximum privacy no longer crashes. A chosen sync folder is saved again, and export and import no longer lose the file you picked. Rate a session with faces from meh to mind-blown. On Products, swipe between lists; Scan receipt, and Scan (label or barcode) in the product editor, are now floating buttons. Share a session's timeline (off by default). The keyboard no longer pushes the screen around.
