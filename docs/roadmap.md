@@ -362,6 +362,23 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       To design: how these combine with the light/dark choice, what older
       Android versions show, and keeping every text color at WCAG AA
       (`ThemeContrastTest` can't check colors taken from a wallpaper).
+- [ ] Play's edge-to-edge warnings (maintainer, 2026-10-15; Play Console
+      on 0.4.0, versionCode 5): "Edge-to-edge may not display for all
+      users" and "Your app uses deprecated APIs or parameters for
+      edge-to-edge". Terpoir's only activity already calls
+      `enableEdgeToEdge` and draws under the system bars. To check:
+      - the deprecated calls Play found: `enableEdgeToEdge` itself sets the
+        bar colors (`Window.setStatusBarColor`/`setNavigationBarColor`,
+        deprecated in Android 15) for older versions, and our navigation-bar
+        scrim is such a color; whether a newer `androidx.activity` avoids
+        them;
+      - the activities that come with Google libraries in the Play build
+        (`PlayCoreDialogWrapperActivity`, `GoogleApiActivity`,
+        `AgeSharingConsentWrapperActivity`), which we don't control;
+      - every screen on Android 15 and later (insets under the bars, the
+        keyboard, the timeline overlay).
+      Then fix what is ours, and note in `docs/play-listing.md` what is a
+      library's.
 - [ ] Personal gear for consumption methods (maintainer, 2026-10-12): let
       users name their own pieces (a favorite bong, a favorite pipe, a
       particular vaporizer) and pick one on a session's product line, so
