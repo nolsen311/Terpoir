@@ -436,8 +436,16 @@
     <string name="share_onset">onset %1$d min</string>
     <string name="share_peak">peak %1$d min</string>
     <string name="share_duration">lasted %1$d min</string>
-    <string name="rating_low">Meh</string>
-    <string name="rating_high">Loved it</string>
+    <!-- The rating faces' names, 1 to 5 (🫤 😑 😀 🫠 🤯). -->
+    <string name="rating_1">Meh</string>
+    <string name="rating_2">Fine</string>
+    <string name="rating_3">Good</string>
+    <string name="rating_4">Melting</string>
+    <string name="rating_5">Mind-blown</string>
+    <string name="rating_none">Not rated</string>
+    <string name="rating_state">%1$s, %2$d of 5</string>
+    <string name="rating_lower">Lower the rating</string>
+    <string name="rating_raise">Raise the rating</string>
     <string name="error_dose">Check the amounts: numbers only, up to three decimals.</string>
     <string name="error_timeline">Check the timeline: whole minutes only.</string>
     <string name="error_amount">Check the amounts: numbers only, up to three decimals.</string>
@@ -501,6 +509,7 @@
     <string name="scan_code">Scan code</string>
     <string name="scan_code_hint">Point at a barcode, QR code or package tag. It is read on your phone; nothing is photographed.</string>
     <string name="scan_receipt">Scan receipt</string>
+    <string name="product_scan">Scan the label or package code</string>
     <string name="scan_receipt_hint">Fit the whole receipt in the frame. It is read on your phone and never saved: you check it on screen, and it is gone when you leave. Only the lines you confirm are saved.</string>
     <string name="scan_take_photo">Take photo</string>
     <string name="scan_reading">Reading…</string>

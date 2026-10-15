@@ -540,6 +540,7 @@ Each journal entry records one consumption session, not a product review. Produc
   - Effects (decided): map of tag → intensity 0–5. Fixed core vocabulary (relaxed, euphoric, focused, creative, sleepy, hungry, anxious, paranoid, dry mouth, couch-lock) plus user-defined custom tags.
   - Timeline: onset, peak, duration.
   - Outcome: mood after, overall rating, would repeat.
+    - **The rating as faces (maintainer, 2026-10-15):** the overall rating is set with − and + around a face, from meh to mind-blown: 🫤 Meh, 😑 Fine, 😀 Good, 🫠 Melting, 🤯 Mind-blown. It is still stored as 1–5, so nothing changes in the data, insights or shares. + from no rating starts at Meh; − at Meh clears it. Where the phone's emoji font lacks a face (🫤 and 🫠 are Emoji 14, missing on Android 11 and 12), a close older one stands in (😕, 🥴). Screen readers hear the name and "n of 5". The mood scales keep their 1–5 chips.
   - Stream (see below), photos, optional Spot.
   - Targeted symptoms (optional section, see below).
 - **Product:** name, form (flower, pre-roll, vape cart, concentrate, edible, tincture, beverage, topical), brand, strain(s), label data (THC/CBD % or mg per unit, top terpenes), batch/lot, package date, and optional scanned identifiers (barcode / package tag). Where and for how much it was bought lives on Purchase records, not here.
@@ -679,7 +680,7 @@ How strong a session felt over time replaces asking for onset, peak and duration
 ## Product names (decided 2026-10-12)
 - A product is shown as its brand followed by its own name ("Fire Bros Block Berry Cart") everywhere it appears: the catalog, the timeline, and the product pickers. The stored name stays the product's own, so it needn't repeat the brand. A name that already starts with its brand is shown as it is, never doubled. Display only: the model keeps name and brand as separate fields.
 - **Optional names, strain first (maintainer, 2026-10-15):** a product's own name is optional ("Name (optional)"); it needs a name, a strain, a brand or a type. In the Products list a product is titled by its strains, with its brand, type, own name and potency (THC, CBD; while potency is tracked) below; with no strain, its own name, then its brand, then its type is the title. Elsewhere (pickers, the timeline) the label stays brand then name, with the strains standing in for a missing name.
-- **"New" is a floating button (maintainer, 2026-10-15):** on the Products tab, "New product", "New strain", "New brand" or "New spot", for the list showing, is the screen's floating action button; "Scan receipt" stays at the top of the products list.
+- **"New" is a floating button (maintainer, 2026-10-15):** on the Products tab, "New product", "New strain", "New brand" or "New spot", for the list showing, is the screen's floating action button; "Scan receipt" stays at the top of the products list. **Changed (maintainer, 2026-10-15):** "Scan receipt" is a small floating button with a scan icon above "New product", on the products list only and while purchases are tracked; and the four lists swipe sideways, with the buttons above following the swipe.
 
 ## Rapid product entry (decided)
 - **Receipt scan:** one photo fills in several products with prices, the date, and the shop.
