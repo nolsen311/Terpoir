@@ -81,6 +81,26 @@ class PrivacyCenterTest {
     }
 
     @Test
+    fun restoreReachesEveryToggleEvenWhenOneFails() {
+        val failing = PrivacyToggle(
+            id = "failing",
+            group = PrivacyGroup.SCANNING,
+            card = card,
+            privateState = false,
+            isOn = { false },
+            onAction = {},
+            offAction = { error("cleanup failed") },
+        )
+        val after = Fake(true)
+        val center = PrivacyCenter(listOf(failing, toggle("after", after)))
+        val thrown = assertThrows(IllegalStateException::class.java) { runBlocking { center.restoreMaximumPrivacy() } }
+        assertEquals("cleanup failed", thrown.message)
+        // The toggle after the failing one was still restored.
+        assertFalse(after.on)
+        assertEquals(1, after.offRuns)
+    }
+
+    @Test
     fun anActionThatDoesNotTakeEffectFails() {
         val broken = PrivacyToggle(
             id = "broken",

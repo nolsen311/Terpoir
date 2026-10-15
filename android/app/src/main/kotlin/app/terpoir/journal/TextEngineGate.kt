@@ -50,14 +50,14 @@ fun TextEngineGate(scanner: Scanner, title: String, onClose: () -> Unit, content
             engine.status()
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
-            EngineStatus.Failed
+        } catch (e: Exception) {
+            EngineStatus.Failed(e)
         }
     }
     LaunchedEffect(installing) {
         if (installing) {
             engine.install()
-                .catch { emit(EngineStatus.Failed) }
+                .catch { emit(EngineStatus.Failed(it)) }
                 .collect { status = it }
             installing = false
         }
@@ -67,7 +67,7 @@ fun TextEngineGate(scanner: Scanner, title: String, onClose: () -> Unit, content
     val confirmation = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
         if (it.resultCode != Activity.RESULT_OK) {
             installing = false
-            status = EngineStatus.Failed
+            status = EngineStatus.Failed(IllegalStateException("store confirmation refused (result ${it.resultCode})"))
         }
     }
 
@@ -77,14 +77,14 @@ fun TextEngineGate(scanner: Scanner, title: String, onClose: () -> Unit, content
         else -> EditorScaffold(title, onClose, onSave = {}, saveEnabled = false) {
             Text(stringResource(engine.downloadPrompt), style = MaterialTheme.typography.bodyMedium)
             when (current) {
-                EngineStatus.NotInstalled, EngineStatus.Failed -> {
-                    if (current == EngineStatus.Failed) {
+                EngineStatus.NotInstalled, is EngineStatus.Failed -> {
+                    if (current is EngineStatus.Failed) {
                         Text(stringResource(R.string.ocr_download_failed), style = MaterialTheme.typography.bodySmall)
-                        ReportButton(R.string.ocr_download_failed)
+                        ReportButton(R.string.ocr_download_failed, current.error)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { installing = true }) {
-                            Text(stringResource(if (current == EngineStatus.Failed) R.string.ocr_retry else R.string.ocr_download))
+                            Text(stringResource(if (current is EngineStatus.Failed) R.string.ocr_retry else R.string.ocr_download))
                         }
                         OutlinedButton(onClick = onClose) { Text(stringResource(R.string.ocr_not_now)) }
                     }
@@ -100,9 +100,9 @@ fun TextEngineGate(scanner: Scanner, title: String, onClose: () -> Unit, content
                 }
                 is EngineStatus.NeedsConfirmation -> {
                     LaunchedEffect(current) {
-                        if (runCatching { current.confirm(confirmation) }.isFailure) {
+                        runCatching { current.confirm(confirmation) }.onFailure {
                             installing = false
-                            status = EngineStatus.Failed
+                            status = EngineStatus.Failed(it)
                         }
                     }
                     Text(stringResource(R.string.ocr_downloading))

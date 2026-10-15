@@ -46,7 +46,7 @@ class PlayTesseractEngine(private val context: Context) : TextEngine {
         fun report() {
             when {
                 module.failed || model.failed -> {
-                    trySend(EngineStatus.Failed)
+                    trySend(EngineStatus.Failed(module.error ?: model.error))
                     close()
                 }
                 module.done && model.done -> {
@@ -61,7 +61,8 @@ class PlayTesseractEngine(private val context: Context) : TextEngine {
             if (MODULE !in state.moduleNames()) return@SplitInstallStateUpdatedListener
             when (state.status()) {
                 SplitInstallSessionStatus.INSTALLED -> module.done = true
-                SplitInstallSessionStatus.FAILED, SplitInstallSessionStatus.CANCELED -> module.failed = true
+                SplitInstallSessionStatus.FAILED, SplitInstallSessionStatus.CANCELED ->
+                    module.fail(IllegalStateException("module $MODULE: status ${state.status()}, error ${state.errorCode()}"))
                 SplitInstallSessionStatus.REQUIRES_USER_CONFIRMATION -> {
                     trySend(EngineStatus.NeedsConfirmation { splits.startConfirmationDialogForResult(state, it) })
                     return@SplitInstallStateUpdatedListener
@@ -83,7 +84,8 @@ class PlayTesseractEngine(private val context: Context) : TextEngine {
             }
             when (status) {
                 AssetPackStatus.COMPLETED -> model.done = true
-                AssetPackStatus.FAILED, AssetPackStatus.CANCELED -> model.failed = true
+                AssetPackStatus.FAILED, AssetPackStatus.CANCELED ->
+                    model.fail(IllegalStateException("asset pack $PACK: status $status, error ${state.errorCode()}"))
                 else -> {
                     model.bytes = state.bytesDownloaded()
                     model.total = state.totalBytesToDownload()
@@ -96,13 +98,13 @@ class PlayTesseractEngine(private val context: Context) : TextEngine {
         if (!module.done) {
             splits.startInstall(SplitInstallRequest.newBuilder().addModule(MODULE).build())
                 .addOnFailureListener {
-                    module.failed = true
+                    module.fail(it)
                     report()
                 }
         }
         if (!model.done) {
             packs.fetch(listOf(PACK)).addOnFailureListener {
-                model.failed = true
+                model.fail(it)
                 report()
             }
         }
@@ -125,6 +127,14 @@ class PlayTesseractEngine(private val context: Context) : TextEngine {
     /** Download progress of the module or the model. */
     private class Part(var done: Boolean) {
         var failed = false
+
+        /** Why it failed: the store's error code (SplitInstallErrorCode, AssetPackErrorCode). */
+        var error: Throwable? = null
+
+        fun fail(cause: Throwable) {
+            failed = true
+            if (error == null) error = cause
+        }
         var bytes = 0L
         var total = 0L
 
