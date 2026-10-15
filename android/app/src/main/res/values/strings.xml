@@ -298,6 +298,12 @@
     <string name="session_would_repeat">Would do again</string>
     <string name="session_delete">Delete entry</string>
     <string name="session_delete_title">Delete this entry?</string>
+    <string name="session_discard_title">Discard this session?</string>
+    <string name="session_discard_changes_title">Discard your changes?</string>
+    <string name="session_discard_body">What you entered here won\'t be saved.</string>
+    <string name="session_discard_saved_body">It was saved when you added a note. Discarding deletes it, notes included, and its key is destroyed.</string>
+    <string name="discard">Discard</string>
+    <string name="keep_editing">Keep editing</string>
     <string name="session_delete_body">Its key is destroyed, so it can\'t be recovered, even from old backups or synced copies. Products stay.</string>
     <string name="scale_low">Low</string>
     <string name="scale_high">Great</string>

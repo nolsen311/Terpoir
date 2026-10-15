@@ -106,6 +106,9 @@ fun SessionEditor(
 ) {
     val scope = rememberCoroutineScope()
     var draft by remember { mutableStateOf<SessionDraft?>(null) }
+    // The draft as loaded, to tell whether anything was entered.
+    var initial by remember { mutableStateOf<SessionDraft?>(null) }
+    var confirmDiscard by remember { mutableStateOf(false) }
     var products by remember { mutableStateOf<List<Entry<ProductData>>>(emptyList()) }
     var productLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var customEffects by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
@@ -135,6 +138,7 @@ fun SessionEditor(
             currentOffsetMin(System.currentTimeMillis()),
             spot = spotForNew,
         )
+        initial = draft
     }
     LaunchedEffect(sessionId, openNote) { sessionId?.let { if (openNote == null) notes = repo.sessionSnippets(it) } }
     val current = draft ?: return
@@ -153,20 +157,31 @@ fun SessionEditor(
     val checkIn = settings.followUpCheckIns && (checkInChoice ?: (checkInDefault != null))
     val checkInAfter = checkInMinutes ?: (checkInDefault ?: DEFAULT_CHECK_IN_MIN).toString()
 
+    fun save() {
+        when (val result = current.toData()) {
+            is SessionDraft.Result.Invalid -> error = result.error
+            is SessionDraft.Result.Valid -> scope.launch {
+                val saved = repo.saveSession(sessionId, result.data)
+                val minutes = checkInAfter.trim().toIntOrNull()?.takeIf { it > 0 }
+                if (checkIn && minutes != null) checkIns.schedule(saved, current.whenMs + minutes * 60_000L)
+                onDone()
+            }
+        }
+    }
+
     EditorScaffold(
         title = stringResource(if (sessionId == null) R.string.session_new else R.string.session_edit),
-        onClose = onDone,
-        onSave = {
-            when (val result = current.toData()) {
-                is SessionDraft.Result.Invalid -> error = result.error
-                is SessionDraft.Result.Valid -> scope.launch {
-                    val saved = repo.saveSession(sessionId, result.data)
-                    val minutes = checkInAfter.trim().toIntOrNull()?.takeIf { it > 0 }
-                    if (checkIn && minutes != null) checkIns.schedule(saved, current.whenMs + minutes * 60_000L)
-                    onDone()
-                }
+        // Close: a session with a reminder set is saved, so the reminder
+        // isn't lost; otherwise anything entered is only dropped after
+        // asking.
+        onClose = {
+            when {
+                checkIn -> save()
+                current != initial || sessionId != id -> confirmDiscard = true
+                else -> onDone()
             }
         },
+        onSave = ::save,
     ) {
         WhenRow(current.whenMs, current.utcOffsetMin) { ms, offset -> draft = current.copy(whenMs = ms, utcOffsetMin = offset) }
 
@@ -310,6 +325,34 @@ fun SessionEditor(
                 Text(stringResource(R.string.session_delete), color = MaterialTheme.colorScheme.error)
             }
         }
+    }
+
+    if (confirmDiscard) {
+        // A new session saved to hold a note is deleted on discard; an
+        // existing one just keeps what was saved.
+        val autoSaved = id == null && sessionId != null
+        AlertDialog(
+            onDismissRequest = { confirmDiscard = false },
+            title = { Text(stringResource(if (id == null) R.string.session_discard_title else R.string.session_discard_changes_title)) },
+            text = { Text(stringResource(if (autoSaved) R.string.session_discard_saved_body else R.string.session_discard_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDiscard = false
+                    val saved = sessionId
+                    if (autoSaved && saved != null) {
+                        scope.launch {
+                            // Deleting a session leaves its notes, so they go first.
+                            for (note in repo.sessionSnippets(saved)) repo.delete(note.id)
+                            repo.delete(saved)
+                            onDone()
+                        }
+                    } else {
+                        onDone()
+                    }
+                }) { Text(stringResource(R.string.discard), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text(stringResource(R.string.keep_editing)) } },
+        )
     }
 
     val deleting = sessionId
