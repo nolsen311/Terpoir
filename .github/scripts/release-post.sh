@@ -17,15 +17,8 @@ set -eu
 
 version=$1
 url=$2
-listing=docs/play-listing.md
 
-# The notes are the line after "<en-US>" in the block that follows the
-# version's "**X.Y.Z**" heading.
-notes=$(awk -v v="**${version}**" '
-    index($0, v) { found = 1; next }
-    found && /<en-US>/ { getline; sub(/^[ \t]+/, ""); print; exit }
-' "$listing")
-[ -n "$notes" ] || { echo "no release notes for ${version} in ${listing}" >&2; exit 1; }
+notes=$(.github/scripts/release-notes.sh "$version")
 
 head="🌿 Terpoir ${version} is out."
 tags="#Terpoir #Android #FOSS #Privacy #DataPrivacy #SelfAwareness"

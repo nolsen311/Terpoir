@@ -31,6 +31,8 @@ jobs:
     # (Terpoir-infra maps.tf). Without it the Play build doesn't offer
     # Google Maps.
     environment: release
+    outputs:
+      notes: ${{ steps.notes.outputs.notes }}
     defaults:
       run:
         working-directory: android
@@ -51,6 +53,16 @@ jobs:
             echo "::error::Tag $GITHUB_REF_NAME doesn't match versionName $version."
             exit 1
           fi
+
+      # The version's Play notes (docs/play-listing.md), for the release page.
+      # A version PR adds them, so a tag without notes stops here.
+      - name: Read the release notes
+        id: notes
+        working-directory: .
+        run: |
+          set -euo pipefail
+          notes=$(.github/scripts/release-notes.sh "${GITHUB_REF_NAME#v}")
+          printf 'notes=%s\n' "$notes" >> "$GITHUB_OUTPUT"
 
       # Read-only, and saved only from main (android.yml); every artifact is
       # still checked against verification-metadata.xml and Cargo.lock.
@@ -131,9 +143,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          NOTES: ${{ needs.build.outputs.notes }}
         run: |
           set -euo pipefail
           cat > notes.md <<NOTES
+          ## What's new
+
+          ${NOTES}
+
+          ## Install
+
           Terpoir ${GITHUB_REF_NAME}, built from ${GITHUB_SHA}.
 
           - Install **terpoir-foss-${GITHUB_REF_NAME#v}.apk**. For the Google Play version, install Terpoir from Google Play.

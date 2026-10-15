@@ -442,18 +442,20 @@ them; the other activities belong to Google's libraries.
   (`android/scripts/play-upload.sh`, `docs/releasing.md`).
 - **Release notes** (en-US, the "What's new" box, 500 characters at most).
   `play-upload.sh` doesn't send them: paste them into the release in the
-  Play Console before rolling it out.
+  Play Console before rolling it out. The same notes open the GitHub
+  release page (`release.yml`) and the Mastodon post
+  (`.github/scripts/release-notes.sh` reads them for both).
   Each version also has a **Headline:** line under its heading, a few
   words for the release image posted to Mastodon (`announce.yml`; at most
   two lines on the image, about 60 characters).
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
-  - **0.5.3** (450 characters):
+  - **0.5.3** (487 characters):
     Headline: Rate sessions with faces, and a crash fixed
     ```
     <en-US>
-    Google text recognition works in receipt scanning again, and turning it off or restoring maximum privacy no longer crashes. A chosen sync folder is saved again, and export and import no longer lose the file you picked. Rate a session with faces from meh to mind-blown. On Products, swipe between lists; Scan receipt and Scan label are now floating buttons. Share a session's timeline (off by default). The keyboard no longer pushes the screen around.
+    Google text recognition works in receipt scanning again, and turning it off or restoring maximum privacy no longer crashes. A chosen sync folder is saved again, and export and import no longer lose the file you picked. Rate a session with faces from meh to mind-blown. On Products, swipe between lists; Scan receipt, and Scan (label or barcode) in the product editor, are now floating buttons. Share a session's timeline (off by default). The keyboard no longer pushes the screen around.
     </en-US>
     ```
   - **0.5.2** (388 characters):

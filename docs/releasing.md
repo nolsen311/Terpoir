@@ -147,9 +147,11 @@ The steps, for doing them separately:
    git push origin v0.1.0
    ```
 3. **CI** (`.github/workflows/release.yml`):
-   - checks the tag is on `main` and matches `versionName`;
+   - checks the tag is on `main` and matches `versionName`, and that
+     `docs/play-listing.md` has the version's release notes;
    - builds the unsigned foss APK and Play bundle, and runs every check;
-   - creates a draft release holding them and `UNSIGNED-SHA256SUMS`.
+   - creates a draft release holding them and `UNSIGNED-SHA256SUMS`, its
+     page opening with the release notes under "What's new".
 
    The build runs in the `release` environment, which holds the release
    Google Maps key once Terpoir-infra provides it. Without the key, the
