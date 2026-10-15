@@ -175,7 +175,13 @@ class MainActivity : ComponentActivity() {
     private fun systemDark(): Boolean =
         resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
 
-    /** Edge to edge, with system bar icons that suit [dark]. */
+    /**
+     * Edge to edge, with system bar icons that suit [dark]. Only through
+     * androidx.activity: no bar colors, cutout modes or decor-fitting of our
+     * own. The library still calls the bar-color setters deprecated in
+     * Android 15 (no-ops there; it draws the scrim itself), which Play
+     * reports (docs/design-decisions.md, "Edge to edge").
+     */
     private fun systemBars(dark: Boolean) {
         val transparent = android.graphics.Color.TRANSPARENT
         // The scrims enableEdgeToEdge uses by default for the navigation bar.
