@@ -55,6 +55,12 @@ Recommendation; the maintainer picks one:
    app fetches nothing and fills nothing, so no site's terms on apps apply.
    It still needs a disclosure card: the strain name goes to that site, which
    runs its own trackers in the browser (see each section).
+   **Saved sites (maintainer, 2026-10-15):** the app remembers the user's
+   lookup sites, so they pick from a saved list instead of re-entering one
+   each time. They can add, edit and remove sites; a site is a URL with a
+   placeholder for the strain name. The list is kept inside the encrypted
+   journal, because it reveals interests, and is never sent anywhere. The
+   toggle's off-action deletes the saved list.
 3. **Option 1, and ask.** Write to Medicinal Genomics for permission to bundle
    Kannapedia's chemotype and registrant chemistry, and to SeedFinder
    (Snorkel Spain SL) for its lineage data. Build nothing until a written
