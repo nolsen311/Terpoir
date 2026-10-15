@@ -57,6 +57,51 @@ pub struct TagSuggestion {
     pub end: u32,
 }
 
+/// One of the user's products, brands or strains suggested for a receipt
+/// item. Always a suggestion ("?"): nothing links on its own.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ScanSuggestion {
+    /// The record's ID.
+    pub id: String,
+    /// `product`, `brand` or `strain`.
+    pub record_type: String,
+    /// Its name.
+    pub name: String,
+    /// How it matched: `exact`, `words`, `prefix`, `initials` or
+    /// `letters` (strongest first).
+    pub match_kind: String,
+    /// The match's strength, with the shop's boost; for ranking only.
+    pub score: u32,
+    /// Whether the user's purchases at the receipt's shop raised it.
+    pub at_shop: bool,
+    /// Within a few points of the best suggestion: offer it as an equal
+    /// choice (BD: Blue Dream or Bubba Diesel).
+    pub close: bool,
+}
+
+/// The saved spot a receipt's header most likely belongs to, and what the
+/// header says.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ReceiptShopMatch {
+    /// The spot's ID, if one matched.
+    pub spot: Option<String>,
+    /// `phone`, `licence` or `name`.
+    pub kind: Option<String>,
+    /// A phone or licence number match ("Green Leaf ✓"); false for a name
+    /// only ("Green Leaf?").
+    pub strong: bool,
+    /// The header row that matched.
+    pub row: Option<u32>,
+    /// The header row that looks like the shop's name.
+    pub shop: Option<String>,
+    /// That row.
+    pub shop_row: Option<u32>,
+    /// Phone numbers printed in the header, digits only.
+    pub phones: Vec<String>,
+    /// Licence numbers printed in the header, letters and digits only.
+    pub licences: Vec<String>,
+}
+
 /// A saved spot near a location fix.
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
 pub struct NearbySpot {
@@ -809,6 +854,148 @@ impl Journal {
                 }
             }
             Ok(partial)
+        })
+    }
+
+    /// The user's products, brands and strains that a receipt item's text
+    /// may name, best first (at most 10). The text is broken down first
+    /// (`BD PR 1G` looks for `BD`) and matched by name, initials, letters
+    /// in order and cut-off names, tolerant of recognition errors. With
+    /// the receipt's `spot`, what the user buys there ranks higher:
+    /// purchases at that spot and products whose "Where I buy it" includes
+    /// it. Matching happens on the device; nothing is stored.
+    ///
+    /// # Errors
+    ///
+    /// `InvalidInput` for a malformed spot ID, `Locked` or `Storage`.
+    pub fn suggest_for_receipt_item(
+        &self,
+        text: String,
+        spot: Option<String>,
+    ) -> Result<Vec<ScanSuggestion>> {
+        let spot = spot.map(|s| parse_id(&s)).transpose()?;
+        self.with(|u| {
+            let mut products = Vec::new();
+            for id in u.store.ids_of_kind(RecordKind::Product)? {
+                if let Some(product) = u.store.get_record::<Product>(&u.master, &id)? {
+                    products.push((id, product));
+                }
+            }
+            // How often each product was bought at the spot.
+            let mut bought: BTreeMap<RecordId, u32> = BTreeMap::new();
+            if let Some(spot) = spot {
+                for id in u.store.ids_of_kind(RecordKind::Purchase)? {
+                    let Some(purchase) = u.store.get_record::<Purchase>(&u.master, &id)? else {
+                        continue;
+                    };
+                    if purchase.spot == Some(spot) {
+                        for product in purchase.lines.values().filter_map(|l| l.product) {
+                            *bought.entry(product).or_default() += 1;
+                        }
+                    }
+                }
+                for (id, product) in &products {
+                    if product.shops.contains(&spot) {
+                        *bought.entry(*id).or_default() += 1;
+                    }
+                }
+            }
+            let mut by_record: BTreeMap<RecordId, u32> = BTreeMap::new();
+            for (id, product) in &products {
+                let n = bought.get(id).copied().unwrap_or(0);
+                if n == 0 {
+                    continue;
+                }
+                for related in product.strains.iter().chain(&product.brand) {
+                    *by_record.entry(*related).or_default() += n;
+                }
+            }
+
+            let mut ids = Vec::new();
+            let mut candidates = Vec::new();
+            let mut add = |id: RecordId, kind, name: String, at_shop: u32| {
+                ids.push(id);
+                candidates.push(terpoir_scan::NameCandidate {
+                    kind,
+                    name,
+                    at_shop,
+                });
+            };
+            for (id, product) in products {
+                let n = bought.get(&id).copied().unwrap_or(0);
+                add(id, terpoir_scan::CandidateKind::Product, product.name, n);
+            }
+            for id in u.store.ids_of_kind(RecordKind::Brand)? {
+                if let Some(brand) = u.store.get_record::<Brand>(&u.master, &id)? {
+                    let n = by_record.get(&id).copied().unwrap_or(0);
+                    add(id, terpoir_scan::CandidateKind::Brand, brand.name, n);
+                }
+            }
+            for id in u.store.ids_of_kind(RecordKind::Strain)? {
+                if let Some(strain) = u.store.get_record::<Strain>(&u.master, &id)? {
+                    let n = by_record.get(&id).copied().unwrap_or(0);
+                    add(id, terpoir_scan::CandidateKind::Strain, strain.name, n);
+                }
+            }
+            Ok(terpoir_scan::match_names(&text, &candidates)
+                .into_iter()
+                .take(10)
+                .map(|m| ScanSuggestion {
+                    id: ids[m.index].to_hex(),
+                    record_type: match candidates[m.index].kind {
+                        terpoir_scan::CandidateKind::Product => "product",
+                        terpoir_scan::CandidateKind::Brand => "brand",
+                        terpoir_scan::CandidateKind::Strain => "strain",
+                    }
+                    .to_owned(),
+                    name: candidates[m.index].name.clone(),
+                    match_kind: m.kind.slug().to_owned(),
+                    score: m.score,
+                    at_shop: m.at_shop,
+                    close: m.close,
+                })
+                .collect())
+        })
+    }
+
+    /// The saved spot a receipt's header belongs to, from its rows top to
+    /// bottom (the rows above the first priced row are read): by a phone
+    /// or licence number the spot is known by (strong), else by name (a
+    /// guess). Also returns the name, phone and licence numbers the header
+    /// prints. Spots don't store phone or licence numbers yet, so today
+    /// every match is by name. Location is never used.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn match_receipt_shop(&self, rows: Vec<String>) -> Result<ReceiptShopMatch> {
+        let lines: Vec<&str> = rows.iter().map(String::as_str).collect();
+        let header = terpoir_scan::read_header(&lines);
+        self.with(|u| {
+            let mut ids = Vec::new();
+            let mut candidates = Vec::new();
+            for id in u.store.ids_of_kind(RecordKind::Spot)? {
+                if let Some(spot) = u.store.get_record::<Spot>(&u.master, &id)? {
+                    ids.push(id);
+                    candidates.push(terpoir_scan::ShopCandidate {
+                        name: spot.name,
+                        phones: Vec::new(),
+                        licences: Vec::new(),
+                    });
+                }
+            }
+            let found = terpoir_scan::match_shop(&lines, &candidates);
+            let row = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
+            Ok(ReceiptShopMatch {
+                spot: found.as_ref().map(|m| ids[m.index].to_hex()),
+                kind: found.as_ref().map(|m| m.kind.slug().to_owned()),
+                strong: found.as_ref().is_some_and(|m| m.kind.is_strong()),
+                row: found.as_ref().map(|m| row(m.line)),
+                shop: header.name,
+                shop_row: header.name_line.map(row),
+                phones: header.phones,
+                licences: header.licences,
+            })
         })
     }
 

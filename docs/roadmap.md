@@ -387,6 +387,19 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       without an alias list, and size and quantity on the purchase line
       (`docs/design-decisions.md`, "Simpler review").
       Overlaps "Scan recognition from the journal".
+      - [x] Core, first slice: wrapped names joined by layout with each
+            item's rows, re-read from the user's grouping; cut-off
+            detection; item breakdown from a built-in vocabulary;
+            strain, brand and product suggestions by initials, letters
+            in order and cut-off names, ranked by the shop; the shop
+            matched from the header by name, phone and licence numbers.
+      - [ ] Learned receipt names (exact line on the product).
+      - [ ] Size and quantity on the purchase line, default size on the
+            product (synced, with a compatibility fixture).
+      - [ ] Phone and licence numbers on spots (synced, with a fixture).
+      - [ ] A second photo for long receipts, joined on overlapping rows.
+      - [ ] Android: review cards with chips, the shop header card, "Join
+            with next line" and "Split here", the cut-off warning.
 
 - [ ] More themes (maintainer, 2026-10-14), each a choice next to
       System, Light and Dark on the Theme page, with its sample controls:

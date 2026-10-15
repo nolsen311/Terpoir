@@ -2256,3 +2256,172 @@ fn products_keep_label_cannabinoids() {
     assert_eq!(after.cannabinoids.len(), 1);
     assert_eq!(after.cannabinoids[0].cannabinoid, "cbn");
 }
+
+#[test]
+fn receipt_items_and_shops_are_matched_against_the_journal() {
+    let device = Device::new();
+    let keys = create_keys().unwrap();
+    let journal = device.open(&keys).unwrap();
+    let strain = |name: &str| {
+        journal
+            .save_strain(
+                None,
+                StrainData {
+                    name: name.into(),
+                    lineage: None,
+                    terpenes: vec![],
+                    strain_type: None,
+                    terpene_levels: vec![],
+                    parents: vec![],
+                    cannabinoids: vec![],
+                },
+                1,
+            )
+            .unwrap()
+    };
+    let blue_dream = strain("Blue Dream");
+    let bubba_diesel = strain("Bubba Diesel");
+    let gsc = strain("Girl Scout Cookies");
+    let spot = |name: &str| {
+        journal
+            .save_spot(
+                None,
+                SpotData {
+                    name: name.into(),
+                    purposes: vec![builtin("re_up")],
+                    lat_e7: None,
+                    lon_e7: None,
+                    accuracy_m: None,
+                    radius_m: None,
+                    purchase_prompts: false,
+                },
+                2,
+            )
+            .unwrap()
+    };
+    let green_leaf = spot("Green Leaf");
+    let elsewhere = spot("Elsewhere");
+    let acme = journal
+        .save_brand(
+            None,
+            BrandData {
+                name: "Acme".into(),
+            },
+            3,
+        )
+        .unwrap();
+    let product = journal
+        .save_product(
+            None,
+            ProductData {
+                name: "Acme Blue Dream".into(),
+                form: Some("flower".into()),
+                brand: Some(acme.clone()),
+                strains: vec![blue_dream.clone()],
+                thc_milli: None,
+                thc_unit: None,
+                cbd_milli: None,
+                cbd_unit: None,
+                terpenes: vec![],
+                batch: None,
+                package_date_day: None,
+                identifiers: vec![],
+                shops: vec![],
+                cannabinoids: vec![],
+            },
+            4,
+        )
+        .unwrap();
+    journal
+        .save_purchase(
+            None,
+            PurchaseData {
+                when: LocalTimeData {
+                    unix_ms: 1_759_900_000_000,
+                    utc_offset_min: -420,
+                },
+                spot: Some(green_leaf.clone()),
+                lines: vec![PurchaseLineData {
+                    line_id: None,
+                    product: Some(product.clone()),
+                    batch: None,
+                    price_minor_units: Some(3_500),
+                    price_currency: Some("USD".into()),
+                }],
+            },
+            5,
+        )
+        .unwrap();
+
+    // BD at the shop where the user buys Blue Dream: Blue Dream first,
+    // Bubba Diesel still offered as a close choice. Never automatic.
+    let found = journal
+        .suggest_for_receipt_item("BD 3.5G HYB".into(), Some(green_leaf.clone()))
+        .unwrap();
+    let got: Vec<(&str, &str, &str, bool, bool)> = found
+        .iter()
+        .map(|s| {
+            (
+                s.id.as_str(),
+                s.record_type.as_str(),
+                s.match_kind.as_str(),
+                s.at_shop,
+                s.close,
+            )
+        })
+        .collect();
+    assert_eq!(
+        got,
+        [
+            (blue_dream.as_str(), "strain", "initials", true, true),
+            (bubba_diesel.as_str(), "strain", "initials", false, true),
+        ]
+    );
+    // At another shop, both are equal choices.
+    let found = journal
+        .suggest_for_receipt_item("BD PR 1G".into(), Some(elsewhere))
+        .unwrap();
+    assert_eq!(found.len(), 2);
+    assert!(found.iter().all(|s| s.close && !s.at_shop && s.score == 50));
+    // Initials of a three-word name; the brand and its product by name.
+    let found = journal
+        .suggest_for_receipt_item("GSC 1/8 IND".into(), None)
+        .unwrap();
+    assert!(found.len() == 1 && found[0].id == gsc);
+    let found = journal
+        .suggest_for_receipt_item("ACME BLUE DREAM 3.5G 35.00".into(), None)
+        .unwrap();
+    assert!(found[0].id == product && found[0].match_kind == "exact");
+    assert!(
+        found
+            .iter()
+            .any(|s| s.id == acme && s.record_type == "brand")
+    );
+    assert!(matches!(
+        journal.suggest_for_receipt_item("BD".into(), Some("nope".into())),
+        Err(CoreError::InvalidInput)
+    ));
+
+    // The shop from the header: by name only, so a guess.
+    let header = vec![
+        "GREEN LEAF".to_owned(),
+        "Tel (555) 010-2030".to_owned(),
+        "BD 3.5G HYB 35.00".to_owned(),
+    ];
+    let shop = journal.match_receipt_shop(header).unwrap();
+    assert_eq!(shop.spot, Some(green_leaf));
+    assert_eq!(shop.kind.as_deref(), Some("name"));
+    assert!(!shop.strong);
+    assert_eq!((shop.row, shop.shop_row), (Some(0), Some(0)));
+    assert_eq!(shop.phones, ["5550102030"]);
+    let none = journal
+        .match_receipt_shop(vec!["SOMEWHERE NEW".into()])
+        .unwrap();
+    assert!(none.spot.is_none() && none.kind.is_none());
+    assert_eq!(none.shop.as_deref(), Some("SOMEWHERE NEW"));
+    journal.lock();
+    assert!(matches!(
+        journal.match_receipt_shop(vec![]),
+        Err(CoreError::Locked)
+    ));
+}
