@@ -269,7 +269,7 @@ fun SessionEditor(
                 ScaleRow(current.moodAfter, { draft = current.copy(moodAfter = it) }, stringResource(R.string.scale_low), stringResource(R.string.scale_high))
             }
             Text(stringResource(R.string.session_rating), style = MaterialTheme.typography.labelLarge)
-            ScaleRow(current.rating, { draft = current.copy(rating = it) }, stringResource(R.string.rating_low), stringResource(R.string.rating_high))
+            RatingStepper(current.rating) { draft = current.copy(rating = it) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.session_would_repeat), style = MaterialTheme.typography.labelLarge)
                 FilterChip(

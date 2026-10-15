@@ -98,7 +98,7 @@ fun CheckInScreen(repo: JournalRepository, vocab: Vocabulary, sessionId: String,
         Text(stringResource(R.string.session_mood_after), style = MaterialTheme.typography.labelLarge)
             ScaleRow(current.moodAfter, { draft = current.copy(moodAfter = it) }, stringResource(R.string.scale_low), stringResource(R.string.scale_high))
             Text(stringResource(R.string.session_rating), style = MaterialTheme.typography.labelLarge)
-            ScaleRow(current.rating, { draft = current.copy(rating = it) }, stringResource(R.string.rating_low), stringResource(R.string.rating_high))
+            RatingStepper(current.rating) { draft = current.copy(rating = it) }
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it },

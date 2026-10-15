@@ -540,6 +540,7 @@ Each journal entry records one consumption session, not a product review. Produc
   - Effects (decided): map of tag → intensity 0–5. Fixed core vocabulary (relaxed, euphoric, focused, creative, sleepy, hungry, anxious, paranoid, dry mouth, couch-lock) plus user-defined custom tags.
   - Timeline: onset, peak, duration.
   - Outcome: mood after, overall rating, would repeat.
+    - **The rating as faces (maintainer, 2026-10-15):** the overall rating is set with − and + around a face, from meh to mind-blown: 🫤 Meh, 😑 Fine, 😀 Good, 🫠 Melting, 🤯 Mind-blown. It is still stored as 1–5, so nothing changes in the data, insights or shares. + from no rating starts at Meh; − at Meh clears it. Where the phone's emoji font lacks a face (🫤 and 🫠 are Emoji 14, missing on Android 11 and 12), a close older one stands in (😕, 🥴). Screen readers hear the name and "n of 5". The mood scales keep their 1–5 chips.
   - Stream (see below), photos, optional Spot.
   - Targeted symptoms (optional section, see below).
 - **Product:** name, form (flower, pre-roll, vape cart, concentrate, edible, tincture, beverage, topical), brand, strain(s), label data (THC/CBD % or mg per unit, top terpenes), batch/lot, package date, and optional scanned identifiers (barcode / package tag). Where and for how much it was bought lives on Purchase records, not here.
