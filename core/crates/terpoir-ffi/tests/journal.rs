@@ -2013,6 +2013,183 @@ fn insights_fall_back_to_a_strains_dominant_terpene() {
     assert!(simple.iter().all(|i| i.key != "terpene:myrcene"));
 }
 
+/// A strain with these parents and, if given, a dominant terpene.
+fn family_strain(name: &str, parents: Vec<String>, terpene: Option<&str>) -> StrainData {
+    StrainData {
+        name: name.into(),
+        lineage: None,
+        terpenes: terpene.map(builtin).into_iter().collect(),
+        strain_type: None,
+        terpene_levels: terpene
+            .map(|t| TerpeneLevelData {
+                terpene: builtin(t),
+                level: "dominant".into(),
+            })
+            .into_iter()
+            .collect(),
+        parents,
+        cannabinoids: vec![],
+    }
+}
+
+/// A product of one strain, bought at these shops.
+fn strain_product(name: &str, strain: String, shops: Vec<String>) -> ProductData {
+    ProductData {
+        name: name.into(),
+        form: Some("flower".into()),
+        brand: None,
+        strains: vec![strain],
+        thc_milli: None,
+        thc_unit: None,
+        cbd_milli: None,
+        cbd_unit: None,
+        terpenes: vec![],
+        batch: None,
+        package_date_day: None,
+        identifiers: vec![],
+        shops,
+        cannabinoids: vec![],
+    }
+}
+
+#[test]
+fn insights_group_strains_by_shared_parent() {
+    let device = Device::new();
+    let keys = create_keys().unwrap();
+    let journal = device.open(&keys).unwrap();
+    let blueberry = journal
+        .save_strain(None, family_strain("Blueberry", vec![], None), 1)
+        .unwrap();
+    let dream = journal
+        .save_strain(
+            None,
+            family_strain("Blue Dream", vec![blueberry.clone()], None),
+            2,
+        )
+        .unwrap();
+    let muffin = journal
+        .save_strain(
+            None,
+            family_strain("Blueberry Muffin", vec![blueberry.clone()], None),
+            3,
+        )
+        .unwrap();
+    let haze = journal
+        .save_strain(None, family_strain("Haze", vec![], None), 4)
+        .unwrap();
+    let mut t = 10;
+    for (strain, sessions, rating) in [(&dream, 3, 5), (&muffin, 2, 5), (&haze, 5, 2)] {
+        let product = journal
+            .save_product(None, strain_product("Flower", strain.clone(), vec![]), t)
+            .unwrap();
+        for _ in 0..sessions {
+            t += 1;
+            let mut s = session(Some(product.clone()));
+            s.rating = Some(rating);
+            journal.save_session(None, s, t).unwrap();
+        }
+    }
+    let key = format!("lineage:{blueberry}");
+    // Parents show only at the Detailed step, so the family only then.
+    assert!(journal.insights().unwrap().iter().all(|i| i.key != key));
+    journal.set_strain_detail("detailed".into(), 50).unwrap();
+    let found = journal.insights().unwrap();
+    // Two strains with a shared parent, five sessions between them.
+    let family = found.iter().find(|i| i.key == key).unwrap();
+    assert_eq!(family.category, "lineage");
+    assert_eq!(family.subject, "Blueberry");
+    assert_eq!(family.with_sessions.len(), 5);
+    assert_eq!(family.with_avg_milli, 5_000);
+    // A strain that is no one's parent is no family.
+    assert!(found.iter().all(|i| i.key != format!("lineage:{haze}")));
+}
+
+#[test]
+fn the_shop_effect_compares_strain_families_and_terpenes() {
+    let device = Device::new();
+    let keys = create_keys().unwrap();
+    let journal = device.open(&keys).unwrap();
+    let spot = |name: &str| {
+        journal
+            .save_spot(
+                None,
+                SpotData {
+                    name: name.into(),
+                    purposes: vec![builtin("re_up")],
+                    lat_e7: None,
+                    lon_e7: None,
+                    accuracy_m: None,
+                    radius_m: None,
+                    purchase_prompts: false,
+                },
+                1,
+            )
+            .unwrap()
+    };
+    let (a, b) = (spot("Shop A"), spot("Shop B"));
+    let blueberry = journal
+        .save_strain(None, family_strain("Blueberry", vec![], None), 2)
+        .unwrap();
+    // A different child of Blueberry at each shop, both myrcene-dominant:
+    // no strain is bought at both, but the family and the terpene are.
+    let dream = journal
+        .save_strain(
+            None,
+            family_strain("Blue Dream", vec![blueberry.clone()], Some("myrcene")),
+            3,
+        )
+        .unwrap();
+    let muffin = journal
+        .save_strain(
+            None,
+            family_strain("Blueberry Muffin", vec![blueberry], Some("myrcene")),
+            4,
+        )
+        .unwrap();
+    let at_a = journal
+        .save_product(None, strain_product("Dream", dream, vec![a.clone()]), 5)
+        .unwrap();
+    let at_b = journal
+        .save_product(None, strain_product("Muffin", muffin, vec![b]), 6)
+        .unwrap();
+    journal.set_strain_detail("detailed".into(), 7).unwrap();
+    for i in 0..5 {
+        let mut s = session(Some(at_a.clone()));
+        s.rating = Some(5);
+        journal.save_session(None, s, 10 + i).unwrap();
+        let mut s = session(Some(at_b.clone()));
+        s.rating = Some(2);
+        journal.save_session(None, s, 20 + i).unwrap();
+    }
+    let found = journal.shop_insights().unwrap();
+    let shop_a = found.iter().find(|s| s.spot == a).unwrap();
+    let effects: Vec<_> = shop_a
+        .effects
+        .iter()
+        .map(|e| {
+            (
+                e.level.as_str(),
+                e.label.as_str(),
+                e.here_avg_milli,
+                e.elsewhere_avg_milli,
+            )
+        })
+        .collect();
+    assert_eq!(
+        effects,
+        vec![
+            ("lineage", "Blueberry", 5_000, 2_000),
+            ("terpene", "myrcene", 5_000, 2_000)
+        ]
+    );
+
+    // Below Detailed there are no parents to group by.
+    journal.set_strain_detail("terpenes".into(), 30).unwrap();
+    let found = journal.shop_insights().unwrap();
+    let shop_a = found.iter().find(|s| s.spot == a).unwrap();
+    assert!(shop_a.effects.iter().all(|e| e.level != "lineage"));
+}
+
 #[test]
 fn products_keep_label_cannabinoids() {
     let device = Device::new();

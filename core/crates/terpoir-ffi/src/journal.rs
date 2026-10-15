@@ -201,6 +201,16 @@ impl insights::Source for Unlocked {
         Ok(self.store.get_record::<Strain>(&self.master, id)?)
     }
 
+    fn strains(&self) -> Result<Vec<(RecordId, Strain)>> {
+        let mut out = Vec::new();
+        for id in self.store.ids_of_kind(RecordKind::Strain)? {
+            if let Some(strain) = self.store.get_record::<Strain>(&self.master, &id)? {
+                out.push((id, strain));
+            }
+        }
+        Ok(out)
+    }
+
     fn tag_name(&self, id: &RecordId) -> Result<Option<String>> {
         Ok(self
             .store

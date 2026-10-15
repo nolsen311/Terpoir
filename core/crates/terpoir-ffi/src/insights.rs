@@ -25,10 +25,11 @@ use crate::error::Result;
 pub struct InsightData {
     /// Stable key for feedback, such as `terpene:myrcene`.
     pub key: String,
-    /// `terpene`, `method`, `form`, `strain_type` or `time`.
+    /// `terpene`, `method`, `form`, `strain_type`, `lineage` or `time`.
     pub category: String,
     /// What was compared: a built-in slug (`myrcene`, `vape_cart`,
-    /// `evening`), or a custom tag's name when [`Self::custom`].
+    /// `evening`), a custom tag's name when [`Self::custom`], or for
+    /// `lineage` the shared parent strain's name.
     pub subject: String,
     /// Whether [`Self::subject`] is a custom tag's name.
     pub custom: bool,
@@ -75,6 +76,8 @@ pub(crate) trait Source {
     fn sessions(&self) -> Result<Vec<(RecordId, Session)>>;
     fn product(&self, id: &RecordId) -> Result<Option<Product>>;
     fn strain(&self, id: &RecordId) -> Result<Option<Strain>>;
+    /// Every strain, to find which are parents of others.
+    fn strains(&self) -> Result<Vec<(RecordId, Strain)>>;
     fn tag_name(&self, id: &RecordId) -> Result<Option<String>>;
     /// Feedback state by insight key or category.
     fn feedback(&self) -> Result<BTreeMap<String, String>>;
@@ -102,20 +105,24 @@ pub struct ShopInsightData {
     /// Average age of products at purchase here, in days, when enough
     /// package dates are known.
     pub avg_age_days: Option<i64>,
-    /// Brands, products and strains rated differently here than at other
-    /// shops: brands first, then products, then strains.
+    /// Brands, products, strains, strain families and dominant terpenes
+    /// rated differently here than at other shops, in that order.
     pub effects: Vec<ShopEffectData>,
 }
 
-/// A brand, product or strain rated differently depending on the shop it
-/// came from.
+/// A brand, product, strain, strain family or dominant terpene rated
+/// differently depending on the shop it came from.
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
 pub struct ShopEffectData {
-    /// `brand`, `product` or `strain`.
+    /// `brand`, `product`, `strain`, `lineage` (a parent strain and its
+    /// offspring) or `terpene` (products with it as the dominant terpene).
     pub level: String,
-    /// The brand's, product's or strain's ID.
+    /// The brand's, product's or strain's ID (for `lineage`, the parent
+    /// strain's); for `terpene`, its key: a built-in slug, or `custom:` and
+    /// a tag ID.
     pub subject: String,
-    /// Its display label (for a product: brand, then name).
+    /// Its display label (for a product: brand, then name; for a built-in
+    /// terpene, its slug; for a custom one, the tag's name).
     pub label: String,
     /// Average rating when bought here, in thousandths of a star.
     pub here_avg_milli: i64,
@@ -170,6 +177,18 @@ pub(crate) fn shops(source: &dyn Source) -> Result<Vec<ShopInsightData>> {
     let show_brand = tracking.tracks(&TrackedField::Brand);
     let show_strain = tracking.tracks(&TrackedField::Strain);
     let show_age = tracking.tracks(&TrackedField::Batch);
+    let show_terpenes = tracking.tracks(&TrackedField::Terpenes);
+    // Families need parents, shown only at the Detailed step; a strain's
+    // terpene stands in for a label's above Simple, as in the insights.
+    let show_lineage = show_strain && tracking.strain_detail() == StrainDetail::Detailed;
+    let strain_terpenes =
+        show_terpenes && show_strain && tracking.strain_detail() != StrainDetail::Simple;
+    let parents = if show_lineage {
+        parents_of_others(&source.strains()?)
+    } else {
+        BTreeSet::new()
+    };
+    let mut strains: BTreeMap<RecordId, Option<Strain>> = BTreeMap::new();
     let sessions = source.sessions()?;
     let purchases: BTreeMap<RecordId, Purchase> = source.purchases()?.into_iter().collect();
     // The shops each product appears on receipts from.
@@ -201,6 +220,26 @@ pub(crate) fn shops(source: &dyn Source) -> Result<Vec<ShopInsightData>> {
             else {
                 continue;
             };
+            let mut lineages = BTreeSet::new();
+            let mut strain_terpene = None;
+            for strain_id in product.strains.iter().filter(|_| show_strain) {
+                if let std::collections::btree_map::Entry::Vacant(slot) = strains.entry(*strain_id)
+                {
+                    slot.insert(source.strain(strain_id)?);
+                }
+                if let Some(Some(strain)) = strains.get(strain_id) {
+                    if show_lineage {
+                        lineages.extend(families(strain_id, strain, &parents).map(|f| f.to_hex()));
+                    }
+                    if strain_terpene.is_none() {
+                        strain_terpene = strain.dominant_terpene().map(tag_key);
+                    }
+                }
+            }
+            let terpene = label_terpene(product)
+                .map(tag_key)
+                .or(strain_terpene.filter(|_| strain_terpenes))
+                .filter(|_| show_terpenes);
             buys.push(Buy {
                 shop: shop.to_hex(),
                 product: product_id.to_hex(),
@@ -210,6 +249,8 @@ pub(crate) fn shops(source: &dyn Source) -> Result<Vec<ShopInsightData>> {
                 } else {
                     Vec::new()
                 },
+                lineages: lineages.into_iter().collect(),
+                terpene,
                 age_days: day
                     .zip(product.package_date)
                     .filter(|_| show_age)
@@ -233,13 +274,14 @@ pub(crate) fn shops(source: &dyn Source) -> Result<Vec<ShopInsightData>> {
         let name = source.spot(&spot_id)?.map(|s| s.name).unwrap_or_default();
         let mut effects = Vec::new();
         for effect in &summary.effects {
-            let Ok(id) = RecordId::from_hex(&effect.subject) else {
-                continue;
-            };
-            let (level, label) = match effect.level {
-                Level::Brand => ("brand", source.brand_name(&id)?),
-                Level::Strain => ("strain", source.strain(&id)?.map(|s| s.name)),
-                Level::Product => (
+            let id = RecordId::from_hex(&effect.subject).ok();
+            let (level, label) = match (effect.level, id) {
+                (Level::Terpene, _) => ("terpene", terpene_label(source, &effect.subject)?),
+                (_, None) => continue,
+                (Level::Brand, Some(id)) => ("brand", source.brand_name(&id)?),
+                (Level::Strain, Some(id)) => ("strain", source.strain(&id)?.map(|s| s.name)),
+                (Level::Lineage, Some(id)) => ("lineage", source.strain(&id)?.map(|s| s.name)),
+                (Level::Product, Some(id)) => (
                     "product",
                     match products.get(&id).cloned().flatten() {
                         Some(p) => Some(product_label(source, &p, show_brand)?),
@@ -308,6 +350,14 @@ pub(crate) fn current(source: &dyn Source) -> Result<Vec<InsightData>> {
     // shows them: terpenes and strains tracked, above the Simple step.
     let strain_terpenes =
         show_terpenes && show_strain && tracking.strain_detail() != StrainDetail::Simple;
+    // Strain families (a parent and its offspring) need parents, which the
+    // journal shows only at the Detailed step.
+    let show_lineage = show_strain && tracking.strain_detail() == StrainDetail::Detailed;
+    let parents = if show_lineage {
+        parents_of_others(&source.strains()?)
+    } else {
+        BTreeSet::new()
+    };
     // (session index, feature) pairs that come only from a strain profile.
     let mut from_profile: BTreeSet<(usize, String)> = BTreeSet::new();
     let sessions = source.sessions()?;
@@ -338,15 +388,7 @@ pub(crate) fn current(source: &dyn Source) -> Result<Vec<InsightData>> {
             if let Some(form) = &product.form {
                 features.insert(format!("form:{}", form.slug()));
             }
-            // The product's dominant terpene (ties: the first in key order).
-            let label_terpene = product
-                .terpenes
-                .iter()
-                .fold(None::<(&TagRef, i64)>, |best, (t, v)| match best {
-                    Some((_, b)) if b >= *v => best,
-                    _ => Some((t, *v)),
-                })
-                .map(|(tag, _)| tag);
+            let label_terpene = label_terpene(product);
             if show_terpenes && let Some(tag) = label_terpene {
                 from_labels.insert(format!("terpene:{}", tag_key(tag)));
             }
@@ -359,6 +401,11 @@ pub(crate) fn current(source: &dyn Source) -> Result<Vec<InsightData>> {
                 if let Some(Some(strain)) = strains.get(strain_id) {
                     if let Some(kind) = &strain.strain_type {
                         features.insert(format!("strain_type:{}", kind.slug()));
+                    }
+                    if show_lineage {
+                        for family in families(strain_id, strain, &parents) {
+                            features.insert(format!("lineage:{}", family.to_hex()));
+                        }
                     }
                     // No terpenes on the label: the first of its strains
                     // (in ID order) with a dominant terpene stands in.
@@ -401,7 +448,17 @@ pub(crate) fn current(source: &dyn Source) -> Result<Vec<InsightData>> {
             continue;
         }
         let value = insight.feature.split_once(':').map_or("", |(_, v)| v);
+        let lineage = (category == "lineage")
+            .then(|| RecordId::from_hex(value).ok())
+            .flatten();
         let (subject, custom) = match value.strip_prefix("custom:") {
+            _ if category == "lineage" => match lineage {
+                Some(id) => match source.strain(&id)? {
+                    Some(strain) => (strain.name, false),
+                    None => continue,
+                },
+                None => continue,
+            },
             Some(hex) => match RecordId::from_hex(hex).ok() {
                 Some(id) => (source.tag_name(&id)?.unwrap_or_default(), true),
                 None => continue,
@@ -433,6 +490,50 @@ pub(crate) fn current(source: &dyn Source) -> Result<Vec<InsightData>> {
         });
     }
     Ok(out)
+}
+
+/// A product's dominant terpene from its label (ties: the first in key
+/// order).
+fn label_terpene(product: &Product) -> Option<&TagRef> {
+    product
+        .terpenes
+        .iter()
+        .fold(None::<(&TagRef, i64)>, |best, (t, v)| match best {
+            Some((_, b)) if b >= *v => best,
+            _ => Some((t, *v)),
+        })
+        .map(|(tag, _)| tag)
+}
+
+/// The strains that are a parent of another strain in the journal.
+fn parents_of_others(strains: &[(RecordId, Strain)]) -> BTreeSet<RecordId> {
+    strains
+        .iter()
+        .flat_map(|(_, s)| s.parents.iter().copied())
+        .collect()
+}
+
+/// The strain families a strain belongs to, each named by its shared
+/// parent: one per parent, and its own when it is a parent of others.
+fn families<'a>(
+    id: &RecordId,
+    strain: &'a Strain,
+    parents: &BTreeSet<RecordId>,
+) -> impl Iterator<Item = RecordId> + 'a {
+    let own = parents.contains(id).then_some(*id);
+    strain.parents.iter().copied().chain(own)
+}
+
+/// A terpene key's display label: a built-in slug as is, a custom tag's
+/// name; `None` for a tag that is gone.
+fn terpene_label(source: &dyn Source, key: &str) -> Result<Option<String>> {
+    match key.strip_prefix("custom:") {
+        Some(hex) => match RecordId::from_hex(hex) {
+            Ok(id) => source.tag_name(&id),
+            Err(_) => Ok(None),
+        },
+        None => Ok(Some(key.to_owned())),
+    }
 }
 
 fn tag_key(tag: &TagRef) -> String {

@@ -288,7 +288,7 @@ requirement rather than on features.
 
 ## Feature releases
 
-- [ ] Richer strains (`docs/design-decisions.md`, "Richer strains").
+- [x] Richer strains (`docs/design-decisions.md`, "Richer strains").
   - [x] 0.4.0: journal-wide detail setting (Simple / Terpenes / Detailed),
         the terpene picker guiding to 3 or fewer, terpene levels
         (dominant, secondary, trace; existing terpenes unrated), parent
@@ -299,14 +299,14 @@ requirement rather than on features.
           cannabinoids and the synced detail step, through the FFI.
     - [x] Strain editor and detail setting in the app.
     - [x] Insights: the strain's dominant terpene when a label has none.
-  - [ ] 0.5.0 and 0.5.1: CBN, CBG, THCa and CBDV label amounts on
+  - [x] 0.5.0 and 0.5.1: CBN, CBG, THCa and CBDV label amounts on
         products and "known for" cannabinoids on strains (0.5.0); insights
         and the shop effect grouped by shared parent or dominant terpene
         (0.5.1; moved by the maintainer, 2026-10-15).
     - [x] Label amounts for CBN, CBG, THCa and CBDV on products (core,
           plaintext export, product editor), and a fixture that writes one.
           "Known for" cannabinoids on strains shipped in 0.4.0.
-    - [ ] 0.5.1: insights and the shop effect grouped by shared parent or
+    - [x] 0.5.1: insights and the shop effect grouped by shared parent or
           dominant terpene.
 - [ ] Strain lookups, 0.6.0 (`docs/design-decisions.md`, "Catalog
       lookups"; maintainer, 2026-10-14: Leafly and a seed database).
