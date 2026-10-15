@@ -11,17 +11,19 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -51,7 +53,6 @@ import app.terpoir.capture.ShortcutCard
 import app.terpoir.core.CoreException
 import app.terpoir.core.ExportArchive
 import app.terpoir.core.checkExportArchive
-import app.terpoir.core.coreVersion
 import app.terpoir.core.readExportArchive
 import app.terpoir.core.readableBlobs
 import app.terpoir.core.vocabulary
@@ -63,6 +64,7 @@ import app.terpoir.map.MapProvider
 import app.terpoir.map.MapProviderCard
 import app.terpoir.onboarding.AgeGate
 import app.terpoir.onboarding.BrandFrame
+import app.terpoir.onboarding.BrandGreen
 import app.terpoir.onboarding.ExistingJournal
 import app.terpoir.onboarding.GoogleMapChoice
 import app.terpoir.onboarding.JournalChoice
@@ -147,17 +149,22 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         fromAlert(intent)
         ScreenPrivacy.install(this)
-        val core = coreVersion()
         // System bars follow the theme: light icons in dark mode and back.
         systemBars(app.appearance.theme.isDark(systemDark()))
         setContent {
             val dark = app.appearance.theme.isDark(isSystemInDarkTheme())
-            LaunchedEffect(dark) { systemBars(dark) }
+            // The unlock screen is all brand green, under the system bars
+            // too, so their icons are light there in either theme.
+            val green = app.session.state == JournalSession.State.Locked
+            LaunchedEffect(dark, green) { systemBars(dark || green) }
             PrivateTextInput {
                 TerpoirTheme(darkTheme = dark) {
-                    Surface(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-                        Screen(app.session, core)
-                        CrashPrompt()
+                    val page = if (green) BrandGreen else MaterialTheme.colorScheme.surface
+                    Box(Modifier.fillMaxSize().background(page)) {
+                        Surface(modifier = Modifier.fillMaxSize().safeDrawingPadding(), color = page) {
+                            Screen(app.session)
+                            CrashPrompt()
+                        }
                     }
                 }
             }
@@ -226,7 +233,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun Screen(session: JournalSession, core: String) {
+    private fun Screen(session: JournalSession) {
         var message by remember { mutableStateOf<Int?>(null) }
         // An export chosen for restoring, waiting for its recovery key.
         var restoring by remember { mutableStateOf<ExportArchive?>(null) }
@@ -435,9 +442,9 @@ class MainActivity : ComponentActivity() {
                 return
             }
         }
-        Branded(state == JournalSession.State.NoJournal || state == JournalSession.State.Locked) {
+        Branded(state == JournalSession.State.NoJournal || state == JournalSession.State.Locked, filled = state == JournalSession.State.Locked) {
             Column(
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.fillMaxSize().padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -481,16 +488,26 @@ class MainActivity : ComponentActivity() {
                     Text(stringResource(it), color = MaterialTheme.colorScheme.error)
                     // Failures with no step for the user to take; the others
                     // (wrong file, no screen lock, an update needed) say what to do.
-                    if (it in REPORTABLE) ReportButton(it)
+                    // A Keystore failure's report names the exception types
+                    // (nothing from the journal), to tell its causes apart.
+                    if (it in REPORTABLE) ReportButton(it, keystoreError.takeIf { _ -> it == R.string.error_keystore })
                 }
-                Text(stringResource(R.string.core_version, core), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.settings_version, appVersion()), style = MaterialTheme.typography.bodySmall)
             }
         }
     }
 
+    /** The last Keystore failure behind [R.string.error_keystore], for its problem report. */
+    private var keystoreError: Throwable? = null
+
     /** Onboarding's first-run screens and the unlock screen sit under the brand header ([BrandFrame]). */
     @Composable
-    private fun Branded(on: Boolean, content: @Composable () -> Unit) = if (on) BrandFrame(content) else content()
+    private fun Branded(on: Boolean, filled: Boolean = false, content: @Composable () -> Unit) =
+        if (on) BrandFrame(filled, content) else content()
+
+    /** The app's version name ("0.5.1"), as on the Settings page. */
+    private fun appVersion(): String =
+        runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull().orEmpty()
 
     /**
      * Starts journal creation; returns an error message to show, if any.
@@ -502,7 +519,8 @@ class MainActivity : ComponentActivity() {
         val cipher = try {
             app.session.vault.createWrappingKey(strict)
             app.session.vault.encryptCipher()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            keystoreError = e
             return R.string.error_keystore
         }
         authenticate(cipher, getString(R.string.setup_prompt)) { authorized ->
@@ -530,7 +548,8 @@ class MainActivity : ComponentActivity() {
         val cipher = try {
             app.session.vault.createWrappingKey(strict)
             app.session.vault.encryptCipher()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            keystoreError = e
             return R.string.error_keystore
         }
         authenticate(cipher, getString(R.string.setup_prompt)) { authorized ->
@@ -560,7 +579,8 @@ class MainActivity : ComponentActivity() {
             app.session.vault.decryptCipher()
         } catch (_: KeyPermanentlyInvalidatedException) {
             return R.string.error_key_invalidated
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            keystoreError = e
             return R.string.error_keystore
         }
         authenticate(cipher, getString(R.string.unlock_prompt)) { authorized ->

@@ -5,6 +5,9 @@
 package app.terpoir.privacy
 
 import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import app.terpoir.Distribution
 import app.terpoir.map.MapProvider
 
@@ -148,8 +151,15 @@ class PrivacySettings(context: Context) {
      * default: whatever syncs that folder (a cloud drive app) stores them.
      */
     var folderSync: Boolean
-        get() = prefs.getBoolean(KEY_FOLDER_SYNC, false)
-        set(value) = prefs.edit().putBoolean(KEY_FOLDER_SYNC, value).apply()
+        get() = folderSyncState
+        set(value) {
+            prefs.edit().putBoolean(KEY_FOLDER_SYNC, value).apply()
+            folderSyncState = value
+        }
+
+    // Observable, so the folder card on the Sync and keys page appears as
+    // soon as the toggle turns on (it is read there, not in the toggle).
+    private var folderSyncState by mutableStateOf(prefs.getBoolean(KEY_FOLDER_SYNC, false))
 
     /**
      * The "New note" app shortcut (long-press the icon). On by default: it

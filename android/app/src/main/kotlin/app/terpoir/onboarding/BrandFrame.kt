@@ -22,8 +22,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -46,9 +50,26 @@ import app.terpoir.ui.theme.Wordmark
 import kotlinx.coroutines.delay
 
 /** The launcher icon's background, behind the brand in every theme. */
-private val BrandGreen = Color(0xFF2E4A3B)
+val BrandGreen = Color(0xFF2E4A3B)
 private val Paper = Color(0xFFE8E2D0)
 private val PaperSoft = Color(0xFFC9C2AE)
+
+/**
+ * Colors for a page drawn on the brand green (the unlock screen): paper
+ * text and buttons, and a light error color that reads on the green. Every
+ * pair meets WCAG AA (BrandColorsTest).
+ */
+internal val BrandColors = darkColorScheme(
+    primary = Paper,
+    onPrimary = BrandGreen,
+    background = BrandGreen,
+    onBackground = Paper,
+    surface = BrandGreen,
+    onSurface = Paper,
+    onSurfaceVariant = PaperSoft,
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+)
 
 /** Whether the intro has played in this process; it plays once per launch. */
 private var introPlayed = false
@@ -66,10 +87,11 @@ private const val HEADER_SCALE = 0.5f
  * icon's green. The first time it appears after a launch, it fills the
  * screen, then slides up into a header band while the page below fades in. Later pages show the header straight
  * away, and with animations turned off in system settings there is no
- * intro.
+ * intro. [filled] puts the page on the green too, in [BrandColors] (the
+ * unlock screen, maintainer 2026-10-15).
  */
 @Composable
-fun BrandFrame(content: @Composable () -> Unit) {
+fun BrandFrame(filled: Boolean = false, content: @Composable () -> Unit) {
     val context = LocalContext.current
     val progress = remember { Animatable(if (introPlayed || !animationsOn(context)) 1f else 0f) }
     LaunchedEffect(Unit) {
@@ -90,7 +112,16 @@ fun BrandFrame(content: @Composable () -> Unit) {
                 Lockup(scale = 1f - (1f - HEADER_SCALE) * p, taglineAlpha = (1f - 2f * p).coerceIn(0f, 1f))
             }
             // The page fades in over the slide's second half.
-            Box(Modifier.weight(1f).fillMaxWidth().alpha((2f * p - 1f).coerceIn(0f, 1f))) { content() }
+            val page = Modifier.weight(1f).fillMaxWidth().alpha((2f * p - 1f).coerceIn(0f, 1f))
+            if (filled) {
+                MaterialTheme(colorScheme = BrandColors, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
+                    Box(page.background(BrandGreen)) {
+                        CompositionLocalProvider(LocalContentColor provides Paper) { content() }
+                    }
+                }
+            } else {
+                Box(page) { content() }
+            }
         }
     }
 }
