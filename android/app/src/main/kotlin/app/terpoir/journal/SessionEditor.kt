@@ -83,6 +83,7 @@ import app.terpoir.core.TagRefData
 import app.terpoir.core.Vocabulary
 import app.terpoir.core.defaultMethodForForm
 import app.terpoir.core.doseUnitsForMethod
+import app.terpoir.core.timelinePlanForMethods
 import app.terpoir.privacy.PrivacySettings
 import app.terpoir.share.SessionShare
 import java.time.Instant
@@ -124,6 +125,7 @@ fun SessionEditor(
     var checkInChoice by remember { mutableStateOf<Boolean?>(null) }
     var checkInMinutes by remember { mutableStateOf<String?>(null) }
     var sharing by remember { mutableStateOf(false) }
+    val timelineGesture = rememberTimelineGesture()
     // The saved session: `id`, or the new session once saved to add a note.
     var sessionId by remember(id) { mutableStateOf(id) }
 
@@ -169,160 +171,164 @@ fun SessionEditor(
         }
     }
 
-    EditorScaffold(
-        title = stringResource(if (sessionId == null) R.string.session_new else R.string.session_edit),
-        // Close: a session with a reminder set is saved, so the reminder
-        // isn't lost; otherwise anything entered is only dropped after
-        // asking.
-        onClose = {
-            when {
-                checkIn -> save()
-                current != initial || sessionId != id -> confirmDiscard = true
-                else -> onDone()
-            }
-        },
-        onSave = ::save,
-    ) {
-        WhenRow(current.whenMs, current.utcOffsetMin) { ms, offset -> draft = current.copy(whenMs = ms, utcOffsetMin = offset) }
-
-        SectionTitle(stringResource(R.string.session_products))
-        current.lines.forEachIndexed { index, line ->
-            LineEditor(
-                line = line,
-                products = products,
-                productLabels = productLabels,
-                spotNames = spots.associate { it.id to it.data.name },
-                vocab = vocab,
-                onChange = { changed -> draft = current.copy(lines = current.lines.toMutableList().also { it[index] = changed }) },
-                onRemove = { draft = current.copy(lines = current.lines.toMutableList().also { it.removeAt(index) }) },
-            )
-        }
-        OutlinedButton(onClick = {
-            val method = vocab.methods.first()
-            draft = current.copy(lines = current.lines + LineDraft(method = method, doseUnit = doseUnitsForMethod(method).firstOrNull()))
-        }) { Text(stringResource(R.string.session_add_product)) }
-
-        // "What I track": hidden data points are left out here, and the
-        // draft carries their saved values unchanged.
-        val showIntention = tracking.shows(DataPoint.INTENTION)
-        val showSocial = tracking.shows(DataPoint.SOCIAL)
-        val showMood = tracking.shows(DataPoint.MOOD)
-        if (showIntention || showSocial || showMood) SectionTitle(stringResource(R.string.session_intention))
-        if (showIntention) SingleChoiceChips(vocab.intentions, current.intention) { draft = current.copy(intention = it) }
-        if (showSocial) SingleChoiceChips(vocab.social, current.social) { draft = current.copy(social = it) }
-        if (showMood) {
-            Text(stringResource(R.string.session_mood_before), style = MaterialTheme.typography.labelLarge)
-            ScaleRow(current.moodBefore, { draft = current.copy(moodBefore = it) }, stringResource(R.string.scale_low), stringResource(R.string.scale_high))
-        }
-
-        SectionTitle(stringResource(R.string.session_effects))
-        EffectsEditor(
-            vocab = vocab,
-            custom = customEffects,
-            effects = current.effects,
-            onChange = { draft = current.copy(effects = it) },
-            onNewEffect = { name ->
-                scope.launch {
-                    val tagId = repo.saveTag(null, TagData(name, EFFECT_CATEGORY))
-                    customEffects = repo.tags(EFFECT_CATEGORY)
-                    draft = draft?.let { d -> d.copy(effects = d.effects + (TagRefData.Custom(tagId) to DEFAULT_INTENSITY)) }
+    TimelineHost(timelineGesture) {
+        EditorScaffold(
+            title = stringResource(if (sessionId == null) R.string.session_new else R.string.session_edit),
+            // Close: a session with a reminder set is saved, so the reminder
+            // isn't lost; otherwise anything entered is only dropped after
+            // asking.
+            onClose = {
+                when {
+                    checkIn -> save()
+                    current != initial || sessionId != id -> confirmDiscard = true
+                    else -> onDone()
                 }
             },
-        )
+            onSave = ::save,
+        ) {
+            WhenRow(current.whenMs, current.utcOffsetMin) { ms, offset -> draft = current.copy(whenMs = ms, utcOffsetMin = offset) }
 
-        // Hidden unless turned on in the Privacy Center; while hidden, the
-        // draft carries any saved symptoms unchanged.
-        if (settings.targetedSymptoms) {
-            SectionTitle(stringResource(R.string.session_symptoms))
-            SymptomsEditor(
-                vocab = vocab,
-                custom = customSymptoms,
-                symptoms = current.symptoms,
-                onChange = { draft = current.copy(symptoms = it) },
-                onNewSymptom = { name ->
-                    scope.launch {
-                        val tagId = repo.saveTag(null, TagData(name, SYMPTOM_CATEGORY))
-                        customSymptoms = repo.tags(SYMPTOM_CATEGORY)
-                        draft = draft?.let { d -> d.copy(symptoms = d.symptoms + (TagRefData.Custom(tagId) to NOT_RATED)) }
-                    }
-                },
-            )
-        }
-
-        if (tracking.shows(DataPoint.TIMELINE)) {
-            SectionTitle(stringResource(R.string.session_timeline))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MinutesField(stringResource(R.string.session_onset), current.onset, Modifier.weight(1f)) { draft = current.copy(onset = it) }
-                MinutesField(stringResource(R.string.session_peak), current.peak, Modifier.weight(1f)) { draft = current.copy(peak = it) }
-                MinutesField(stringResource(R.string.session_duration), current.duration, Modifier.weight(1f)) { draft = current.copy(duration = it) }
-            }
-        }
-
-        SectionTitle(stringResource(R.string.session_outcome))
-        if (showMood) {
-            Text(stringResource(R.string.session_mood_after), style = MaterialTheme.typography.labelLarge)
-            ScaleRow(current.moodAfter, { draft = current.copy(moodAfter = it) }, stringResource(R.string.scale_low), stringResource(R.string.scale_high))
-        }
-        Text(stringResource(R.string.session_rating), style = MaterialTheme.typography.labelLarge)
-        ScaleRow(current.rating, { draft = current.copy(rating = it) }, stringResource(R.string.rating_low), stringResource(R.string.rating_high))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.session_would_repeat), style = MaterialTheme.typography.labelLarge)
-            FilterChip(
-                selected = current.wouldRepeat == true,
-                onClick = { draft = current.copy(wouldRepeat = if (current.wouldRepeat == true) null else true) },
-                label = { Text(stringResource(R.string.yes)) },
-            )
-            FilterChip(
-                selected = current.wouldRepeat == false,
-                onClick = { draft = current.copy(wouldRepeat = if (current.wouldRepeat == false) null else false) },
-                label = { Text(stringResource(R.string.no)) },
-            )
-        }
-
-        // Spot, check-in and notes: one row of icons, each opening its own
-        // menu or dialog.
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            SpotAction(spots, current.spot) { draft = current.copy(spot = it) }
-            if (settings.followUpCheckIns) {
-                CheckInAction(
-                    on = checkIn,
-                    minutes = checkInAfter,
-                    onToggle = { checkInChoice = it },
-                    onMinutes = { checkInMinutes = it },
+            SectionTitle(stringResource(R.string.session_products))
+            current.lines.forEachIndexed { index, line ->
+                LineEditor(
+                    line = line,
+                    products = products,
+                    productLabels = productLabels,
+                    spotNames = spots.associate { it.id to it.data.name },
+                    vocab = vocab,
+                    onChange = { changed -> draft = current.copy(lines = current.lines.toMutableList().also { it[index] = changed }) },
+                    onRemove = { draft = current.copy(lines = current.lines.toMutableList().also { it.removeAt(index) }) },
                 )
             }
-            NotesAction(
-                notes = notes,
-                onOpen = { openNote = NoteTarget(it) },
-                onNew = {
-                    // A note belongs to a saved session, so a new session is
-                    // saved first; the editor stays open.
-                    if (sessionId != null) {
-                        openNote = NoteTarget(null)
-                    } else {
-                        when (val result = current.toData()) {
-                            is SessionDraft.Result.Invalid -> error = result.error
-                            is SessionDraft.Result.Valid -> scope.launch {
-                                sessionId = repo.saveSession(null, result.data)
-                                openNote = NoteTarget(null)
-                            }
-                        }
+            OutlinedButton(onClick = {
+                val method = vocab.methods.first()
+                draft = current.copy(lines = current.lines + LineDraft(method = method, doseUnit = doseUnitsForMethod(method).firstOrNull()))
+            }) { Text(stringResource(R.string.session_add_product)) }
+
+            // "What I track": hidden data points are left out here, and the
+            // draft carries their saved values unchanged.
+            val showIntention = tracking.shows(DataPoint.INTENTION)
+            val showSocial = tracking.shows(DataPoint.SOCIAL)
+            val showMood = tracking.shows(DataPoint.MOOD)
+            if (showIntention || showSocial || showMood) SectionTitle(stringResource(R.string.session_intention))
+            if (showIntention) SingleChoiceChips(vocab.intentions, current.intention) { draft = current.copy(intention = it) }
+            if (showSocial) SingleChoiceChips(vocab.social, current.social) { draft = current.copy(social = it) }
+            if (showMood) {
+                Text(stringResource(R.string.session_mood_before), style = MaterialTheme.typography.labelLarge)
+                ScaleRow(current.moodBefore, { draft = current.copy(moodBefore = it) }, stringResource(R.string.scale_low), stringResource(R.string.scale_high))
+            }
+
+            SectionTitle(stringResource(R.string.session_effects))
+            EffectsEditor(
+                vocab = vocab,
+                custom = customEffects,
+                effects = current.effects,
+                onChange = { draft = current.copy(effects = it) },
+                onNewEffect = { name ->
+                    scope.launch {
+                        val tagId = repo.saveTag(null, TagData(name, EFFECT_CATEGORY))
+                        customEffects = repo.tags(EFFECT_CATEGORY)
+                        draft = draft?.let { d -> d.copy(effects = d.effects + (TagRefData.Custom(tagId) to DEFAULT_INTENSITY)) }
                     }
                 },
             )
-        }
 
-        error?.let {
-            Text(
-                stringResource(if (it == DraftError.DOSE) R.string.error_dose else R.string.error_timeline),
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-        if (sessionId != null) {
-            // Shares what is saved, not unsaved edits.
-            OutlinedButton(onClick = { sharing = true }) { Text(stringResource(R.string.share)) }
-            TextButton(onClick = { confirmDelete = true }) {
-                Text(stringResource(R.string.session_delete), color = MaterialTheme.colorScheme.error)
+            // Hidden unless turned on in the Privacy Center; while hidden, the
+            // draft carries any saved symptoms unchanged.
+            if (settings.targetedSymptoms) {
+                SectionTitle(stringResource(R.string.session_symptoms))
+                SymptomsEditor(
+                    vocab = vocab,
+                    custom = customSymptoms,
+                    symptoms = current.symptoms,
+                    onChange = { draft = current.copy(symptoms = it) },
+                    onNewSymptom = { name ->
+                        scope.launch {
+                            val tagId = repo.saveTag(null, TagData(name, SYMPTOM_CATEGORY))
+                            customSymptoms = repo.tags(SYMPTOM_CATEGORY)
+                            draft = draft?.let { d -> d.copy(symptoms = d.symptoms + (TagRefData.Custom(tagId) to NOT_RATED)) }
+                        }
+                    },
+                )
+            }
+
+            // The timeline replaces the onset, peak and duration fields, whose
+            // saved values the draft carries unchanged.
+            if (tracking.shows(DataPoint.TIMELINE)) {
+                SectionTitle(stringResource(R.string.session_timeline))
+                val methods = current.lines.map { it.method }
+                val plan = remember(methods) { timelinePlanForMethods(methods) }
+                TimelineSection(plan, current.levels, current.levelsUpdatedMs, timelineGesture) {
+                    draft = current.copy(levels = it, levelsUpdatedMs = if (it.isEmpty()) null else System.currentTimeMillis())
+                }
+            }
+
+            SectionTitle(stringResource(R.string.session_outcome))
+            if (showMood) {
+                Text(stringResource(R.string.session_mood_after), style = MaterialTheme.typography.labelLarge)
+                ScaleRow(current.moodAfter, { draft = current.copy(moodAfter = it) }, stringResource(R.string.scale_low), stringResource(R.string.scale_high))
+            }
+            Text(stringResource(R.string.session_rating), style = MaterialTheme.typography.labelLarge)
+            ScaleRow(current.rating, { draft = current.copy(rating = it) }, stringResource(R.string.rating_low), stringResource(R.string.rating_high))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.session_would_repeat), style = MaterialTheme.typography.labelLarge)
+                FilterChip(
+                    selected = current.wouldRepeat == true,
+                    onClick = { draft = current.copy(wouldRepeat = if (current.wouldRepeat == true) null else true) },
+                    label = { Text(stringResource(R.string.yes)) },
+                )
+                FilterChip(
+                    selected = current.wouldRepeat == false,
+                    onClick = { draft = current.copy(wouldRepeat = if (current.wouldRepeat == false) null else false) },
+                    label = { Text(stringResource(R.string.no)) },
+                )
+            }
+
+            // Spot, check-in and notes: one row of icons, each opening its own
+            // menu or dialog.
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                SpotAction(spots, current.spot) { draft = current.copy(spot = it) }
+                if (settings.followUpCheckIns) {
+                    CheckInAction(
+                        on = checkIn,
+                        minutes = checkInAfter,
+                        onToggle = { checkInChoice = it },
+                        onMinutes = { checkInMinutes = it },
+                    )
+                }
+                NotesAction(
+                    notes = notes,
+                    onOpen = { openNote = NoteTarget(it) },
+                    onNew = {
+                        // A note belongs to a saved session, so a new session is
+                        // saved first; the editor stays open.
+                        if (sessionId != null) {
+                            openNote = NoteTarget(null)
+                        } else {
+                            when (val result = current.toData()) {
+                                is SessionDraft.Result.Invalid -> error = result.error
+                                is SessionDraft.Result.Valid -> scope.launch {
+                                    sessionId = repo.saveSession(null, result.data)
+                                    openNote = NoteTarget(null)
+                                }
+                            }
+                        }
+                    },
+                )
+            }
+
+            error?.let {
+                Text(
+                    stringResource(if (it == DraftError.DOSE) R.string.error_dose else R.string.error_timeline),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            if (sessionId != null) {
+                // Shares what is saved, not unsaved edits.
+                OutlinedButton(onClick = { sharing = true }) { Text(stringResource(R.string.share)) }
+                TextButton(onClick = { confirmDelete = true }) {
+                    Text(stringResource(R.string.session_delete), color = MaterialTheme.colorScheme.error)
+                }
             }
         }
     }

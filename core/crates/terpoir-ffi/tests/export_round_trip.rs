@@ -19,7 +19,7 @@ use terpoir_ffi::{
     BrandData, CannabinoidAmountData, CoreError, IdentifierData, Journal, LocalTimeData, NewKeys,
     ProductData, ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData,
     SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance,
-    TagRefData, create_keys, keys_for_restore, read_export_archive,
+    TagRefData, TimelineLevelData, create_keys, keys_for_restore, read_export_archive,
 };
 
 const TYPES: [RecordType; 8] = [
@@ -273,6 +273,11 @@ fn fill(journal: &Journal) -> Filled {
                     result: "helped".into(),
                 }],
                 attachments: vec![],
+                timeline_levels: vec![TimelineLevelData {
+                    minute: 30,
+                    level: 3,
+                }],
+                timeline_updated_ms: Some(1_760_000_000_000),
             },
             3,
         )

@@ -288,9 +288,40 @@
     <string name="session_new_effect">Your own effect</string>
     <string name="session_add_effect">Add your own effect</string>
     <string name="session_timeline">Timeline</string>
-    <string name="session_onset">Onset</string>
-    <string name="session_peak">Peak</string>
-    <string name="session_duration">Lasted</string>
+    <string name="timeline_prompt">How\'s it hitting?</string>
+    <string name="timeline_touch">Touch me</string>
+    <string name="timeline_indicator">How it\'s hitting: touch and hold, then flick up or down</string>
+    <string name="timeline_by_hand">Set by hand</string>
+    <string name="timeline_help_title">Hold while it builds</string>
+    <string name="timeline_help_body">The longer you hold, the harder it\'s hitting now. Then let go with a flick: up if it\'s still climbing, down if it\'s easing off, or just let go if it\'s steady.</string>
+    <string name="timeline_now">Now: %1$s</string>
+    <string name="timeline_hint">Drag a point up or down, or tap a guess to keep it. Dashed points are a guess until you set them.</string>
+    <string name="timeline_start_over">Start over</string>
+    <string name="timeline_guess">a guess</string>
+    <string name="timeline_updated_now">You last updated just now</string>
+    <plurals name="timeline_updated_minutes">
+        <item quantity="one">You last updated %d min ago</item>
+        <item quantity="other">You last updated %d min ago</item>
+    </plurals>
+    <plurals name="timeline_updated_hours">
+        <item quantity="one">You last updated %d hour ago</item>
+        <item quantity="other">You last updated %d hours ago</item>
+    </plurals>
+    <plurals name="timeline_updated_days">
+        <item quantity="one">You last updated %d day ago</item>
+        <item quantity="other">You last updated %d days ago</item>
+    </plurals>
+    <string name="timeline_minutes">%d min</string>
+    <string name="timeline_hours">%d h</string>
+    <string name="timeline_hours_minutes">%1$d h %2$d</string>
+    <string-array name="timeline_levels">
+        <item>None</item>
+        <item>Faint</item>
+        <item>Mild</item>
+        <item>Clear</item>
+        <item>Strong</item>
+        <item>Intense</item>
+    </string-array>
     <string name="minutes_short">min</string>
     <string name="session_outcome">How it went</string>
     <string name="session_mood_after">Mood after</string>

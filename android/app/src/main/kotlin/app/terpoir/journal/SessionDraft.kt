@@ -10,6 +10,7 @@ import app.terpoir.core.SessionData
 import app.terpoir.core.SymptomData
 import app.terpoir.core.TagIntensity
 import app.terpoir.core.TagRefData
+import app.terpoir.core.TimelineLevelData
 
 /** One product line as the editor holds it. */
 data class LineDraft(
@@ -46,6 +47,10 @@ data class SessionDraft(
     val onset: String = "",
     val peak: String = "",
     val duration: String = "",
+    /** Timeline: minutes after consumption → level 0–5, only the points the user set. */
+    val levels: Map<Int, Int> = emptyMap(),
+    /** When [levels] last changed, in Unix milliseconds. */
+    val levelsUpdatedMs: Long? = null,
     val moodAfter: Int? = null,
     val rating: Int? = null,
     val wouldRepeat: Boolean? = null,
@@ -100,6 +105,8 @@ data class SessionDraft(
                 spot = spot,
                 symptoms = symptoms.map { (tag, result) -> SymptomData(tag, result) },
                 attachments = original?.attachments.orEmpty(),
+                timelineLevels = levels.toSortedMap().map { (minute, level) -> TimelineLevelData(minute.toUInt(), level.toUByte()) },
+                timelineUpdatedMs = levelsUpdatedMs,
             ),
         )
     }
@@ -139,6 +146,8 @@ data class SessionDraft(
             onset = data.onsetMin?.toString().orEmpty(),
             peak = data.peakMin?.toString().orEmpty(),
             duration = data.durationMin?.toString().orEmpty(),
+            levels = data.timelineLevels.associate { it.minute.toInt() to it.level.toInt() },
+            levelsUpdatedMs = data.timelineUpdatedMs,
             moodAfter = data.moodAfter?.toInt(),
             rating = data.rating?.toInt(),
             wouldRepeat = data.wouldRepeat,

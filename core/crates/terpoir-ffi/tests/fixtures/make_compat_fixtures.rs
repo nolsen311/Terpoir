@@ -25,7 +25,7 @@ use terpoir_ffi::{
     BrandData, CannabinoidAmountData, IdentifierData, InsightFeedback, Journal, LocalTimeData, ProductData,
     ProductLineData, PurchaseData, PurchaseLineData, SessionData, SnippetData, SpotData,
     StrainData, SymptomData, TagData, TagIntensity, TagProvenance, TagRefData,
-    TerpeneLevelData, seal_capture, wrap_master_key_with_passphrase,
+    TerpeneLevelData, TimelineLevelData, seal_capture, wrap_master_key_with_passphrase,
 };
 
 /// Recovery key bytes 0x00..=0x1f, in display form.
@@ -322,6 +322,11 @@ fn main() {
                     },
                 ],
                 attachments: vec![],
+                timeline_levels: vec![
+                    TimelineLevelData { minute: 48, level: 2 },
+                    TimelineLevelData { minute: 96, level: 4 },
+                ],
+                timeline_updated_ms: Some(1_760_000_600_000),
             },
             T0 + 9,
         )
@@ -467,7 +472,8 @@ fn main() {
     "attachment": "{attachment}"
   }},
   "sync_blobs_before_edit": [{early}],
-  "sync_blobs_final": [{finals}]
+  "sync_blobs_final": [{finals}],
+  "session_timeline": true
 }}
 "#,
         version = terpoir_ffi::core_version(),

@@ -195,6 +195,32 @@ pub struct SessionData {
     pub symptoms: Vec<SymptomData>,
     /// Attachment IDs.
     pub attachments: Vec<String>,
+    /// How strong it felt over time: only the points the user set.
+    #[uniffi(default = [])]
+    pub timeline_levels: Vec<TimelineLevelData>,
+    /// When the timeline levels last changed, in Unix milliseconds.
+    #[uniffi(default = None)]
+    pub timeline_updated_ms: Option<i64>,
+}
+
+/// One point of a session's timeline.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, uniffi::Record)]
+pub struct TimelineLevelData {
+    /// Minutes after consumption.
+    pub minute: u32,
+    /// How strong it felt, 0 to 5.
+    pub level: u8,
+}
+
+/// How a session's timeline is asked for (see `Method::timeline_plan`).
+#[derive(Clone, PartialEq, Eq, Debug, uniffi::Record)]
+pub struct TimelinePlanData {
+    /// Length in minutes.
+    pub minutes: u32,
+    /// The points' times, in minutes after consumption.
+    pub point_minutes: Vec<u32>,
+    /// How many of the first points the first gesture sets.
+    pub gesture_points: u32,
 }
 
 impl SessionData {
@@ -248,6 +274,12 @@ impl SessionData {
             .iter()
             .map(|s| Ok((s.tag.to_model()?, SymptomResult::from_slug(&s.result))))
             .collect::<Result<_>>()?;
+        let mut timeline_levels = BTreeMap::new();
+        for point in &self.timeline_levels {
+            if point.level > 5 || timeline_levels.insert(point.minute, point.level).is_some() {
+                return Err(CoreError::InvalidInput);
+            }
+        }
         Ok(Session {
             when: self.when.into(),
             lines,
@@ -261,6 +293,8 @@ impl SessionData {
                 peak_min: self.peak_min,
                 duration_min: self.duration_min,
             },
+            timeline_levels,
+            timeline_updated_ms: self.timeline_updated_ms,
             mood_after: in_range(self.mood_after, 1..=5)?,
             rating: in_range(self.rating, 1..=5)?,
             would_repeat: self.would_repeat,
@@ -315,6 +349,15 @@ impl SessionData {
                 })
                 .collect(),
             attachments: ids_to_strings(&s.attachments),
+            timeline_levels: s
+                .timeline_levels
+                .iter()
+                .map(|(minute, level)| TimelineLevelData {
+                    minute: *minute,
+                    level: *level,
+                })
+                .collect(),
+            timeline_updated_ms: s.timeline_updated_ms,
         }
     }
 }

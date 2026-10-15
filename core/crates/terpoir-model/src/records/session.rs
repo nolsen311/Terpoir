@@ -124,6 +124,48 @@ impl Method {
     }
 }
 
+/// How a method's timeline is asked for: its length, how many evenly
+/// spaced points it has (the last at the end), and how many of them the
+/// first gesture sets (docs/design-decisions.md, "Session timeline").
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct TimelinePlan {
+    /// Length in minutes.
+    pub minutes: u32,
+    /// Points along it.
+    pub points: u32,
+    /// Points the first gesture sets.
+    pub gesture_points: u32,
+}
+
+impl TimelinePlan {
+    /// The points' times in minutes, evenly spaced, the last at the end.
+    #[must_use]
+    pub fn point_minutes(&self) -> Vec<u32> {
+        (1..=self.points)
+            .map(|i| self.minutes * i / self.points.max(1))
+            .collect()
+    }
+}
+
+impl Method {
+    /// The timeline asked for after this method (maintainer, 2026-10-15).
+    /// A method from a newer app version gets the smoked one.
+    #[must_use]
+    pub const fn timeline_plan(&self) -> TimelinePlan {
+        let (minutes, points, gesture_points) = match self {
+            Self::Dabbed => (60, 3, 1),
+            Self::Smoked | Self::VapedFlower | Self::VapeCart | Self::Unknown(_) => (120, 4, 2),
+            Self::Edible | Self::Beverage | Self::Tincture => (240, 5, 2),
+            Self::Topical => (120, 3, 2),
+        };
+        TimelinePlan {
+            minutes,
+            points,
+            gesture_points,
+        }
+    }
+}
+
 const ALL_DOSE_UNITS: [DoseUnit; 6] = [
     DoseUnit::Hits,
     DoseUnit::Bowls,
@@ -322,8 +364,13 @@ pub struct Session {
     pub social: Option<Social>,
     /// Effect intensities, 0 to 5.
     pub effects: BTreeMap<TagRef, u8>,
-    /// Onset, peak and duration.
+    /// Onset, peak and duration (asked for before 0.5.0; kept as saved).
     pub timeline: Timeline,
+    /// How strong it felt over time: minutes after consumption → 0 to 5.
+    /// Only the points the user set; nothing guessed is stored.
+    pub timeline_levels: BTreeMap<u32, u8>,
+    /// When the timeline levels were last changed, in Unix milliseconds.
+    pub timeline_updated_ms: Option<i64>,
     /// Mood after, 1 to 5.
     pub mood_after: Option<u8>,
     /// Overall rating, 1 to 5.
@@ -339,6 +386,13 @@ pub struct Session {
 }
 
 impl Session {
+    /// The timeline plan for the session's methods: the longest of them
+    /// (on a tie, the one with more points); smoked's with no lines.
+    #[must_use]
+    pub fn timeline_plan(&self) -> TimelinePlan {
+        timeline_plan_for(self.lines.values().map(|l| &l.method))
+    }
+
     /// A session at `when` with nothing else filled in.
     #[must_use]
     pub const fn new(when: LocalTime) -> Self {
@@ -355,6 +409,8 @@ impl Session {
                 peak_min: None,
                 duration_min: None,
             },
+            timeline_levels: BTreeMap::new(),
+            timeline_updated_ms: None,
             mood_after: None,
             rating: None,
             would_repeat: None,
@@ -363,6 +419,15 @@ impl Session {
             attachments: BTreeSet::new(),
         }
     }
+}
+
+/// The timeline plan for a set of methods; see [`Session::timeline_plan`].
+pub fn timeline_plan_for<'a>(methods: impl IntoIterator<Item = &'a Method>) -> TimelinePlan {
+    methods
+        .into_iter()
+        .map(Method::timeline_plan)
+        .max_by_key(|p| (p.minutes, p.points))
+        .unwrap_or_else(|| Method::Smoked.timeline_plan())
 }
 
 const SCALARS: &[&str] = &[
@@ -374,12 +439,20 @@ const SCALARS: &[&str] = &[
     "onset_min",
     "peak_min",
     "duration_min",
+    "timeline_updated",
     "mood_after",
     "rating",
     "would_repeat",
     "spot",
 ];
-const MAPS: &[&str] = &["lines", "line_shops", "effects", "symptoms", "attachments"];
+const MAPS: &[&str] = &[
+    "lines",
+    "line_shops",
+    "effects",
+    "timeline_levels",
+    "symptoms",
+    "attachments",
+];
 
 impl Record for Session {
     const KIND: RecordKind = RecordKind::Session;
@@ -400,6 +473,7 @@ impl Record for Session {
             .opt("onset_min", self.timeline.onset_min, int)
             .opt("peak_min", self.timeline.peak_min, int)
             .opt("duration_min", self.timeline.duration_min, int)
+            .opt("timeline_updated", self.timeline_updated_ms, Value::Int)
             .opt("mood_after", self.mood_after, small)
             .opt("rating", self.rating, small)
             .opt("would_repeat", self.would_repeat, Value::Bool)
@@ -414,6 +488,12 @@ impl Record for Session {
                 Value::Id,
             )
             .map("effects", &self.effects, |t| t.to_key(), |v| small(*v))
+            .map(
+                "timeline_levels",
+                &self.timeline_levels,
+                ToString::to_string,
+                |v| small(*v),
+            )
             .map(
                 "symptoms",
                 &self.symptoms,
@@ -445,6 +525,19 @@ impl Record for Session {
                 line.shop = Some(*shop);
             }
         }
+        let timeline_levels = r
+            .entries("timeline_levels")
+            .map(|(k, v)| {
+                let minute = k.parse::<u32>().ok();
+                let level = match v {
+                    Value::Int(i) => u8::try_from(*i).ok().filter(|l| *l <= 5),
+                    _ => None,
+                };
+                minute
+                    .zip(level)
+                    .ok_or(Error::InvalidField("timeline_levels"))
+            })
+            .collect::<Result<_>>()?;
         Ok(Self {
             when: LocalTime::from_value(r.value("when"), "when")?,
             lines,
@@ -461,6 +554,8 @@ impl Record for Session {
                 peak_min: r.int_in("peak_min", 0..=u32::MAX)?,
                 duration_min: r.int_in("duration_min", 0..=u32::MAX)?,
             },
+            timeline_levels,
+            timeline_updated_ms: r.int_in("timeline_updated", i64::MIN..=i64::MAX)?,
             mood_after: r.int_in("mood_after", 1..=5)?,
             rating: r.int_in("rating", 1..=5)?,
             would_repeat: r.bool("would_repeat")?,
@@ -581,6 +676,9 @@ mod tests {
             peak_min: Some(90),
             duration_min: None,
         };
+        s.timeline_levels.insert(30, 2);
+        s.timeline_levels.insert(60, 4);
+        s.timeline_updated_ms = Some(1_760_000_000_000);
         s.mood_after = Some(4);
         s.rating = Some(5);
         s.would_repeat = Some(true);
@@ -622,6 +720,57 @@ mod tests {
         assert_eq!(removed.stamp, stamp(2, 1));
         assert_eq!(doc.value("rating"), &Value::Null);
         assert_eq!(Session::from_document(&doc).unwrap(), session);
+    }
+
+    #[test]
+    fn timeline_plans_follow_the_method() {
+        assert_eq!(Method::Dabbed.timeline_plan().point_minutes(), [20, 40, 60]);
+        assert_eq!(Method::Dabbed.timeline_plan().gesture_points, 1);
+        assert_eq!(
+            Method::Smoked.timeline_plan().point_minutes(),
+            [30, 60, 90, 120]
+        );
+        assert_eq!(
+            Method::Tincture.timeline_plan().point_minutes(),
+            [48, 96, 144, 192, 240]
+        );
+        assert_eq!(
+            Method::Topical.timeline_plan().point_minutes(),
+            [40, 80, 120]
+        );
+        // A session takes its longest method's plan; with none, smoked's.
+        let mut s = Session::new(LocalTime {
+            unix_ms: 0,
+            utc_offset_min: 0,
+        });
+        assert_eq!(s.timeline_plan(), Method::Smoked.timeline_plan());
+        for method in [Method::Dabbed, Method::Beverage, Method::Smoked] {
+            s.lines.insert(
+                RecordId::random().unwrap(),
+                ProductLine {
+                    product: None,
+                    method,
+                    dose: None,
+                    purchase: None,
+                    shop: None,
+                },
+            );
+        }
+        assert_eq!(s.timeline_plan(), Method::Beverage.timeline_plan());
+    }
+
+    #[test]
+    fn timeline_levels_are_one_field_per_point() {
+        let mut session = full_session();
+        let mut doc = Document::create(&session, stamp(1, 1)).unwrap();
+        assert_eq!(doc.value("timeline_levels/30"), &Value::Int(2));
+        session.timeline_levels.insert(90, 1);
+        assert_eq!(doc.update(&session, stamp(2, 1)).unwrap(), 1);
+        assert_eq!(Session::from_document(&doc).unwrap(), session);
+        // A level above 5 is refused.
+        session.timeline_levels.insert(120, 6);
+        doc.update(&session, stamp(3, 1)).unwrap();
+        assert!(Session::from_document(&doc).is_err());
     }
 
     #[test]

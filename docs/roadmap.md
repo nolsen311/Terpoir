@@ -330,6 +330,15 @@ requirement rather than on features.
       matched text broken down into brand, strain, product type and size
       over time. Later, an offline strain database (per "Catalog lookups").
 
+- [ ] Session timeline (maintainer, 2026-10-15; `docs/design-decisions.md`,
+      "Session timeline"): how strong it felt over time replaces onset,
+      peak and duration.
+  - [x] Points per method, the hold-and-flick indicator, the chart with
+        guessed points, "You last updated", in the session editor and the
+        check-in screen; stored as levels per minute in the core.
+  - [ ] The timeline in shares.
+  - [ ] Insights that use the timeline (for example, how fast it comes on).
+
 ## Phase 5: Stretch
 
 - [ ] iOS app (Swift, UniFFI Swift bindings); submit as an individual,

@@ -221,6 +221,7 @@ fn sessions_csv(docs: &[Document], names: &Names) -> String {
         "duration_min",
         "spot",
         "symptoms",
+        "timeline",
     ]);
     for doc in docs {
         let Ok(s) = Session::from_document(doc) else {
@@ -265,6 +266,12 @@ fn sessions_csv(docs: &[Document], names: &Names) -> String {
                 s.symptoms
                     .iter()
                     .map(|(t, r)| format!("{}={}", names.tag(t), r.slug())),
+            ),
+            // Minutes after consumption = level, 0 to 5: "30=3; 60=4".
+            join(
+                s.timeline_levels
+                    .iter()
+                    .map(|(minute, level)| format!("{minute}={level}")),
             ),
         ]);
     }
