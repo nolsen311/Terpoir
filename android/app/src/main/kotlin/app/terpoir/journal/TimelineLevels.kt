@@ -88,3 +88,13 @@ fun timelinePoints(pointMinutes: List<Int>, levels: Map<Int, Int>, trend: Int = 
         TimelinePoint(m, level.coerceIn(0, MAX_LEVEL), set = false)
     }
 }
+
+/**
+ * A timeline as a share shows it, from the points the user set and never
+ * the guesses: "20 min 2/5 · 40 min 4/5 · 1 h 3/5", earliest first.
+ * [minuteLabel] names a time after consumption ("20 min", "1 h").
+ */
+fun timelineShareValue(levels: Map<Int, Int>, minuteLabel: (Int) -> String): String =
+    levels.toSortedMap().entries.joinToString(" · ") { (minute, level) ->
+        "${minuteLabel(minute)} ${level.coerceIn(0, MAX_LEVEL)}/$MAX_LEVEL"
+    }

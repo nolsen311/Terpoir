@@ -527,7 +527,7 @@ private fun UpdatedAgo(updatedMs: Long) {
 
 /** A time after consumption: "20 min", "1 h", "1 h 36". */
 @Composable
-private fun durationLabel(minutes: Int): String = when {
+internal fun durationLabel(minutes: Int): String = when {
     minutes < 60 -> stringResource(R.string.timeline_minutes, minutes)
     minutes % 60 == 0 -> stringResource(R.string.timeline_hours, minutes / 60)
     else -> stringResource(R.string.timeline_hours_minutes, minutes / 60, minutes % 60)
