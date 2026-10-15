@@ -17,10 +17,9 @@ could be read first-hand.
 **Update 2026-10-15:** the maintainer allowed `seedfinder.eu`,
 `en.seedfinder.eu`, `kannapedia.net`, `www.allbud.com` and the TerpHunter hosts.
 SeedFinder, Kannapedia and AllBud were read first-hand that day; their sections
-below quote their own pages. TerpHunter still could not be read: the proxy
-refused `terphunter.com`, and `www.terphunter.com` only redirects there. Its
-section rests on search snippets and is marked **unverified**.
-`medicinalgenomics.com` (Kannapedia's owner) was also refused.
+below quote their own pages. TerpHunter's apex `terphunter.com` was refused at
+first and allowed later that day; its section also quotes its own pages.
+`medicinalgenomics.com` (Kannapedia's owner) is still refused.
 
 ## Summary and recommendation
 
@@ -38,8 +37,10 @@ offline catalog, and remove the one online candidate:
   cannabinoids and terpenes), but for only 1,462 public samples, with no
   parents, no API, no stated licence and no terms page. Only usable with
   written permission from Medicinal Genomics.
-- **TerpHunter** (unverified) sells its API and bulk export on a $100/month
-  tier. A project key cannot ship in open source. Hold until it can be read.
+- **TerpHunter** has the right fields (parents, chemotype, terpene profile),
+  but no public API yet ("Pro — Coming later"); its own API needs a login,
+  and its terms forbid scraping and redistribution. Revisit when the Pro API
+  ships.
 
 Recommendation; the maintainer picks one:
 
@@ -74,7 +75,7 @@ unstated).
 | SeedFinder.eu | **No API**: "discontinued per july 1st, 2024"; HTML pages only | "personal or private use; commercial use is prohibited"; no reproduction or distribution (verified) | n/a | n/a (pages load Google Analytics, Microsoft Clarity) | ~42,000 strain pages, 2,146 breeders: type, breeder, flowering time, parents, hybrids, user effects/aroma/taste; lab cannabinoids for 91 varieties; no terpenes | Unusable without written permission |
 | Kannapedia | **No API**; one 2.8 MB HTML list, filtered in the browser; VCF downloads | No terms page, no licence stated; owner's site unreachable | Free to view | n/a (Google Analytics only after consent) | 1,462 public samples (2,418 registered): chemotype from DNA, genetic relatives by distance, gene variants incl. terpene synthases; registrant cannabinoids and terpenes (sparse); no parents | Unusable without written permission |
 | AllBud | Internal API (`/api/`) answers 401; HTML pages | "personal, non-commercial use only"; no robots or storing (verified) | Account (not offered to third parties) | n/a (Google Analytics, ad network, ShareThis) | ~16,000 strains: type with sativa/indica %, THC/CBD/CBN, description, effects, "may relieve", flavors, aromas, reviews; no terpenes or parent fields | Unusable |
-| TerpHunter | API and bulk export on the Pro tier ($100/month, per search snippet) | **Unverified**, site unreachable | Paid per account | Query, key, IP | "5,200+ strain profiles", terpene and lab data from Michigan and Ohio dispensaries (snippet) | Hold; likely unusable (paid key) |
+| TerpHunter | No public API: "Pro — Coming later: Full API access ... Bulk data export"; site API answers 401 without a login | No "scrape, crawl, or bulk-download"; no right "to redistribute our aggregated data" (verified) | Free account (email), not shareable | Query, account, IP (first-party page-view stats only) | 5,200+ strains (parents, chemotype, terpene profile, partly AI-made); 8,000+ lab-tested products in MI, OH, MO | Unusable now; revisit when the Pro API ships |
 | Leafly | No public strain API (per secondary sources) | **Unverified** | Partner or retailer key only | n/a | Rich (terpenes, effects, lab data) | Unusable |
 | Kaggle Leafly scrapes | Bulk download | Unverified; derived from Leafly content | Kaggle account | n/a | Leafly fields | Unusable (provenance) |
 | The Strain API (evanbusse) | API (status unknown) | Unverified | Unverified | Query, IP | Unverified | Unverified; likely unusable |
@@ -270,20 +271,57 @@ unstated).
   network (`assets.mantisadnetwork.com`), ShareThis and reCAPTCHA.
 - **Fit:** none. Rule out, apart from a link out.
 
-### TerpHunter (unverified)
-- `terphunter.com` was refused by the proxy all session, and
-  `www.terphunter.com` only redirects there (301 to `https://terphunter.com/`).
-  Nothing below was read first-hand; no terms are quoted.
-- Search snippets (2026-10-15) describe "terphunter — Search Cannabis by
-  Terpenes & Lab Data": tools built on dispensary menus, lab reports (COAs),
-  "AI analysis" and community feedback from Michigan and Ohio dispensaries,
-  "5,200+ strain profiles", a free tier, Premium at $5/month, and a **Pro tier
-  at $100/month that adds API access and bulk export**
-  (https://terphunter.com/pricing.html, per snippet).
-- Fit, if the snippets hold: terpene data from COAs is the field Terpoir most
-  lacks, but the API is paid per account. A project key cannot ship in an
-  open-source app, and a $100/month key per user is not realistic. Bundling
-  would need a licence. Read its terms and pricing before deciding.
+### TerpHunter (verified 2026-10-15)
+- A one-person project ("I built terphunter because I got tired of guessing",
+  https://terphunter.com/about.html) covering Michigan, Ohio and Missouri
+  dispensaries. A first attempt that day was refused by the proxy; the apex
+  `terphunter.com` was allowed later and read. `www.terphunter.com` only
+  redirects there.
+- **Data** (https://terphunter.com/data.html): per product, 26 fields from
+  dispensary menus and lab reports (COAs): 33 terpenes, 12 cannabinoids,
+  harvest date, COA link, plus AI fields ("AI Predicted Effects", "AI Aroma
+  Profile", "AI Intensity"). Per strain, 27+ fields, including "Family",
+  "Chemotype", "Parent A", "Parent B", "Terpene Profile", "Dominant
+  Terpene", "THC Range", "Indica %", "Medical Benefits". The home page
+  claims *"5,200+ strain profiles"* and *"8,000+ products across MI & OH"*.
+- **Provenance:** product terpenes and cannabinoids are measured lab data, but
+  they belong to products on shelves, not to strains. The strain profiles are
+  *"built from lab data, dispensary menus, multiple public databases, and AI
+  synthesis"*, and the unnamed "public databases" carry the same provenance
+  problem as the Kaggle scrapes. The terms add: *"Product data sourced from
+  dispensaries and labs belongs to its respective owners."*
+- **Access:** no public API. The search snippet's "$100/month Pro tier" is out
+  of date: the pricing page (https://terphunter.com/pricing.html) lists
+  everything free with an account, and **"Pro — Coming later: Full API
+  access, Advanced analytics, Bulk data export"**. The site's own JSON API
+  (`/api/strains/<name>`, `/api/strains/<name>/descendants`,
+  `/api/products/search`) answers 401 `{"detail":"Not authenticated"}`
+  without a login. The sitemap lists 22 pages and no strain pages. robots.txt
+  allows everything except account pages.
+- **Terms** (https://terphunter.com/terms.html, *"Last updated: March 27,
+  2026"*):
+  - Users agree not to *"Scrape, crawl, or bulk-download data from
+    terphunter without permission"* or *"compete with terphunter by
+    reselling or republishing our aggregated data"*.
+  - *"Your use of terphunter does not grant you rights to redistribute our
+    aggregated data or branding."*
+  - *"You must be at least 21 years old"*. Accounts: *"Do not share your
+    account."*
+  - So: (a) live lookups would need each user's own TerpHunter login, sent
+    from the app to an undocumented API: not offered, and close to scraping;
+    (b) caching is not addressed; (c) bundling is redistribution: not
+    granted. Nothing restricts non-commercial use as such.
+- **Privacy** (https://terphunter.com/privacy.html, *"Last updated: March 18,
+  2026"*): *"We do not sell your personal data. We do not run third-party
+  display ads."* It logs *"page views, screen width, language"* first-party
+  (`/api/stats/pageview`). The pages load only Google Fonts as a third party.
+  A lookup would need an account (email), so every query would be tied to
+  the user.
+- **Fit:** the closest match to what Terpoir wants (parents, chemotype,
+  terpene profile per strain), but there is no API to use and no licence to
+  bundle, and the strain fields are partly AI-made from unnamed sources.
+  Revisit when the Pro API ships: check whether its terms allow use from an
+  app, caching, and a key per user, and ask where the strain data comes from.
 
 ### Leafly (unverified)
 - Leafly's own pages (`www.leafly.com`, `leafly.com`, `developer.leafly.com`,
@@ -342,11 +380,11 @@ Proxy returned `CONNECT tunnel failed, response 403` for these hosts on
 Reachable: `github.com`, `raw.githubusercontent.com` (git clone and raw files),
 and search-engine snippets.
 
-On 2026-10-15 `seedfinder.eu`, `en.seedfinder.eu`, `kannapedia.net` and
-`www.allbud.com` were allowed and read. Still refused that day:
-`terphunter.com` (and `www.terphunter.com` redirects to it), and
-`medicinalgenomics.com` / `www.medicinalgenomics.com`.
+On 2026-10-15 `seedfinder.eu`, `en.seedfinder.eu`, `kannapedia.net`,
+`www.allbud.com`, `terphunter.com` and `www.terphunter.com` were allowed and
+read. Still refused that day: `medicinalgenomics.com` /
+`www.medicinalgenomics.com`.
 
-Unverified as a result: all Leafly, Strain API, Otreeba, Kaggle, Wikidata and
-TerpHunter terms; Medicinal Genomics' own terms, if any cover Kannapedia; the
+Unverified as a result: all Leafly, Strain API, Otreeba, Kaggle and Wikidata
+terms; Medicinal Genomics' own terms, if any cover Kannapedia; the
 data licences for OpenTHC VDB and Cannlytics.
