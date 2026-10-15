@@ -587,8 +587,6 @@
     <string name="prompt_title">Quick log?</string>
     <string name="prompt_text">Tap to scan the receipt.</string>
     <string name="session_notes">Notes</string>
-    <string name="session_notes_save_title">Save this session?</string>
-    <string name="session_notes_save_body">Notes belong to a saved session. Save it now and keep editing?</string>
     <string name="session_notes_count">Notes (%1$d)</string>
     <string name="voice_mic_why">Speaking a note uses the microphone. Your phone\'s own speech recognizer turns it into text on the phone; the recording isn\'t kept or sent anywhere. Android will ask you to allow the microphone next.</string>
     <string name="voice_on_device">Speech is turned into text on your phone. Nothing is sent anywhere, and the recording isn\'t kept.</string>

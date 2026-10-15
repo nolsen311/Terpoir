@@ -9,6 +9,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,17 +18,20 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,7 +58,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -268,14 +278,19 @@ fun SessionEditor(
             }
             NotesAction(
                 notes = notes,
-                saved = sessionId != null,
                 onOpen = { openNote = NoteTarget(it) },
-                onSaveFirst = {
-                    when (val result = current.toData()) {
-                        is SessionDraft.Result.Invalid -> error = result.error
-                        is SessionDraft.Result.Valid -> scope.launch {
-                            sessionId = repo.saveSession(sessionId, result.data)
-                            openNote = NoteTarget(null)
+                onNew = {
+                    // A note belongs to a saved session, so a new session is
+                    // saved first; the editor stays open.
+                    if (sessionId != null) {
+                        openNote = NoteTarget(null)
+                    } else {
+                        when (val result = current.toData()) {
+                            is SessionDraft.Result.Invalid -> error = result.error
+                            is SessionDraft.Result.Valid -> scope.launch {
+                                sessionId = repo.saveSession(null, result.data)
+                                openNote = NoteTarget(null)
+                            }
                         }
                     }
                 },
@@ -640,14 +655,17 @@ const val EFFECT_CATEGORY = "effect"
 internal const val DEFAULT_INTENSITY = 3
 private const val MAX_INTENSITY = 5
 
-/** One of the icons under a session: an icon button, filled while [active], with a label below (read once, as the button's). */
+/**
+ * One of the icons under a session, with a label below. When something is
+ * set, a small green badge sits on the icon: a check, or the count when
+ * there is more than one. [description] is what a screen reader says.
+ */
 @Composable
-private fun SessionAction(icon: Int, label: String, active: Boolean, onClick: () -> Unit) {
+private fun SessionAction(icon: Int, label: String, description: String, count: Int, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(96.dp)) {
-        if (active) {
-            FilledTonalIconButton(onClick = onClick) { Icon(painterResource(icon), contentDescription = label) }
-        } else {
-            OutlinedIconButton(onClick = onClick) { Icon(painterResource(icon), contentDescription = label) }
+        Box {
+            OutlinedIconButton(onClick = onClick) { Icon(painterResource(icon), contentDescription = description) }
+            if (count > 0) SetBadge(count, Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp))
         }
         Text(
             label,
@@ -659,13 +677,44 @@ private fun SessionAction(icon: Int, label: String, active: Boolean, onClick: ()
     }
 }
 
+/** A green circle with a check (one) or the number (more than one), as on the sync card. */
+@Composable
+private fun SetBadge(count: Int, modifier: Modifier) {
+    val circle = MaterialTheme.colorScheme.primary
+    val mark = MaterialTheme.colorScheme.onPrimary
+    Box(modifier.size(18.dp).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
+        Canvas(Modifier.matchParentSize()) {
+            drawCircle(circle)
+            if (count == 1) {
+                val w = size.width
+                val check = Path().apply {
+                    moveTo(w * 0.28f, w * 0.52f)
+                    lineTo(w * 0.44f, w * 0.68f)
+                    lineTo(w * 0.73f, w * 0.36f)
+                }
+                drawPath(check, mark, style = Stroke(width = w * 0.12f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            }
+        }
+        if (count > 1) {
+            Text(
+                if (count > 9) "9+" else count.toString(),
+                color = mark,
+                // Fixed in dp, like the circle it sits in.
+                fontSize = with(LocalDensity.current) { 11.dp.toSp() },
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+    }
+}
+
 /** The session's spot: a pin that opens the list of spots. */
 @Composable
 private fun SpotAction(spots: List<Entry<SpotData>>, spot: String?, onSelect: (String?) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val name = spots.firstOrNull { it.id == spot }?.data?.name
     Box {
-        SessionAction(R.drawable.ic_spot_add, name ?: stringResource(R.string.session_spot), active = name != null) { open = true }
+        val label = name ?: stringResource(R.string.session_spot)
+        SessionAction(R.drawable.ic_spot_add, label, label, count = if (name != null) 1 else 0) { open = true }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(text = { Text(stringResource(R.string.session_no_spot)) }, onClick = {
                 open = false
@@ -688,7 +737,7 @@ private fun CheckInAction(on: Boolean, minutes: String, onToggle: (Boolean) -> U
     val delay = minutes.trim().toIntOrNull()?.takeIf { it > 0 }
     val label = if (on && delay != null) stringResource(R.string.check_in_in, delay) else stringResource(R.string.check_in_section)
     Box {
-        SessionAction(R.drawable.ic_check_in, label, active = on) { open = true }
+        SessionAction(R.drawable.ic_check_in, label, label, count = if (on) 1 else 0) { open = true }
     }
     if (open) {
         AlertDialog(
@@ -712,50 +761,49 @@ private fun CheckInAction(on: Boolean, minutes: String, onToggle: (Boolean) -> U
 }
 
 /**
- * The session's notes: a notebook that opens a new note, or, once there are
- * notes, a list of them. A new session is saved first, after asking.
+ * The session's notes: a notebook that starts a new note (by voice or text,
+ * as the user prefers), or, once there are notes, lists them with a button
+ * for a new one. A new session is saved first ([onNew] does that).
  */
 @Composable
-private fun NotesAction(notes: List<Entry<SnippetData>>, saved: Boolean, onOpen: (String?) -> Unit, onSaveFirst: () -> Unit) {
-    var menu by remember { mutableStateOf(false) }
-    var askSave by remember { mutableStateOf(false) }
-    val label = if (saved && notes.isNotEmpty()) stringResource(R.string.session_notes_count, notes.size) else stringResource(R.string.session_notes)
-    Box {
-        SessionAction(R.drawable.ic_note_add, label, active = saved && notes.isNotEmpty()) {
-            when {
-                !saved -> askSave = true
-                notes.isEmpty() -> onOpen(null)
-                else -> menu = true
-            }
-        }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(text = { Text(stringResource(R.string.note_new)) }, onClick = {
-                menu = false
-                onOpen(null)
-            })
-            for (note in notes) {
-                DropdownMenuItem(
-                    text = { Text(note.data.text, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                    onClick = {
-                        menu = false
-                        onOpen(note.id)
-                    },
-                )
-            }
-        }
+private fun NotesAction(notes: List<Entry<SnippetData>>, onOpen: (String) -> Unit, onNew: () -> Unit) {
+    var list by remember { mutableStateOf(false) }
+    val title = stringResource(R.string.session_notes)
+    val description = if (notes.isEmpty()) stringResource(R.string.note_new) else stringResource(R.string.session_notes_count, notes.size)
+    SessionAction(R.drawable.ic_note_add, title, description, count = notes.size) {
+        if (notes.isEmpty()) onNew() else list = true
     }
-    if (askSave) {
+    if (list) {
         AlertDialog(
-            onDismissRequest = { askSave = false },
-            title = { Text(stringResource(R.string.session_notes_save_title)) },
-            text = { Text(stringResource(R.string.session_notes_save_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    askSave = false
-                    onSaveFirst()
-                }) { Text(stringResource(R.string.save)) }
+            onDismissRequest = { list = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, modifier = Modifier.weight(1f))
+                    IconButton(onClick = {
+                        list = false
+                        onNew()
+                    }) { Icon(painterResource(R.drawable.ic_note_add), contentDescription = stringResource(R.string.note_new)) }
+                }
             },
-            dismissButton = { TextButton(onClick = { askSave = false }) { Text(stringResource(R.string.cancel)) } },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    for (note in notes) {
+                        Text(
+                            note.data.text,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    list = false
+                                    onOpen(note.id)
+                                }
+                                .padding(vertical = 12.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { list = false }) { Text(stringResource(R.string.close)) } },
         )
     }
 }
