@@ -24,3 +24,7 @@ ndk=$(sed -n 's/^ *ndkVersion = "\(.*\)"$/\1/p' android/app/build.gradle.kts)
 { yes || true; } | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
 "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;${ndk}" >/dev/null
 echo "Rust Android targets, cargo-ndk ${CARGO_NDK_VERSION} and NDK ${ndk} ready"
+# The NDK version keys the Rust build cache (android.yml).
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+    echo "ndk=${ndk}" >> "$GITHUB_OUTPUT"
+fi
