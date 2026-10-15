@@ -6,6 +6,7 @@ package app.terpoir.journal
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -51,6 +52,7 @@ import app.terpoir.core.TerpeneLevelData
 import app.terpoir.core.Vocabulary
 import app.terpoir.core.classifyCode
 import app.terpoir.core.parseLabel
+import app.terpoir.core.subtypesForForm
 import app.terpoir.scan.CameraScreen
 import app.terpoir.scan.CaptureMode
 import app.terpoir.scan.DecodedCode
@@ -80,6 +82,10 @@ fun ProductEditor(
     var loaded by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var form by remember { mutableStateOf<String?>(null) }
+    // Optional, under the type: built-in or the user's own (a tag).
+    var subtype by remember { mutableStateOf<TagRefData?>(null) }
+    var customSubtypes by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
+    var addingSubtype by remember { mutableStateOf(false) }
     var brand by remember { mutableStateOf<String?>(null) }
     var strains by remember { mutableStateOf<List<String>>(emptyList()) }
     var thc by remember { mutableStateOf("") }
@@ -110,10 +116,12 @@ fun ProductEditor(
     LaunchedEffect(id) {
         brands = repo.brands()
         allStrains = repo.strains()
+        customSubtypes = repo.tags(SUBTYPE_CATEGORY)
         id?.let { repo.product(it) }?.let { p ->
             original = p
             name = p.name
             form = p.form
+            subtype = p.subtype
             brand = p.brand
             strains = p.strains
             thc = p.thcMilli?.let(::formatMilli).orEmpty()
@@ -234,9 +242,7 @@ fun ProductEditor(
             identifiers = identifiers,
             shops = shops,
             cannabinoids = cannabinoids,
-            // Not edited here yet: kept as saved, unless the type changed
-            // (a subtype belongs to one type).
-            subtype = original?.subtype?.takeIf { original?.form == form },
+            subtype = subtype,
             // Not edited here yet: kept as saved.
             defaultSize = original?.defaultSize,
             receiptNames = original?.receiptNames ?: emptyList(),
@@ -294,7 +300,37 @@ fun ProductEditor(
 
         OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.product_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         SectionTitle(stringResource(R.string.product_form))
-        SingleChoiceChips(vocab.forms, form) { form = it }
+        SingleChoiceChips(vocab.forms, form) { picked ->
+            // A subtype belongs to one type: changing the type clears it.
+            if (picked != form) subtype = null
+            form = picked
+        }
+        form?.let { f ->
+            SubtypeChips(
+                builtins = subtypesForForm(f),
+                custom = customSubtypes.filter { it.data.form == f },
+                selected = subtype,
+                onSelect = { subtype = it },
+                onAdd = { addingSubtype = true },
+            )
+        }
+        if (addingSubtype) {
+            form?.let { f ->
+                SubtypeDialog(
+                    form = f,
+                    methods = vocab.methods,
+                    onDismiss = { addingSubtype = false },
+                    onConfirm = { subtypeName, method ->
+                        addingSubtype = false
+                        scope.launch {
+                            val tagId = repo.saveTag(null, TagData(subtypeName, SUBTYPE_CATEGORY, form = f, method = method))
+                            customSubtypes = repo.tags(SUBTYPE_CATEGORY)
+                            subtype = TagRefData.Custom(tagId)
+                        }
+                    },
+                )
+            }
+        }
 
         // "What I track": hidden data points are left out here; their saved
         // values are carried unchanged.
@@ -730,6 +766,75 @@ fun DeleteButton(label: Int, body: Int, onConfirm: () -> Unit) {
             dismissButton = { TextButton(onClick = { confirming = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
+}
+
+/** The tag category of the user's own subtypes. */
+internal const val SUBTYPE_CATEGORY = "subtype"
+
+/**
+ * A product's subtype under its type (docs/design-decisions.md, "Product
+ * subtypes"): the built-in ones, then the user's own, and a chip to add one.
+ * Optional; tapping the selected one clears it.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SubtypeChips(
+    builtins: List<String>,
+    custom: List<Entry<TagData>>,
+    selected: TagRefData?,
+    onSelect: (TagRefData?) -> Unit,
+    onAdd: () -> Unit,
+) {
+    SectionTitle(stringResource(R.string.product_subtype))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        val options = builtins.map { TagRefData.Builtin(it) to label(it) } +
+            custom.map { TagRefData.Custom(it.id) to it.data.name }
+        for ((ref, text) in options) {
+            FilterChip(
+                selected = ref == selected,
+                onClick = { onSelect(if (ref == selected) null else ref) },
+                label = { Text(text) },
+            )
+        }
+        AssistChip(
+            onClick = onAdd,
+            label = { Text(stringResource(R.string.product_subtype_add)) },
+            leadingIcon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
+        )
+    }
+}
+
+/**
+ * Adds the user's own subtype under [form]: a name, and optionally its usual
+ * method when it isn't the type's (a patch is taken through the skin, not
+ * like a lotion). The method then sets its dose units, timeline and check-in.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SubtypeDialog(
+    form: String,
+    methods: List<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String?) -> Unit,
+) {
+    var text by remember { mutableStateOf("") }
+    var method by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.product_subtype_new, label(form))) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(text, { text = it }, singleLine = true, label = { Text(stringResource(R.string.name)) })
+                Text(stringResource(R.string.product_subtype_method), style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.product_subtype_method_hint), style = MaterialTheme.typography.bodySmall)
+                SingleChoiceChips(methods, method) { method = it }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(text.trim(), method) }, enabled = text.isNotBlank()) { Text(stringResource(R.string.add)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
 }
 
 @Composable

@@ -396,7 +396,7 @@ requirement rather than on features.
         own), a subtype's suggested method, the Transdermal method, uneven
         timeline points; through the FFI; the compatibility fixture maker
         (the v0.6.0 fixture itself is written from the release tag).
-  - [ ] Product editor: subtype chips under the type, and adding one's
+  - [x] Product editor: subtype chips under the type, and adding one's
         own with its usual method.
   - [x] Scanning terms for subtypes.
 
