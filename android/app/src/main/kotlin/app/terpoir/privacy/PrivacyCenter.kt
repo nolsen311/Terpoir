@@ -4,6 +4,7 @@
 
 package app.terpoir.privacy
 
+import kotlin.coroutines.cancellation.CancellationException
 import androidx.annotation.StringRes
 
 /** Privacy Center sections, in display order. */
@@ -148,6 +149,18 @@ class PrivacyCenter(val toggles: List<PrivacyToggle>, val presets: List<PrivacyP
      * an interrupted cleanup are removed too.
      */
     suspend fun restoreMaximumPrivacy() {
-        for (toggle in toggles) toggle.set(toggle.privateState)
+        // Every toggle gets its turn even if one fails, so a broken cleanup
+        // can't leave the rest relaxed; the first failure is reported after.
+        var failure: Throwable? = null
+        for (toggle in toggles) {
+            try {
+                toggle.set(toggle.privateState)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (failure == null) failure = e else failure.addSuppressed(e)
+            }
+        }
+        failure?.let { throw it }
     }
 }

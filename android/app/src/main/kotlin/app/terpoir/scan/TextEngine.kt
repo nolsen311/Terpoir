@@ -26,8 +26,12 @@ sealed interface EngineStatus {
      */
     class NeedsConfirmation(val confirm: (ActivityResultLauncher<IntentSenderRequest>) -> Unit) : EngineStatus
 
-    /** The download failed, or the app store is not available. */
-    data object Failed : EngineStatus
+    /**
+     * The download failed, or the app store is not available. [error]
+     * names why (an error code from the store, never anything personal),
+     * so a problem report can say.
+     */
+    data class Failed(val error: Throwable? = null) : EngineStatus
 }
 
 /**

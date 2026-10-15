@@ -31,16 +31,22 @@ class GoogleTextEngine(context: Context) : TextEngine {
     override val downloadPrompt: Int = R.string.ocr_download_google
 
     override suspend fun status(): EngineStatus {
-        val client = newClient()
+        // ML Kit can fail to make a client at all (seen as a NullPointerException
+        // inside TextRecognition.getClient, 0.5.2).
+        val client = try {
+            newClient()
+        } catch (e: RuntimeException) {
+            return EngineStatus.Failed(e)
+        }
         return try {
             if (modules.areModulesAvailable(client).await().areModulesAvailable()) {
                 EngineStatus.Ready
             } else {
                 EngineStatus.NotInstalled
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // No usable Play services on this device.
-            EngineStatus.Failed
+            EngineStatus.Failed(e)
         } finally {
             client.close()
         }
@@ -55,7 +61,7 @@ class GoogleTextEngine(context: Context) : TextEngine {
                     close()
                 }
                 InstallState.STATE_FAILED, InstallState.STATE_CANCELED -> {
-                    trySend(EngineStatus.Failed)
+                    trySend(EngineStatus.Failed(IllegalStateException("ML Kit model: state ${update.installState}, error ${update.errorCode}")))
                     close()
                 }
                 else -> {
@@ -75,7 +81,7 @@ class GoogleTextEngine(context: Context) : TextEngine {
                 }
             }
             .addOnFailureListener {
-                trySend(EngineStatus.Failed)
+                trySend(EngineStatus.Failed(it))
                 close()
             }
         trySend(EngineStatus.Downloading(null))
@@ -103,17 +109,24 @@ class GoogleTextEngine(context: Context) : TextEngine {
 
         /**
          * Tells Play services the app no longer needs the model, so it can
-         * remove it (the toggle's off-action). Does nothing without Play
-         * services.
+         * remove it (the toggle's off-action). Best effort: does nothing
+         * without Play services, or when ML Kit can't make a client, as
+         * when the model was never used. "Restore maximum privacy" runs
+         * this on every recovery, so it must never throw (a crash after
+         * the recovery key was entered, 0.5.2).
          */
         suspend fun release(context: Context) {
-            val client = newClient()
+            val client = try {
+                newClient()
+            } catch (_: RuntimeException) {
+                return
+            }
             try {
                 ModuleInstall.getClient(context).releaseModules(client).await()
             } catch (_: Exception) {
                 // Nothing to release.
             } finally {
-                client.close()
+                runCatching { client.close() }
             }
         }
     }
