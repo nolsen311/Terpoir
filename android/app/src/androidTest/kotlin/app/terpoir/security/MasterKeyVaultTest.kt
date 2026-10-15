@@ -16,6 +16,8 @@ import javax.crypto.SecretKeyFactory
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotSame
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Assume.assumeFalse
@@ -31,7 +33,8 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class MasterKeyVaultTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
-    private val vault = MasterKeyVault(context.noBackupFilesDir.resolve("vault-test/master"))
+    private val wrappedFile = context.noBackupFilesDir.resolve("vault-test/master")
+    private val vault = MasterKeyVault(wrappedFile)
 
     @After
     fun cleanUp() {
@@ -90,6 +93,21 @@ class MasterKeyVaultTest {
         } catch (_: Exception) {
             // Expected: the Keystore refuses until the user authenticates.
         }
+    }
+
+    @Test
+    fun unlockingAgainReusesTheOpenCipher() {
+        // Each cancelled unlock prompt used to leave a Keystore operation
+        // open until garbage collection; enough of them and the Keystore
+        // refused new ones until the phone restarted.
+        vault.createWrappingKey(strict = false)
+        wrappedFile.parentFile?.mkdirs()
+        wrappedFile.writeBytes(WrappedMasterKey(ByteArray(12), ByteArray(48)).toBytes())
+        val first = vault.decryptCipher()
+        repeat(200) { assertSame(first, vault.decryptCipher()) }
+        // A new wrapping key starts a new cipher.
+        vault.createWrappingKey(strict = false)
+        assertNotSame(first, vault.decryptCipher())
     }
 
     private fun isEmulator(): Boolean =

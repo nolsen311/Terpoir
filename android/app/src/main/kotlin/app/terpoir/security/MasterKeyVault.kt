@@ -5,6 +5,7 @@
 package app.terpoir.security
 
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import java.io.File
@@ -30,6 +31,18 @@ import javax.crypto.spec.GCMParameterSpec
 class MasterKeyVault(private val wrappedFile: File) {
     private val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
 
+    /**
+     * The unlock cipher handed out and not used yet. Each initialized
+     * cipher holds an operation open in the Keystore until it finishes or
+     * is garbage collected, and the Keystore allows only so many at once.
+     * The unlock prompt comes up every time the app comes into view, and a
+     * cancelled or dismissed prompt left its operation behind: after
+     * enough of them the Keystore refused new ones until the phone
+     * restarted ("secure key storage did not respond"). So one cipher is
+     * kept and handed out again until a prompt uses it.
+     */
+    private var pendingDecrypt: Cipher? = null
+
     /** Whether a wrapped master key and its wrapping key both exist. */
     fun exists(): Boolean = keyStore.containsAlias(ALIAS) && wrappedFile.isFile
 
@@ -42,6 +55,7 @@ class MasterKeyVault(private val wrappedFile: File) {
      *   recovery key instead).
      */
     fun createWrappingKey(strict: Boolean): Boolean {
+        pendingDecrypt = null
         keyStore.deleteEntry(ALIAS)
         val authenticators = if (strict) {
             KeyProperties.AUTH_BIOMETRIC_STRONG
@@ -84,10 +98,25 @@ class MasterKeyVault(private val wrappedFile: File) {
      *   if strict mode was on and the enrolled biometrics changed.
      */
     fun decryptCipher(): Cipher {
+        pendingDecrypt?.let { return it }
         val wrapped = readWrapped()
-        return Cipher.getInstance(TRANSFORMATION).apply {
+        fun open() = Cipher.getInstance(TRANSFORMATION).apply {
             init(Cipher.DECRYPT_MODE, wrappingKey(), GCMParameterSpec(TAG_BITS, wrapped.iv))
         }
+        val cipher = try {
+            open()
+        } catch (e: KeyPermanentlyInvalidatedException) {
+            throw e
+        } catch (_: Exception) {
+            // Operations left open by ciphers no longer referenced (an
+            // earlier version's cancelled prompts, say) close when they are
+            // collected; collect them and try once more.
+            System.gc()
+            System.runFinalization()
+            open()
+        }
+        pendingDecrypt = cipher
+        return cipher
     }
 
     /** Wraps and saves the master key with an authenticated [encryptCipher]. */
@@ -107,10 +136,15 @@ class MasterKeyVault(private val wrappedFile: File) {
      * caller must wipe the returned array (`fill(0)`) as soon as the core
      * has it.
      */
-    fun unwrap(authenticated: Cipher): ByteArray = authenticated.doFinal(readWrapped().ciphertext)
+    fun unwrap(authenticated: Cipher): ByteArray {
+        // Used (or failed for good): the next unlock starts a fresh one.
+        pendingDecrypt = null
+        return authenticated.doFinal(readWrapped().ciphertext)
+    }
 
     /** Deletes the wrapping key and the wrapped master key. */
     fun destroy() {
+        pendingDecrypt = null
         keyStore.deleteEntry(ALIAS)
         wrappedFile.delete()
     }
