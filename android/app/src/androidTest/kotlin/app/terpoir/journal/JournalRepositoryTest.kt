@@ -29,6 +29,7 @@ import app.terpoir.core.keysForRestore
 import app.terpoir.core.readExportArchive
 import app.terpoir.core.trackableDataPoints
 import app.terpoir.core.vocabulary
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -253,5 +254,29 @@ class JournalRepositoryTest {
         // Every data point the app shows is one the core knows.
         assertEquals(trackableDataPoints(), DataPoint.entries.map { it.slug })
     }
-}
 
+    @Test
+    fun aLoadAfterLockingCancelsInsteadOfCrashing() = runBlocking {
+        // Play crash report (0.4.0): a screen's load reached the journal just
+        // after locking had closed it, and the bindings' IllegalStateException
+        // crashed the app.
+        val other = dir.resolve("locked")
+        other.mkdirs()
+        val k = createKeys()
+        val closed = Journal.open(other.resolve("journal.db").path, other.resolve("files").path, k.masterKey, k.wrappedDatabaseKey)
+        k.masterKey.fill(0)
+        val lockedRepo = JournalRepository(closed)
+        closed.lock()
+        try {
+            lockedRepo.tracking()
+            fail("a locked journal should cancel the load")
+        } catch (_: CancellationException) {
+        }
+        closed.close()
+        try {
+            lockedRepo.tracking()
+            fail("a closed journal should cancel the load")
+        } catch (_: CancellationException) {
+        }
+    }
+}

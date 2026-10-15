@@ -18,6 +18,7 @@ import app.terpoir.MainActivity
 import app.terpoir.R
 import app.terpoir.core.Journal
 import app.terpoir.privacy.PrivacySettings
+import app.terpoir.session.onJournal
 import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -123,14 +124,14 @@ class SpotAlerts(
         val promptFences = if (!prompting) {
             emptyList()
         } else {
-            withContext(Dispatchers.IO) { journal.purchasePromptFences() }
+            onJournal { journal.purchasePromptFences() }
                 .take(PurchasePrompts.MAX_FENCES)
                 .mapIndexed { index, f -> Fence("${PurchasePrompts.FENCE_PREFIX}$index", f.latE7, f.lonE7, f.radiusM.toInt(), prompt = true) }
         }
         val spots = if (!notify) {
             emptyList()
         } else {
-            withContext(Dispatchers.IO) { journal.spotAlerts() }
+            onJournal { journal.spotAlerts() }
                 .sortedByDescending { it.sessions }
                 .take(MAX_FENCES - promptFences.size)
         }
