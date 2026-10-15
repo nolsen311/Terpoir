@@ -628,7 +628,7 @@ Each journal entry records one consumption session, not a product review. Produc
   - **Data layer:** every read and write goes through `JournalRepository` to the core, off the main thread.
   - **Effects map:** the core effects plus the user's own effect tags. Each selected effect gets a 0–5 intensity.
   - **Editing never drops data:** fields an editor does not show yet (activity, spot, symptoms, attachments, product terpenes, package date and identifiers, a line's purchase) are carried over unchanged.
-  - **Lock clears everything:** locking replaces the whole UI, open editors included.
+  - **Lock clears everything:** locking replaces the whole UI, open editors included. A load still on its way when the journal locks (the core refuses a locked journal; the bindings refuse a closed one) cancels its coroutine instead of failing (`onJournal`), since its screen is gone; a Play crash report from 0.4.0 came from such a load.
 - `Debug` output of documents, values and records is redacted; decrypted text is wiped when a document is dropped.
 
 ## Richer strains (decided 2026-10-14, maintainer)

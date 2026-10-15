@@ -22,8 +22,7 @@ import app.terpoir.core.StrainData
 import app.terpoir.core.TagData
 import app.terpoir.core.TagSuggestion
 import app.terpoir.core.readExportArchive
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import app.terpoir.session.onJournal
 
 /** A record and its ID. */
 data class Entry<T>(val id: String, val data: T)
@@ -201,5 +200,7 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
 
     private fun now(): ULong = clock().toULong()
 
-    private suspend fun <T> io(block: () -> T): T = withContext(Dispatchers.IO) { block() }
+    // A screen's load can start just after the journal locks; it is
+    // cancelled then, not a crash.
+    private suspend fun <T> io(block: () -> T): T = onJournal(block)
 }
