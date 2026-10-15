@@ -19,7 +19,8 @@ could be read first-hand.
 SeedFinder, Kannapedia and AllBud were read first-hand that day; their sections
 below quote their own pages. TerpHunter's apex `terphunter.com` was refused at
 first and allowed later that day; its section also quotes its own pages.
-`medicinalgenomics.com` (Kannapedia's owner) is still refused.
+`medicinalgenomics.com` (Kannapedia's owner) was refused at first, then
+allowed and read the same day.
 
 ## Summary and recommendation
 
@@ -73,7 +74,7 @@ unstated).
 | OpenTHC VDB | Site has SQL/JSON/CSV/TSV/XML downloads (per code); last code commit 2025-05-29 | Code GPL-3.0; data licence only "an open license" (aspiration), images "CCA" | Free | Nothing if bundled | ID, type, name only | Offline name list, after licence confirmation |
 | Wikidata | SPARQL / dumps | CC0 (well known; **not verified this session**) | Free, no key | Online: query + IP to Wikimedia | Unknown strain coverage | Candidate offline source; unverified |
 | SeedFinder.eu | **No API**: "discontinued per july 1st, 2024"; HTML pages only | "personal or private use; commercial use is prohibited"; no reproduction or distribution (verified) | n/a | n/a (pages load Google Analytics, Microsoft Clarity) | ~42,000 strain pages, 2,146 breeders: type, breeder, flowering time, parents, hybrids, user effects/aroma/taste; lab cannabinoids for 91 varieties; no terpenes | Unusable without written permission |
-| Kannapedia | **No API**; one 2.8 MB HTML list, filtered in the browser; VCF downloads | No terms page, no licence stated; owner's site unreachable | Free to view | n/a (Google Analytics only after consent) | 1,462 public samples (2,418 registered): chemotype from DNA, genetic relatives by distance, gene variants incl. terpene synthases; registrant cannabinoids and terpenes (sparse); no parents | Unusable without written permission |
+| Kannapedia | **No API**; one 2.8 MB HTML list, filtered in the browser; VCF downloads | No terms of use on either Kannapedia or its owner's site; owner's footer: "Copyright all right reserved" (verified) | Free to view | n/a (Google Analytics only after consent) | 1,462 public samples (2,418 registered): chemotype from DNA, genetic relatives by distance, gene variants incl. terpene synthases; registrant cannabinoids and terpenes (sparse); no parents | Unusable without written permission |
 | AllBud | Internal API (`/api/`) answers 401; HTML pages | "personal, non-commercial use only"; no robots or storing (verified) | Account (not offered to third parties) | n/a (Google Analytics, ad network, ShareThis) | ~16,000 strains: type with sativa/indica %, THC/CBD/CBN, description, effects, "may relieve", flavors, aromas, reviews; no terpenes or parent fields | Unusable |
 | TerpHunter | No public API: "Pro — Coming later: Full API access ... Bulk data export"; site API answers 401 without a login | No "scrape, crawl, or bulk-download"; no right "to redistribute our aggregated data" (verified) | Free account (email), not shareable | Query, account, IP (first-party page-view stats only) | 5,200+ strains (parents, chemotype, terpene profile, partly AI-made); 8,000+ lab-tested products in MI, OH, MO | Unusable now; revisit when the Pro API ships |
 | Leafly | No public strain API (per secondary sources) | **Unverified** | Partner or retailer key only | n/a | Rich (terpenes, effects, lab data) | Unusable |
@@ -177,7 +178,7 @@ unstated).
   `docs/design-decisions.md`, are moot now that the API is gone. A link out
   to the user's browser stays possible (option 2 above).
 
-### Kannapedia (verified 2026-10-15; owner's terms unreachable)
+### Kannapedia (verified 2026-10-15)
 - Owner: *"Kannapedia® is a property of Medicinal Genomics"* (Medicinal
   Genomics Corp., Beverly, MA; https://kannapedia.net/contact). Registrants pay
   to sequence a sample; the report is published and its hash stamped on the
@@ -212,12 +213,32 @@ unstated).
   `/strains?q=blue+dream` returns the same page. robots.txt (served with a 404
   status, same text) disallows `/*?*`, the sequence downloads, and AI
   crawlers: *"AI training crawlers, excluded deliberately."*
-- **Terms:** none on the site. `/terms` is 404, and no page carries a
+- **Terms:** none on Kannapedia. `/terms` is 404, and no page carries a
   copyright line or licence. The privacy policy (https://kannapedia.net/privacy)
-  is Medicinal Genomics' and covers only personal data. Their own site
-  (`medicinalgenomics.com`) is blocked, so any terms there are unread. With no
-  licence stated, nothing grants copying: (a) live fetching is scraping with
-  no permission, (b) caching and (c) bundling need a licence.
+  is Medicinal Genomics' and covers only personal data.
+- **Owner's site** (https://medicinalgenomics.com/, read 2026-10-15): no terms
+  of use either. `/terms-of-use/`, `/terms-and-conditions/`, `/terms/`,
+  `/legal/` and `/terms-of-service/` are 404, and its 370-page sitemap has no
+  terms, licence or API page. The footer says *"©2026 MEDICINAL GENOMICS
+  CORPS Copyright all right reserved."* Its privacy policy
+  (https://medicinalgenomics.com/privacy/) also covers only personal data.
+  What it says about the data:
+  - StrainSEEK FAQ (https://medicinalgenomics.com/strainseek-frequently-asked-questions/):
+    *"The customer has total control over access—data and analyses from
+    StrainSEEK identification and registration can be made public or kept
+    private."* So each report's publication is the registrant's choice;
+    nothing says the public data is licensed for reuse.
+  - The Kannapedia 2.0 announcement (2021-10-05,
+    https://medicinalgenomics.com/introducing-kannapedia-2-0-the-worlds-most-comprehensive-cannabis-genomic-library/)
+    promised *"Expanded API capabilities providing easy interoperability with
+    multiple data inputs from MGC's StrainSEEK® sequencing panel and Whole
+    Genome sequencing"*: an input pipeline for their own sequencing, not a
+    public query API. No API documentation exists on either site.
+  - Older VCF files are listed at https://medicinalgenomics.com/kannapedia-fastq/.
+- So, with no licence anywhere and "all right reserved" on the owner's site:
+  (a) live fetching is scraping with no permission, (b) caching and
+  (c) bundling need a licence. Contact: `info@medicinalgenomics.com`
+  (Kannapedia's contact page).
 - **Privacy:** Google Analytics (`UA-58561949-2`) is loaded but only
   configured after consent (`enableMGCAnalytics()`); the policy says *"We do
   not partner with or have special relationships with any ad server
@@ -382,9 +403,8 @@ and search-engine snippets.
 
 On 2026-10-15 `seedfinder.eu`, `en.seedfinder.eu`, `kannapedia.net`,
 `www.allbud.com`, `terphunter.com` and `www.terphunter.com` were allowed and
-read. Still refused that day: `medicinalgenomics.com` /
-`www.medicinalgenomics.com`.
+read. `medicinalgenomics.com` and `www.medicinalgenomics.com` were refused at
+first and allowed later that day.
 
 Unverified as a result: all Leafly, Strain API, Otreeba, Kaggle and Wikidata
-terms; Medicinal Genomics' own terms, if any cover Kannapedia; the
-data licences for OpenTHC VDB and Cannlytics.
+terms; the data licences for OpenTHC VDB and Cannlytics.
