@@ -9,7 +9,10 @@
 use terpoir_model::{
     Cannabinoid, CoreEffect, DoseUnit, Flavor, Form, Intention, LabelUnit, Method, Mood, Social,
     StrainDetail, StrainType, SymptomResult, TargetedSymptom, Terpene, TerpeneLevel,
+    timeline_plan_for,
 };
+
+use crate::records::TimelinePlanData;
 
 /// Every built-in vocabulary, each as slugs in display order.
 #[derive(Clone, PartialEq, Eq, Debug, uniffi::Record)]
@@ -89,6 +92,20 @@ pub fn dose_units_for_method(method: String) -> Vec<String> {
         .iter()
         .map(|u| u.slug().to_owned())
         .collect()
+}
+
+/// The timeline plan for a session with these methods (slugs): the longest
+/// method's; smoked's when there are none.
+#[uniffi::export]
+#[must_use]
+pub fn timeline_plan_for_methods(methods: Vec<String>) -> TimelinePlanData {
+    let methods: Vec<Method> = methods.iter().map(|m| Method::from_slug(m)).collect();
+    let plan = timeline_plan_for(&methods);
+    TimelinePlanData {
+        minutes: plan.minutes,
+        point_minutes: plan.point_minutes(),
+        gesture_points: plan.gesture_points,
+    }
 }
 
 /// The usual method for a product form, as a new session line's default.

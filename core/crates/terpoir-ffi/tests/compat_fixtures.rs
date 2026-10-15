@@ -23,7 +23,7 @@ use terpoir_ffi::{
     BrandData, CannabinoidAmountData, IdentifierData, Journal, LocalTimeData, PassphraseWrapped,
     ProductData, ProductLineData, PurchaseData, PurchaseLineData, RecordType, SessionData,
     SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity, TagProvenance,
-    TagRefData, TerpeneLevelData, check_export_archive, keys_for_restore,
+    TagRefData, TerpeneLevelData, TimelineLevelData, check_export_archive, keys_for_restore,
     master_key_from_passphrase, master_key_from_recovery, read_export_archive,
 };
 
@@ -367,6 +367,7 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
         },
     );
     let session = journal.get_session(id("session")).unwrap();
+    let timeline = fixture.manifest["session_timeline"].as_bool() == Some(true);
     // The session line's ID is not in the manifest; it is whatever the
     // release made.
     let line_id = session
@@ -425,6 +426,22 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
                 },
             ],
             attachments: vec![id("attachment")],
+            // Since 0.5.0; older fixtures have none.
+            timeline_levels: if timeline {
+                vec![
+                    TimelineLevelData {
+                        minute: 48,
+                        level: 2,
+                    },
+                    TimelineLevelData {
+                        minute: 96,
+                        level: 4,
+                    },
+                ]
+            } else {
+                vec![]
+            },
+            timeline_updated_ms: timeline.then_some(1_760_000_600_000),
         },
     );
     check(

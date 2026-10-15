@@ -27,7 +27,7 @@ pub use feedback::InsightFeedbackList;
 pub use purchase::{Price, Purchase, PurchaseLine};
 pub use session::{
     CoreEffect, Dose, DoseUnit, Intention, Method, ProductLine, PurchaseRef, Session, Social,
-    SymptomResult, TargetedSymptom, Timeline,
+    SymptomResult, TargetedSymptom, Timeline, TimelinePlan, timeline_plan_for,
 };
 pub use snippet::{Provenance, Snippet};
 pub use spot::{DEFAULT_SPOT_RADIUS_M, Location, MIN_SPOT_RADIUS_M, Spot, SpotPurpose};

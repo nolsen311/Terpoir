@@ -47,7 +47,8 @@ pub use records::{
     MIN_SPOT_RADIUS_M, Method, Mood, Price, Product, ProductLine, Provenance, Purchase,
     PurchaseLine, PurchaseRef, Record, RecordKind, Session, Snippet, Social, Spot, SpotPurpose,
     Strain, StrainDetail, StrainType, SymptomResult, Tag, TagCategory, TagRef, TargetedSymptom,
-    Terpene, TerpeneLevel, Timeline, TrackedField, TrackingPreferences,
+    Terpene, TerpeneLevel, Timeline, TimelinePlan, TrackedField, TrackingPreferences,
+    timeline_plan_for,
 };
 pub use stamp::{DeviceId, Hlc, Stamp};
 pub use terpoir_crypto::RecordId;

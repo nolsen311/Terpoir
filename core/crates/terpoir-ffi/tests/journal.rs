@@ -14,9 +14,10 @@ use terpoir_ffi::{
     BrandData, CannabinoidAmountData, CoreError, ExportArchive, IdentifierData, InsightFeedback,
     Journal, LocalTimeData, NewKeys, ProductData, ProductLineData, PurchaseData, PurchaseLineData,
     RecordType, SessionData, SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity,
-    TagProvenance, TagRefData, TerpeneLevelData, check_export_archive, check_recovery_key,
-    create_keys, keys_for_restore, master_key_from_recovery, read_export_archive, readable_blobs,
-    sync_folder_key_file, trackable_data_points, vocabulary,
+    TagProvenance, TagRefData, TerpeneLevelData, TimelineLevelData, check_export_archive,
+    check_recovery_key, create_keys, keys_for_restore, master_key_from_recovery,
+    read_export_archive, readable_blobs, sync_folder_key_file, timeline_plan_for_methods,
+    trackable_data_points, vocabulary,
 };
 
 struct Device {
@@ -92,6 +93,8 @@ fn session(product: Option<String>) -> SessionData {
             result: "helped".into(),
         }],
         attachments: vec![],
+        timeline_levels: vec![],
+        timeline_updated_ms: None,
     }
 }
 
@@ -821,7 +824,9 @@ fn the_plaintext_export_has_every_record_readably() {
 
     let sessions_csv = String::from_utf8(files[1].bytes.clone()).unwrap();
     let mut rows = sessions_csv.split("\r\n");
-    assert!(rows.next().unwrap().starts_with("id,date,time,"));
+    let header = rows.next().unwrap();
+    assert!(header.starts_with("id,date,time,"));
+    assert!(header.ends_with(",symptoms,timeline"));
     let row = rows.next().unwrap();
     assert!(row.contains(&session_id));
     // The product's label carries its brand, quoted for its comma and quotes.
@@ -832,6 +837,54 @@ fn the_plaintext_export_has_every_record_readably() {
     // A batch that looks like a formula is defused; the date is ISO.
     assert!(products_csv.contains(",'=1+1,2026-10-11"));
     assert!(products_csv.contains(",85.5,percent,"));
+}
+
+#[test]
+fn sessions_keep_their_timeline_levels() {
+    let keys = create_keys().unwrap();
+    let dir = Device::new();
+    let journal = dir.open(&keys).unwrap();
+    let mut data = session(None);
+    data.timeline_levels = vec![
+        TimelineLevelData {
+            minute: 20,
+            level: 3,
+        },
+        TimelineLevelData {
+            minute: 40,
+            level: 5,
+        },
+    ];
+    data.timeline_updated_ms = Some(1_760_000_000_000);
+    let id = journal.save_session(None, data.clone(), 1).unwrap();
+    let saved = journal.get_session(id.clone()).unwrap().unwrap();
+    assert!(saved.timeline_levels == data.timeline_levels);
+    assert_eq!(saved.timeline_updated_ms, data.timeline_updated_ms);
+
+    // A level above 5, or a minute twice, is refused.
+    let mut bad = data.clone();
+    bad.timeline_levels[1].level = 6;
+    assert!(matches!(
+        journal.save_session(Some(id.clone()), bad, 2),
+        Err(CoreError::InvalidInput)
+    ));
+    let mut twice = data;
+    twice.timeline_levels[1].minute = 20;
+    assert!(matches!(
+        journal.save_session(Some(id), twice, 3),
+        Err(CoreError::InvalidInput)
+    ));
+}
+
+#[test]
+fn timeline_plans_come_from_the_methods() {
+    let dab = timeline_plan_for_methods(vec!["dabbed".into()]);
+    assert_eq!(dab.point_minutes, [20, 40, 60]);
+    assert_eq!(dab.gesture_points, 1);
+    let mixed = timeline_plan_for_methods(vec!["smoked".into(), "tincture".into()]);
+    assert_eq!(mixed.minutes, 240);
+    assert_eq!(mixed.point_minutes.len(), 5);
+    assert_eq!(timeline_plan_for_methods(vec![]).minutes, 120);
 }
 
 #[test]

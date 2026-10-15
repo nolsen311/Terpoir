@@ -59,14 +59,18 @@ pub use plaintext::ExportFile;
 pub use records::{
     BrandData, CannabinoidAmountData, IdentifierData, LocalTimeData, ProductData, ProductLineData,
     PurchaseData, PurchaseLineData, SessionData, SnippetData, SpotData, StrainData, SymptomData,
-    TagData, TagIntensity, TagProvenance, TagRefData, TerpeneLevelData,
+    TagData, TagIntensity, TagProvenance, TagRefData, TerpeneLevelData, TimelineLevelData,
+    TimelinePlanData,
 };
 pub use scan::{
     LabelScanData, ReceiptItemData, ReceiptScan, ScannedCodeData, classify_code, parse_label,
     parse_receipt,
 };
 pub use tracking::trackable_data_points;
-pub use vocabulary::{Vocabulary, default_method_for_form, dose_units_for_method, vocabulary};
+pub use vocabulary::{
+    Vocabulary, default_method_for_form, dose_units_for_method, timeline_plan_for_methods,
+    vocabulary,
+};
 
 uniffi::setup_scaffolding!();
 
