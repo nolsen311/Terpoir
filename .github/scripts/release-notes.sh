@@ -7,9 +7,9 @@
 #
 # Prints release VERSION's notes (for example 0.5.3): the Play "What's new"
 # text in docs/play-listing.md, the line after "<en-US>" in the block that
-# follows the version's "**X.Y.Z**" heading. The GitHub release
-# (release.yml) and the Mastodon post (release-post.sh) use them too, so
-# every place says the same. Fails if there are none.
+# follows the version's "**X.Y.Z**" heading. The GitHub release page
+# (release.yml) opens with them too. Public posts use the shorter
+# Summary: line instead (release-summary.sh). Fails if there are none.
 
 set -eu
 
