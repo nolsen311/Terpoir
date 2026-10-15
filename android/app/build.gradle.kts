@@ -202,7 +202,10 @@ abstract class CargoNdkBuild : DefaultTask() {
         out.deleteRecursively()
         execOperations.exec {
             workingDir = coreDir.get().asFile
+            // Both names, so a different NDK in the environment (CI runners
+            // set ANDROID_NDK_ROOT) can't be picked up instead.
             environment("ANDROID_NDK_HOME", ndkDir.get().asFile.absolutePath)
+            environment("ANDROID_NDK_ROOT", ndkDir.get().asFile.absolutePath)
             commandLine(
                 listOf("cargo", "ndk") +
                     abis.get().flatMap { listOf("-t", it) } +
@@ -238,15 +241,21 @@ abstract class UniffiBindgen : DefaultTask() {
         val out = outputDir.get().asFile
         out.deleteRecursively()
         val core = coreDir.get().asFile
+        // One build for both, so the dependencies they share are compiled
+        // once (built separately, their features differ and Cargo compiles
+        // the shared ones twice). The tool is then run directly: `cargo run`
+        // would resolve it alone and rebuild them.
         execOperations.exec {
             workingDir = core
-            commandLine("cargo", "build", "--locked", "-p", "terpoir-ffi")
+            commandLine("cargo", "build", "--locked", "-p", "terpoir-ffi", "-p", "uniffi-bindgen")
         }
         val library = core.resolve("target/debug/" + System.mapLibraryName("terpoir_ffi"))
+        val exe = if (System.getProperty("os.name").startsWith("Windows")) ".exe" else ""
+        val bindgen = core.resolve("target/debug/uniffi-bindgen$exe")
         execOperations.exec {
             workingDir = core
             commandLine(
-                "cargo", "run", "--locked", "-p", "uniffi-bindgen", "--",
+                bindgen.absolutePath,
                 "generate", "--library", library.absolutePath,
                 "--language", "kotlin", "--no-format", "--out-dir", out.absolutePath,
             )

@@ -55,6 +55,12 @@ jobs:
     needs: changes
     if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
+    # No incremental build files and no debug info in the host build the
+    # bindings come from (UniFFI reads symbols, not debug info): smaller
+    # and faster to build and to cache.
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
     defaults:
       run:
         working-directory: android
@@ -92,17 +98,50 @@ jobs:
           echo "gradle-wrapper.jar matches a published Gradle release ($actual)"
 
       - name: Set up Rust core toolchain
+        id: setup
         working-directory: .
         run: .github/scripts/setup-android-core.sh
+
+      # The Rust core's build output (core/target, with the unpacked crate
+      # sources, whose timestamps Cargo checks), so a run recompiles only
+      # the workspace crates, not the ~100 dependencies. Saved only by this
+      # job on main, like the dependency cache, so a pull request can never
+      # seed it; releases (release.yml) and the reproducible-build check
+      # never use it. Keyed on everything that changes the compiled
+      # dependencies: Cargo.lock, the toolchain, the core's Cargo config
+      # and the NDK.
+      - name: Restore Rust build cache
+        id: rust-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/src
+            core/target
+          key: rust-android-${{ runner.os }}-${{ steps.setup.outputs.ndk }}-${{ hashFiles('core/Cargo.lock', 'core/rust-toolchain.toml', 'core/.cargo/config.toml') }}
+          restore-keys: rust-android-${{ runner.os }}-${{ steps.setup.outputs.ndk }}-
 
       # The throwaway debug signing key, kept between runs so each test
       # build installs over the last one. It signs debug builds only and is
       # never a release key; saved only from main, like the dependencies.
       - name: Restore debug signing key
+        id: debug-key
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.android/debug.keystore
           key: debug-keystore-v1
+
+      # Gradle creates the key on first use, but where depends on the
+      # runner's environment, and it never reached the path above: create
+      # it there when the cache has none, and point Gradle at it
+      # (ANDROID_USER_HOME, in the build step). Same parameters as the
+      # Android Gradle plugin's own.
+      - name: Create debug signing key
+        if: steps.debug-key.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/.android
+          keytool -genkeypair -keystore ~/.android/debug.keystore -storetype PKCS12 \
+            -storepass android -keypass android -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10950 -dname "CN=Android Debug,O=Android,C=US"
 
       # The Play flavor's debug Google Maps key (docs/design-decisions.md,
       # "Map picker"), restricted to the Maps SDK, the package and the debug
@@ -113,7 +152,22 @@ jobs:
           GOOGLE_MAPS_API_KEY_DEBUG: ${{ secrets.GOOGLE_MAPS_API_KEY_DEBUG }}
         run: |
           export JAVA_HOME="$JAVA_HOME_21_X64"
+          export ANDROID_USER_HOME="$HOME/.android"
           ./gradlew --no-daemon --no-build-cache --profile assemble check lintFossRelease lintPlayRelease
+
+      # The test builds must be signed with the cached key, or each one
+      # would need an uninstall (which deletes the test journal).
+      - name: Check the debug signing key
+        run: |
+          set -euo pipefail
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
+          key=$(keytool -exportcert -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey \
+            | sha256sum | cut -d' ' -f1)
+          for apk in app/build/outputs/apk/*/debug/*.apk; do
+            "$apksigner" verify --print-certs "$apk" | grep -qi "certificate SHA-256 digest: $key" \
+              || { echo "$apk is not signed with the cached debug key" >&2; exit 1; }
+          done
+          echo "Debug builds signed with the cached key (certificate SHA-256 $key)"
 
       # Gradle's own timing report (task names and durations only), to see
       # what makes this job slow. It stays with the run; no build scan is
@@ -145,6 +199,15 @@ jobs:
           path: ~/.android/debug.keystore
           key: debug-keystore-v1
 
+      - name: Save Rust build cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/src
+            core/target
+          key: rust-android-${{ runner.os }}-${{ steps.setup.outputs.ndk }}-${{ hashFiles('core/Cargo.lock', 'core/rust-toolchain.toml', 'core/.cargo/config.toml') }}
+
       # This job resolves every dependency, so its cache is the complete one.
       - name: Save dependency cache
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -165,6 +228,9 @@ jobs:
     timeout-minutes: 60
     env:
       SYSTEM_IMAGE: "system-images;android-30;default;x86_64"
+      # As in the android job.
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
     defaults:
       run:
         working-directory: android
@@ -199,8 +265,21 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Set up Rust core toolchain
+        id: setup
         working-directory: .
         run: .github/scripts/setup-android-core.sh
+
+      # As in the android job; this job builds x86_64 only, so it keeps
+      # its own.
+      - name: Restore Rust build cache
+        id: rust-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/src
+            core/target
+          key: rust-instrumented-${{ runner.os }}-${{ steps.setup.outputs.ndk }}-${{ hashFiles('core/Cargo.lock', 'core/rust-toolchain.toml', 'core/.cargo/config.toml') }}
+          restore-keys: rust-instrumented-${{ runner.os }}-${{ steps.setup.outputs.ndk }}-
 
       # The emulator boots while the app builds: start it first, wait for
       # it after the build.
@@ -232,6 +311,15 @@ jobs:
           path: android/build/reports/profile
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Save Rust build cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/src
+            core/target
+          key: rust-instrumented-${{ runner.os }}-${{ steps.setup.outputs.ndk }}-${{ hashFiles('core/Cargo.lock', 'core/rust-toolchain.toml', 'core/.cargo/config.toml') }}
 
       - name: Wait for the emulator
         run: |
