@@ -279,6 +279,7 @@ requirement rather than on features.
 | 0.4.0 | Richer strains I: detail setting, terpene levels, lineage links, strain-profile fallback in insights. |
 | 0.5.0 | Richer strains II, part 1: CBN, CBG, THCa and CBDV label amounts. Also the session timeline (hold-and-flick) and the session editor redesign, one Settings tab with a theme choice, folder sync's working check, and a fix for a crash when the journal locks while loading. |
 | 0.5.1 | Richer strains II, part 2 (moved from 0.5.0, maintainer 2026-10-15): insights and shop effect grouped by lineage or terpene profile. |
+| 0.5.2 | Fixes: the Keystore "did not respond" error (one unlock operation at a time), folder sync's card showing at once. The unlock screen in brand green; the Products tab's floating New button and strain-first titles; New entry as the journal's main button (maintainer, 2026-10-15). |
 | 0.6.0 | Strain lookups: an offline strain and seed catalog first, then online sources (such as Leafly or a seed database) each behind its own toggle, as "Catalog lookups" requires. Which providers depends on their terms and APIs, researched during 0.4.0. |
 | 0.7.0 | F-Droid groundwork: OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app. |
 | any | "Notify me" on Play, in the first release after the maintainer files the background-location declaration and video. |
