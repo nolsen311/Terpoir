@@ -374,6 +374,8 @@
     <string name="insights_shop_level_brand">The brand %1$s</string>
     <string name="insights_shop_level_product">%1$s</string>
     <string name="insights_shop_level_strain">The strain %1$s</string>
+    <string name="insights_shop_level_lineage">%1$s and strains bred from it</string>
+    <string name="insights_shop_level_terpene">Products with %1$s as the top terpene</string>
     <string name="insights_dismiss">Dismiss</string>
     <string name="insights_wrong">Seems wrong</string>
     <string name="insights_mute">Hide %1$s insights</string>
@@ -381,6 +383,7 @@
     <string name="insights_subject_method">Sessions using %1$s</string>
     <string name="insights_subject_form">%1$s products</string>
     <string name="insights_subject_strain_type">%1$s strains</string>
+    <string name="insights_subject_lineage">%1$s and strains bred from it</string>
     <string name="insights_subject_time">Sessions in the %1$s</string>
     <string name="insights_time_morning">morning</string>
     <string name="insights_time_afternoon">afternoon</string>
@@ -390,6 +393,7 @@
     <string name="insights_category_method">method</string>
     <string name="insights_category_form">form</string>
     <string name="insights_category_strain_type">strain type</string>
+    <string name="insights_category_lineage">strain family</string>
     <string name="insights_category_time">time of day</string>
     <string name="insights_confounder_dose">dose</string>
     <string name="share">Share</string>

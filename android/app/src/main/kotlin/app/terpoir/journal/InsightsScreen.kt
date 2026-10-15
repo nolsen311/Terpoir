@@ -147,12 +147,16 @@ fun InsightsScreen(repo: JournalRepository, onOpenSession: (String) -> Unit, onC
                         val subject = when (effect.level) {
                             "brand" -> R.string.insights_shop_level_brand
                             "strain" -> R.string.insights_shop_level_strain
+                            "lineage" -> R.string.insights_shop_level_lineage
+                            "terpene" -> R.string.insights_shop_level_terpene
                             else -> R.string.insights_shop_level_product
                         }
+                        // A built-in terpene comes as its slug; a custom one by name.
+                        val name = if (effect.level == "terpene" && !effect.subject.startsWith("custom:")) label(effect.label) else effect.label
                         Text(
                             stringResource(
                                 R.string.insights_shop_effect,
-                                stringResource(subject, effect.label),
+                                stringResource(subject, name),
                                 stars(effect.hereAvgMilli),
                                 stars(effect.elsewhereAvgMilli),
                                 pluralStringResource(
@@ -192,6 +196,8 @@ private fun subjectPhrase(insight: InsightData): String {
         "method" -> stringResource(R.string.insights_subject_method, name)
         "form" -> stringResource(R.string.insights_subject_form, name)
         "strain_type" -> stringResource(R.string.insights_subject_strain_type, name)
+        // The shared parent's name, as the user wrote it.
+        "lineage" -> stringResource(R.string.insights_subject_lineage, insight.subject)
         "time" -> stringResource(R.string.insights_subject_time, stringResource(timeLabel(insight.subject)))
         else -> name
     }
@@ -218,5 +224,6 @@ private fun categoryLabel(slug: String): Int = when (slug) {
     "method" -> R.string.insights_category_method
     "form" -> R.string.insights_category_form
     "strain_type" -> R.string.insights_category_strain_type
+    "lineage" -> R.string.insights_category_lineage
     else -> R.string.insights_category_time
 }

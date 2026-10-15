@@ -7,8 +7,9 @@
 //!
 //! - Per shop: the average rating and the **hit rate** (the share of
 //!   sessions rated 4★ or more, or marked "would repeat").
-//! - **Shop effect**, kept apart from selection: the same brand, product or
-//!   strain rated differently depending on where it was bought. Only for
+//! - **Shop effect**, kept apart from selection: the same brand, product,
+//!   strain, strain family (a parent and its offspring) or dominant
+//!   terpene rated differently depending on where it was bought. Only for
 //!   ones bought at two or more shops. Brand is the main level: individual
 //!   products often appear at one shop only, while a brand's are usually
 //!   consistent across shops.
@@ -31,6 +32,10 @@ pub enum Level {
     Product,
     /// The same strain.
     Strain,
+    /// Strains sharing a parent: the parent and its offspring.
+    Lineage,
+    /// Products with the same dominant terpene.
+    Terpene,
 }
 
 /// One product in a session, and where it was bought.
@@ -44,6 +49,11 @@ pub struct Buy {
     pub brand: Option<String>,
     /// The product's strains.
     pub strains: Vec<String>,
+    /// The strain families the product belongs to (the caller's key for
+    /// each shared parent).
+    pub lineages: Vec<String>,
+    /// The product's dominant terpene (the caller's key), if known.
+    pub terpene: Option<String>,
     /// Days from the package date to the purchase, if both are known.
     pub age_days: Option<i64>,
 }
@@ -55,6 +65,8 @@ impl Buy {
             Level::Brand => self.brand.as_deref().into_iter().collect(),
             Level::Product => vec![self.product.as_str()],
             Level::Strain => self.strains.iter().map(String::as_str).collect(),
+            Level::Lineage => self.lineages.iter().map(String::as_str).collect(),
+            Level::Terpene => self.terpene.as_deref().into_iter().collect(),
         }
     }
 }
@@ -105,8 +117,8 @@ pub struct ShopSummary {
     /// Average age of products at purchase here, in days, when enough
     /// package dates are known.
     pub avg_age_days: Option<i64>,
-    /// Brands, products and strains rated differently here than elsewhere:
-    /// brands first, then products, then strains.
+    /// Brands, products, strains, strain families and dominant terpenes
+    /// rated differently here than elsewhere, in that order.
     pub effects: Vec<ShopEffect>,
 }
 
@@ -218,10 +230,16 @@ pub fn shop_insights(sessions: &[ShopSessionFacts]) -> Vec<ShopSummary> {
             avg_rating_milli: average(&ratings),
             hit_rate_percent: hit_rate,
             avg_age_days: avg_age,
-            effects: [Level::Brand, Level::Product, Level::Strain]
-                .into_iter()
-                .flat_map(|level| effects(sessions, shop, level))
-                .collect(),
+            effects: [
+                Level::Brand,
+                Level::Product,
+                Level::Strain,
+                Level::Lineage,
+                Level::Terpene,
+            ]
+            .into_iter()
+            .flat_map(|level| effects(sessions, shop, level))
+            .collect(),
         });
     }
     out.sort_by_key(|s| std::cmp::Reverse(s.sessions.len()));
@@ -247,7 +265,7 @@ mod tests {
             product: product.into(),
             brand: Some(brand.into()),
             strains: vec![strain.into()],
-            age_days: None,
+            ..Buy::default()
         }
     }
 
@@ -389,6 +407,36 @@ mod tests {
                 a.effects[0].elsewhere_avg_milli
             ),
             (5_000, 2_000)
+        );
+    }
+
+    #[test]
+    fn strain_families_and_terpenes_are_compared_across_strains() {
+        // Different strains at each shop, sharing a parent and a terpene:
+        // no strain effect, but a family and a terpene one.
+        let bought = |shop: &str, i: usize| Buy {
+            shop: shop.into(),
+            product: format!("{shop}{i}"),
+            strains: vec![format!("{shop}-strain")],
+            lineages: vec!["blueberry".into()],
+            terpene: Some("myrcene".into()),
+            ..Buy::default()
+        };
+        let mut all = Vec::new();
+        for i in 0..5 {
+            all.push(session(i, Some(5), None, vec![bought("a", i)]));
+            all.push(session(10 + i, Some(2), None, vec![bought("b", i)]));
+        }
+        let found = shop_insights(&all);
+        let a = found.iter().find(|s| s.shop == "a").unwrap();
+        let levels: Vec<_> = a
+            .effects
+            .iter()
+            .map(|e| (e.level, e.subject.as_str()))
+            .collect();
+        assert_eq!(
+            levels,
+            vec![(Level::Lineage, "blueberry"), (Level::Terpene, "myrcene")]
         );
     }
 
