@@ -3,9 +3,15 @@
 #
 # Usage (from android/): python3 release/store/render.py release/store \
 #   app/src/main/res/font/fraunces.ttf app/src/main/res/font/work_sans.ttf
+#
+#   or, for a release announcement's image (.github/workflows/announce.yml):
+#   python3 release/store/render.py --card OUT.png VERSION HEADLINE \
+#   app/src/main/res/font/fraunces.ttf app/src/main/res/font/work_sans.ttf
 # Needs Pillow.
 # Renders the Play store icon and feature graphic from the launcher icon's
-# vector (ic_launcher_foreground.xml shapes, ic_launcher_background colour).
+# vector (ic_launcher_foreground.xml shapes, ic_launcher_background colour),
+# and the release card: the feature graphic's lockup with the version and
+# the release's headline in place of the tagline.
 import sys
 from PIL import Image, ImageDraw, ImageFont
 
@@ -54,16 +60,36 @@ def icon(path):
     art(ImageDraw.Draw(img), scale, -18 * scale, -18 * scale)
     img.resize((512, 512), Image.LANCZOS).convert("RGB").save(path, optimize=True)
 
-def feature(path, title_font, body_font):
+TAGLINE = "A private journal, kept on your phone"
+
+
+def wrap(d, text, font, width, max_lines):
+    """Fits text into one line, or else two balanced lines (max_lines 2),
+    each no wider than width."""
+    words = text.split()
+    if d.textlength(text, font=font) <= width or max_lines == 1:
+        assert d.textlength(text, font=font) <= width, f"too long for one line: {text!r}"
+        return [text]
+    splits = [(" ".join(words[:i]), " ".join(words[i:])) for i in range(1, len(words))]
+    fits = [p for p in splits if all(d.textlength(l, font=font) <= width for l in p)]
+    assert fits, f"too long for two lines: {text!r}"
+    return list(min(fits, key=lambda p: max(d.textlength(l, font=font) for l in p)))
+
+
+def feature(path, title_font, body_font, size=(1024, 500), version=None, subtitle=None):
     # One line: the book, sized to the wordmark's capitals and sitting on
     # its baseline, then "Terpoir"; the bubbles rise above the book. The
-    # tagline has its own line below, centred under the whole lockup.
-    w, h = 1024 * SS, 500 * SS
+    # tagline has its own line below, centred under the whole lockup. A
+    # release card adds the version, in amber, between the two, and shows
+    # the release's headline (up to two lines) in place of the tagline.
+    w, h = size[0] * SS, size[1] * SS
     img = Image.new("RGBA", (w, h), BG)
     d = ImageDraw.Draw(img)
     title = ImageFont.truetype(title_font, 130 * SS)
-    body = ImageFont.truetype(body_font, 36 * SS)
-    tagline = "A private journal, kept on your phone"
+    body = ImageFont.truetype(body_font, (40 if version else 36) * SS)
+    subtitle = subtitle or TAGLINE
+    sub_lines = wrap(d, subtitle, body, (960 if version else w / SS - 160) * SS, 2 if version else 1)
+    tagline = max(sub_lines, key=lambda l: d.textlength(l, font=body))
     t_left, t_top, t_right, t_bottom = d.textbbox((0, 0), "Terpoir", font=title, anchor="ls")
     cap = -d.textbbox((0, 0), "T", font=title, anchor="ls")[1]  # cap height
     scale = cap / PAGES_H
@@ -73,19 +99,42 @@ def feature(path, title_font, body_font):
     bw = d.textlength(tagline, font=body)
     bubbles_h = (PAGES_Y - ART_Y) * scale  # bubbles above the pages
     line_gap = 56 * SS
-    body_h = 36 * SS
-    block_h = bubbles_h + cap + line_gap + body_h
+    sub_lead = (54 if version else 36) * SS
+    body_h = sub_lead * (len(sub_lines) - 1) + (40 if version else 36) * SS
+    ver = ImageFont.truetype(title_font, 60 * SS)
+    ver_text = f"Version {version}" if version else None
+    ver_gap = 64 * SS
+    ver_h = 60 * SS if version else 0
+    block_h = bubbles_h + cap + (ver_gap + ver_h if version else 0) + line_gap + body_h
     top = (h - block_h) / 2
     baseline = top + bubbles_h + cap
     x0 = (w - row_w) / 2
     # Pages' bottom edge (y 78) on the baseline.
     art(d, scale, x0 - ART_X * scale, baseline - 78 * scale)
     d.text((x0 + book_w + gap - t_left, baseline), "Terpoir", font=title, fill=PAPER, anchor="ls")
-    d.text(((w - bw) / 2, baseline + line_gap), tagline, font=body, fill=(0xC9, 0xC2, 0xAE, 255), anchor="la")
+    tag_y = baseline + line_gap
+    if version:
+        vw = d.textlength(ver_text, font=ver)
+        d.text(((w - vw) / 2, baseline + ver_gap), ver_text, font=ver, fill=AMBER, anchor="la")
+        tag_y += ver_gap + ver_h
+    sub_fill = PAPER if version else (0xC9, 0xC2, 0xAE, 255)
+    for i, line in enumerate(sub_lines):
+        lw = d.textlength(line, font=body)
+        d.text(((w - lw) / 2, tag_y + i * sub_lead), line, font=body, fill=sub_fill, anchor="la")
     left = min(x0, (w - bw) / 2)
     assert left >= 40 * SS and top >= 30 * SS, "content runs into the edges"
-    img.resize((1024, 500), Image.LANCZOS).convert("RGB").save(path, optimize=True)
+    img.resize(size, Image.LANCZOS).convert("RGB").save(path, optimize=True)
 
-out = sys.argv[1]
-icon(out + "/icon-512.png")
-feature(out + "/feature-graphic-1024x500.png", sys.argv[2], sys.argv[3])
+
+def card(path, version, headline, title_font, body_font):
+    """The image posted with a release announcement: 1200 x 675 (16:9)."""
+    feature(path, title_font, body_font, size=(1200, 675), version=version, subtitle=headline)
+
+
+if __name__ == "__main__":
+    if sys.argv[1] == "--card":
+        card(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6])
+    else:
+        out = sys.argv[1]
+        icon(out + "/icon-512.png")
+        feature(out + "/feature-graphic-1024x500.png", sys.argv[2], sys.argv[3])

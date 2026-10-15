@@ -443,10 +443,14 @@ them; the other activities belong to Google's libraries.
 - **Release notes** (en-US, the "What's new" box, 500 characters at most).
   `play-upload.sh` doesn't send them: paste them into the release in the
   Play Console before rolling it out.
+  Each version also has a **Headline:** line under its heading, a few
+  words for the release image posted to Mastodon (`announce.yml`; at most
+  two lines on the image, about 60 characters).
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
   - **0.5.2** (388 characters):
+    Headline: Unlocking works every time, and the Products tab is tidier
     ```
     <en-US>
     Fixes "secure key storage did not respond" when unlocking. The unlock screen is now Terpoir green and shows the app's version. Folder sync shows its Sync button right away. On Products, New floats at the bottom and products are listed by strain; a name is optional. In the journal, New entry is the main button, Insights is the lightbulb at the top, and location cards can be swiped away.

@@ -31,6 +31,17 @@ per item or small group of items. Keep this file updated as items land.
       the first release that includes it. Not needed for the first Play
       release, which leaves background location out (maintainer,
       2026-10-13).
+- [ ] Mastodon account for release announcements (2026-10-15;
+      `docs/design-decisions.md`, "Release announcements"):
+  - [ ] Create the account on mastodon.social (for example
+        `terpoirapp`); mark it as a bot ("automated account") in its
+        profile settings.
+  - [ ] Preferences → Development → New application, with only the
+        `write:statuses` and `write:media` scopes; copy its access token.
+  - [ ] Add the token as `MASTODON_TOKEN` in the Terpoir repository's
+        `announce` environment (Settings → Environments), after
+        Terpoir-infra has created it.
+  - [ ] Copy the token to Keeper, folder `Terpoir` (Terpoir-infra D9).
 - [ ] Strain data permission requests (2026-10-15;
       `docs/research/strain-lookups.md`). Fill in your name, send, then
       record each answer in the research doc:
