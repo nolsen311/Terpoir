@@ -556,11 +556,13 @@ private fun CatalogLists(
     var strains by remember { mutableStateOf<List<Entry<StrainData>>>(emptyList()) }
     var brands by remember { mutableStateOf<List<Entry<BrandData>>>(emptyList()) }
     var spots by remember { mutableStateOf<List<Entry<SpotData>>>(emptyList()) }
+    var subtypeNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     LaunchedEffect(revision) {
         products = repo.products()
         strains = repo.strains()
         brands = repo.brands()
         spots = repo.spots()
+        subtypeNames = repo.tags(SUBTYPE_CATEGORY).associate { it.id to it.data.name }
     }
     // A product shows without its brand when brands are hidden.
     val brandNames = if (tracking.shows(DataPoint.BRAND)) brands.associate { it.id to it.data.name } else emptyMap()
@@ -580,7 +582,13 @@ private fun CatalogLists(
                 d.cbdMilli?.let { stringResource(R.string.catalog_cbd, amount(it, d.cbdUnit)) },
             )
         }
-        p.id to productTitle(d.name, d.strains.mapNotNull(strainNames::get), d.brand?.let(brandNames::get), d.form?.let { label(it) }, potency)
+        // Its kind ("Bubble hash") says more than its type ("Concentrate").
+        val kind = when (val st = d.subtype) {
+            is TagRefData.Builtin -> label(st.slug)
+            is TagRefData.Custom -> subtypeNames[st.id]
+            null -> null
+        } ?: d.form?.let { label(it) }
+        p.id to productTitle(d.name, d.strains.mapNotNull(strainNames::get), d.brand?.let(brandNames::get), kind, potency)
     }.sortedBy { it.second.title.lowercase() }
     // The lists swipe sideways (maintainer, 2026-10-15). The buttons above
     // follow the swipe, and tapping one scrolls to its list.

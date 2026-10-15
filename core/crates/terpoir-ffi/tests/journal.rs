@@ -15,9 +15,9 @@ use terpoir_ffi::{
     Journal, LocalTimeData, NewKeys, ProductData, ProductLineData, PurchaseData, PurchaseLineData,
     RecordType, SessionData, SnippetData, SpotData, StrainData, SymptomData, TagData, TagIntensity,
     TagProvenance, TagRefData, TerpeneLevelData, TimelineLevelData, check_export_archive,
-    check_recovery_key, create_keys, keys_for_restore, master_key_from_recovery,
-    read_export_archive, readable_blobs, sync_folder_key_file, timeline_plan_for_methods,
-    trackable_data_points, vocabulary,
+    check_in_minutes_for_methods, check_recovery_key, create_keys, keys_for_restore,
+    master_key_from_recovery, read_export_archive, readable_blobs, subtypes_for_form,
+    sync_folder_key_file, timeline_plan_for_methods, trackable_data_points, vocabulary,
 };
 
 struct Device {
@@ -150,6 +150,7 @@ fn full_lifecycle() {
                 }],
                 shops: vec![],
                 cannabinoids: vec![],
+                subtype: None,
             },
             1,
         )
@@ -163,6 +164,8 @@ fn full_lifecycle() {
             TagData {
                 name: "giggly".into(),
                 category: "effect".into(),
+                form: None,
+                method: None,
             },
             2,
         )
@@ -794,6 +797,7 @@ fn the_plaintext_export_has_every_record_readably() {
                 identifiers: vec![],
                 shops: vec![],
                 cannabinoids: vec![],
+                subtype: None,
             },
             2,
         )
@@ -897,6 +901,141 @@ fn timeline_plans_come_from_the_methods() {
     assert_eq!(mixed.minutes, 240);
     assert_eq!(mixed.point_minutes.len(), 5);
     assert_eq!(timeline_plan_for_methods(vec![]).minutes, 120);
+    // A patch: 12 hours, unevenly spaced points; and the longest plan wins.
+    let patch = timeline_plan_for_methods(vec!["transdermal".into(), "edible".into()]);
+    assert_eq!(patch.minutes, 720);
+    assert_eq!(patch.point_minutes, [60, 120, 240, 480, 720]);
+    assert_eq!(patch.gesture_points, 2);
+}
+
+#[test]
+fn check_ins_come_from_the_methods() {
+    let minutes = |methods: &[&str]| {
+        check_in_minutes_for_methods(methods.iter().map(|m| (*m).to_owned()).collect())
+    };
+    assert_eq!(minutes(&["edible"]), Some(90));
+    assert_eq!(minutes(&["beverage"]), Some(90));
+    assert_eq!(minutes(&["tincture"]), Some(45));
+    assert_eq!(minutes(&["transdermal"]), Some(120));
+    // The slowest method wins.
+    assert_eq!(minutes(&["tincture", "edible", "smoked"]), Some(90));
+    assert_eq!(minutes(&["edible", "transdermal"]), Some(120));
+    // Inhaled and topical get none, nor does a method from a newer app.
+    assert_eq!(
+        minutes(&["smoked", "vaped_flower", "vape_cart", "dabbed", "topical"]),
+        None
+    );
+    assert_eq!(minutes(&["nebulized"]), None);
+    assert_eq!(minutes(&[]), None);
+    assert!(vocabulary().methods.contains(&"transdermal".to_owned()));
+}
+
+#[test]
+fn products_take_their_usual_method_from_subtype_then_form() {
+    let device = Device::new();
+    let keys = create_keys().unwrap();
+    let journal = device.open(&keys).unwrap();
+    let builtin = |slug: &str| Some(TagRefData::Builtin { slug: slug.into() });
+    let usual = |form: Option<&str>, subtype: Option<TagRefData>| {
+        journal
+            .usual_method(form.map(str::to_owned), subtype)
+            .unwrap()
+    };
+    // A patch is transdermal; a balm, like any topical, topical.
+    assert_eq!(
+        usual(Some("topical"), builtin("patch")).as_deref(),
+        Some("transdermal")
+    );
+    assert_eq!(
+        usual(Some("topical"), builtin("balm")).as_deref(),
+        Some("topical")
+    );
+    assert_eq!(usual(Some("topical"), None).as_deref(), Some("topical"));
+    assert_eq!(usual(Some("concentrate"), None).as_deref(), Some("dabbed"));
+    // A subtype under another form: the form's method.
+    assert_eq!(
+        usual(Some("edible"), builtin("patch")).as_deref(),
+        Some("edible")
+    );
+    assert_eq!(usual(None, None), None);
+    assert!(subtypes_for_form("topical".into()).contains(&"patch".to_owned()));
+
+    // A custom subtype with its own method, and one keeping its form's.
+    let strip = journal
+        .save_tag(
+            None,
+            TagData {
+                name: "Strip".into(),
+                category: "subtype".into(),
+                form: Some("edible".into()),
+                method: Some("tincture".into()),
+            },
+            1,
+        )
+        .unwrap();
+    let saved = journal.get_tag(strip.clone()).unwrap().unwrap();
+    assert_eq!(
+        (saved.form.as_deref(), saved.method.as_deref()),
+        (Some("edible"), Some("tincture"))
+    );
+    let brownie = journal
+        .save_tag(
+            None,
+            TagData {
+                name: "Brownie bite".into(),
+                category: "subtype".into(),
+                form: Some("edible".into()),
+                method: None,
+            },
+            2,
+        )
+        .unwrap();
+    let custom = |id: &String| Some(TagRefData::Custom { id: id.clone() });
+    assert_eq!(
+        usual(Some("edible"), custom(&strip)).as_deref(),
+        Some("tincture")
+    );
+    assert_eq!(
+        usual(Some("edible"), custom(&brownie)).as_deref(),
+        Some("edible")
+    );
+    // Under a form that isn't its parent: the form's method.
+    assert_eq!(
+        usual(Some("beverage"), custom(&strip)).as_deref(),
+        Some("beverage")
+    );
+    // A deleted custom subtype counts as none.
+    assert!(journal.delete_record(strip.clone()).unwrap());
+    assert_eq!(
+        usual(Some("edible"), custom(&strip)).as_deref(),
+        Some("edible")
+    );
+    assert!(matches!(
+        journal.usual_method(None, builtin("")),
+        Err(CoreError::InvalidInput)
+    ));
+
+    // A product keeps its subtype; a custom one is indexed as its tag.
+    let mut product = strain_product("Relief patch", String::new(), vec![]);
+    product.strains = vec![];
+    product.form = Some("topical".into());
+    product.subtype = builtin("patch");
+    let id = journal.save_product(None, product.clone(), 3).unwrap();
+    let saved = journal.get_product(id.clone()).unwrap().unwrap();
+    assert!(saved.subtype == product.subtype);
+    product.form = Some("edible".into());
+    product.subtype = custom(&brownie);
+    journal.save_product(Some(id.clone()), product, 4).unwrap();
+    assert_eq!(
+        journal.referencing(brownie.clone()).unwrap(),
+        vec![id.clone()]
+    );
+    assert_eq!(
+        journal
+            .with_tag(TagRefData::Custom { id: brownie })
+            .unwrap(),
+        vec![id]
+    );
 }
 
 #[test]
@@ -910,6 +1049,8 @@ fn deleting_symptoms_keeps_the_rest_of_each_session() {
             TagData {
                 name: "Cramps".into(),
                 category: "symptom".into(),
+                form: None,
+                method: None,
             },
             5,
         )
@@ -920,6 +1061,8 @@ fn deleting_symptoms_keeps_the_rest_of_each_session() {
             TagData {
                 name: "Giggly".into(),
                 category: "effect".into(),
+                form: None,
+                method: None,
             },
             6,
         )
@@ -969,6 +1112,7 @@ fn insights_need_evidence_and_respect_feedback() {
         identifiers: vec![],
         shops: vec![],
         cannabinoids: vec![],
+        subtype: None,
     };
     let heavy = journal
         .save_product(None, product("Heavy", "myrcene"), 1)
@@ -1072,6 +1216,7 @@ fn with_terpene_insights(journal: &Journal) {
                     identifiers: vec![],
                     shops: vec![],
                     cannabinoids: vec![],
+                    subtype: None,
                 },
                 1,
             )
@@ -1263,6 +1408,7 @@ fn shop_insights_attribute_sessions_to_where_products_were_bought() {
                     identifiers: vec![],
                     shops: vec![],
                     cannabinoids: vec![],
+                    subtype: None,
                 },
                 2,
             )
@@ -1446,6 +1592,7 @@ fn shop_insights_compare_brands_and_strains_across_shops() {
                     identifiers: vec![],
                     shops: vec![shop.clone()],
                     cannabinoids: vec![],
+                    subtype: None,
                 },
                 3,
             )
@@ -1669,6 +1816,7 @@ fn deleting_a_data_point_clears_it_everywhere() {
                 identifiers: vec![],
                 shops: vec![spot.clone()],
                 cannabinoids: vec![],
+                subtype: None,
             },
             1,
         )
@@ -1980,6 +2128,7 @@ fn insights_fall_back_to_a_strains_dominant_terpene() {
         identifiers: vec![],
         shops: vec![],
         cannabinoids: vec![],
+        subtype: None,
     };
     let sleepy = journal
         .save_strain(None, strain("Sleepy", "myrcene"), 1)
@@ -2061,6 +2210,7 @@ fn strain_product(name: &str, strain: String, shops: Vec<String>) -> ProductData
         identifiers: vec![],
         shops,
         cannabinoids: vec![],
+        subtype: None,
     }
 }
 
@@ -2227,6 +2377,7 @@ fn products_keep_label_cannabinoids() {
         identifiers: vec![],
         shops: vec![],
         cannabinoids: vec![amount("cbg", 1_200), amount("cbn", 400)],
+        subtype: None,
     };
     let id = journal.save_product(None, product.clone(), 1).unwrap();
     // Read back in cannabinoid order (cbn before cbg is not guaranteed by
@@ -2328,6 +2479,7 @@ fn receipt_items_and_shops_are_matched_against_the_journal() {
                 identifiers: vec![],
                 shops: vec![],
                 cannabinoids: vec![],
+                subtype: None,
             },
             4,
         )

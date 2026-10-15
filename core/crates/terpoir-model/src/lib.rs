@@ -46,9 +46,9 @@ pub use records::{
     IdentifierKind, InsightFeedbackList, Intention, LabelAmount, LabelUnit, LocalTime, Location,
     MIN_SPOT_RADIUS_M, Method, Mood, Price, Product, ProductLine, Provenance, Purchase,
     PurchaseLine, PurchaseRef, Record, RecordKind, Session, Snippet, Social, Spot, SpotPurpose,
-    Strain, StrainDetail, StrainType, SymptomResult, Tag, TagCategory, TagRef, TargetedSymptom,
-    Terpene, TerpeneLevel, Timeline, TimelinePlan, TrackedField, TrackingPreferences,
-    timeline_plan_for,
+    Strain, StrainDetail, StrainType, Subtype, SymptomResult, Tag, TagCategory, TagRef,
+    TargetedSymptom, Terpene, TerpeneLevel, Timeline, TimelinePlan, TrackedField,
+    TrackingPreferences, check_in_minutes_for, timeline_plan_for, usual_method,
 };
 pub use stamp::{DeviceId, Hlc, Stamp};
 pub use terpoir_crypto::RecordId;
@@ -78,6 +78,7 @@ mod tests {
             .chain(Flavor::SLUGS.iter().copied())
             .chain(Mood::SLUGS.iter().copied())
             .chain(TargetedSymptom::SLUGS.iter().copied())
+            .chain(Subtype::SLUGS.iter().copied())
             .chain(purposes)
             .collect();
         let unique: HashSet<&str> = all.iter().copied().collect();

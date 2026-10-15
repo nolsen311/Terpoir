@@ -52,14 +52,18 @@ Written by `make_compat_fixtures.rs` with fixed contents and clock:
 - spot "Corner shop" (purpose, coordinates, radius, purchase prompts on);
 - product "Gummies" (form, brand, strain, THC/CBD, terpene, batch, package
   date, barcode, shop); since 0.5.0 also a CBN label amount
-  (`product_cannabinoids` in the manifest);
+  (`product_cannabinoids` in the manifest); since 0.6.0 also the subtype
+  gummy (`product_subtypes` in the manifest);
 - a purchase of it at the spot (batch, price);
-- tags "giggly" (effect) and "jaw tension" (symptom);
+- tags "giggly" (effect) and "jaw tension" (symptom); since 0.6.0 also
+  "Lozenge", a custom subtype under edible with tincture as its method
+  (`subtype_tag` in the manifest);
 - a session using the product from that purchase line, with every field
   set: effects (built-in and custom), symptoms (built-in and custom),
   timeline, moods, rating 4 then edited to 5, spot, one attachment; since
   0.5.0 also timeline levels and their update time (`session_timeline` in
-  the manifest);
+  the manifest); since 0.6.0 also a second line, a 10 mg patch with no
+  product, by the `transdermal` method;
 - a note on the session, and a note captured while locked and merged;
 - "What I track" with terpenes hidden (since 0.4.0, also the Detailed
   strain step), and one insight dismissed.

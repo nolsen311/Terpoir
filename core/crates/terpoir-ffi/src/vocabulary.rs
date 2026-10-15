@@ -8,8 +8,8 @@
 
 use terpoir_model::{
     Cannabinoid, CoreEffect, DoseUnit, Flavor, Form, Intention, LabelUnit, Method, Mood, Social,
-    StrainDetail, StrainType, SymptomResult, TargetedSymptom, Terpene, TerpeneLevel,
-    timeline_plan_for,
+    StrainDetail, StrainType, Subtype, SymptomResult, TargetedSymptom, Terpene, TerpeneLevel,
+    check_in_minutes_for, timeline_plan_for,
 };
 
 use crate::records::TimelinePlanData;
@@ -49,6 +49,11 @@ pub struct Vocabulary {
     pub flavors: Vec<String>,
     /// Built-in mood tags.
     pub moods: Vec<String>,
+    /// Built-in product subtypes, every form's, in display order (see
+    /// `subtypes_for_form` for one form's; custom subtypes are tags). Last,
+    /// with a default, so callers that predate it compile.
+    #[uniffi(default = [])]
+    pub subtypes: Vec<String>,
 }
 
 fn owned(slugs: &[&str]) -> Vec<String> {
@@ -79,7 +84,39 @@ pub fn vocabulary() -> Vocabulary {
         terpenes: owned(Terpene::SLUGS),
         flavors: owned(Flavor::SLUGS),
         moods: owned(Mood::SLUGS),
+        subtypes: owned(Subtype::SLUGS),
     }
+}
+
+/// The built-in subtypes under a product form (slug), in display order.
+/// Empty for a form with none (flower, tincture) or from a newer app
+/// version.
+#[uniffi::export]
+#[must_use]
+pub fn subtypes_for_form(form: String) -> Vec<String> {
+    Subtype::of(&Form::from_slug(&form))
+        .map(|s| s.slug().to_owned())
+        .collect()
+}
+
+/// The form a built-in subtype (slug) is under; `None` for one from a newer
+/// app version.
+#[uniffi::export]
+#[must_use]
+pub fn subtype_parent(subtype: String) -> Option<String> {
+    Subtype::from_slug(&subtype)
+        .parent()
+        .map(|f| f.slug().to_owned())
+}
+
+/// The default follow-up check-in delay for a session with these methods
+/// (slugs), in minutes: the longest of theirs; `None` for no check-in by
+/// default (inhaled and topical methods, or none).
+#[uniffi::export]
+#[must_use]
+pub fn check_in_minutes_for_methods(methods: Vec<String>) -> Option<u32> {
+    let methods: Vec<Method> = methods.iter().map(|m| Method::from_slug(m)).collect();
+    check_in_minutes_for(&methods)
 }
 
 /// The dose units that make sense for a method, the usual one first. Empty
@@ -109,6 +146,7 @@ pub fn timeline_plan_for_methods(methods: Vec<String>) -> TimelinePlanData {
 }
 
 /// The usual method for a product form, as a new session line's default.
+/// A product with a subtype takes `Journal::usual_method` instead.
 #[uniffi::export]
 #[must_use]
 pub fn default_method_for_form(form: String) -> Option<String> {
@@ -144,5 +182,28 @@ mod tests {
         }
         assert!(dose_units_for_method("topical".into()).is_empty());
         assert_eq!(default_method_for_form("unknown_form".into()), None);
+        assert_eq!(dose_units_for_method("transdermal".into()), ["mg"]);
+    }
+
+    #[test]
+    fn every_listed_subtype_is_under_a_listed_form() {
+        let v = vocabulary();
+        let mut listed = Vec::new();
+        for form in &v.forms {
+            for subtype in subtypes_for_form(form.clone()) {
+                assert_eq!(subtype_parent(subtype.clone()).as_ref(), Some(form));
+                listed.push(subtype);
+            }
+        }
+        listed.sort();
+        let mut all = v.subtypes.clone();
+        all.sort();
+        assert_eq!(listed, all);
+        assert_eq!(
+            subtypes_for_form("topical".into()),
+            ["balm".to_owned(), "patch".to_owned()]
+        );
+        assert!(subtypes_for_form("flower".into()).is_empty());
+        assert_eq!(subtype_parent("future".into()), None);
     }
 }

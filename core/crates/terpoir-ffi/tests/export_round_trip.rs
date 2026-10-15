@@ -200,6 +200,7 @@ fn fill(journal: &Journal) -> Filled {
                     milli: 2_000,
                     unit: "mg_per_unit".into(),
                 }],
+                subtype: None,
             },
             2,
         )
@@ -228,6 +229,8 @@ fn fill(journal: &Journal) -> Filled {
             TagData {
                 name: "giggly".into(),
                 category: "effect".into(),
+                form: None,
+                method: None,
             },
             2,
         )

@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import app.terpoir.MainActivity
 import app.terpoir.R
 import app.terpoir.TerpoirApplication
+import app.terpoir.core.checkInMinutesForMethods
 import app.terpoir.privacy.PrivacySettings
 
 /**
@@ -109,14 +110,11 @@ class CheckIns(private val context: Context, private val settings: PrivacySettin
 
         /**
          * The default delay for a session's methods, in minutes, or `null`
-         * for no check-in by default: edibles and drinks take longest to
-         * come on, tinctures less; inhaled and topical need none.
+         * for no check-in by default. The core decides
+         * (`Method::check_in_minutes`): the slowest method's delay.
          */
-        fun defaultMinutes(methods: Collection<String>): Int? = when {
-            methods.any { it == "edible" || it == "beverage" } -> 90
-            "tincture" in methods -> 45
-            else -> null
-        }
+        fun defaultMinutes(methods: Collection<String>): Int? =
+            checkInMinutesForMethods(methods.toList())?.toInt()
 
         private const val CHANNEL = "check_ins"
         private const val NOTIFICATION_ID = 2

@@ -81,7 +81,6 @@ import app.terpoir.core.SpotData
 import app.terpoir.core.TagData
 import app.terpoir.core.TagRefData
 import app.terpoir.core.Vocabulary
-import app.terpoir.core.defaultMethodForForm
 import app.terpoir.core.doseUnitsForMethod
 import app.terpoir.core.timelinePlanForMethods
 import app.terpoir.privacy.PrivacySettings
@@ -112,6 +111,7 @@ fun SessionEditor(
     var confirmDiscard by remember { mutableStateOf(false) }
     var products by remember { mutableStateOf<List<Entry<ProductData>>>(emptyList()) }
     var productLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var usualMethods by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var customEffects by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
     var customSymptoms by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
     var error by remember { mutableStateOf<DraftError?>(null) }
@@ -132,6 +132,7 @@ fun SessionEditor(
     LaunchedEffect(id) {
         products = repo.products()
         productLabels = repo.productLabels()
+        usualMethods = repo.usualMethods(products)
         spots = repo.spots()
         customEffects = repo.tags(EFFECT_CATEGORY)
         customSymptoms = repo.tags(SYMPTOM_CATEGORY)
@@ -194,6 +195,7 @@ fun SessionEditor(
                     line = line,
                     products = products,
                     productLabels = productLabels,
+                    usualMethods = usualMethods,
                     spotNames = spots.associate { it.id to it.data.name },
                     vocab = vocab,
                     onChange = { changed -> draft = current.copy(lines = current.lines.toMutableList().also { it[index] = changed }) },
@@ -387,6 +389,7 @@ private fun LineEditor(
     line: LineDraft,
     products: List<Entry<ProductData>>,
     productLabels: Map<String, String>,
+    usualMethods: Map<String, String>,
     spotNames: Map<String, String>,
     vocab: Vocabulary,
     onChange: (LineDraft) -> Unit,
@@ -400,8 +403,7 @@ private fun LineEditor(
                 options = listOf<Pair<String?, String>>(null to none) + products.map { it.id to (productLabels[it.id] ?: it.data.name) }.sortedBy { it.second.lowercase() },
                 selected = line.product,
                 onSelect = { productId ->
-                    val form = products.firstOrNull { it.id == productId }?.data?.form
-                    val method = form?.let(::defaultMethodForForm) ?: line.method
+                    val method = productId?.let(usualMethods::get) ?: line.method
                     onChange(
                         line.copy(
                             product = productId,

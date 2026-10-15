@@ -4,21 +4,27 @@
 
 package app.terpoir.alerts
 
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.junit.runner.RunWith
 
+/** The default check-in delays come from the core, so this runs on a device. */
+@RunWith(AndroidJUnit4::class)
 class CheckInDefaultsTest {
     @Test
     fun slowMethodsGetACheckIn() {
         assertEquals(90, CheckIns.defaultMinutes(listOf("edible")))
         assertEquals(90, CheckIns.defaultMinutes(listOf("beverage")))
         assertEquals(45, CheckIns.defaultMinutes(listOf("tincture")))
+        assertEquals(120, CheckIns.defaultMinutes(listOf("transdermal")))
     }
 
     @Test
     fun theSlowestMethodWins() {
         assertEquals(90, CheckIns.defaultMinutes(listOf("tincture", "edible", "smoked")))
+        assertEquals(120, CheckIns.defaultMinutes(listOf("edible", "transdermal")))
     }
 
     @Test

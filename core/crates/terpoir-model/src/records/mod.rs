@@ -21,13 +21,14 @@ mod tracking;
 
 pub use catalog::{
     Brand, Cannabinoid, Form, IdentifierKind, LabelAmount, LabelUnit, Product, Strain, StrainType,
-    Terpene, TerpeneLevel,
+    Subtype, Terpene, TerpeneLevel, usual_method,
 };
 pub use feedback::InsightFeedbackList;
 pub use purchase::{Price, Purchase, PurchaseLine};
 pub use session::{
     CoreEffect, Dose, DoseUnit, Intention, Method, ProductLine, PurchaseRef, Session, Social,
-    SymptomResult, TargetedSymptom, Timeline, TimelinePlan, timeline_plan_for,
+    SymptomResult, TargetedSymptom, Timeline, TimelinePlan, check_in_minutes_for,
+    timeline_plan_for,
 };
 pub use snippet::{Provenance, Snippet};
 pub use spot::{DEFAULT_SPOT_RADIUS_M, Location, MIN_SPOT_RADIUS_M, Spot, SpotPurpose};
