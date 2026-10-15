@@ -713,8 +713,9 @@ private fun SpotAction(spots: List<Entry<SpotData>>, spot: String?, onSelect: (S
     var open by remember { mutableStateOf(false) }
     val name = spots.firstOrNull { it.id == spot }?.data?.name
     Box {
-        val label = name ?: stringResource(R.string.session_spot)
-        SessionAction(R.drawable.ic_spot_add, label, label, count = if (name != null) 1 else 0) { open = true }
+        val label = stringResource(R.string.session_spot)
+        val description = name?.let { stringResource(R.string.session_spot_set, it) } ?: label
+        SessionAction(R.drawable.ic_spot_add, label, description, count = if (name != null) 1 else 0) { open = true }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(text = { Text(stringResource(R.string.session_no_spot)) }, onClick = {
                 open = false
@@ -735,14 +736,15 @@ private fun SpotAction(spots: List<Entry<SpotData>>, spot: String?, onSelect: (S
 private fun CheckInAction(on: Boolean, minutes: String, onToggle: (Boolean) -> Unit, onMinutes: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val delay = minutes.trim().toIntOrNull()?.takeIf { it > 0 }
-    val label = if (on && delay != null) stringResource(R.string.check_in_in, delay) else stringResource(R.string.check_in_section)
+    val label = stringResource(R.string.remind_me)
+    val description = if (on && delay != null) stringResource(R.string.remind_me_in, delay) else label
     Box {
-        SessionAction(R.drawable.ic_check_in, label, label, count = if (on) 1 else 0) { open = true }
+        SessionAction(R.drawable.ic_check_in, label, description, count = if (on) 1 else 0) { open = true }
     }
     if (open) {
         AlertDialog(
             onDismissRequest = { open = false },
-            title = { Text(stringResource(R.string.check_in_section)) },
+            title = { Text(label) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

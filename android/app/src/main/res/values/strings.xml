@@ -475,10 +475,10 @@
     <string name="check_in_channel_description">Reminders to note how a session went.</string>
     <string name="check_in_title">Quick check-in?</string>
     <string name="check_in_text">Tap to note how it\'s going.</string>
-    <string name="check_in_section">Check-in</string>
+    <string name="remind_me">Remind me</string>
     <string name="check_in_later">Check in later</string>
     <string name="check_in_after">Minutes after</string>
-    <string name="check_in_in">In %1$d min</string>
+    <string name="remind_me_in">Remind me in %1$d min</string>
     <string name="check_in_needs_notifications">The reminder needs permission to show notifications.</string>
     <string name="check_in_screen">Check-in</string>
     <string name="check_in_prompt">How\'s it going? Update what you feel now.</string>
@@ -549,6 +549,7 @@
     <string name="tag_group_terpenes">Terpenes</string>
     <string name="session_spot">Spot</string>
     <string name="session_no_spot">No spot</string>
+    <string name="session_spot_set">Spot: %1$s</string>
     <string name="spot_new">New spot</string>
     <string name="spot_edit">Edit spot</string>
     <string name="spot_default_prefix">Spot</string>
