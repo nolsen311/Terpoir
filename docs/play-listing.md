@@ -405,6 +405,37 @@ only while the app is open. If "Notify me" comes to Play later, it needs
 the background-location declaration and a video
 (`docs/design-decisions.md`, "Notify me").
 
+## Edge-to-edge warnings
+
+The Play Console flagged 0.4.0 (versionCode 5) with "Edge-to-edge may not
+display for all users" and "Your app uses deprecated APIs or parameters
+for edge-to-edge". Checked 2026-10-15 against the 0.5.2 Play release build
+(`docs/design-decisions.md`, "Edge to edge"):
+
+- **Terpoir's own code** makes none of the deprecated calls: no bar colors,
+  cutout mode or decor fitting, in code or themes. Its one activity,
+  `app.terpoir.MainActivity`, goes edge to edge with `enableEdgeToEdge`.
+- **androidx.activity** (1.13.0, the latest stable) calls
+  `Window.setStatusBarColor` and `setNavigationBarColor` inside
+  `enableEdgeToEdge`, for every Android version, and sets the short-edges
+  cutout mode below Android 11. These are the call sites Play reports. No
+  release yet avoids them (1.14.0-alpha03 doesn't).
+- **Activities from Google libraries** in the Play build, which Terpoir
+  doesn't control. Each is a transparent activity those libraries show
+  over the app:
+
+  | Activity | Library | Shown for |
+  |---|---|---|
+  | `com.google.android.play.agesignals.AgeSharingConsentWrapperActivity` | Play Age Signals | the age-sharing consent |
+  | `com.google.android.gms.common.api.GoogleApiActivity` | Play services base (with location, Maps, ML Kit) | resolving a Play services problem |
+  | `com.google.android.play.core.common.PlayCoreDialogWrapperActivity` | Play Core common (with Feature Delivery, Asset Delivery) | Play's download confirmation |
+
+  The FOSS build has only `MainActivity`.
+
+If the Console asks, these are the answers: the deprecated calls come from
+androidx.activity and the warning clears when a release of it stops making
+them; the other activities belong to Google's libraries.
+
 ## Release
 
 - **Track:** internal testing first, as a draft

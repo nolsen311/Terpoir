@@ -385,7 +385,7 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       To design: how these combine with the light/dark choice, what older
       Android versions show, and keeping every text color at WCAG AA
       (`ThemeContrastTest` can't check colors taken from a wallpaper).
-- [ ] Play's edge-to-edge warnings (maintainer, 2026-10-15; Play Console
+- [x] Play's edge-to-edge warnings (maintainer, 2026-10-15; Play Console
       on 0.4.0, versionCode 5): "Edge-to-edge may not display for all
       users" and "Your app uses deprecated APIs or parameters for
       edge-to-edge". Terpoir's only activity already calls
@@ -402,6 +402,13 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
         keyboard, the timeline overlay).
       Then fix what is ours, and note in `docs/play-listing.md` what is a
       library's.
+  - [x] Checked (2026-10-15): the deprecated calls are all
+        androidx.activity's, none ours, and no release of it avoids them
+        yet; the three library activities are listed in
+        `docs/play-listing.md`. Every screen sits inside the root's
+        `safeDrawing` padding; the one fix was the keyboard (`adjustResize`,
+        so it is an inset, not a pan). See "Edge to edge" in the design
+        doc. The deprecated-API warning stays until androidx changes.
 - [ ] Personal gear for consumption methods (maintainer, 2026-10-12): let
       users name their own pieces (a favorite bong, a favorite pipe, a
       particular vaporizer) and pick one on a session's product line, so

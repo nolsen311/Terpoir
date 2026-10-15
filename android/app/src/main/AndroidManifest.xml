@@ -62,10 +62,14 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.Terpoir">
+        <!-- adjustResize: the keyboard is reported as an inset, which the
+             Compose root pads by (safeDrawingPadding), instead of the
+             system panning the whole window on top of that. -->
         <activity
             android:name=".MainActivity"
             android:configChanges="uiMode"
-            android:exported="true">
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
