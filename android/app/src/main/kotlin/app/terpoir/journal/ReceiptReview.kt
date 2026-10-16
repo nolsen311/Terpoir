@@ -97,6 +97,15 @@ internal fun priceText(minorUnits: Long, currency: String): String {
 internal fun autoLinked(suggestions: List<ScanSuggestion>): String? =
     suggestions.firstOrNull()?.takeIf { it.learned && !it.close && it.recordType == "product" }?.id
 
+/**
+ * Two products that learned this exact line (only after a sync), to offer
+ * merging them: the first two, best first; null unless there are two.
+ */
+internal fun learnedPair(suggestions: List<ScanSuggestion>): Pair<String, String>? {
+    val learned = suggestions.filter { it.learned && it.recordType == "product" }.map { it.id }.distinct()
+    return if (learned.size >= 2) learned[0] to learned[1] else null
+}
+
 /** The suggestions a card offers as "?" chips: products, brands and strains, best first. */
 internal fun offeredSuggestions(suggestions: List<ScanSuggestion>, limit: Int = 4): List<ScanSuggestion> =
     suggestions.filter { it.recordType in setOf("product", "brand", "strain") }.take(limit)

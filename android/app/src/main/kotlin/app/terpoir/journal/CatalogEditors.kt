@@ -116,8 +116,13 @@ fun ProductEditor(
     var known by remember { mutableStateOf<Pair<ProductMatch, String>?>(null) }
     var duplicate by remember { mutableStateOf<Pair<ProductMatch, ProductData>?>(null) }
     var sharing by remember { mutableStateOf(false) }
+    // "Merge with…": the other products to pick from, and the one picked.
+    var mergeChoices by remember { mutableStateOf<List<Pair<String, String>>?>(null) }
+    var mergeWith by remember { mutableStateOf<Pair<String, String>?>(null) }
+    // Bumped after a merge, to load the merged product again.
+    var reload by remember { mutableStateOf(0) }
 
-    LaunchedEffect(id) {
+    LaunchedEffect(id, reload) {
         brands = repo.brands()
         allStrains = repo.strains()
         customSubtypes = repo.tags(SUBTYPE_CATEGORY)
@@ -464,7 +469,49 @@ fun ProductEditor(
         if (id != null) {
             // Shares what is saved, not unsaved edits.
             OutlinedButton(onClick = { sharing = true }) { Text(stringResource(R.string.share)) }
+            // "Merge with…": another record of the same product joins this one.
+            OutlinedButton(onClick = {
+                scope.launch {
+                    val labels = repo.productLabels()
+                    mergeChoices = repo.products().filter { it.id != id }
+                        .map { it.id to (labels[it.id] ?: it.data.name) }
+                        .sortedBy { it.second.lowercase() }
+                }
+            }) { Text(stringResource(R.string.product_merge)) }
+            mergeChoices?.let { choices ->
+                if (choices.isEmpty()) {
+                    Text(stringResource(R.string.product_merge_none), style = MaterialTheme.typography.bodySmall)
+                } else {
+                    Dropdown(
+                        label = stringResource(R.string.product_merge_pick),
+                        options = listOf<Pair<String?, String>>(null to "") + choices,
+                        selected = null,
+                        onSelect = { picked -> choices.firstOrNull { it.first == picked }?.let { mergeWith = it } },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
             DeleteButton(R.string.product_delete, R.string.product_delete_body) { scope.launch { repo.delete(id); onDone() } }
+        }
+    }
+
+    mergeWith?.let { (otherId, otherName) ->
+        if (id != null) {
+            MergeProductsDialog(
+                keep = name.ifBlank { stringResource(R.string.product_merge_this) },
+                other = otherName,
+                onSwap = null,
+                note = stringResource(R.string.product_merge_unsaved),
+                onConfirm = {
+                    mergeWith = null
+                    mergeChoices = null
+                    scope.launch {
+                        repo.mergeProducts(id, otherId)
+                        reload++
+                    }
+                },
+                onDismiss = { mergeWith = null },
+            )
         }
     }
 
@@ -532,6 +579,36 @@ fun ProductEditor(
 }
 
 private enum class ProductScan { LABEL, CODE }
+
+/**
+ * "Merge these products?": [keep] is kept and takes in what [other] has
+ * (the core's merge_products); [other]'s sessions and purchases move to it
+ * and [other] is deleted. [onSwap], when given, keeps the other one
+ * instead; [note] is shown under the explanation.
+ */
+@Composable
+internal fun MergeProductsDialog(
+    keep: String,
+    other: String,
+    onSwap: (() -> Unit)?,
+    note: String?,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.product_merge_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.product_merge_body, keep, other))
+                note?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                if (onSwap != null) OutlinedButton(onClick = onSwap) { Text(stringResource(R.string.product_merge_swap, other)) }
+            }
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.product_merge_confirm)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
 
 /** A label cannabinoid amount as typed in the product editor. */
 private data class OtherAmount(val cannabinoid: String, val text: String, val unit: String)

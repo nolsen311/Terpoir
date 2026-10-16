@@ -137,6 +137,8 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
     var productLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var spots by remember { mutableStateOf<List<Entry<SpotData>>>(emptyList()) }
     var invalid by remember { mutableStateOf(false) }
+    // Two products that learned one line: which is kept, and the other.
+    var merging by remember { mutableStateOf<Pair<String, String>?>(null) }
     var photo by remember { mutableStateOf<Bitmap?>(null) }
     // The review's rows: the photo's, or both photos' joined.
     var rows by remember { mutableStateOf<List<TextRowData>>(emptyList()) }
@@ -271,6 +273,35 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
             PhotoPage(first, firstRows.take(fromFirst), (0 until fromFirst).toList()),
             PhotoPage(second, pairs.map { secondRows[it.first] }, pairs.map { it.second }),
         )
+    }
+
+    /** Offers merging two products that learned one line, keeping the one recording more by default. */
+    fun offerMerge(pair: Pair<String, String>) {
+        scope.launch {
+            val keep = repo.productToKeep(pair.first, pair.second)
+            merging = keep to (if (keep == pair.first) pair.second else pair.first)
+        }
+    }
+
+    /**
+     * Merges [other] into [keep] now (the user confirmed it): cards and
+     * undone names that named [other] name [keep], and every card's
+     * suggestions are read again, so a line both had learned links to
+     * [keep] on its own.
+     */
+    fun merge(keep: String, other: String) {
+        scope.launch {
+            repo.mergeProducts(keep, other)
+            products = repo.products()
+            productLabels = repo.productLabels()
+            items.forEach { if (it.product == other) it.product = keep }
+            val renamed = undone.map { (p, text) -> (if (p == other) keep else p) to text }
+            undone.clear()
+            undone += renamed.distinct()
+            for (item in items.toList()) {
+                if (item.text.isNotBlank()) item.relinked(repo.suggestForReceiptItem(item.text, shop.spot()))
+            }
+        }
     }
 
     /** The user tapped the shop's name: a saved spot by that name is a guess to confirm, else a new shop. */
@@ -541,6 +572,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                         onRemove = { items.remove(item) },
                         onUndoMatch = { item.product?.let { undone += it to item.text } },
                         onTextChange = { item.text = it },
+                        onMerge = ::offerMerge,
                     )
                 }
             }
@@ -590,6 +622,22 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                 }
             }
             if (invalid) Text(stringResource(R.string.error_amount), color = MaterialTheme.colorScheme.error)
+        }
+    }
+    if (phase == Phase.REVIEW) {
+        merging?.let { (keep, other) ->
+            fun name(id: String) = productLabels[id] ?: products.firstOrNull { it.id == id }?.data?.name.orEmpty()
+            MergeProductsDialog(
+                keep = name(keep),
+                other = name(other),
+                onSwap = { merging = other to keep },
+                note = null,
+                onConfirm = {
+                    merging = null
+                    merge(keep, other)
+                },
+                onDismiss = { merging = null },
+            )
         }
     }
 }

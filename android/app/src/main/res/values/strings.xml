@@ -566,6 +566,17 @@
     <string name="product_identifiers">Scanned codes</string>
     <string name="product_shops">Where I buy it</string>
     <string name="product_receipt_names">Seen on receipts as</string>
+    <string name="product_merge">Merge with…</string>
+    <string name="product_merge_pick">Merge with which product?</string>
+    <string name="product_merge_none">There are no other products to merge with.</string>
+    <string name="product_merge_title">Merge these products?</string>
+    <string name="product_merge_body">\"%1$s\" is kept. What it lacks is filled in from \"%2$s\", whose sessions and purchases move to it, and then \"%2$s\" is deleted.</string>
+    <string name="product_merge_swap">Keep \"%1$s\" instead</string>
+    <string name="product_merge_confirm">Merge</string>
+    <string name="product_merge_this">this product</string>
+    <string name="product_merge_unsaved">Changes not saved here yet are discarded.</string>
+    <string name="receipt_learned_both">Two of your products learned this exact line.</string>
+    <string name="receipt_merge">Merge these products</string>
     <string name="product_receipt_names_hint">A receipt line printed exactly like one of these links to this product on its own.</string>
     <string name="product_receipt_name_forget">Forget \"%1$s\"</string>
     <string name="product_purchases">Purchases</string>

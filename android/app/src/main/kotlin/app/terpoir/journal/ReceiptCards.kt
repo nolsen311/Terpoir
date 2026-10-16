@@ -86,6 +86,17 @@ internal class ItemDraft(val rows: List<Int>, text: String, price: String, quant
     var newBrand by mutableStateOf<String?>(null)
     var newStrain by mutableStateOf<String?>(null)
 
+    /** Takes fresh suggestions after products changed (a merge): an unlinked line links to a product that alone learned it. */
+    fun relinked(list: List<ScanSuggestion>) {
+        suggestions = list
+        if (product == null) {
+            autoLinked(list)?.let {
+                product = it
+                matched = true
+            }
+        }
+    }
+
     /** Takes the core's suggestions; the first time, links a learned match and pre-fills a new product. */
     fun suggested(list: List<ScanSuggestion>, first: Boolean, brands: Boolean, strains: Boolean) {
         suggestions = list
@@ -233,6 +244,7 @@ internal fun ItemCard(
     onRemove: () -> Unit,
     onUndoMatch: () -> Unit,
     onTextChange: (String) -> Unit,
+    onMerge: (Pair<String, String>) -> Unit,
 ) {
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -272,6 +284,13 @@ internal fun ItemCard(
             }
 
             ProductChoice(item, context, onUndoMatch)
+            // Two products learned this line (after a sync): one tap to merge them.
+            if (item.product == null) {
+                learnedPair(item.suggestions)?.let { pair ->
+                    Text(stringResource(R.string.receipt_learned_both), style = MaterialTheme.typography.bodyMedium)
+                    OutlinedButton(onClick = { onMerge(pair) }) { Text(stringResource(R.string.receipt_merge)) }
+                }
+            }
 
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (onJoin != null) OutlinedButton(onClick = onJoin) { Text(stringResource(R.string.receipt_join)) }

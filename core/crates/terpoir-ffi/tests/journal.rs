@@ -3072,3 +3072,155 @@ fn timeline_insights_show_how_it_usually_goes() {
         .unwrap();
     assert!(journal.timeline_insights().unwrap().is_empty());
 }
+
+#[test]
+fn merging_two_products_keeps_the_most_and_repoints_their_lines() {
+    let keys = create_keys().unwrap();
+    let phone_dir = Device::new();
+    let tablet_dir = Device::new();
+    let phone = phone_dir.open(&keys).unwrap();
+    let spot = phone.save_spot(None, plain_spot("Green Leaf"), 1).unwrap();
+    let mut a = plain_product("Blue Dream");
+    a.form = Some("flower".into());
+    a.receipt_names = vec!["BD 3.5G".into()];
+    let a = phone.save_product(None, a, 1).unwrap();
+    let mut b = plain_product("");
+    b.form = Some("flower".into());
+    b.thc_milli = Some(22_000);
+    b.thc_unit = Some("percent".into());
+    b.batch = Some("LOT-9".into());
+    b.shops = vec![spot.clone()];
+    b.identifiers = vec![IdentifierData {
+        code: "0850012345678".into(),
+        kind: "barcode".into(),
+    }];
+    b.receipt_names = vec!["BD 3.5G".into(), "BLUE DRM 1/8".into()];
+    let b = phone.save_product(None, b, 1).unwrap();
+    let session_a = phone
+        .save_session(None, session(Some(a.clone())), 2)
+        .unwrap();
+    let session_b = phone
+        .save_session(None, session(Some(b.clone())), 2)
+        .unwrap();
+    let line = |product: &str| PurchaseLineData {
+        line_id: None,
+        product: Some(product.into()),
+        batch: None,
+        price_minor_units: None,
+        price_currency: None,
+        size: None,
+        quantity: 1,
+    };
+    let purchase = phone
+        .save_purchase(
+            None,
+            PurchaseData {
+                when: LocalTimeData {
+                    unix_ms: 1_760_000_000_000,
+                    utc_offset_min: 0,
+                },
+                spot: Some(spot.clone()),
+                lines: vec![line(&a), line(&b)],
+            },
+            2,
+        )
+        .unwrap();
+
+    // Both learned "BD 3.5G" (as after a sync): offered as equal choices.
+    let found = phone
+        .suggest_for_receipt_item("BD 3.5G".into(), None)
+        .unwrap();
+    assert!(found[..2].iter().all(|s| s.learned && s.close));
+    // The one recording more is kept by default, whichever comes first.
+    assert_eq!(phone.product_to_keep(a.clone(), b.clone()).unwrap(), b);
+    assert_eq!(phone.product_to_keep(b.clone(), a.clone()).unwrap(), b);
+
+    let tablet = second_device(&keys, &tablet_dir);
+    sync(&phone, &tablet, 3);
+    // Meanwhile on the tablet: an edit to the product being merged away,
+    // and a new session naming it.
+    let mut renamed = tablet.get_product(b.clone()).unwrap().unwrap();
+    renamed.name = "Blue Dream (tablet)".into();
+    tablet.save_product(Some(b.clone()), renamed, 4).unwrap();
+    let late_session = tablet
+        .save_session(None, session(Some(b.clone())), 4)
+        .unwrap();
+
+    // The user keeps Blue Dream (swapping the default).
+    assert_eq!(phone.merge_products(a.clone(), b.clone(), 5).unwrap(), 2);
+    assert!(phone.get_product(b.clone()).unwrap().is_none());
+    let merged = phone.get_product(a.clone()).unwrap().unwrap();
+    assert_eq!(merged.name, "Blue Dream");
+    assert_eq!(merged.thc_milli, Some(22_000));
+    assert_eq!(merged.batch.as_deref(), Some("LOT-9"));
+    assert_eq!(merged.shops, std::slice::from_ref(&spot));
+    assert_eq!(merged.identifiers.len(), 1);
+    assert_eq!(merged.receipt_names, ["BD 3.5G", "BLUE DRM 1/8"]);
+    // Every line that named the other product names the kept one.
+    let lines_of = |journal: &Journal, id: &str| -> Vec<Option<String>> {
+        journal
+            .get_session(id.into())
+            .unwrap()
+            .unwrap()
+            .lines
+            .into_iter()
+            .map(|l| l.product)
+            .collect()
+    };
+    assert_eq!(lines_of(&phone, &session_b), [Some(a.clone())]);
+    let purchased: Vec<Option<String>> = phone
+        .get_purchase(purchase.clone())
+        .unwrap()
+        .unwrap()
+        .lines
+        .into_iter()
+        .map(|l| l.product)
+        .collect();
+    assert_eq!(purchased, [Some(a.clone()), Some(a.clone())]);
+    // The index: nothing refers to the merged-away product.
+    assert!(phone.referencing(b.clone()).unwrap().is_empty());
+    let mut refs = phone.referencing(a.clone()).unwrap();
+    refs.sort();
+    let mut expected = vec![session_a.clone(), session_b.clone(), purchase.clone()];
+    expected.sort();
+    assert_eq!(refs, expected);
+    // The learned name now links on its own.
+    let found = phone
+        .suggest_for_receipt_item("BD 3.5G".into(), None)
+        .unwrap();
+    assert!(found[0].learned && !found[0].close && found[0].id == a);
+    // Insights and shop insights read the kept product.
+    phone.insights().unwrap();
+    phone.shop_insights().unwrap();
+
+    // It syncs as edits and a deletion, both ways.
+    sync(&phone, &tablet, 6);
+    sync(&tablet, &phone, 7);
+    for journal in [&phone, &tablet] {
+        assert!(journal.get_product(b.clone()).unwrap().is_none());
+        let merged = journal.get_product(a.clone()).unwrap().unwrap();
+        assert_eq!(merged.receipt_names, ["BD 3.5G", "BLUE DRM 1/8"]);
+        assert_eq!(lines_of(journal, &session_b), [Some(a.clone())]);
+        // A session naming the other product written elsewhere before the
+        // merge arrived keeps its line, as after any deletion.
+        assert_eq!(lines_of(journal, &late_session), [Some(b.clone())]);
+    }
+
+    // Refused: the same product twice, one already merged, not a product.
+    assert_eq!(
+        phone.merge_products(a.clone(), a.clone(), 8),
+        Err(CoreError::InvalidInput)
+    );
+    assert_eq!(
+        phone.merge_products(a.clone(), b.clone(), 8),
+        Err(CoreError::NotFound)
+    );
+    assert_eq!(
+        phone.merge_products(a.clone(), session_a.clone(), 8),
+        Err(CoreError::WrongType)
+    );
+    assert_eq!(
+        phone.product_to_keep(a, session_a),
+        Err(CoreError::WrongType)
+    );
+}

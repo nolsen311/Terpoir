@@ -244,4 +244,16 @@ class ReceiptReviewTest {
             assertNull(typedSize(amount, "g", pack))
         }
     }
+
+    @Test
+    fun twoProductsThatLearnedALineAreOfferedForMerging() {
+        val both = listOf(
+            suggestion("p1", "product", "learned", close = true, learned = true),
+            suggestion("p2", "product", "learned", close = true, learned = true),
+            suggestion("p3", "product", "exact"),
+        )
+        assertEquals("p1" to "p2", learnedPair(both))
+        assertNull(learnedPair(both.drop(1)))
+        assertNull(learnedPair(emptyList()))
+    }
 }

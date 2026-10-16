@@ -379,7 +379,7 @@ requirement rather than on features.
             amount × pack is implausibly large for the product, and an easy
             "each / in all" and unit change on the card (maintainer,
             2026-10-15).
-      - [ ] Merging two products that share a learned receipt name,
+      - [x] Merging two products that share a learned receipt name,
             keeping the most information from each (maintainer,
             2026-10-15).
       - [x] A second photo for long receipts, joined on overlapping rows:
