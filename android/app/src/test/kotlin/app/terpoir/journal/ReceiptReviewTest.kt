@@ -256,4 +256,15 @@ class ReceiptReviewTest {
         assertNull(learnedPair(both.drop(1)))
         assertNull(learnedPair(emptyList()))
     }
+
+    @Test
+    fun pendingMergesFollowEachKeeperAlong() {
+        val merges = listOf(PendingMerge("a", "b"), PendingMerge("c", "a"))
+        assertEquals("c", mergedInto("b", merges))
+        assertEquals("c", mergedInto("a", merges))
+        assertEquals("c", mergedInto("c", merges))
+        assertEquals("d", mergedInto("d", merges))
+        // Before the second merge, b only goes as far as a.
+        assertEquals("a", mergedInto("b", merges.take(1)))
+    }
 }

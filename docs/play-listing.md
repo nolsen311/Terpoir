@@ -455,6 +455,14 @@ them; the other activities belong to Google's libraries.
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.6.1** (442 characters):
+    Headline: Long receipts, pack sizes, and New entry everywhere
+    Summary: second photo for long receipts ; packs read as "each" or "in all" ; merge duplicate products (on save, with undo) ; pick strains by search ; rating starts from the middle face ; "New entry" on shortcuts, tiles & widget
+    ```
+    <en-US>
+    Long receipts can take a second photo. A pack like 5PK 0.5G reads as 0.5 g each or in all, and one tap switches it. Two products that are really one can be merged, keeping the most detail; nothing changes until you save. Products show the names they've had on receipts. Strains are picked by search instead of a wall of chips, and the rating starts from the middle face. The app shortcut, tiles and widget offer New entry as well as New note.
+    </en-US>
+    ```
   - **0.6.0** (448 characters):
     Headline: Simpler receipt scanning, and kinds of products
     Summary: receipt scanning rebuilt: shop first, a card per item ; lines you link are recognised next time ; zoom, join & split lines, two photos for long receipts ; kinds of products (bubble hash, infused pre-roll, your own) ; patches → 12-hour timeline ; insights: how it usually goes
