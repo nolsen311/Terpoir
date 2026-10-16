@@ -371,8 +371,7 @@ requirement rather than on features.
             matched from the header by name, phone and licence numbers.
       - [x] Learned receipt names (exact line on the product), in the
             core: learned, forgotten, synced and linked automatically;
-            the "matched" chip and "Seen on receipts as" come with the
-            Android cards.
+            the "matched" chip came with the Android cards.
       - [x] Size and quantity on the purchase line, default size on the
             product (synced, with a compatibility fixture).
       - [x] Phone and licence numbers on spots (synced, with a fixture).
@@ -386,11 +385,11 @@ requirement rather than on features.
       - [ ] A second photo for long receipts, joined on overlapping rows.
             Core done (`join_receipt_photos`); the camera's "Add the
             rest" step comes with the Android review.
-      - [ ] Android: review cards with chips, the shop header card, "Join
-            with next line" and "Split here", the cut-off warning, and
-            zoom on the photo (pinch, plus visible + / − and "Fit").
-            Today's review screen uses neither the automatic joining
-            nor the row groups yet.
+      - [x] Android: review cards with chips, the shop header card, "Join
+            with next line" and "Split here", the cut-off warning, and the
+            photo's zoom.
+      - [ ] Android: "Seen on receipts as" with a delete on the product
+            page.
 
 - [ ] Product subtypes (maintainer, 2026-10-15; `docs/design-decisions.md`,
       "Product subtypes"). In 0.6.0, with simpler receipt scanning

@@ -177,6 +177,31 @@ class JournalRepositoryTest {
     }
 
     @Test
+    fun aReceiptTeachesItsShopAndLinesThroughTheCore() = runBlocking {
+        val shop = repo.saveSpot(null, SpotData("Green Leaf", listOf(TagRefData.Builtin("re_up")), null, null, null, null, false))
+        val header = listOf("GREEN LEAF", "Tel (555) 010-2030", "BD 3.5G HYB 35.00")
+        // By name only, a guess; once confirmed, its phone number makes it certain.
+        assertEquals(false, repo.matchReceiptShop(header).strong)
+        assertEquals(1, repo.rememberReceiptShop(shop, header))
+        val match = repo.matchReceiptShop(header)
+        assertEquals(shop, match.spot)
+        assertTrue(match.strong)
+
+        val product = repo.saveProduct(
+            null,
+            ProductData("Blue Dream", "flower", null, emptyList(), null, null, null, null, emptyList(), null, null, emptyList(), emptyList()),
+        )
+        assertTrue(repo.suggestForReceiptItem("BD 3.5G HYB", shop).none { it.learned })
+        repo.learnReceiptName(product, "BD 3.5G HYB")
+        val learned = repo.suggestForReceiptItem("bd  3.5g hyb", shop).first()
+        assertEquals(product, learned.id)
+        assertTrue(learned.learned)
+        assertEquals(product, autoLinked(listOf(learned)))
+        assertTrue(repo.forgetReceiptName(product, "BD 3.5G HYB"))
+        assertTrue(repo.suggestForReceiptItem("BD 3.5G HYB", shop).none { it.learned })
+    }
+
+    @Test
     fun sessionsListNewestFirstWithTheirProducts() = runBlocking {
         val brand = repo.saveBrand(null, BrandData("Acme"))
         val product = repo.saveProduct(
