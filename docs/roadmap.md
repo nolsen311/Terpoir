@@ -388,7 +388,7 @@ requirement rather than on features.
       - [x] Android: review cards with chips, the shop header card, "Join
             with next line" and "Split here", the cut-off warning, and the
             photo's zoom.
-      - [ ] Android: "Seen on receipts as" with a delete on the product
+      - [x] Android: "Seen on receipts as" with a delete on the product
             page.
 
 - [ ] Product subtypes (maintainer, 2026-10-15; `docs/design-decisions.md`,

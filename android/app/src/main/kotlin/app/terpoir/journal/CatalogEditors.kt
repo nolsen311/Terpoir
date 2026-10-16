@@ -19,6 +19,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -31,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -98,6 +100,8 @@ fun ProductEditor(
     var packageDay by remember { mutableStateOf<Long?>(null) }
     var terpenes by remember { mutableStateOf<List<TagIntensity>>(emptyList()) }
     var identifiers by remember { mutableStateOf<List<IdentifierData>>(emptyList()) }
+    // Learned receipt names ("Seen on receipts as"); each delete takes effect at once.
+    var receiptNames by remember { mutableStateOf<List<String>>(emptyList()) }
     var shops by remember { mutableStateOf<List<String>>(emptyList()) }
     var reUpSpots by remember { mutableStateOf<List<Entry<SpotData>>>(emptyList()) }
     var purchases by remember { mutableStateOf<List<Entry<PurchaseData>>>(emptyList()) }
@@ -134,6 +138,7 @@ fun ProductEditor(
             terpenes = p.terpenes
             identifiers = p.identifiers
             shops = p.shops
+            receiptNames = p.receiptNames
         }
         val spots = repo.spots()
         spotNames = spots.associate { it.id to it.data.name }
@@ -245,7 +250,8 @@ fun ProductEditor(
             subtype = subtype,
             // Not edited here yet: kept as saved.
             defaultSize = original?.defaultSize,
-            receiptNames = original?.receiptNames ?: emptyList(),
+            // Learned from receipts, and forgotten here one by one.
+            receiptNames = receiptNames,
         )
     }
 
@@ -403,6 +409,26 @@ fun ProductEditor(
         if (identifiers.isNotEmpty()) {
             SectionTitle(stringResource(R.string.product_identifiers))
             IdentifierList(identifiers, scan.linksAllowed()) { i -> identifiers = identifiers - i }
+        }
+
+        // "Seen on receipts as": the receipt lines that link here on their
+        // own, each with a delete (docs/design-decisions.md, "Simpler review").
+        if (id != null && receiptNames.isNotEmpty()) {
+            SectionTitle(stringResource(R.string.product_receipt_names))
+            Text(stringResource(R.string.product_receipt_names_hint), style = MaterialTheme.typography.bodySmall)
+            for (text in receiptNames) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    IconButton(onClick = {
+                        scope.launch {
+                            repo.forgetReceiptName(id, text)
+                            receiptNames = receiptNames - text
+                        }
+                    }) {
+                        Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.product_receipt_name_forget, text))
+                    }
+                }
+            }
         }
 
         // Where it is bought: receipts add their shop; the user can add or

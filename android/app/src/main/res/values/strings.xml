@@ -565,6 +565,9 @@
     <string name="product_package_date">Package date</string>
     <string name="product_identifiers">Scanned codes</string>
     <string name="product_shops">Where I buy it</string>
+    <string name="product_receipt_names">Seen on receipts as</string>
+    <string name="product_receipt_names_hint">A receipt line printed exactly like one of these links to this product on its own.</string>
+    <string name="product_receipt_name_forget">Forget \"%1$s\"</string>
     <string name="product_purchases">Purchases</string>
     <string name="product_known_title">Already in your products</string>
     <string name="product_known_body">That code belongs to %1$s. Open it instead?</string>
