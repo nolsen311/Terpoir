@@ -10,6 +10,8 @@
     <string name="unlock">Unlock</string>
     <string name="unlock_prompt">Unlock your journal</string>
     <string name="error_no_lock_screen">Set up a screen lock on this device first. Terpoir uses it to protect your journal.</string>
+    <string name="error_device_locked">Unlock your phone first. Terpoir asks again as soon as it\'s unlocked.</string>
+    <string name="error_device_locked_retry">Unlock your phone first, then try again.</string>
     <string name="error_keystore">The device\'s secure key storage did not respond. Try again.</string>
     <string name="newer_journal">This journal was saved by a newer version of Terpoir. Update the app to open it. Nothing was changed.</string>
     <string name="error_unlock_failed">The journal couldn\'t be opened. Nothing was changed; try again.</string>

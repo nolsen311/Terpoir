@@ -6,6 +6,7 @@ package app.terpoir.security
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyPermanentlyInvalidatedException
+import android.security.keystore.UserNotAuthenticatedException
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import java.io.File
@@ -96,6 +97,8 @@ class MasterKeyVault(private val wrappedFile: File) {
      *
      * @throws android.security.keystore.KeyPermanentlyInvalidatedException
      *   if strict mode was on and the enrolled biometrics changed.
+     * @throws UserNotAuthenticatedException while the phone itself is locked
+     *   (the key requires an unlocked device).
      */
     fun decryptCipher(): Cipher {
         pendingDecrypt?.let { return it }
@@ -106,6 +109,9 @@ class MasterKeyVault(private val wrappedFile: File) {
         val cipher = try {
             open()
         } catch (e: KeyPermanentlyInvalidatedException) {
+            throw e
+        } catch (e: UserNotAuthenticatedException) {
+            // The phone itself is locked; collecting won't help.
             throw e
         } catch (_: Exception) {
             // Operations left open by ciphers no longer referenced (an

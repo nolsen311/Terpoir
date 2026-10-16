@@ -465,7 +465,7 @@ requirement rather than on features.
 
 Ideas the maintainer wants kept, to be designed and scheduled later.
 
-- [ ] "Secure storage not responding" on unlock: reopened (maintainer,
+- [x] "Secure storage not responding" on unlock: reopened (maintainer,
       2026-10-16) with a report from 0.6.2 (12), Play build, Android 17
       (API 37): `android.security.keystore.UserNotAuthenticatedException`.
       0.5.2 limited unlocking to one Keystore operation at a time
@@ -485,6 +485,8 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       maintainer opened the app from a "Notify me" alert at one of the
       Play declaration's demo spots, which fits: a notification can open
       the app while the phone is still locked.
+      Fixed 2026-10-16 (`docs/design-decisions.md`, "Opened over the
+      lock screen").
 
 - [ ] Solventless and solvent-based concentrates as a grouping for
       insights (tabled by the maintainer, 2026-10-15: possibly useful, but
