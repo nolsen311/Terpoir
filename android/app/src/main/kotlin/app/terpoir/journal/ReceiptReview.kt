@@ -243,3 +243,37 @@ internal data class PhotoZoom(val scale: Float = 1f, val x: Float = 0f, val y: F
         }
     }
 }
+
+// A long receipt's second photo ("Add the rest of the receipt"): the core
+// joins its rows to the first photo's (join_receipt_photos), and the review
+// works on the joined rows. Each photo still draws its own rows' boxes, so
+// a joined row's index has to be found on the photo it came from.
+
+/**
+ * Which of the second photo's own rows are in the joined rows, and where:
+ * pairs of (row on the second photo, joined row), for the rows both photos
+ * show (counted from the first photo in the joined rows) and the rows below
+ * them. The joined rows are the first [fromFirst] rows of the first photo,
+ * then the second photo's last `joinedCount - fromFirst` rows; the second
+ * photo's rows above the overlap (cut by its top edge) are in neither.
+ */
+internal fun secondPhotoRows(secondCount: Int, joinedCount: Int, fromFirst: Int, overlap: Int): List<Pair<Int, Int>> {
+    val below = joinedCount - fromFirst
+    val start = secondCount - below
+    if (below < 0 || start < 0 || overlap < 0 || overlap > fromFirst) return emptyList()
+    return ((start - overlap).coerceAtLeast(0) until secondCount).map { it to it - start + fromFirst }
+}
+
+/**
+ * The cards after the second photo is joined, as groups of joined rows in
+ * printed order: the user's cards whose rows are all among the first
+ * photo's first [fromFirst] rows (those rows are unchanged, so the cards
+ * keep their edits, and a card the user removed stays removed), then the
+ * items [parsed] from the joined rows that reach into the second photo. An
+ * item whose name wraps across the seam replaces the card it continues.
+ */
+internal fun groupsAfterJoin(user: List<List<Int>>, parsed: List<List<Int>>, fromFirst: Int): List<List<Int>> {
+    val added = parsed.filter { g -> g.any { it >= fromFirst } }
+    val kept = user.filter { g -> g.isNotEmpty() && g.all { it < fromFirst } && added.none { a -> a.any { it in g } } }
+    return (kept + added).sortedBy { it.min() }
+}

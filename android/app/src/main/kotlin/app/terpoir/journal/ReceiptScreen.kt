@@ -29,6 +29,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.core.CoreException
+import app.terpoir.core.CutOffData
+import app.terpoir.core.JoinedRowsData
 import app.terpoir.core.LocalTimeData
 import app.terpoir.core.ProductData
 import app.terpoir.core.PurchaseData
@@ -38,6 +40,7 @@ import app.terpoir.core.SpotData
 import app.terpoir.core.TagRefData
 import app.terpoir.core.TextRowData
 import app.terpoir.core.describeReceiptItem
+import app.terpoir.core.joinReceiptPhotos
 import app.terpoir.core.parseReceiptRowGroups
 import app.terpoir.core.parseReceiptRows
 import app.terpoir.core.receiptCutOff
@@ -81,7 +84,11 @@ internal fun parsePrice(text: String, currency: String): Long? {
 private fun localCurrency(): String =
     runCatching { Currency.getInstance(Locale.getDefault()).currencyCode }.getOrNull() ?: "USD"
 
-private enum class Phase { CAMERA, READING, REVIEW }
+/** The camera, reading, the review, and the camera again for the rest of a long receipt. */
+private enum class Phase { CAMERA, READING, REVIEW, MORE }
+
+/** One photo in the review, with the rows read on it and each row's index in the review's rows. */
+private class PhotoPage(val image: Bitmap, val rows: List<TextRowData>, val ids: List<Int>)
 
 /** What the shop card has open under "Which shop is this?". */
 private enum class ShopPicker { PHOTO, SPOTS }
@@ -90,9 +97,11 @@ private enum class ShopPicker { PHOTO, SPOTS }
  * Receipt scan: one photo becomes the shop, the date and a card per item,
  * saved as one purchase (docs/design-decisions.md, "Simpler review"). The
  * photo is read on the device, and the core reads the rows, matches the
- * shop and suggests products. A small copy of the photo stays in memory
- * while the user checks it, so they can tap lines the parser missed, and is
- * recycled when the screen closes; nothing is written to storage. Nothing
+ * shop and suggests products. A long receipt can take a second photo ("Add
+ * the rest of the receipt"), joined to the first in the core where their
+ * rows overlap. A small copy of each photo stays in memory while the user
+ * checks it, so they can tap lines the parser missed, and is recycled when
+ * the screen closes; nothing is written to storage. Nothing
  * changes in the journal until Save: then the purchase is saved, the lines
  * linked to products teach them their printed names, and a confirmed shop
  * keeps the phone and licence numbers its receipt prints.
@@ -127,9 +136,24 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
     var spots by remember { mutableStateOf<List<Entry<SpotData>>>(emptyList()) }
     var invalid by remember { mutableStateOf(false) }
     var photo by remember { mutableStateOf<Bitmap?>(null) }
+    // The review's rows: the photo's, or both photos' joined.
     var rows by remember { mutableStateOf<List<TextRowData>>(emptyList()) }
-    // The photo copy lives only while this screen does.
-    DisposableEffect(Unit) { onDispose { photo?.recycle() } }
+    // A long receipt's second photo, each photo's own rows (each draws its
+    // own boxes), and how the two joined.
+    var photo2 by remember { mutableStateOf<Bitmap?>(null) }
+    var firstRows by remember { mutableStateOf<List<TextRowData>>(emptyList()) }
+    var secondRows by remember { mutableStateOf<List<TextRowData>>(emptyList()) }
+    var joined by remember { mutableStateOf<JoinedRowsData?>(null) }
+    var firstEdges by remember { mutableStateOf<CutOffData?>(null) }
+    var noOverlap by remember { mutableStateOf(false) }
+    var dateRead by remember { mutableStateOf(false) }
+    // The photo copies live only while this screen does.
+    DisposableEffect(Unit) {
+        onDispose {
+            photo?.recycle()
+            photo2?.recycle()
+        }
+    }
 
     fun draft(item: ReceiptRowItemData) = ItemDraft(
         rows = item.rows.map { it.toInt() },
@@ -161,7 +185,15 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
     fun reset() {
         photo?.recycle()
         photo = null
+        photo2?.recycle()
+        photo2 = null
         rows = emptyList()
+        firstRows = emptyList()
+        secondRows = emptyList()
+        joined = null
+        firstEdges = null
+        noOverlap = false
+        dateRead = false
         items.clear()
         undone.clear()
         shop = if (showPrice) ShopState.Unknown else ShopState.None
@@ -175,6 +207,58 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
         rowList = false
         invalid = false
         day = LocalDate.now().toEpochDay()
+    }
+
+    /**
+     * The second photo joined the first: the review reads the joined rows.
+     * Cards on the first photo's rows keep their edits (and removed ones
+     * stay removed); the items reaching into the second photo are new.
+     */
+    fun addSecondPhoto(image: Bitmap, second: List<TextRowData>, join: JoinedRowsData) {
+        val fromFirst = join.fromFirst.toInt()
+        photo2?.recycle()
+        photo2 = image
+        secondRows = second
+        joined = join
+        noOverlap = false
+        rows = join.rows
+        val receipt = parseReceiptRows(join.rows)
+        if (!dateRead) {
+            receipt.dateDay?.let {
+                day = it
+                dateRead = true
+            }
+        }
+        // The total is usually printed at the end, on the second photo.
+        receipt.totalMinor?.let { totalMinor = it }
+        // The first photo's bottom edge and the second's top cut the receipt on purpose.
+        val first = firstEdges
+        val edges = receiptCutOff(second, image.width, image.height)
+        cutOff = (first != null && (first.left || first.top || first.right)) || edges.left || edges.right || edges.bottom
+        if (shopRow?.let { it >= fromFirst } == true) shopRow = null
+        val old = items.filter { it.rows.isNotEmpty() }.associateBy { it.rows }
+        val typed = items.filter { it.rows.isEmpty() }
+        val parsed = receipt.items.associateBy { item -> item.rows.map(UInt::toInt) }
+        val groups = groupsAfterJoin(old.keys.toList(), parsed.keys.filter { g -> shopRow?.let { it in g } != true }, fromFirst)
+        val next = groups.mapNotNull { g -> old[g] ?: parsed[g]?.let(::draft) }
+        items.clear()
+        items += next + typed
+        val fresh = next.filter { it !in old.values }
+        scope.launch { fresh.forEach { suggest(it, first = true) } }
+    }
+
+    /** The photos, each with its own rows' boxes. */
+    fun pages(): List<PhotoPage> {
+        val first = photo ?: return emptyList()
+        val join = joined
+        val second = photo2
+        if (join == null || second == null) return listOf(PhotoPage(first, rows, rows.indices.toList()))
+        val fromFirst = join.fromFirst.toInt()
+        val pairs = secondPhotoRows(secondRows.size, join.rows.size, fromFirst, join.overlap.toInt())
+        return listOf(
+            PhotoPage(first, firstRows.take(fromFirst), (0 until fromFirst).toList()),
+            PhotoPage(second, pairs.map { secondRows[it.first] }, pairs.map { it.second }),
+        )
     }
 
     /** The user tapped the shop's name: a saved spot by that name is a guess to confirm, else a new shop. */
@@ -214,10 +298,13 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                             noText = true
                         } else {
                             rows = found
+                            firstRows = found
                             val receipt = parseReceiptRows(found)
                             receipt.dateDay?.let { day = it }
+                            dateRead = receipt.dateDay != null
                             totalMinor = receipt.totalMinor
                             val edges = receiptCutOff(found, read.image.width, read.image.height)
+                            firstEdges = edges
                             cutOff = edges.left || edges.top || edges.right || edges.bottom
                             if (showPrice) {
                                 // The shop first: its purchases rank the suggestions.
@@ -228,6 +315,31 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                             }
                             items += receipt.items.map(::draft)
                             items.toList().forEach { suggest(it, first = true) }
+                        }
+                        phase = Phase.REVIEW
+                    }
+                },
+            )
+        }
+        // The rest of a long receipt: the same camera, read the same way, then joined in the core.
+        Phase.MORE -> TextEngineGate(scan.scanner, stringResource(R.string.receipt_add_rest), { phase = Phase.REVIEW }) {
+            CameraScreen(
+                mode = CaptureMode.PHOTO,
+                title = stringResource(R.string.receipt_add_rest),
+                hint = stringResource(R.string.receipt_add_rest_hint),
+                onClose = { phase = Phase.REVIEW },
+                onPhoto = { shot ->
+                    phase = Phase.READING
+                    scope.launch {
+                        val read = scan.scanner.readReceipt(shot)
+                        val second = read.rows
+                        val join = second?.let { joinReceiptPhotos(firstRows, it) }
+                        if (second == null || join == null) {
+                            // Not joined: this copy goes now, and the user can take it again.
+                            read.image.recycle()
+                            noOverlap = true
+                        } else {
+                            addSecondPhoto(read.image, second, join)
                         }
                         phase = Phase.REVIEW
                     }
@@ -304,6 +416,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
             val image = photo
             val itemRows = items.flatMap { it.rows }.toSet()
             val canTap = image != null && rows.isNotEmpty()
+            val pages = pages()
 
             if (showPrice) {
                 ShopCard(
@@ -317,16 +430,18 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                     onPickSpot = { shopPicker = if (shopPicker == ShopPicker.SPOTS) null else ShopPicker.SPOTS },
                 ) {
                     when (shopPicker) {
-                        ShopPicker.PHOTO -> if (image != null) {
+                        ShopPicker.PHOTO -> pages.firstOrNull()?.let { page ->
                             Text(stringResource(R.string.receipt_shop_tap_hint), style = MaterialTheme.typography.bodySmall)
+                            // The shop's name is at the top: the first photo.
                             ReceiptPhotoView(
-                                image = image,
-                                rows = rows,
+                                image = page.image,
+                                rows = page.rows,
                                 itemRows = itemRows,
                                 shopRow = shopRow,
                                 description = stringResource(R.string.receipt_photo),
                                 atTop = true,
                                 onTap = ::pickShopRow,
+                                ids = page.ids,
                             )
                             // The list alternative: the header's rows.
                             ReceiptRowList(
@@ -361,6 +476,21 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                     },
                     onKeep = { cutOff = false },
                 )
+            }
+            if (noOverlap) {
+                RetakeCard(
+                    text = stringResource(R.string.receipt_no_overlap),
+                    keep = stringResource(R.string.receipt_first_only),
+                    onRetake = {
+                        noOverlap = false
+                        phase = Phase.MORE
+                    },
+                    onKeep = { noOverlap = false },
+                )
+            }
+            // A long receipt: a second photo of the rest, joined where the two overlap.
+            if (canTap && photo2 == null && !noOverlap) {
+                OutlinedButton(onClick = { phase = Phase.MORE }) { Text(stringResource(R.string.receipt_add_rest)) }
             }
             DayField(stringResource(R.string.receipt_date), day) { day = it }
             if (showPrice) {
@@ -409,17 +539,27 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                 if (canTap) OutlinedButton(onClick = { addingLine = !addingLine }) { Text(stringResource(R.string.receipt_missing)) }
                 OutlinedButton(onClick = { items += ItemDraft(emptyList(), "", "", 1u, null) }) { Text(stringResource(R.string.receipt_type_line)) }
             }
-            if (addingLine && image != null) {
+            if (addingLine && pages.isNotEmpty()) {
                 Text(stringResource(R.string.receipt_missing_hint), style = MaterialTheme.typography.bodySmall)
-                ReceiptPhotoView(
-                    image = image,
-                    rows = rows,
-                    itemRows = itemRows,
-                    shopRow = shopRow,
-                    description = stringResource(R.string.receipt_photo),
-                    atTop = false,
-                    onTap = { row -> if (row !in itemRows && row != shopRow) regroup(addRowGroup(groups(), row)) },
-                )
+                // A long receipt's second photo shows below the first, with its own boxes.
+                pages.forEachIndexed { i, page ->
+                    if (pages.size > 1) {
+                        Text(
+                            stringResource(if (i == 0) R.string.receipt_photo_first else R.string.receipt_photo_second),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
+                    ReceiptPhotoView(
+                        image = page.image,
+                        rows = page.rows,
+                        itemRows = itemRows,
+                        shopRow = shopRow,
+                        description = stringResource(R.string.receipt_photo),
+                        atTop = false,
+                        onTap = { row -> if (row !in itemRows && row != shopRow) regroup(addRowGroup(groups(), row)) },
+                        ids = page.ids,
+                    )
+                }
                 TextButton(onClick = { rowList = !rowList }) {
                     Text(stringResource(if (rowList) R.string.receipt_rows_hide else R.string.receipt_rows_show))
                 }

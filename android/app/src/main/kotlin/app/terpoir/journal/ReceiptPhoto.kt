@@ -78,6 +78,10 @@ private fun fit(image: Bitmap, viewport: IntSize): Fitted {
  * Unzoomed, a drag scrolls the page. The rows are also listed
  * ([ReceiptRowList]) for screen readers.
  *
+ * @param rows the rows read on this photo, in its pixels.
+ * @param ids each of [rows]' index in the review's rows, which [itemRows],
+ *   [shopRow] and [onTap] use: a long receipt's second photo draws its own
+ *   rows, which come after the first photo's in the review.
  * @param atTop start zoomed to the photo's width, showing its top (where
  *   the shop's name is printed).
  */
@@ -90,6 +94,7 @@ internal fun ReceiptPhotoView(
     description: String,
     atTop: Boolean,
     onTap: (Int) -> Unit,
+    ids: List<Int> = rows.indices.toList(),
 ) {
     val bitmap = remember(image) { image.asImageBitmap() }
     val itemColor = MaterialTheme.colorScheme.primary
@@ -120,7 +125,7 @@ internal fun ReceiptPhotoView(
                     .clipToBounds()
                     .onSizeChanged { viewport = it }
                     .semantics { contentDescription = description }
-                    .pointerInput(rows, image) {
+                    .pointerInput(rows, ids, image) {
                         detectTapGestures { offset ->
                             val f = fit(image, IntSize(size.width, size.height))
                             val z = currentZoom
@@ -131,7 +136,7 @@ internal fun ReceiptPhotoView(
                             rows.indices
                                 .filter { y >= rows[it].top - slack && y <= rows[it].bottom + slack }
                                 .minByOrNull { abs((rows[it].top + rows[it].bottom) / 2f - y) }
-                                ?.let(tap)
+                                ?.let { tap(ids[it]) }
                         }
                     }
                     .pointerInput(image) {
@@ -179,12 +184,13 @@ internal fun ReceiptPhotoView(
                         rows.forEachIndexed { index, row ->
                             val topLeft = Offset(f.left + row.left * f.scale, f.top + row.top * f.scale)
                             val box = Size((row.right - row.left) * f.scale, (row.bottom - row.top) * f.scale)
-                            val color = when (index) {
+                            val id = ids[index]
+                            val color = when (id) {
                                 shopRow -> shopColor
                                 in itemRows -> itemColor
                                 else -> otherColor
                             }
-                            if (index == shopRow || index in itemRows) drawRect(color.copy(alpha = 0.25f), topLeft, box)
+                            if (id == shopRow || id in itemRows) drawRect(color.copy(alpha = 0.25f), topLeft, box)
                             drawRect(color, topLeft, box, style = stroke)
                         }
                     }

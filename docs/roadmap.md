@@ -382,9 +382,9 @@ requirement rather than on features.
       - [ ] Merging two products that share a learned receipt name,
             keeping the most information from each (maintainer,
             2026-10-15).
-      - [ ] A second photo for long receipts, joined on overlapping rows.
-            Core done (`join_receipt_photos`); the camera's "Add the
-            rest" step comes with the Android review.
+      - [x] A second photo for long receipts, joined on overlapping rows:
+            `join_receipt_photos` in the core, and "Add the rest of the
+            receipt" in the Android review.
       - [x] Android: review cards with chips, the shop header card, "Join
             with next line" and "Split here", the cut-off warning, and the
             photo's zoom.

@@ -168,16 +168,21 @@ internal fun ShopCard(
 
 /** "Part of the receipt is cut off. Retake?" with Retake and Keep. */
 @Composable
-internal fun CutOffCard(onRetake: () -> Unit, onKeep: () -> Unit) {
+internal fun CutOffCard(onRetake: () -> Unit, onKeep: () -> Unit) =
+    RetakeCard(stringResource(R.string.receipt_cut_off), stringResource(R.string.receipt_keep), onRetake, onKeep)
+
+/** A problem with a photo, [text], with Retake and [keep] (which dismisses it). */
+@Composable
+internal fun RetakeCard(text: String, keep: String, onRetake: () -> Unit, onKeep: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.receipt_cut_off), style = MaterialTheme.typography.bodyLarge)
+            Text(text, style = MaterialTheme.typography.bodyLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onRetake) { Text(stringResource(R.string.receipt_retake)) }
-                OutlinedButton(onClick = onKeep) { Text(stringResource(R.string.receipt_keep)) }
+                OutlinedButton(onClick = onKeep) { Text(keep) }
             }
         }
     }

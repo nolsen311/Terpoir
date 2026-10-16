@@ -186,4 +186,33 @@ class ReceiptReviewTest {
         // The fitted photo's left edge is at the viewport's left edge.
         assertEquals(150f, top.toContent(0f, 0f).first, 0f)
     }
+
+    @Test
+    fun theSecondPhotoDrawsItsOwnRows() {
+        // First photo: 6 rows, its last one cut, so 5 kept; 2 of them overlap.
+        // Second photo: 1 cut row on top, the 2 overlapping rows, 4 below.
+        val pairs = secondPhotoRows(secondCount = 7, joinedCount = 9, fromFirst = 5, overlap = 2)
+        // The overlap is drawn on the second photo as the first photo's rows 3 and 4.
+        assertEquals(listOf(1 to 3, 2 to 4, 3 to 5, 4 to 6, 5 to 7, 6 to 8), pairs)
+        // Nothing below the overlap: only the overlap is drawn.
+        assertEquals(listOf(0 to 4), secondPhotoRows(secondCount = 1, joinedCount = 5, fromFirst = 5, overlap = 1))
+        // Counts that don't fit together draw nothing rather than the wrong rows.
+        assertEquals(emptyList<Pair<Int, Int>>(), secondPhotoRows(secondCount = 2, joinedCount = 9, fromFirst = 5, overlap = 2))
+    }
+
+    @Test
+    fun joiningTheSecondPhotoKeepsTheFirstPhotosCards() {
+        // The user split rows 1 and 2, removed row 3's card, and joined 4 with
+        // 5 (row 5 was the first photo's last kept row, fromFirst = 6).
+        val user = listOf(listOf(1), listOf(2), listOf(4, 5), listOf(6))
+        val parsed = listOf(listOf(1, 2), listOf(3), listOf(4), listOf(5, 6), listOf(7), listOf(8, 9))
+        // Card [6] pointed past the first photo's kept rows: read again.
+        // Parsed [5, 6] wraps across the seam, so it replaces the card [4, 5].
+        assertEquals(listOf(listOf(1), listOf(2), listOf(5, 6), listOf(7), listOf(8, 9)), groupsAfterJoin(user, parsed, fromFirst = 6))
+        // No wrap across the seam: the user's cards all stay.
+        assertEquals(
+            listOf(listOf(1), listOf(2), listOf(4, 5), listOf(6), listOf(7)),
+            groupsAfterJoin(user.dropLast(1), listOf(listOf(6), listOf(7)), fromFirst = 6),
+        )
+    }
 }
