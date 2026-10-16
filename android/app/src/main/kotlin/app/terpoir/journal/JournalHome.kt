@@ -141,6 +141,8 @@ fun JournalHome(
     onQuickLogOpened: () -> Unit,
     newNote: Boolean,
     onNewNoteOpened: () -> Unit,
+    newEntry: Boolean,
+    onNewEntryOpened: () -> Unit,
     onEdited: () -> Unit,
     privacyCenter: @Composable (onClose: () -> Unit, settings: @Composable () -> Unit) -> Unit,
 ) {
@@ -175,6 +177,13 @@ fun JournalHome(
         if (newNote) {
             stack.add(Screen.Note(null))
             onNewNoteOpened()
+        }
+    }
+    // Opened from a "New entry" shortcut, tile or widget.
+    LaunchedEffect(newEntry) {
+        if (newEntry) {
+            stack.add(Screen.Session(null))
+            onNewEntryOpened()
         }
     }
     // Opened from a "Quick check-in?" reminder.

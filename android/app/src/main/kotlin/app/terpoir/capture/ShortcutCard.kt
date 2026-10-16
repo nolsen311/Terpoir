@@ -26,8 +26,8 @@ import app.terpoir.R
 import app.terpoir.privacy.PrivacySettings
 
 /**
- * Shows or hides the "New note" app shortcut. A setting, not a privacy
- * toggle: the shortcut is on by default and reveals nothing the app icon
+ * Shows or hides the "New note" and "New entry" app shortcuts. A setting, not a privacy
+ * toggle: they are on by default and reveal nothing the app icon
  * doesn't (docs/design-decisions.md, "Quick capture").
  */
 @Composable

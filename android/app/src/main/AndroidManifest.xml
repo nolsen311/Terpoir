@@ -78,13 +78,25 @@
 
         <!-- Quick capture (opt-in Privacy Center toggles): both ship
              disabled and are enabled only while their toggle is on. They
-             show "New note" and nothing from the journal. -->
+             show "New note" or "New entry" and nothing from the journal. -->
         <service
             android:name=".capture.NewNoteTileService"
             android:enabled="false"
             android:exported="true"
             android:icon="@drawable/ic_add"
             android:label="@string/capture_new_note"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".capture.NewEntryTileService"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@drawable/ic_add"
+            android:label="@string/session_new"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />

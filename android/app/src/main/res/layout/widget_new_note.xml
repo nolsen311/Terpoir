@@ -1,11 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception -->
 <!-- Copyright (C) 2026 The Terpoir Authors -->
-<!-- The "New note" widget: one button, no journal content. -->
-<Button xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/widget_new_note"
+<!-- The quick-capture widget: "New note" and "New entry", no journal content. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:drawableStart="@drawable/ic_add"
-    android:drawablePadding="8dp"
-    android:text="@string/capture_new_note" />
+    android:orientation="horizontal"
+    style="?android:attr/buttonBarStyle">
+
+    <Button
+        android:id="@+id/widget_new_note"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        style="?android:attr/buttonBarButtonStyle"
+        android:drawableStart="@drawable/ic_add"
+        android:drawablePadding="8dp"
+        android:text="@string/capture_new_note" />
+
+    <Button
+        android:id="@+id/widget_new_entry"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        style="?android:attr/buttonBarButtonStyle"
+        android:drawableStart="@drawable/ic_add"
+        android:drawablePadding="8dp"
+        android:text="@string/session_new" />
+</LinearLayout>

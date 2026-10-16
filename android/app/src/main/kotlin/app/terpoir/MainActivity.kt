@@ -115,6 +115,9 @@ class MainActivity : ComponentActivity() {
      */
     private var newNoteRequested by mutableStateOf(false)
 
+    /** Opened from a "New entry" shortcut, tile or widget: after unlock, a new entry. */
+    private var newEntryRequested by mutableStateOf(false)
+
     /** A note was just written while locked: say so on the lock screen. */
     private var captureSaved by mutableStateOf(false)
 
@@ -139,6 +142,7 @@ class MainActivity : ComponentActivity() {
             SpotAlerts.ACTION_NEAR_SPOT -> nearbyRequested = true
             CheckIns.ACTION_CHECK_IN -> checkInRequested = true
             PurchasePrompts.ACTION_QUICK_LOG -> quickLogRequested = true
+            QuickCapture.ACTION_NEW_ENTRY -> newEntryRequested = true
             QuickCapture.ACTION_NEW_NOTE -> {
                 newNoteRequested = true
                 captureSaved = false
@@ -354,6 +358,8 @@ class MainActivity : ComponentActivity() {
                     onQuickLogOpened = { quickLogRequested = false },
                     newNote = newNoteRequested,
                     onNewNoteOpened = { newNoteRequested = false },
+                    newEntry = newEntryRequested,
+                    onNewEntryOpened = { newEntryRequested = false },
                     onEdited = {
                         scope.launch {
                             app.spotAlerts.refresh(state.journal)

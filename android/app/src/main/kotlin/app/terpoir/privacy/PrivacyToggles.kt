@@ -10,7 +10,6 @@ import app.terpoir.Distribution
 import app.terpoir.R
 import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.SpotAlerts
-import app.terpoir.capture.NewNoteTileService
 import app.terpoir.capture.NewNoteWidget
 import app.terpoir.capture.QuickCapture
 import app.terpoir.core.Journal
@@ -48,11 +47,11 @@ fun buildPrivacyCenter(
             isOn = { settings.quickSettingsTile },
             onAction = {
                 settings.quickSettingsTile = true
-                QuickCapture.setComponent(context, NewNoteTileService::class.java, true)
+                QuickCapture.setTiles(context, true)
             },
             offAction = {
                 settings.quickSettingsTile = false
-                QuickCapture.setComponent(context, NewNoteTileService::class.java, false)
+                QuickCapture.setTiles(context, false)
             },
         ),
         PrivacyToggle(
