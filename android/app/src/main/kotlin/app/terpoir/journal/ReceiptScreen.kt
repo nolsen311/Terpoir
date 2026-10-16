@@ -8,6 +8,7 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -24,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -139,6 +141,10 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
     var invalid by remember { mutableStateOf(false) }
     // Two products that learned one line: which is kept, and the other.
     var merging by remember { mutableStateOf<Pair<String, String>?>(null) }
+    // Merges confirmed here, done at Save (maintainer, 2026-10-16), so
+    // closing the review cancels them. Each keeps the cards it re-linked,
+    // with their links before, for its Undo.
+    val merges = remember { mutableStateListOf<Pair<PendingMerge, List<Triple<ItemDraft, String?, Boolean>>>>() }
     var photo by remember { mutableStateOf<Bitmap?>(null) }
     // The review's rows: the photo's, or both photos' joined.
     var rows by remember { mutableStateOf<List<TextRowData>>(emptyList()) }
@@ -275,32 +281,50 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
         )
     }
 
+    fun pending() = merges.map { it.first }
+
+    /**
+     * Links cards to the products they'll be once the pending merges are
+     * done: a card on a merged-away product moves to its keeper, and an
+     * unlinked card whose two learned products become one links to it.
+     * Returns the cards changed, with their links before.
+     */
+    fun relinkForMerges(): List<Triple<ItemDraft, String?, Boolean>> {
+        val changed = mutableListOf<Triple<ItemDraft, String?, Boolean>>()
+        for (item in items) {
+            val before = item.product
+            val after = before?.let { mergedInto(it, pending()) }
+                ?: learnedPair(item.suggestions)?.let { (a, b) -> mergedInto(a, pending()).takeIf { it == mergedInto(b, pending()) } }
+            if (after != null && after != before) {
+                changed += Triple(item, before, item.matched)
+                item.product = after
+                if (before == null) item.matched = true
+            }
+        }
+        return changed
+    }
+
     /** Offers merging two products that learned one line, keeping the one recording more by default. */
     fun offerMerge(pair: Pair<String, String>) {
+        val a = mergedInto(pair.first, pending())
+        val b = mergedInto(pair.second, pending())
+        // Already one product once the pending merges are done.
+        if (a == b) {
+            relinkForMerges()
+            return
+        }
         scope.launch {
-            val keep = repo.productToKeep(pair.first, pair.second)
-            merging = keep to (if (keep == pair.first) pair.second else pair.first)
+            val keep = repo.productToKeep(a, b)
+            merging = keep to (if (keep == a) b else a)
         }
     }
 
-    /**
-     * Merges [other] into [keep] now (the user confirmed it): cards and
-     * undone names that named [other] name [keep], and every card's
-     * suggestions are read again, so a line both had learned links to
-     * [keep] on its own.
-     */
-    fun merge(keep: String, other: String) {
-        scope.launch {
-            repo.mergeProducts(keep, other)
-            products = repo.products()
-            productLabels = repo.productLabels()
-            items.forEach { if (it.product == other) it.product = keep }
-            val renamed = undone.map { (p, text) -> (if (p == other) keep else p) to text }
-            undone.clear()
-            undone += renamed.distinct()
-            for (item in items.toList()) {
-                if (item.text.isNotBlank()) item.relinked(repo.suggestForReceiptItem(item.text, shop.spot()))
-            }
+    /** Takes back a pending merge: the cards it re-linked go back to what they were. */
+    fun undoMerge(index: Int) {
+        val (_, changed) = merges.removeAt(index)
+        for ((item, product, matched) in changed) {
+            item.product = product
+            item.matched = matched
         }
     }
 
@@ -414,6 +438,16 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                     }
                     // A shop the user confirmed keeps its receipt's numbers, so it's recognised next time.
                     if (spotId != null && choice.remembers() && rows.isNotEmpty()) repo.rememberReceiptShop(spotId, rows.map { it.text })
+                    // Merges confirmed in the review happen now, first, so
+                    // the lines and learned names below name the kept products.
+                    val done = pending()
+                    done.forEachIndexed { i, m ->
+                        val before = done.take(i)
+                        val keep = mergedInto(m.keep, before)
+                        val other = mergedInto(m.other, before)
+                        if (keep != other) learn { repo.mergeProducts(keep, other) }
+                    }
+                    if (done.isNotEmpty()) products = repo.products()
                     val defaults = products.associate { it.id to it.data.defaultSize }
                     val linked = mutableSetOf<Pair<String, String>>()
                     val lines = chosen.zip(prices).map { (item, price) ->
@@ -444,7 +478,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                             quantity = item.quantity,
                         )
                     }
-                    for ((product, text) in undone) {
+                    for ((product, text) in undone.map { (p, t) -> mergedInto(p, done) to t }.distinct()) {
                         if (product to text !in linked) learn { repo.forgetReceiptName(product, text) }
                     }
                     val date = LocalDate.ofEpochDay(day ?: LocalDate.now().toEpochDay())
@@ -461,6 +495,19 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
             val itemRows = items.flatMap { it.rows }.toSet()
             val canTap = image != null && rows.isNotEmpty()
             val pages = pages()
+
+            // Merges waiting for Save, each with an Undo.
+            merges.forEachIndexed { index, (m, _) ->
+                fun name(id: String) = productLabels[id] ?: products.firstOrNull { it.id == id }?.data?.name.orEmpty()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.receipt_merge_pending, name(m.other), name(m.keep)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { undoMerge(index) }) { Text(stringResource(R.string.merge_undo)) }
+                }
+            }
 
             if (showPrice) {
                 ShopCard(
@@ -631,10 +678,11 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                 keep = name(keep),
                 other = name(other),
                 onSwap = { merging = other to keep },
-                note = null,
+                note = stringResource(R.string.product_merge_on_save),
                 onConfirm = {
                     merging = null
-                    merge(keep, other)
+                    merges += PendingMerge(keep, other) to emptyList()
+                    merges[merges.lastIndex] = PendingMerge(keep, other) to relinkForMerges()
                 },
                 onDismiss = { merging = null },
             )

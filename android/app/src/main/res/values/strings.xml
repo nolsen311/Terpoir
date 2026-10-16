@@ -574,7 +574,10 @@
     <string name="product_merge_swap">Keep \"%1$s\" instead</string>
     <string name="product_merge_confirm">Merge</string>
     <string name="product_merge_this">this product</string>
-    <string name="product_merge_unsaved">Changes not saved here yet are discarded.</string>
+    <string name="product_merge_on_save">Nothing changes until you save.</string>
+    <string name="product_merge_pending">Merges with \"%1$s\" when you save, keeping \"%2$s\".</string>
+    <string name="merge_undo">Undo</string>
+    <string name="receipt_merge_pending">\"%1$s\" goes into \"%2$s\" when you save.</string>
     <string name="receipt_learned_both">Two of your products learned this exact line.</string>
     <string name="receipt_merge">Merge these products</string>
     <string name="product_receipt_names_hint">A receipt line printed exactly like one of these links to this product on its own.</string>

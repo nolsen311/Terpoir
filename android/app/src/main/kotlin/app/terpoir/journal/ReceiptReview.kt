@@ -106,6 +106,16 @@ internal fun learnedPair(suggestions: List<ScanSuggestion>): Pair<String, String
     return if (learned.size >= 2) learned[0] to learned[1] else null
 }
 
+/** A merge the user confirmed in the review, done at Save: [other] goes into [keep]. */
+internal data class PendingMerge(val keep: String, val other: String)
+
+/** The product [id] ends up as once [merges] are done, in order (a merged-away product's keeper, followed along). */
+internal fun mergedInto(id: String, merges: List<PendingMerge>): String {
+    var current = id
+    for (m in merges) if (m.other == current) current = m.keep
+    return current
+}
+
 /** The suggestions a card offers as "?" chips: products, brands and strains, best first. */
 internal fun offeredSuggestions(suggestions: List<ScanSuggestion>, limit: Int = 4): List<ScanSuggestion> =
     suggestions.filter { it.recordType in setOf("product", "brand", "strain") }.take(limit)
