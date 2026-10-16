@@ -384,6 +384,8 @@ requirement rather than on features.
             keeping the most information from each (maintainer,
             2026-10-15).
       - [ ] A second photo for long receipts, joined on overlapping rows.
+            Core done (`join_receipt_photos`); the camera's "Add the
+            rest" step comes with the Android review.
       - [ ] Android: review cards with chips, the shop header card, "Join
             with next line" and "Split here", the cut-off warning, and
             zoom on the photo (pinch, plus visible + / − and "Fit").
