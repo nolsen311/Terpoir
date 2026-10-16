@@ -809,6 +809,7 @@ mod tests {
                 unit: SizeUnit::Gram,
             }),
             pack: None,
+            per: None,
         });
         p.receipt_names.insert("BD 3.5G HYB".into());
         p.receipt_names.insert("BD 1/8 HYB".into());

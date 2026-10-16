@@ -42,7 +42,7 @@ mod value;
 pub use document::{CURRENT_SCHEMA_VERSION, Document, Field, migrate};
 pub use error::{Error, Result};
 pub use records::{
-    Brand, Cannabinoid, CoreEffect, DEFAULT_SPOT_RADIUS_M, Dose, DoseUnit, Flavor, Form,
+    AmountPer, Brand, Cannabinoid, CoreEffect, DEFAULT_SPOT_RADIUS_M, Dose, DoseUnit, Flavor, Form,
     IdentifierKind, InsightFeedbackList, Intention, LabelAmount, LabelUnit, LocalTime, Location,
     MAX_RECEIPT_NAME_CHARS, MIN_SPOT_RADIUS_M, Method, Mood, PackageSize, Price, Product,
     ProductLine, Provenance, Purchase, PurchaseLine, PurchaseRef, Record, RecordKind, Session,

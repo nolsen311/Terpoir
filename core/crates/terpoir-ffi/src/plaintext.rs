@@ -299,6 +299,7 @@ fn products_csv(docs: &[Document], names: &Names) -> String {
         "default_size",
         "default_size_unit",
         "default_pack",
+        "default_size_per",
         "receipt_names",
     ]);
     for doc in docs {
@@ -333,6 +334,7 @@ fn products_csv(docs: &[Document], names: &Names) -> String {
             opt(size_amount(p.default_size.as_ref()).map(|a| milli(a.milli))),
             opt(size_amount(p.default_size.as_ref()).map(|a| a.unit.slug().to_owned())),
             opt(p.default_size.as_ref().and_then(|s| s.pack)),
+            opt(size_per(p.default_size.as_ref())),
             join(p.receipt_names.iter().cloned()),
         ]);
     }
@@ -352,6 +354,7 @@ fn purchases_csv(docs: &[Document], names: &Names) -> String {
         "size",
         "size_unit",
         "pack",
+        "size_per",
         "quantity",
     ]);
     for doc in docs {
@@ -372,6 +375,7 @@ fn purchases_csv(docs: &[Document], names: &Names) -> String {
                 opt(size_amount(line.size.as_ref()).map(|a| milli(a.milli))),
                 opt(size_amount(line.size.as_ref()).map(|a| a.unit.slug().to_owned())),
                 opt(line.size.as_ref().and_then(|s| s.pack)),
+                opt(size_per(line.size.as_ref())),
                 line.quantity.to_string(),
             ]);
         }
@@ -420,6 +424,12 @@ fn cell_text(cell: &str) -> String {
     } else {
         guarded
     }
+}
+
+/// `each` or `total`: what a pack's amount covers, when decided.
+fn size_per(size: Option<&PackageSize>) -> Option<String> {
+    size.and_then(|s| s.per.as_ref())
+        .map(|p| p.slug().to_owned())
 }
 
 fn size_amount(size: Option<&PackageSize>) -> Option<&SizeAmount> {

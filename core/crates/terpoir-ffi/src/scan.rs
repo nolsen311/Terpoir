@@ -8,9 +8,9 @@
 //! These types carry text from the user's receipts and labels, so none
 //! implements `Debug`.
 
-use terpoir_model::TagRef;
+use terpoir_model::{Form, TagRef};
 
-use crate::records::{TagIntensity, TagRefData};
+use crate::records::{PackageSizeData, TagIntensity, TagRefData};
 
 /// One candidate receipt line.
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
@@ -325,6 +325,22 @@ pub fn join_receipt_photos(
     })
 }
 
+/// Whether a package's amount is each piece's (`each`) or the pack's total
+/// (`total`), for a product of `form` (a form slug: the line's, else the
+/// linked product's): each piece's, unless the amount times the pack is
+/// implausibly large for the form (over 28 g of flower or pre-rolls, 10 g
+/// of concentrate or vape, 1000 mg of edible; the full table is in
+/// `terpoir-scan`'s `pack.rs`). `None` without both an amount and a pack,
+/// for a malformed size, or for a unit from a newer app version. `size.per`
+/// is ignored.
+#[uniffi::export]
+#[must_use]
+pub fn package_amount_per(size: PackageSizeData, form: Option<String>) -> Option<String> {
+    let size = PackageSizeData { per: None, ..size }.to_model().ok()?;
+    let form = form.as_deref().map(Form::from_slug);
+    terpoir_scan::amount_per(&size, form.as_ref()).map(|p| p.slug().to_owned())
+}
+
 /// Breaks an item's text into size, form, strain type, pack count,
 /// quantity, and the name that is left (`BD PR 1G` leaves `BD`).
 #[uniffi::export]
@@ -509,6 +525,36 @@ mod tests {
             (d.form.as_deref(), d.subtype.as_deref()),
             (Some("concentrate"), Some("rosin"))
         );
+
+        let pack = |milli, unit: &str, pack| PackageSizeData {
+            milli: Some(milli),
+            unit: Some(unit.into()),
+            pack: Some(pack),
+            per: Some("total".into()),
+        };
+        assert_eq!(
+            package_amount_per(pack(500, "g", 5), Some("pre_roll".into())).as_deref(),
+            Some("each")
+        );
+        assert_eq!(
+            package_amount_per(pack(3_500, "g", 10), Some("pre_roll".into())).as_deref(),
+            Some("total")
+        );
+        assert_eq!(
+            package_amount_per(pack(100_000, "mg", 20), Some("edible".into())).as_deref(),
+            Some("total")
+        );
+        assert_eq!(
+            package_amount_per(pack(1_000, "g", 2), Some("vape_cart".into())).as_deref(),
+            Some("each")
+        );
+        let malformed = PackageSizeData {
+            milli: Some(500),
+            unit: None,
+            pack: Some(5),
+            per: None,
+        };
+        assert_eq!(package_amount_per(malformed, None), None);
 
         let c = classify_code("https://lab.example/x".into(), true).unwrap();
         assert_eq!(c.kind, "qr");

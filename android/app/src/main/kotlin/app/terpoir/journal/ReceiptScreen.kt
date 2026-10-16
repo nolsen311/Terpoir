@@ -32,6 +32,7 @@ import app.terpoir.core.CoreException
 import app.terpoir.core.CutOffData
 import app.terpoir.core.JoinedRowsData
 import app.terpoir.core.LocalTimeData
+import app.terpoir.core.PackageSizeData
 import app.terpoir.core.ProductData
 import app.terpoir.core.PurchaseData
 import app.terpoir.core.PurchaseLineData
@@ -41,6 +42,7 @@ import app.terpoir.core.TagRefData
 import app.terpoir.core.TextRowData
 import app.terpoir.core.describeReceiptItem
 import app.terpoir.core.joinReceiptPhotos
+import app.terpoir.core.packageAmountPer
 import app.terpoir.core.parseReceiptRowGroups
 import app.terpoir.core.parseReceiptRows
 import app.terpoir.core.receiptCutOff
@@ -181,6 +183,16 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
     }
 
     fun groups() = items.filter { it.rows.isNotEmpty() }.map { it.rows }
+
+    /**
+     * A card's size, with what a pack's amount covers decided: the user's
+     * choice, else the core's reading for the line's type (or the linked
+     * product's), each piece's unless that is implausibly large.
+     */
+    fun sizeOf(item: ItemDraft): PackageSizeData? {
+        val form = item.breakdown?.form ?: item.product?.let { id -> products.firstOrNull { it.id == id }?.data?.form }
+        return withPer(item.baseSize(), item.per) { packageAmountPer(it, form) }
+    }
 
     fun reset() {
         photo?.recycle()
@@ -382,6 +394,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                                 item.newStrain.takeIf { showStrain },
                                 item.breakdown,
                                 item.text,
+                                sizeOf(item),
                             ),
                         )
                         // A printed line linked to a product links to it next time.
@@ -395,8 +408,8 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                             null,
                             price,
                             code.takeIf { price != null },
-                            // Size and pack as the line prints them, else the product's usual size.
-                            size = item.breakdown?.packageSize() ?: defaults[product],
+                            // Size and pack as the card shows them, else the product's usual size.
+                            size = sizeOf(item) ?: defaults[product],
                             quantity = item.quantity,
                         )
                     }
@@ -501,6 +514,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
             if (items.isEmpty()) Text(stringResource(R.string.receipt_no_items))
             val context = ItemCardContext(
                 rowText = { rows[it].text },
+                size = ::sizeOf,
                 productLabel = { id -> productLabels[id] ?: products.firstOrNull { it.id == id }?.data?.name.orEmpty() },
                 products = products.map { it.id to (productLabels[it.id] ?: it.data.name) }.sortedBy { it.second.lowercase() },
                 showPrice = showPrice,

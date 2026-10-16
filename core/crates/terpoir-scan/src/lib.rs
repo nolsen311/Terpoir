@@ -21,6 +21,8 @@
 //!   [`find_cut_off`] for text touching the photo's edge.
 //! - [`describe_item`]: an item's size, form, strain type, pack and
 //!   quantity from the built-in vocabulary, and the name that is left.
+//! - [`amount_per`]: whether a pack's amount (`5PK 0.5G`) is each piece's
+//!   or the pack's total, by what is plausible for the product's form.
 //! - [`match_names`]: the user's products, brands and strains ranked
 //!   against an item's name (initials, letters in order, cut-off names).
 //! - [`read_header`] and [`match_shop`]: the shop's name, phone and
@@ -37,6 +39,7 @@ mod layout;
 mod matching;
 mod name;
 mod number;
+mod pack;
 mod receipt;
 mod stitch;
 mod terms;
@@ -54,6 +57,7 @@ pub use matching::{
     CLOSE, CandidateKind, MatchKind, NameCandidate, NameMatch, match_names, score_name,
 };
 pub use name::{names_match, normalize_name};
+pub use pack::amount_per;
 pub use receipt::{Receipt, ReceiptItem, ReceiptLine, parse_receipt, parse_receipt_line};
 pub use stitch::{JoinedRows, join_receipt_photos};
 pub use terms::{ItemBreakdown, Size, SizeUnit, describe_item};

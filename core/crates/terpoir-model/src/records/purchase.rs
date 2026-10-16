@@ -24,6 +24,18 @@ slug_enum! {
     }
 }
 
+slug_enum! {
+    /// What a package size's amount covers when the package also has a
+    /// pack count (`5PK 0.5G`): each piece, or the whole pack. Either
+    /// happens, by area and product (maintainer, 2026-10-15).
+    AmountPer {
+        /// Each piece: five pieces of 0.5 g.
+        Each => "each",
+        /// The whole pack: 0.5 g in all, across five pieces.
+        Total => "total",
+    }
+}
+
 /// An amount in a package: 3.5 g, 100 mg, 30 ml.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SizeAmount {
@@ -35,14 +47,22 @@ pub struct SizeAmount {
 
 /// A package size, as printed on the receipt or label (docs/design-decisions.md,
 /// "Simpler review": size and quantity on the purchase line): an amount, a
-/// pack count (`5PK`), or both (`5PK 0.5G`, kept as printed, without
-/// deciding whether the amount is per piece or in all). At least one is set.
+/// pack count (`5PK`), or both (`5PK 0.5G`). With both, [`per`](Self::per)
+/// says whether the amount is each piece's or the whole pack's, once that
+/// is decided. At least one of the amount and the pack is set.
+///
+/// Stored as a tuple of four: the amount, its unit, the pack, and what the
+/// amount covers. Builds of 0.6.0 before the fourth item wrote three; those
+/// read with it unset.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct PackageSize {
     /// The amount.
     pub amount: Option<SizeAmount>,
     /// Pieces in one package. At least 1.
     pub pack: Option<u32>,
+    /// Whether the amount is each piece's or the pack's total; only with
+    /// both an amount and a pack. `None` when undecided (as printed).
+    pub per: Option<AmountPer>,
 }
 
 impl PackageSize {
@@ -55,17 +75,23 @@ impl PackageSize {
                 .as_ref()
                 .map_or(Value::Null, |a| Value::Text(a.unit.slug().to_owned())),
             self.pack.map_or(Value::Null, |p| Value::Int(i64::from(p))),
+            self.per
+                .as_ref()
+                .map_or(Value::Null, |p| Value::Text(p.slug().to_owned())),
         ])
     }
 
     /// Reads a stored size; `None` if it is malformed (nothing set, half an
-    /// amount, a zero or negative amount or pack).
+    /// amount, a zero or negative amount or pack, or what the amount covers
+    /// without both an amount and a pack).
     pub(crate) fn from_value(value: &Value) -> Option<Self> {
         let Value::Tuple(items) = value else {
             return None;
         };
-        let [milli, unit, pack] = items.as_slice() else {
-            return None;
+        let (milli, unit, pack, per) = match items.as_slice() {
+            [milli, unit, pack] => (milli, unit, pack, &Value::Null),
+            [milli, unit, pack, per] => (milli, unit, pack, per),
+            _ => return None,
         };
         let amount = match (milli, unit) {
             (Value::Null, Value::Null) => None,
@@ -80,16 +106,35 @@ impl PackageSize {
             Value::Int(p) => Some(u32::try_from(*p).ok().filter(|p| *p >= 1)?),
             _ => return None,
         };
-        let size = Self { amount, pack };
+        let per = match per {
+            Value::Null => None,
+            Value::Text(slug) => Some(AmountPer::from_slug(slug)),
+            _ => return None,
+        };
+        let size = Self { amount, pack, per };
         size.is_valid().then_some(size)
     }
 
-    /// Whether something is set and every number is positive.
+    /// Whether something is set, every number is positive, and what the
+    /// amount covers is set only with both an amount and a pack.
     #[must_use]
     pub fn is_valid(&self) -> bool {
         (self.amount.is_some() || self.pack.is_some())
             && self.amount.as_ref().is_none_or(|a| a.milli > 0)
             && self.pack.is_none_or(|p| p >= 1)
+            && (self.per.is_none() || (self.amount.is_some() && self.pack.is_some()))
+    }
+
+    /// The amount in the whole package, in thousandths of its unit: the
+    /// amount times the pack when it is each piece's, else the amount.
+    /// `None` without an amount.
+    #[must_use]
+    pub fn total_milli(&self) -> Option<i64> {
+        let amount = self.amount.as_ref()?;
+        Some(match (self.per.as_ref(), self.pack) {
+            (Some(AmountPer::Each), Some(pack)) => amount.milli.saturating_mul(i64::from(pack)),
+            _ => amount.milli,
+        })
     }
 }
 
@@ -304,6 +349,7 @@ mod tests {
                         unit: SizeUnit::Gram,
                     }),
                     pack: None,
+                    per: None,
                 }),
                 quantity: 2,
             },
@@ -320,6 +366,7 @@ mod tests {
                         unit: SizeUnit::from_slug("oz_future"),
                     }),
                     pack: Some(5),
+                    per: Some(AmountPer::Total),
                 }),
                 quantity: 1,
             },
@@ -375,6 +422,7 @@ mod tests {
         line.size = Some(PackageSize {
             amount: None,
             pack: Some(10),
+            per: None,
         });
         line.quantity = 3;
         doc.update(&new, stamp()).unwrap();
@@ -382,7 +430,7 @@ mod tests {
         assert!(matches!(doc.value(&format!("lines/{key}")), Value::Tuple(t) if t.len() == 4));
         assert_eq!(
             doc.value(&format!("line_sizes/{key}")),
-            &Value::Tuple(vec![Value::Null, Value::Null, Value::Int(10)])
+            &Value::Tuple(vec![Value::Null, Value::Null, Value::Int(10), Value::Null])
         );
         assert_eq!(doc.value(&format!("line_quantities/{key}")), &Value::Int(3));
         assert!(Purchase::owns_field(&format!("line_sizes/{key}")));
@@ -398,6 +446,7 @@ mod tests {
             PackageSize {
                 amount: None,
                 pack: Some(2),
+                per: None,
             }
             .to_value(),
             stamp(),
@@ -430,6 +479,25 @@ mod tests {
                 Value::Tuple(vec![Value::Null, Value::Null, Value::Int(0)]),
             ),
             ("line_sizes", Value::Int(3)),
+            // What the amount covers, without both an amount and a pack.
+            (
+                "line_sizes",
+                Value::Tuple(vec![
+                    Value::Null,
+                    Value::Null,
+                    Value::Int(5),
+                    Value::Text("each".into()),
+                ]),
+            ),
+            (
+                "line_sizes",
+                Value::Tuple(vec![
+                    Value::Int(500),
+                    Value::Text("g".into()),
+                    Value::Int(5),
+                    Value::Int(1),
+                ]),
+            ),
             ("line_quantities", Value::Int(0)),
             ("line_quantities", Value::Text("2".into())),
         ] {
@@ -437,5 +505,42 @@ mod tests {
             doc.set(format!("{field}/{key}"), value, stamp());
             assert!(Purchase::from_document(&doc).is_err(), "{field}");
         }
+    }
+
+    #[test]
+    fn what_a_packs_amount_covers_round_trips_and_reads_from_three_items() {
+        let size = |per| PackageSize {
+            amount: Some(SizeAmount {
+                milli: 500,
+                unit: SizeUnit::Gram,
+            }),
+            pack: Some(5),
+            per,
+        };
+        for per in [
+            None,
+            Some(AmountPer::Each),
+            Some(AmountPer::Total),
+            Some(AmountPer::from_slug("per_serving")),
+        ] {
+            let value = size(per.clone()).to_value();
+            assert!(matches!(&value, Value::Tuple(t) if t.len() == 4));
+            assert_eq!(PackageSize::from_value(&value), Some(size(per)));
+        }
+        // Written by a 0.6.0 build before the fourth item: undecided.
+        let three = Value::Tuple(vec![
+            Value::Int(500),
+            Value::Text("g".into()),
+            Value::Int(5),
+        ]);
+        assert_eq!(PackageSize::from_value(&three), Some(size(None)));
+        // The whole package's amount.
+        assert_eq!(size(Some(AmountPer::Each)).total_milli(), Some(2_500));
+        assert_eq!(size(Some(AmountPer::Total)).total_milli(), Some(500));
+        assert_eq!(size(None).total_milli(), Some(500));
+        // Only with both an amount and a pack.
+        let mut pack_only = size(Some(AmountPer::Each));
+        pack_only.amount = None;
+        assert!(!pack_only.is_valid());
     }
 }

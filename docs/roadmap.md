@@ -375,7 +375,7 @@ requirement rather than on features.
       - [x] Size and quantity on the purchase line, default size on the
             product (synced, with a compatibility fixture).
       - [x] Phone and licence numbers on spots (synced, with a fixture).
-      - [ ] A pack with an amount: read the amount as the pack's total when
+      - [x] A pack with an amount: read the amount as the pack's total when
             amount × pack is implausibly large for the product, and an easy
             "each / in all" and unit change on the card (maintainer,
             2026-10-15).

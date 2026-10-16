@@ -186,6 +186,7 @@ fn gummies_size() -> PackageSizeData {
         milli: Some(100_000),
         unit: Some("mg".into()),
         pack: Some(10),
+        per: Some("each".into()),
     }
 }
 

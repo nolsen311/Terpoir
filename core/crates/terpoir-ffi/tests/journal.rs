@@ -2662,6 +2662,7 @@ fn grams(milli: i64) -> PackageSizeData {
         milli: Some(milli),
         unit: Some("g".into()),
         pack: None,
+        per: None,
     }
 }
 
@@ -2678,11 +2679,15 @@ fn purchase_lines_keep_size_and_quantity_and_products_a_default_size() {
 
     // A scanned line's breakdown maps straight onto the purchase line.
     let item = terpoir_ffi::describe_receipt_item("2 X BD PR 5PK 0.5G".into());
-    let size = PackageSizeData {
+    let mut size = PackageSizeData {
         milli: item.size_milli,
         unit: item.size_unit.clone(),
         pack: item.pack,
+        per: None,
     };
+    // Five half-gram pre-rolls: each piece's, and the reading is kept.
+    size.per = terpoir_ffi::package_amount_per(size.clone(), item.form.clone());
+    assert_eq!(size.per.as_deref(), Some("each"));
     let line = |size: Option<PackageSizeData>, quantity: u32| PurchaseLineData {
         line_id: None,
         product: Some(product.clone()),
@@ -2723,24 +2728,20 @@ fn purchase_lines_keep_size_and_quantity_and_products_a_default_size() {
     // The CSVs carry them.
     let files = journal.export_plaintext(10).unwrap();
     let products_csv = String::from_utf8(files[2].bytes.clone()).unwrap();
-    assert!(
-        products_csv
-            .lines()
-            .next()
-            .unwrap()
-            .ends_with(",shops,default_size,default_size_unit,default_pack,receipt_names")
-    );
-    assert!(products_csv.contains(",3.5,g,,"));
+    assert!(products_csv.lines().next().unwrap().ends_with(
+        ",shops,default_size,default_size_unit,default_pack,default_size_per,receipt_names"
+    ));
+    assert!(products_csv.contains(",3.5,g,,,"));
     let purchases_csv = String::from_utf8(files[3].bytes.clone()).unwrap();
     assert!(
         purchases_csv
             .lines()
             .next()
             .unwrap()
-            .ends_with(",currency,size,size_unit,pack,quantity")
+            .ends_with(",currency,size,size_unit,pack,size_per,quantity")
     );
-    assert!(purchases_csv.contains(",0.5,g,5,2\r\n"));
-    assert!(purchases_csv.contains(",,,,1\r\n"));
+    assert!(purchases_csv.contains(",0.5,g,5,each,2\r\n"));
+    assert!(purchases_csv.contains(",,,,,1\r\n"));
 
     // Malformed sizes and quantities are refused.
     for (size, quantity) in [
@@ -2750,6 +2751,7 @@ fn purchase_lines_keep_size_and_quantity_and_products_a_default_size() {
                 milli: Some(1_000),
                 unit: None,
                 pack: None,
+                per: None,
             }),
             1,
         ),
@@ -2758,6 +2760,7 @@ fn purchase_lines_keep_size_and_quantity_and_products_a_default_size() {
                 milli: None,
                 unit: None,
                 pack: None,
+                per: None,
             }),
             1,
         ),
@@ -2767,6 +2770,23 @@ fn purchase_lines_keep_size_and_quantity_and_products_a_default_size() {
                 milli: None,
                 unit: None,
                 pack: Some(0),
+                per: None,
+            }),
+            1,
+        ),
+        // What the amount covers, without both an amount and a pack.
+        (
+            Some(PackageSizeData {
+                per: Some("each".into()),
+                ..grams(500)
+            }),
+            1,
+        ),
+        (
+            Some(PackageSizeData {
+                pack: Some(5),
+                per: Some(String::new()),
+                ..grams(500)
             }),
             1,
         ),
