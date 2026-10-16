@@ -16,8 +16,8 @@ use std::fmt::Write as _;
 
 use serde_json::{Map, Value as Json, json};
 use terpoir_model::{
-    Brand, Document, Product, Purchase, Record, RecordId, RecordKind, Session, Spot, Strain, Tag,
-    TagRef, Value,
+    Brand, Document, PackageSize, Product, Purchase, Record, RecordId, RecordKind, Session,
+    SizeAmount, Spot, Strain, Tag, TagRef, Value,
 };
 
 use crate::error::Result;
@@ -296,6 +296,10 @@ fn products_csv(docs: &[Document], names: &Names) -> String {
         "batch",
         "package_date",
         "shops",
+        "default_size",
+        "default_size_unit",
+        "default_pack",
+        "receipt_names",
     ]);
     for doc in docs {
         let Ok(p) = Product::from_document(doc) else {
@@ -326,6 +330,10 @@ fn products_csv(docs: &[Document], names: &Names) -> String {
             p.batch.clone().unwrap_or_default(),
             opt(p.package_date.map(iso_date)),
             join(p.shops.iter().map(|s| names.of(s))),
+            opt(size_amount(p.default_size.as_ref()).map(|a| milli(a.milli))),
+            opt(size_amount(p.default_size.as_ref()).map(|a| a.unit.slug().to_owned())),
+            opt(p.default_size.as_ref().and_then(|s| s.pack)),
+            join(p.receipt_names.iter().cloned()),
         ]);
     }
     out.finish()
@@ -341,6 +349,10 @@ fn purchases_csv(docs: &[Document], names: &Names) -> String {
         "batch",
         "price_minor_units",
         "currency",
+        "size",
+        "size_unit",
+        "pack",
+        "quantity",
     ]);
     for doc in docs {
         let Ok(p) = Purchase::from_document(doc) else {
@@ -357,6 +369,10 @@ fn purchases_csv(docs: &[Document], names: &Names) -> String {
                 line.batch.clone().unwrap_or_default(),
                 opt(line.price.as_ref().map(|pr| pr.minor_units)),
                 opt(line.price.as_ref().map(|pr| pr.currency.clone())),
+                opt(size_amount(line.size.as_ref()).map(|a| milli(a.milli))),
+                opt(size_amount(line.size.as_ref()).map(|a| a.unit.slug().to_owned())),
+                opt(line.size.as_ref().and_then(|s| s.pack)),
+                line.quantity.to_string(),
             ]);
         }
     }
@@ -404,6 +420,10 @@ fn cell_text(cell: &str) -> String {
     } else {
         guarded
     }
+}
+
+fn size_amount(size: Option<&PackageSize>) -> Option<&SizeAmount> {
+    size.and_then(|s| s.amount.as_ref())
 }
 
 fn join(items: impl Iterator<Item = String>) -> String {

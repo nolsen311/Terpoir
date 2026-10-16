@@ -180,6 +180,9 @@ fun SpotEditor(
                 radiusM = original?.radiusM,
                 // Kept as saved while the feature is off, so turning it back on restores it.
                 purchasePrompts = if (promptsOn) purchasePrompts && f != null && reUp in purposes else original?.purchasePrompts ?: false,
+                // Not edited here yet: kept as saved.
+                phones = original?.phones ?: emptyList(),
+                licences = original?.licences ?: emptyList(),
             )
             scope.launch {
                 repo.saveSpot(id, data)

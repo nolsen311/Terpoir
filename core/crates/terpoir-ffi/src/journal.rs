@@ -11,7 +11,7 @@ use terpoir_crypto::{MasterKey, RecoveryKey, WrappedKey};
 use terpoir_model::{
     Brand, DeviceId, Document, Form, Hlc, Location, Product, Purchase, Record, RecordId,
     RecordKind, Session, Snippet, Spot, Strain, Tag, TagCategory, TagRef, TrackingPreferences,
-    migrate, usual_method,
+    migrate, receipt_name_key, usual_method,
 };
 use terpoir_scan::{names_match, normalize_name};
 use terpoir_store::Store;
@@ -78,7 +78,20 @@ pub struct ScanSuggestion {
     /// Within a few points of the best suggestion: offer it as an equal
     /// choice (BD: Blue Dream or Bubba Diesel).
     pub close: bool,
+    /// A learned receipt name (since 0.6.0): the line's text is exactly
+    /// one this product learned (`Journal::learn_receipt_name`), so it
+    /// links automatically, shown with a "matched" chip that one tap
+    /// changes or undoes. Learned products come first, with `match_kind`
+    /// `learned`; when two products learned the same text (possible
+    /// after a sync), both are `close`, to be offered as equal choices
+    /// instead. Every other suggestion is a "?". Last, with a default, so
+    /// callers that predate it compile.
+    #[uniffi(default = false)]
+    pub learned: bool,
 }
+
+/// The score of a learned receipt name, above any ranked suggestion.
+const LEARNED_SCORE: u32 = 1_000;
 
 /// The saved spot a receipt's header most likely belongs to, and what the
 /// header says.
@@ -859,7 +872,9 @@ impl Journal {
     }
 
     /// The user's products, brands and strains that a receipt item's text
-    /// may name, best first (at most 10). The text is broken down first
+    /// may name, best first (at most 10). A product that learned the
+    /// line's exact text (case and spacing aside) comes first, marked
+    /// `learned`: the only automatic link. The text is broken down first
     /// (`BD PR 1G` looks for `BD`) and matched by name, initials, letters
     /// in order and cut-off names, tolerant of recognition errors. With
     /// the receipt's `spot`, what the user buys there ranks higher:
@@ -912,6 +927,31 @@ impl Journal {
                 }
             }
 
+            // Products that learned this exact line.
+            let learned: Vec<(RecordId, String)> = receipt_name_key(&text)
+                .map(|key| {
+                    products
+                        .iter()
+                        .filter(|(_, p)| p.receipt_names.contains(&key))
+                        .map(|(id, p)| (*id, p.name.clone()))
+                        .collect()
+                })
+                .unwrap_or_default();
+            let ambiguous = learned.len() > 1;
+            let mut suggestions: Vec<ScanSuggestion> = learned
+                .iter()
+                .map(|(id, name)| ScanSuggestion {
+                    id: id.to_hex(),
+                    record_type: "product".to_owned(),
+                    name: name.clone(),
+                    match_kind: "learned".to_owned(),
+                    score: LEARNED_SCORE,
+                    at_shop: bought.get(id).copied().unwrap_or(0) > 0,
+                    close: ambiguous,
+                    learned: true,
+                })
+                .collect();
+
             let mut ids = Vec::new();
             let mut candidates = Vec::new();
             let mut add = |id: RecordId, kind, name: String, at_shop: u32| {
@@ -938,9 +978,9 @@ impl Journal {
                     add(id, terpoir_scan::CandidateKind::Strain, strain.name, n);
                 }
             }
-            Ok(terpoir_scan::match_names(&text, &candidates)
+            let ranked = terpoir_scan::match_names(&text, &candidates)
                 .into_iter()
-                .take(10)
+                .filter(|m| !learned.iter().any(|(id, _)| *id == ids[m.index]))
                 .map(|m| ScanSuggestion {
                     id: ids[m.index].to_hex(),
                     record_type: match candidates[m.index].kind {
@@ -954,8 +994,114 @@ impl Journal {
                     score: m.score,
                     at_shop: m.at_shop,
                     close: m.close,
-                })
-                .collect())
+                    learned: false,
+                });
+            suggestions.extend(ranked);
+            suggestions.truncate(10);
+            Ok(suggestions)
+        })
+    }
+
+    /// Learns a receipt name (docs/design-decisions.md, "Learned receipt
+    /// names"): the user linked a receipt line to `product`, so the
+    /// product keeps the line's text (upper case, single spaces; nothing
+    /// else changed), and a receipt printing exactly that text links to it
+    /// automatically next time. Another product that had learned the same
+    /// text gives it up, since the user just linked it elsewhere. Kept in
+    /// the encrypted product and synced; never indexed.
+    ///
+    /// # Errors
+    ///
+    /// `InvalidInput` for a malformed ID or an empty text (or one over 200
+    /// characters), `NotFound` if the product doesn't exist, `WrongType`
+    /// if `product` is another kind of record, `Locked` or `Storage`.
+    pub fn learn_receipt_name(
+        &self,
+        product: String,
+        line_text: String,
+        now_ms: u64,
+    ) -> Result<()> {
+        let key = receipt_name_key(&line_text).ok_or(CoreError::InvalidInput)?;
+        let product_id = parse_id(&product)?;
+        self.with(|u| {
+            let mut record = u.get::<Product>(&product)?.ok_or(CoreError::NotFound)?;
+            for id in u.store.ids_of_kind(RecordKind::Product)? {
+                if id == product_id {
+                    continue;
+                }
+                let Some(mut other) = u.store.get_record::<Product>(&u.master, &id)? else {
+                    continue;
+                };
+                if other.receipt_names.remove(&key) {
+                    u.save(Some(id.to_hex()), &other, now_ms)?;
+                }
+            }
+            if record.receipt_names.insert(key) {
+                u.save(Some(product), &record, now_ms)?;
+            }
+            Ok(())
+        })
+    }
+
+    /// Forgets a learned receipt name of `product` (the "matched" chip's
+    /// undo, or the delete on the product's page). The text is normalised
+    /// as when it was learned. Returns whether the product had it.
+    ///
+    /// # Errors
+    ///
+    /// `InvalidInput` for a malformed ID, `NotFound`, `WrongType`,
+    /// `Locked` or `Storage`.
+    pub fn forget_receipt_name(
+        &self,
+        product: String,
+        line_text: String,
+        now_ms: u64,
+    ) -> Result<bool> {
+        self.with(|u| {
+            let mut record = u.get::<Product>(&product)?.ok_or(CoreError::NotFound)?;
+            let Some(key) = receipt_name_key(&line_text) else {
+                return Ok(false);
+            };
+            if !record.receipt_names.remove(&key) {
+                return Ok(false);
+            }
+            u.save(Some(product), &record, now_ms)?;
+            Ok(true)
+        })
+    }
+
+    /// Remembers a confirmed shop's numbers from its receipt: the phone and
+    /// licence numbers printed in the header of `rows` (as
+    /// `match_receipt_shop` reads them) are added to `spot`, so its next
+    /// receipt is recognised strongly ("Green Leaf ✓"). Call it when the
+    /// user confirms or picks the shop. Returns how many numbers were new.
+    ///
+    /// # Errors
+    ///
+    /// `InvalidInput` for a malformed ID, `NotFound` if the spot doesn't
+    /// exist, `WrongType` if `spot` is another kind of record, `Locked` or
+    /// `Storage`.
+    pub fn remember_receipt_shop(
+        &self,
+        spot: String,
+        rows: Vec<String>,
+        now_ms: u64,
+    ) -> Result<u32> {
+        let lines: Vec<&str> = rows.iter().map(String::as_str).collect();
+        let header = terpoir_scan::read_header(&lines);
+        self.with(|u| {
+            let mut record = u.get::<Spot>(&spot)?.ok_or(CoreError::NotFound)?;
+            let mut added = 0u32;
+            for phone in header.phones {
+                added += u32::from(record.phones.insert(phone));
+            }
+            for licence in header.licences {
+                added += u32::from(record.licences.insert(licence));
+            }
+            if added > 0 {
+                u.save(Some(spot), &record, now_ms)?;
+            }
+            Ok(added)
         })
     }
 
@@ -963,8 +1109,9 @@ impl Journal {
     /// bottom (the rows above the first priced row are read): by a phone
     /// or licence number the spot is known by (strong), else by name (a
     /// guess). Also returns the name, phone and licence numbers the header
-    /// prints. Spots don't store phone or licence numbers yet, so today
-    /// every match is by name. Location is never used.
+    /// prints. A spot is known by the numbers it stores (`SpotData.phones`
+    /// and `licences`, added by `remember_receipt_shop` or the spot
+    /// editor). Location is never used.
     ///
     /// # Errors
     ///
@@ -980,8 +1127,8 @@ impl Journal {
                     ids.push(id);
                     candidates.push(terpoir_scan::ShopCandidate {
                         name: spot.name,
-                        phones: Vec::new(),
-                        licences: Vec::new(),
+                        phones: spot.phones.into_iter().collect(),
+                        licences: spot.licences.into_iter().collect(),
                     });
                 }
             }

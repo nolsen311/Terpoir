@@ -243,6 +243,9 @@ fun ProductEditor(
             shops = shops,
             cannabinoids = cannabinoids,
             subtype = subtype,
+            // Not edited here yet: kept as saved.
+            defaultSize = original?.defaultSize,
+            receiptNames = original?.receiptNames ?: emptyList(),
         )
     }
 

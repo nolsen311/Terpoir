@@ -154,6 +154,36 @@ pub(crate) fn licences_in(line: &str) -> Vec<String> {
         .collect()
 }
 
+/// A phone number as spots store it and [`ShopHeader::phones`] reports
+/// it: digits only, without a leading country code `1` on an 11-digit
+/// number. `None` unless 7, 10 or 11 (starting with `1`) digits remain.
+/// For a number the user typed or confirmed; letters are refused.
+#[must_use]
+pub fn normalize_phone(text: &str) -> Option<String> {
+    if text.chars().any(char::is_alphabetic) {
+        return None;
+    }
+    let digits: String = text.chars().filter(char::is_ascii_digit).collect();
+    match digits.len() {
+        11 if digits.starts_with('1') => Some(digits[1..].to_owned()),
+        7 | 10 => Some(digits),
+        _ => None,
+    }
+}
+
+/// A licence number as spots store it and [`ShopHeader::licences`]
+/// reports it: upper-case letters and digits only. `None` when fewer
+/// than four remain.
+#[must_use]
+pub fn normalize_licence(text: &str) -> Option<String> {
+    let key: String = text
+        .chars()
+        .filter(char::is_ascii_alphanumeric)
+        .flat_map(char::to_uppercase)
+        .collect();
+    (key.len() >= 4).then_some(key)
+}
+
 /// The header's lines: those before the first priced line, at most
 /// [`HEADER_LINES`].
 fn header_lines<'a>(lines: &[&'a str]) -> impl Iterator<Item = (usize, &'a str)> {
@@ -279,6 +309,36 @@ mod tests {
         assert!(phones_in("010-2030").is_empty());
         assert!(phones_in("2026-10-11").is_empty());
         assert!(phones_in("License 4021234567").is_empty());
+    }
+
+    #[test]
+    fn normalises_numbers_as_the_header_reports_them() {
+        assert_eq!(
+            normalize_phone("+1 (555) 010-2030").as_deref(),
+            Some("5550102030")
+        );
+        assert_eq!(
+            normalize_phone("555.010.2030").as_deref(),
+            Some("5550102030")
+        );
+        assert_eq!(normalize_phone("010-2030").as_deref(), Some("0102030"));
+        assert_eq!(normalize_phone("25550102030"), None);
+        assert_eq!(normalize_phone("12345"), None);
+        assert_eq!(normalize_phone("C10-0000123"), None);
+        assert_eq!(
+            normalize_licence("C10-0000123-LIC").as_deref(),
+            Some("C100000123LIC")
+        );
+        assert_eq!(normalize_licence("ocm-1").as_deref(), Some("OCM1"));
+        assert_eq!(normalize_licence("a-1"), None);
+        // What the header reads, normalised again, is unchanged.
+        let h = read_header(HEADER);
+        for p in &h.phones {
+            assert_eq!(normalize_phone(p).as_ref(), Some(p));
+        }
+        for l in &h.licences {
+            assert_eq!(normalize_licence(l).as_ref(), Some(l));
+        }
     }
 
     #[test]

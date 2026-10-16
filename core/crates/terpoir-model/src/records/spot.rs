@@ -160,6 +160,14 @@ pub struct Spot {
     pub radius_m: Option<u32>,
     /// "Remind me to log purchases here" (Re-up Spots with coordinates).
     pub purchase_prompts: bool,
+    /// Phone numbers the shop prints on its receipts, digits only, without
+    /// a leading country code `1` (since 0.6.0): a receipt printing one is
+    /// recognised as this shop strongly. Stored per entry, so an older app
+    /// keeps them untouched. Never indexed.
+    pub phones: BTreeSet<String>,
+    /// Licence numbers the shop prints, upper-case letters and digits only
+    /// (since 0.6.0; like [`phones`](Self::phones)).
+    pub licences: BTreeSet<String>,
 }
 
 impl Record for Spot {
@@ -176,7 +184,9 @@ impl Record for Spot {
                 "purchase_prompts",
                 self.purchase_prompts.then_some(true),
                 Value::Bool,
-            );
+            )
+            .text_set("phones", &self.phones)
+            .text_set("licences", &self.licences);
         f.finish()
     }
 
@@ -188,6 +198,8 @@ impl Record for Spot {
             location: Location::from_value(r.value("location"))?,
             radius_m: r.int_in("radius_m", 0..=u32::MAX)?,
             purchase_prompts: r.bool("purchase_prompts")?.unwrap_or(false),
+            phones: r.text_set("phones")?,
+            licences: r.text_set("licences")?,
         })
     }
 
@@ -195,7 +207,7 @@ impl Record for Spot {
         owns(
             key,
             &["name", "location", "radius_m", "purchase_prompts"],
-            &["purposes"],
+            &["purposes", "phones", "licences"],
         )
     }
 }
@@ -224,9 +236,19 @@ mod tests {
             }),
             radius_m: Some(150),
             purchase_prompts: true,
+            phones: ["5550102030".into()].into(),
+            licences: ["C100000123LIC".into()].into(),
         };
         let doc = Document::create(&spot, stamp()).unwrap();
         assert_eq!(Spot::from_document(&doc).unwrap(), spot);
+        assert_eq!(doc.value("phones/5550102030"), &Value::Bool(true));
+        assert!(Spot::owns_field("licences/C100000123LIC"));
+        // Saved before 0.6.0: no numbers.
+        let mut old = Document::create(&spot, stamp()).unwrap();
+        old.set("phones/5550102030", Value::Null, stamp());
+        old.set("licences/C100000123LIC", Value::Null, stamp());
+        let read = Spot::from_document(&old).unwrap();
+        assert!(read.phones.is_empty() && read.licences.is_empty());
     }
 
     #[test]
@@ -237,6 +259,8 @@ mod tests {
             location: Some(at(1, 1, 10)),
             radius_m: None,
             purchase_prompts: true,
+            phones: BTreeSet::new(),
+            licences: BTreeSet::new(),
         };
         assert!(spot.is_re_up() && spot.prompts_purchases());
         spot.location = None;
@@ -276,6 +300,8 @@ mod tests {
             location: Some(at(377_000_000, -1_224_000_000, 10)),
             radius_m: None,
             purchase_prompts: false,
+            phones: BTreeSet::new(),
+            licences: BTreeSet::new(),
         };
         // ~111 m away: inside the default 150 m.
         assert!(
@@ -315,6 +341,8 @@ mod tests {
             location: None,
             radius_m: None,
             purchase_prompts: false,
+            phones: BTreeSet::new(),
+            licences: BTreeSet::new(),
         };
         let mut doc = Document::create(&spot, stamp()).unwrap();
         doc.set(

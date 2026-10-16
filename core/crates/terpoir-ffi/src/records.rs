@@ -12,10 +12,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 use terpoir_model::{
     Brand, Cannabinoid, Dose, DoseUnit, Form, IdentifierKind, Intention, LabelAmount, LabelUnit,
-    LocalTime, Location, Method, Price, Product, ProductLine, Provenance, Purchase, PurchaseLine,
-    PurchaseRef, RecordId, Session, Snippet, Social, Spot, Strain, StrainType, SymptomResult, Tag,
-    TagCategory, TagRef, TerpeneLevel, Timeline,
+    LocalTime, Location, Method, PackageSize, Price, Product, ProductLine, Provenance, Purchase,
+    PurchaseLine, PurchaseRef, RecordId, Session, SizeAmount, SizeUnit, Snippet, Social, Spot,
+    Strain, StrainType, SymptomResult, Tag, TagCategory, TagRef, TerpeneLevel, Timeline,
+    receipt_name_key,
 };
+use terpoir_scan::{normalize_licence, normalize_phone};
 
 use crate::{CoreError, Result};
 
@@ -67,6 +69,62 @@ impl From<LocalTimeData> for LocalTime {
             utc_offset_min: t.utc_offset_min,
         }
     }
+}
+
+/// A package size as printed on a receipt or label (since 0.6.0): an
+/// amount (`3.5 g`, `100 mg`, `30 ml`), a pack count (`5PK`), or both, kept
+/// as printed. The units are a receipt item breakdown's (`size_milli`,
+/// `size_unit` and `pack` map straight onto it).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PackageSizeData {
+    /// The amount in thousandths of `unit` (3.5 g is 3500); positive. Set
+    /// with `unit` or not at all.
+    pub milli: Option<i64>,
+    /// `g`, `mg` or `ml` (or a unit from a newer app version).
+    pub unit: Option<String>,
+    /// Pieces in one package, at least 1.
+    pub pack: Option<u32>,
+}
+
+impl PackageSizeData {
+    pub(crate) fn to_model(&self) -> Result<PackageSize> {
+        let amount = match (self.milli, &self.unit) {
+            (None, None) => None,
+            (Some(milli), Some(unit)) if !unit.is_empty() => Some(SizeAmount {
+                milli,
+                unit: SizeUnit::from_slug(unit),
+            }),
+            _ => return Err(CoreError::InvalidInput),
+        };
+        let size = PackageSize {
+            amount,
+            pack: self.pack,
+        };
+        if size.is_valid() {
+            Ok(size)
+        } else {
+            Err(CoreError::InvalidInput)
+        }
+    }
+
+    pub(crate) fn from_model(size: &PackageSize) -> Self {
+        Self {
+            milli: size.amount.as_ref().map(|a| a.milli),
+            unit: size.amount.as_ref().map(|a| a.unit.slug().to_owned()),
+            pack: size.pack,
+        }
+    }
+}
+
+/// Normalises `texts` with `key`; any that doesn't normalise is invalid.
+fn normalised_set(
+    texts: &[String],
+    key: impl Fn(&str) -> Option<String>,
+) -> Result<BTreeSet<String>> {
+    texts
+        .iter()
+        .map(|t| key(t).ok_or(CoreError::InvalidInput))
+        .collect()
 }
 
 /// A tag: a built-in vocabulary slug or a custom tag record.
@@ -402,6 +460,18 @@ pub struct ProductData {
     /// the saved one back.
     #[uniffi(default = None)]
     pub subtype: Option<TagRefData>,
+    /// The usual package size, from the label; pre-fills a new purchase
+    /// (since 0.6.0). Last, with defaults, so callers that predate these
+    /// compile; an editor that doesn't show them must pass the saved ones
+    /// back.
+    #[uniffi(default = None)]
+    pub default_size: Option<PackageSizeData>,
+    /// Learned receipt names (since 0.6.0): receipt line texts that link
+    /// to this product automatically, upper case with single spaces (any
+    /// text given is normalised so; an empty one is invalid). The product
+    /// page shows them ("Seen on receipts as") with a delete.
+    #[uniffi(default = [])]
+    pub receipt_names: Vec<String>,
 }
 
 /// A cannabinoid amount from a product's label.
@@ -482,6 +552,12 @@ impl ProductData {
             package_date: self.package_date_day,
             identifiers,
             shops: parse_ids(&self.shops)?,
+            default_size: self
+                .default_size
+                .as_ref()
+                .map(PackageSizeData::to_model)
+                .transpose()?,
+            receipt_names: normalised_set(&self.receipt_names, receipt_name_key)?,
         })
     }
 
@@ -524,6 +600,8 @@ impl ProductData {
                 })
                 .collect(),
             subtype: p.subtype.as_ref().map(TagRefData::from_model),
+            default_size: p.default_size.as_ref().map(PackageSizeData::from_model),
+            receipt_names: p.receipt_names.iter().cloned().collect(),
         }
     }
 }
@@ -630,6 +708,18 @@ pub struct SpotData {
     pub radius_m: Option<u32>,
     /// Prompt to log a purchase on arrival (Re-up Spots; off by default).
     pub purchase_prompts: bool,
+    /// Phone numbers the shop prints on its receipts (since 0.6.0): a
+    /// receipt printing one is recognised as this shop strongly. Stored
+    /// digits only, without a leading country code `1`; a number that
+    /// isn't 7 or 10 digits that way is invalid. Last, with defaults, so
+    /// callers that predate these compile; an editor that doesn't show
+    /// them must pass the saved ones back.
+    #[uniffi(default = [])]
+    pub phones: Vec<String>,
+    /// Licence numbers the shop prints (since 0.6.0), stored as upper-case
+    /// letters and digits only; fewer than four is invalid.
+    #[uniffi(default = [])]
+    pub licences: Vec<String>,
 }
 
 impl SpotData {
@@ -654,6 +744,8 @@ impl SpotData {
             location,
             radius_m: self.radius_m,
             purchase_prompts: self.purchase_prompts,
+            phones: normalised_set(&self.phones, normalize_phone)?,
+            licences: normalised_set(&self.licences, normalize_licence)?,
         })
     }
 
@@ -666,6 +758,8 @@ impl SpotData {
             accuracy_m: s.location.map(|l| l.accuracy_m),
             radius_m: s.radius_m,
             purchase_prompts: s.purchase_prompts,
+            phones: s.phones.iter().cloned().collect(),
+            licences: s.licences.iter().cloned().collect(),
         }
     }
 }
@@ -683,6 +777,14 @@ pub struct PurchaseLineData {
     pub price_minor_units: Option<i64>,
     /// ISO 4217 currency code. Set with the price or not at all.
     pub price_currency: Option<String>,
+    /// The package size bought (since 0.6.0). Last, with defaults, so
+    /// callers that predate these compile; an editor that doesn't show
+    /// them must pass the saved ones back.
+    #[uniffi(default = None)]
+    pub size: Option<PackageSizeData>,
+    /// How many were bought (since 0.6.0); at least 1.
+    #[uniffi(default = 1)]
+    pub quantity: u32,
 }
 
 /// A purchase.
@@ -712,10 +814,19 @@ impl PurchaseData {
                 }),
                 _ => return Err(CoreError::InvalidInput),
             };
+            if line.quantity == 0 {
+                return Err(CoreError::InvalidInput);
+            }
             let line = PurchaseLine {
                 product: opt_id(line.product.as_ref())?,
                 batch: line.batch.clone(),
                 price,
+                size: line
+                    .size
+                    .as_ref()
+                    .map(PackageSizeData::to_model)
+                    .transpose()?,
+                quantity: line.quantity,
             };
             if lines.insert(id, line).is_some() {
                 return Err(CoreError::InvalidInput);
@@ -741,6 +852,8 @@ impl PurchaseData {
                     batch: line.batch.clone(),
                     price_minor_units: line.price.as_ref().map(|p| p.minor_units),
                     price_currency: line.price.as_ref().map(|p| p.currency.clone()),
+                    size: line.size.as_ref().map(PackageSizeData::from_model),
+                    quantity: line.quantity,
                 })
                 .collect(),
         }

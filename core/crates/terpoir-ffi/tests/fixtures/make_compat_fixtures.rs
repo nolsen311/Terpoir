@@ -22,7 +22,7 @@ use std::sync::Arc;
 
 use terpoir_crypto::{DatabaseKey, MasterKey, RecoveryKey};
 use terpoir_ffi::{
-    BrandData, CannabinoidAmountData, IdentifierData, InsightFeedback, Journal, LocalTimeData, ProductData,
+    BrandData, CannabinoidAmountData, IdentifierData, InsightFeedback, Journal, LocalTimeData, PackageSizeData, ProductData,
     ProductLineData, PurchaseData, PurchaseLineData, SessionData, SnippetData, SpotData,
     StrainData, SymptomData, TagData, TagIntensity, TagProvenance, TagRefData,
     TerpeneLevelData, TimelineLevelData, seal_capture, wrap_master_key_with_passphrase,
@@ -39,6 +39,15 @@ const T0: u64 = 1_760_000_000_000;
 
 fn builtin(slug: &str) -> TagRefData {
     TagRefData::Builtin { slug: slug.into() }
+}
+
+/// Since 0.6.0: the gummies' package size, 10 pieces and 100 mg.
+fn gummies_size() -> PackageSizeData {
+    PackageSizeData {
+        milli: Some(100_000),
+        unit: Some("mg".into()),
+        pack: Some(10),
+    }
 }
 
 fn at(unix_ms: i64) -> LocalTimeData {
@@ -191,6 +200,9 @@ fn main() {
                 accuracy_m: Some(25),
                 radius_m: Some(150),
                 purchase_prompts: true,
+                // Since 0.6.0.
+                phones: vec!["5550102030".into()],
+                licences: vec!["C100000123LIC".into()],
             },
             T0 + 4,
         )
@@ -226,6 +238,8 @@ fn main() {
                 }],
                 // Since 0.6.0.
                 subtype: Some(builtin("gummy")),
+                default_size: Some(gummies_size()),
+                receipt_names: vec!["ACME GUMMIES 10PK 100MG".into()],
             },
             T0 + 5,
         )
@@ -242,6 +256,9 @@ fn main() {
                     batch: Some("B-7".into()),
                     price_minor_units: Some(2_000),
                     price_currency: Some("USD".into()),
+                    // Since 0.6.0.
+                    size: Some(gummies_size()),
+                    quantity: 2,
                 }],
             },
             T0 + 6,
@@ -488,6 +505,7 @@ fn main() {
   "maptiler_key": "{MAPTILER_KEY}",
   "product_cannabinoids": true,
   "product_subtypes": true,
+  "receipt_formats": true,
   "ids": {{
     "brand": "{brand}",
     "deleted_brand": "{deleted_brand}",
