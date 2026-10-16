@@ -205,7 +205,8 @@ without it.
         every one still opens, migrates and round-trips. A release that
         breaks one fails CI. (v0.1.0's, in
         `core/crates/terpoir-ffi/tests/fixtures/`; v0.2.0 to v0.2.2
-        changed no format. v0.4.0's adds the richer strain fields.)
+        changed no format. v0.4.0's adds the richer strain fields; v0.6.0's,
+        written from its tag on 2026-10-16, subtypes and receipt formats.)
   - [x] Downgrade: an older app opening a newer database refuses (as
         today) with a message to update, never a crash or a reset.
 - [ ] Bring-your-own-storage sync backends and direct device pairing.
@@ -400,7 +401,8 @@ requirement rather than on features.
   - [x] Core: subtypes under each type (built-in list and the user's
         own), a subtype's suggested method, the Transdermal method, uneven
         timeline points; through the FFI; the compatibility fixture maker
-        (the v0.6.0 fixture itself is written from the release tag).
+        (the v0.6.0 fixture itself, written from the release tag, is in
+        `fixtures/v0.6.0/`).
   - [x] Product editor: subtype chips under the type, and adding one's
         own with its usual method.
   - [x] Scanning terms for subtypes.
