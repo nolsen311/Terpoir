@@ -327,14 +327,17 @@ requirement rather than on features.
 ## Feature releases
 
 - [ ] YOLO Mode widened (maintainer, 2026-10-16; `docs/design-decisions.md`,
-      "Presets and YOLO Mode"): Insights, every Location toggle with Google
-      Maps on Play, every notification toggle, catalogs (and online
+      "Presets and YOLO Mode"): Insights, every Location toggle but "Notify
+      me" (which stays separate) with Google Maps on Play, every
+      notification toggle, catalogs (and online
       lookups once built), Google text recognition, the tiles and widget,
       screen protection off, auto-lock when the phone locks, everything in
       What I track and the Terpenes strain detail. Keyboard and voice and
       Sync stay as they are. Decide while building how a preset sets the
       two journal settings, and keep the combined confirmation listing
       each toggle's card.
+- [ ] "Notify me" right under "Show me" in the Privacy Center's Location
+      group, so the two read as a pair (maintainer, 2026-10-16).
 - [ ] Settings save as they change (maintainer, 2026-10-16): What I track,
       the Privacy Center and other settings screens already apply each
       change at once, so a screen timeout or lock loses nothing. Drop the
