@@ -19,7 +19,8 @@ import java.util.Currency
 
 /**
  * The size and pack count a receipt line prints, as a purchase line keeps
- * them (the units are the same), or null when it prints neither.
+ * them (the units are the same), or null when it prints neither. What a
+ * pack's amount covers is left undecided here: see [withPer].
  */
 internal fun ItemBreakdownData.packageSize(): PackageSizeData? {
     val milli = sizeMilli?.takeIf { it > 0 && sizeUnit != null }
@@ -30,6 +31,47 @@ internal fun ItemBreakdownData.packageSize(): PackageSizeData? {
 
 /** "3.5 g", "100 mg": a size amount as printed, without deciding what it covers. */
 internal fun sizeAmountText(milli: Long, unit: String): String = "${formatMilli(milli)} $unit"
+
+/** What a pack's amount covers: each piece's, or the whole pack's (the core's slugs). */
+internal const val PER_EACH = "each"
+internal const val PER_TOTAL = "total"
+
+/** The units a card's size can be changed to. */
+internal val SIZE_UNITS = listOf("g", "mg", "ml")
+
+/**
+ * [size] with what its amount covers decided (maintainer, 2026-10-15): the
+ * user's [chosen] reading, else the core's [guess] (`package_amount_per`:
+ * each piece's, unless that is implausibly large for the product). Only a
+ * size with both an amount and a pack has one.
+ */
+internal fun withPer(size: PackageSizeData?, chosen: String?, guess: (PackageSizeData) -> String?): PackageSizeData? {
+    if (size == null) return null
+    val both = size.milli != null && size.pack != null
+    return size.copy(per = if (both) chosen ?: guess(size.copy(per = null)) else null)
+}
+
+/**
+ * A size typed on a card: an amount in [unit] and a pack count, either
+ * optional. Null when nothing is typed or it isn't a size (an amount with
+ * more than three decimals or of zero, a pack that isn't a whole number of
+ * at least one); [typedSizeValid] tells those apart.
+ */
+internal fun typedSize(amount: String, unit: String, pack: String): PackageSizeData? {
+    if (!typedSizeValid(amount, pack)) return null
+    val milli = (parseMilli(amount) as? Parsed.Milli)?.value
+    val count = pack.trim().toUIntOrNull()
+    if (milli == null && count == null) return null
+    return PackageSizeData(milli, unit.takeIf { milli != null }, count)
+}
+
+/** Whether a typed size is empty or a size [typedSize] reads. */
+internal fun typedSizeValid(amount: String, pack: String): Boolean {
+    val milli = parseMilli(amount)
+    val amountOk = milli == Parsed.Empty || (milli is Parsed.Milli && milli.value > 0)
+    val packOk = pack.isBlank() || (pack.trim().toUIntOrNull()?.let { it >= 1u } == true)
+    return amountOk && packOk
+}
 
 /**
  * How many a line bought: a count the parser read before the name, else one
@@ -54,6 +96,15 @@ internal fun priceText(minorUnits: Long, currency: String): String {
  */
 internal fun autoLinked(suggestions: List<ScanSuggestion>): String? =
     suggestions.firstOrNull()?.takeIf { it.learned && !it.close && it.recordType == "product" }?.id
+
+/**
+ * Two products that learned this exact line (only after a sync), to offer
+ * merging them: the first two, best first; null unless there are two.
+ */
+internal fun learnedPair(suggestions: List<ScanSuggestion>): Pair<String, String>? {
+    val learned = suggestions.filter { it.learned && it.recordType == "product" }.map { it.id }.distinct()
+    return if (learned.size >= 2) learned[0] to learned[1] else null
+}
 
 /** The suggestions a card offers as "?" chips: products, brands and strains, best first. */
 internal fun offeredSuggestions(suggestions: List<ScanSuggestion>, limit: Int = 4): List<ScanSuggestion> =
@@ -86,7 +137,7 @@ internal fun newProductPrefill(
 
 /**
  * The new product a line creates. Its type, subtype and default size come
- * from the line; [fallback] (the printed text) names it when nothing else
+ * from the line ([size]: the card's, as the user left it); [fallback] (the printed text) names it when nothing else
  * would, since a product needs a name, a strain, a brand or a type.
  */
 internal fun newProductData(
@@ -95,6 +146,7 @@ internal fun newProductData(
     strain: String?,
     breakdown: ItemBreakdownData?,
     fallback: String,
+    size: PackageSizeData? = breakdown?.packageSize(),
 ): ProductData {
     val form = breakdown?.form
     val ownName = name.trim().ifEmpty { if (brand == null && strain == null && form == null) fallback.trim() else "" }
@@ -113,7 +165,7 @@ internal fun newProductData(
         identifiers = emptyList(),
         shops = emptyList(),
         subtype = breakdown?.subtype?.takeIf { form != null }?.let { TagRefData.Builtin(it) },
-        defaultSize = breakdown?.packageSize(),
+        defaultSize = size,
     )
 }
 
@@ -242,4 +294,38 @@ internal data class PhotoZoom(val scale: Float = 1f, val x: Float = 0f, val y: F
             return PhotoZoom(scale, -imageLeft * scale, -imageTop * scale).clamped(width, height)
         }
     }
+}
+
+// A long receipt's second photo ("Add the rest of the receipt"): the core
+// joins its rows to the first photo's (join_receipt_photos), and the review
+// works on the joined rows. Each photo still draws its own rows' boxes, so
+// a joined row's index has to be found on the photo it came from.
+
+/**
+ * Which of the second photo's own rows are in the joined rows, and where:
+ * pairs of (row on the second photo, joined row), for the rows both photos
+ * show (counted from the first photo in the joined rows) and the rows below
+ * them. The joined rows are the first [fromFirst] rows of the first photo,
+ * then the second photo's last `joinedCount - fromFirst` rows; the second
+ * photo's rows above the overlap (cut by its top edge) are in neither.
+ */
+internal fun secondPhotoRows(secondCount: Int, joinedCount: Int, fromFirst: Int, overlap: Int): List<Pair<Int, Int>> {
+    val below = joinedCount - fromFirst
+    val start = secondCount - below
+    if (below < 0 || start < 0 || overlap < 0 || overlap > fromFirst) return emptyList()
+    return ((start - overlap).coerceAtLeast(0) until secondCount).map { it to it - start + fromFirst }
+}
+
+/**
+ * The cards after the second photo is joined, as groups of joined rows in
+ * printed order: the user's cards whose rows are all among the first
+ * photo's first [fromFirst] rows (those rows are unchanged, so the cards
+ * keep their edits, and a card the user removed stays removed), then the
+ * items [parsed] from the joined rows that reach into the second photo. An
+ * item whose name wraps across the seam replaces the card it continues.
+ */
+internal fun groupsAfterJoin(user: List<List<Int>>, parsed: List<List<Int>>, fromFirst: Int): List<List<Int>> {
+    val added = parsed.filter { g -> g.any { it >= fromFirst } }
+    val kept = user.filter { g -> g.isNotEmpty() && g.all { it < fromFirst } && added.none { a -> a.any { it in g } } }
+    return (kept + added).sortedBy { it.min() }
 }

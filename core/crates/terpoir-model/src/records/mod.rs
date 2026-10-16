@@ -24,7 +24,7 @@ pub use catalog::{
     Product, Strain, StrainType, Subtype, Terpene, TerpeneLevel, receipt_name_key, usual_method,
 };
 pub use feedback::InsightFeedbackList;
-pub use purchase::{PackageSize, Price, Purchase, PurchaseLine, SizeAmount, SizeUnit};
+pub use purchase::{AmountPer, PackageSize, Price, Purchase, PurchaseLine, SizeAmount, SizeUnit};
 pub use session::{
     CoreEffect, Dose, DoseUnit, Intention, Method, ProductLine, PurchaseRef, Session, Social,
     SymptomResult, TargetedSymptom, Timeline, TimelinePlan, check_in_minutes_for,

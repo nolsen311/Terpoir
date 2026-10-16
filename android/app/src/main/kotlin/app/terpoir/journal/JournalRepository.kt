@@ -154,6 +154,12 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
     /** [product] learns a receipt line's text, so the same line links to it next time. */
     suspend fun learnReceiptName(product: String, text: String) = io { journal.learnReceiptName(product, text, now()) }
 
+    /** Which of two products merging keeps by default: the one recording more. */
+    suspend fun productToKeep(first: String, second: String): String = io { journal.productToKeep(first, second) }
+
+    /** Merges [other] into [keep] in the core: details filled in, lines re-pointed, [other] deleted. */
+    suspend fun mergeProducts(keep: String, other: String): Int = io { journal.mergeProducts(keep, other, now()).toInt() }
+
     /** [product] forgets a learned receipt line's text. Returns whether it had it. */
     suspend fun forgetReceiptName(product: String, text: String): Boolean = io { journal.forgetReceiptName(product, text, now()) }
 

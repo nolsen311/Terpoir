@@ -50,7 +50,7 @@ class ReceiptReviewTest {
     fun sizesShowAsPrinted() {
         assertEquals("3.5 g", sizeAmountText(3_500, "g"))
         assertEquals("100 mg", sizeAmountText(100_000, "mg"))
-        // A pack and a size stay apart: whether 0.5 g is per piece isn't decided.
+        // A pack and a size stay apart: what 0.5 g covers is decided by withPer.
         assertEquals(PackageSizeData(500, "g", 5u), breakdown(milli = 500, unit = "g", pack = 5u).packageSize())
     }
 
@@ -185,5 +185,75 @@ class ReceiptReviewTest {
         assertEquals(0f, top.y, 0f)
         // The fitted photo's left edge is at the viewport's left edge.
         assertEquals(150f, top.toContent(0f, 0f).first, 0f)
+    }
+
+    @Test
+    fun theSecondPhotoDrawsItsOwnRows() {
+        // First photo: 6 rows, its last one cut, so 5 kept; 2 of them overlap.
+        // Second photo: 1 cut row on top, the 2 overlapping rows, 4 below.
+        val pairs = secondPhotoRows(secondCount = 7, joinedCount = 9, fromFirst = 5, overlap = 2)
+        // The overlap is drawn on the second photo as the first photo's rows 3 and 4.
+        assertEquals(listOf(1 to 3, 2 to 4, 3 to 5, 4 to 6, 5 to 7, 6 to 8), pairs)
+        // Nothing below the overlap: only the overlap is drawn.
+        assertEquals(listOf(0 to 4), secondPhotoRows(secondCount = 1, joinedCount = 5, fromFirst = 5, overlap = 1))
+        // Counts that don't fit together draw nothing rather than the wrong rows.
+        assertEquals(emptyList<Pair<Int, Int>>(), secondPhotoRows(secondCount = 2, joinedCount = 9, fromFirst = 5, overlap = 2))
+    }
+
+    @Test
+    fun joiningTheSecondPhotoKeepsTheFirstPhotosCards() {
+        // The user split rows 1 and 2, removed row 3's card, and joined 4 with
+        // 5 (row 5 was the first photo's last kept row, fromFirst = 6).
+        val user = listOf(listOf(1), listOf(2), listOf(4, 5), listOf(6))
+        val parsed = listOf(listOf(1, 2), listOf(3), listOf(4), listOf(5, 6), listOf(7), listOf(8, 9))
+        // Card [6] pointed past the first photo's kept rows: read again.
+        // Parsed [5, 6] wraps across the seam, so it replaces the card [4, 5].
+        assertEquals(listOf(listOf(1), listOf(2), listOf(5, 6), listOf(7), listOf(8, 9)), groupsAfterJoin(user, parsed, fromFirst = 6))
+        // No wrap across the seam: the user's cards all stay.
+        assertEquals(
+            listOf(listOf(1), listOf(2), listOf(4, 5), listOf(6), listOf(7)),
+            groupsAfterJoin(user.dropLast(1), listOf(listOf(6), listOf(7)), fromFirst = 6),
+        )
+    }
+
+    @Test
+    fun aPacksAmountIsEachPiecesUnlessChosenOtherwise() {
+        val printed = PackageSizeData(500, "g", 5u)
+        // The core's reading, then the user's choice.
+        assertEquals("each", withPer(printed, null) { "each" }?.per)
+        assertEquals("total", withPer(printed, "total") { "each" }?.per)
+        // The core sees the size without a reading.
+        withPer(printed.copy(per = "total"), null) { size -> assertNull(size.per); "each" }
+        // Only a pack with an amount has one.
+        assertNull(withPer(PackageSizeData(500, "g", null), "total") { "each" }?.per)
+        assertNull(withPer(PackageSizeData(null, null, 5u), "total") { "each" }?.per)
+        assertNull(withPer(null, "each") { "each" })
+    }
+
+    @Test
+    fun aTypedSizeNeedsAPositiveAmountOrAWholePack() {
+        assertEquals(PackageSizeData(500, "g", 5u), typedSize("0.5", "g", "5"))
+        assertEquals(PackageSizeData(100_000, "mg", null), typedSize("100", "mg", ""))
+        assertEquals(PackageSizeData(null, null, 10u), typedSize(" ", "ml", "10"))
+        // Nothing typed: no size.
+        assertNull(typedSize("", "g", ""))
+        assertTrue(typedSizeValid("", ""))
+        // Not a size.
+        for ((amount, pack) in listOf("0" to "", "1.2345" to "", "abc" to "", "1" to "0", "1" to "2.5", "1" to "-3")) {
+            assertFalse("$amount / $pack", typedSizeValid(amount, pack))
+            assertNull(typedSize(amount, "g", pack))
+        }
+    }
+
+    @Test
+    fun twoProductsThatLearnedALineAreOfferedForMerging() {
+        val both = listOf(
+            suggestion("p1", "product", "learned", close = true, learned = true),
+            suggestion("p2", "product", "learned", close = true, learned = true),
+            suggestion("p3", "product", "exact"),
+        )
+        assertEquals("p1" to "p2", learnedPair(both))
+        assertNull(learnedPair(both.drop(1)))
+        assertNull(learnedPair(emptyList()))
     }
 }

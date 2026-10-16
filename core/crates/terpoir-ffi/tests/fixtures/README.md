@@ -56,7 +56,7 @@ Written by `make_compat_fixtures.rs` with fixed contents and clock:
   date, barcode, shop); since 0.5.0 also a CBN label amount
   (`product_cannabinoids` in the manifest); since 0.6.0 also the subtype
   gummy (`product_subtypes` in the manifest), and a default size of 10
-  pieces, 100 mg, and the learned receipt name "ACME GUMMIES 10PK 100MG"
+  pieces, 100 mg (since 0.6.1 read as each piece's, `pack_per` in the manifest), and the learned receipt name "ACME GUMMIES 10PK 100MG"
   (`receipt_formats`);
 - a purchase of it at the spot (batch, price); since 0.6.0 its line also
   has that size and a quantity of 2 (`receipt_formats`);

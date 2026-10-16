@@ -1070,6 +1070,106 @@ impl Journal {
         })
     }
 
+    /// Which of two products to keep when merging them (docs/design-decisions.md,
+    /// "Simpler review"): the one recording more (fields set, and entries in
+    /// its sets and maps), else the one more sessions and purchases refer
+    /// to, else `first`. Returns its ID.
+    ///
+    /// # Errors
+    ///
+    /// `InvalidInput` for a malformed ID, `NotFound` if either doesn't
+    /// exist, `WrongType` if either is another kind of record, `Locked` or
+    /// `Storage`.
+    pub fn product_to_keep(&self, first: String, second: String) -> Result<String> {
+        let (a_id, b_id) = (parse_id(&first)?, parse_id(&second)?);
+        self.with(|u| {
+            let a = u.get::<Product>(&first)?.ok_or(CoreError::NotFound)?;
+            let b = u.get::<Product>(&second)?.ok_or(CoreError::NotFound)?;
+            let rank = |p: &Product, id: &RecordId| -> Result<(usize, usize)> {
+                Ok((p.detail_count(), u.store.referencing(id)?.len()))
+            };
+            Ok(if rank(&b, &b_id)? > rank(&a, &a_id)? {
+                second
+            } else {
+                first
+            })
+        })
+    }
+
+    /// Merges two products into one (docs/design-decisions.md, "Simpler
+    /// review": two products that learned the same receipt name, or any two
+    /// the user says are one), keeping the most information from each:
+    /// `keep`'s empty fields take `other`'s, its sets and maps (strains,
+    /// shops, scanned codes, terpenes, cannabinoids, learned receipt names)
+    /// take the union, every session line and purchase line naming `other`
+    /// names `keep` instead, and then `other` is deleted the usual way,
+    /// leaving its deletion marker. It is ordinary edits and a deletion, so
+    /// it syncs like any: per field, last writer wins. Returns how many
+    /// sessions and purchases were changed.
+    ///
+    /// # Errors
+    ///
+    /// `InvalidInput` for a malformed ID or `keep` equal to `other`,
+    /// `NotFound` if either doesn't exist, `WrongType` if either is another
+    /// kind of record, `Locked` or `Storage`.
+    pub fn merge_products(&self, keep: String, other: String, now_ms: u64) -> Result<u32> {
+        let keep_id = parse_id(&keep)?;
+        let other_id = parse_id(&other)?;
+        if keep_id == other_id {
+            return Err(CoreError::InvalidInput);
+        }
+        self.with(|u| {
+            let mut kept = u.get::<Product>(&keep)?.ok_or(CoreError::NotFound)?;
+            let gone = u.get::<Product>(&other)?.ok_or(CoreError::NotFound)?;
+            if kept.absorb(&gone) {
+                u.save(Some(keep), &kept, now_ms)?;
+            }
+            // Sessions and purchases are what name a product (the index's
+            // references); each line naming `other` is re-pointed.
+            let mut changed = 0u32;
+            for id in u.store.referencing(&other_id)? {
+                let Some(doc) = u.store.get(&u.master, &id)? else {
+                    continue;
+                };
+                let doc = migrate(doc)?;
+                let repointed = match doc.kind() {
+                    RecordKind::Session => {
+                        let mut session = Session::from_document(&doc)?;
+                        let mut any = false;
+                        for line in session.lines.values_mut() {
+                            if line.product == Some(other_id) {
+                                line.product = Some(keep_id);
+                                any = true;
+                            }
+                        }
+                        any && {
+                            u.save(Some(id.to_hex()), &session, now_ms)?;
+                            true
+                        }
+                    }
+                    RecordKind::Purchase => {
+                        let mut purchase = Purchase::from_document(&doc)?;
+                        let mut any = false;
+                        for line in purchase.lines.values_mut() {
+                            if line.product == Some(other_id) {
+                                line.product = Some(keep_id);
+                                any = true;
+                            }
+                        }
+                        any && {
+                            u.save(Some(id.to_hex()), &purchase, now_ms)?;
+                            true
+                        }
+                    }
+                    _ => false,
+                };
+                changed += u32::from(repointed);
+            }
+            u.store.delete(&other_id)?;
+            Ok(changed)
+        })
+    }
+
     /// Remembers a confirmed shop's numbers from its receipt: the phone and
     /// licence numbers printed in the header of `rows` (as
     /// `match_receipt_shop` reads them) are added to `spot`, so its next

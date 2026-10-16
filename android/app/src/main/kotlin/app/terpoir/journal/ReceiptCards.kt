@@ -29,6 +29,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.core.ItemBreakdownData
+import app.terpoir.core.PackageSizeData
 import app.terpoir.core.ScanSuggestion
 
 /**
@@ -57,6 +59,19 @@ internal class ItemDraft(val rows: List<Int>, text: String, price: String, quant
     var quantity by mutableStateOf(quantity)
     var breakdown by mutableStateOf(breakdown)
 
+    /** Whether the user changed the size ([sizeEdit]; null for none); otherwise it is as printed. */
+    var sizeEdited by mutableStateOf(false)
+    var sizeEdit by mutableStateOf<PackageSizeData?>(null)
+
+    /** What a pack's amount covers, as the user chose it (`each` or `total`); null for the core's reading. */
+    var per by mutableStateOf<String?>(null)
+
+    /** Whether the size's fields are open. */
+    var editingSize by mutableStateOf(false)
+
+    /** The size before deciding what a pack's amount covers: the user's, else as printed. */
+    fun baseSize(): PackageSizeData? = if (sizeEdited) sizeEdit else breakdown?.packageSize()
+
     /** The core's suggestions for [text], best first. */
     var suggestions by mutableStateOf<List<ScanSuggestion>>(emptyList())
 
@@ -70,6 +85,17 @@ internal class ItemDraft(val rows: List<Int>, text: String, price: String, quant
     var newName by mutableStateOf("")
     var newBrand by mutableStateOf<String?>(null)
     var newStrain by mutableStateOf<String?>(null)
+
+    /** Takes fresh suggestions after products changed (a merge): an unlinked line links to a product that alone learned it. */
+    fun relinked(list: List<ScanSuggestion>) {
+        suggestions = list
+        if (product == null) {
+            autoLinked(list)?.let {
+                product = it
+                matched = true
+            }
+        }
+    }
 
     /** Takes the core's suggestions; the first time, links a learned match and pre-fills a new product. */
     fun suggested(list: List<ScanSuggestion>, first: Boolean, brands: Boolean, strains: Boolean) {
@@ -168,16 +194,21 @@ internal fun ShopCard(
 
 /** "Part of the receipt is cut off. Retake?" with Retake and Keep. */
 @Composable
-internal fun CutOffCard(onRetake: () -> Unit, onKeep: () -> Unit) {
+internal fun CutOffCard(onRetake: () -> Unit, onKeep: () -> Unit) =
+    RetakeCard(stringResource(R.string.receipt_cut_off), stringResource(R.string.receipt_keep), onRetake, onKeep)
+
+/** A problem with a photo, [text], with Retake and [keep] (which dismisses it). */
+@Composable
+internal fun RetakeCard(text: String, keep: String, onRetake: () -> Unit, onKeep: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.receipt_cut_off), style = MaterialTheme.typography.bodyLarge)
+            Text(text, style = MaterialTheme.typography.bodyLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onRetake) { Text(stringResource(R.string.receipt_retake)) }
-                OutlinedButton(onClick = onKeep) { Text(stringResource(R.string.receipt_keep)) }
+                OutlinedButton(onClick = onKeep) { Text(keep) }
             }
         }
     }
@@ -186,6 +217,8 @@ internal fun CutOffCard(onRetake: () -> Unit, onKeep: () -> Unit) {
 /** What an item card needs from the screen beyond its own state. */
 internal class ItemCardContext(
     val rowText: (Int) -> String,
+    /** The card's size, with what a pack's amount covers decided. */
+    val size: (ItemDraft) -> PackageSizeData?,
     val productLabel: (String) -> String,
     val products: List<Pair<String, String>>,
     val showPrice: Boolean,
@@ -211,6 +244,7 @@ internal fun ItemCard(
     onRemove: () -> Unit,
     onUndoMatch: () -> Unit,
     onTextChange: (String) -> Unit,
+    onMerge: (Pair<String, String>) -> Unit,
 ) {
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -233,6 +267,7 @@ internal fun ItemCard(
             }
             val details = itemDetails(item.breakdown)
             if (details.isNotEmpty()) Text(details, style = MaterialTheme.typography.bodyMedium)
+            SizeChoice(item, context.size(item))
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (context.showPrice) {
@@ -249,6 +284,13 @@ internal fun ItemCard(
             }
 
             ProductChoice(item, context, onUndoMatch)
+            // Two products learned this line (after a sync): one tap to merge them.
+            if (item.product == null) {
+                learnedPair(item.suggestions)?.let { pair ->
+                    Text(stringResource(R.string.receipt_learned_both), style = MaterialTheme.typography.bodyMedium)
+                    OutlinedButton(onClick = { onMerge(pair) }) { Text(stringResource(R.string.receipt_merge)) }
+                }
+            }
 
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (onJoin != null) OutlinedButton(onClick = onJoin) { Text(stringResource(R.string.receipt_join)) }
@@ -258,17 +300,103 @@ internal fun ItemCard(
     }
 }
 
-/** "3.5 g · pack of 5 · Flower · Rosin": what the line's breakdown found, sizes as printed. */
+/** "Flower · Rosin": the type and subtype the line's breakdown found. */
 @Composable
 private fun itemDetails(breakdown: ItemBreakdownData?): String {
     if (breakdown == null) return ""
     val parts = mutableListOf<String>()
-    val size = breakdown.packageSize()
-    if (size?.milli != null && size.unit != null) parts += sizeAmountText(size.milli!!, size.unit!!)
-    size?.pack?.let { parts += pluralStringResource(R.plurals.receipt_pack, it.toInt(), it.toInt()) }
     breakdown.form?.let { parts += label(it) }
     breakdown.subtype?.let { parts += label(it) }
     return parts.joinToString(" · ")
+}
+
+/** "0.5 g each · pack of 5", "3.5 g in all · pack of 10", "100 mg", "pack of 5". */
+@Composable
+internal fun sizeText(size: PackageSizeData): String {
+    val parts = mutableListOf<String>()
+    val milli = size.milli
+    val unit = size.unit
+    if (milli != null && unit != null) {
+        val amount = sizeAmountText(milli, unit)
+        parts += when (size.per) {
+            PER_EACH -> stringResource(R.string.receipt_size_each, amount)
+            PER_TOTAL -> stringResource(R.string.receipt_size_in_all, amount)
+            else -> amount
+        }
+    }
+    size.pack?.let { parts += pluralStringResource(R.plurals.receipt_pack, it.toInt(), it.toInt()) }
+    return parts.joinToString(" · ")
+}
+
+/**
+ * The card's size: "0.5 g each · pack of 5" with Each and In all chips
+ * when there is a pack with an amount (the core reads the amount as each
+ * piece's unless that is implausibly large for the product), and "Change
+ * size" opening its amount, unit and pack.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SizeChoice(item: ItemDraft, size: PackageSizeData?) {
+    if (size != null) Text(sizeText(size), style = MaterialTheme.typography.bodyMedium)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (size?.milli != null && size.pack != null) {
+            FilterChip(
+                selected = size.per == PER_EACH,
+                onClick = { item.per = PER_EACH },
+                label = { Text(stringResource(R.string.receipt_per_each)) },
+            )
+            FilterChip(
+                selected = size.per == PER_TOTAL,
+                onClick = { item.per = PER_TOTAL },
+                label = { Text(stringResource(R.string.receipt_per_in_all)) },
+            )
+        }
+        TextButton(onClick = { item.editingSize = !item.editingSize }) {
+            Text(stringResource(if (size == null) R.string.receipt_size_add else R.string.receipt_size_change))
+        }
+    }
+    if (item.editingSize) SizeFields(size) { typed ->
+        item.sizeEdited = true
+        item.sizeEdit = typed
+        item.editingSize = false
+    }
+}
+
+/** A size's amount, unit (g, mg or ml) and pack count, to change; [onDone] with the typed size (null for none). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SizeFields(size: PackageSizeData?, onDone: (PackageSizeData?) -> Unit) {
+    var amount by remember(size) { mutableStateOf(size?.milli?.let(::formatMilli).orEmpty()) }
+    var unit by remember(size) { mutableStateOf(size?.unit?.takeIf { it in SIZE_UNITS } ?: SIZE_UNITS.first()) }
+    var pack by remember(size) { mutableStateOf(size?.pack?.toString().orEmpty()) }
+    val valid = typedSizeValid(amount, pack)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            amount,
+            { amount = it },
+            label = { Text(stringResource(R.string.receipt_size_amount)) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+            isError = !valid,
+            modifier = Modifier.width(128.dp),
+        )
+        OutlinedTextField(
+            pack,
+            { pack = it },
+            label = { Text(stringResource(R.string.receipt_size_pack)) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+            isError = !valid,
+            modifier = Modifier.width(128.dp),
+        )
+    }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (u in SIZE_UNITS) {
+            FilterChip(selected = unit == u, onClick = { unit = u }, label = { Text(u) })
+        }
+    }
+    if (!valid) Text(stringResource(R.string.receipt_size_invalid), color = MaterialTheme.colorScheme.error)
+    OutlinedButton(onClick = { onDone(typedSize(amount, unit, pack)) }, enabled = valid) { Text(stringResource(R.string.receipt_size_done)) }
 }
 
 /** How many were bought, with − and + buttons. */

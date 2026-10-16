@@ -305,7 +305,8 @@ requirement rather than on features.
 | 0.5.1 | Richer strains II, part 2 (moved from 0.5.0, maintainer 2026-10-15): insights and shop effect grouped by lineage or terpene profile. |
 | 0.5.2 | Fixes: the Keystore "did not respond" error (one unlock operation at a time), folder sync's card showing at once. The unlock screen in brand green; the Products tab's floating New button and strain-first titles; New entry as the journal's main button, Insights as a lightbulb, swipe-away location cards (maintainer, 2026-10-15). |
 | 0.5.3 | Fixes: Google text recognition in Play release builds (R8 removed ML Kit's registrar constructors), the crash turning it off or restoring maximum privacy, a chosen sync folder or export file lost behind the system picker, the OCR download's error code in problem reports, the keyboard as an inset. The rating as faces; swipeable Products lists; Scan receipt and the product editor's Scan as floating buttons; the session timeline in shares; the receipt-scanning core (maintainer, 2026-10-15). |
-| 0.6.0 | Simpler receipt scanning and product subtypes, together (maintainer, 2026-10-15): both change the synced format and share the scanning vocabulary, so one compatibility fixture and one update. Shipped: the review rebuilt as cards with the shop first, learned receipt names, size and quantity on purchase lines, shop phone and licence numbers, zoom, join and split, two photos for a long receipt, pack amounts each or in all, "Seen on receipts as" and merging products; subtypes under each type (built-in and the user's own) and the Transdermal method; timeline insights ("How it usually goes"). |
+| 0.6.0 | Simpler receipt scanning and product subtypes, together (maintainer, 2026-10-15): both change the synced format and share the scanning vocabulary, so one compatibility fixture and one update. Shipped: the review rebuilt as cards with the shop first, learned receipt names, size and quantity on purchase lines, shop phone and licence numbers, zoom, join and split; subtypes under each type (built-in and the user's own) and the Transdermal method; timeline insights ("How it usually goes"). |
+| 0.6.1 | The rest of simpler receipt scanning, built after 0.6.0 was tagged: two photos for a long receipt ("Add the rest of the receipt"), a pack's amount read as each or in all (stored beside the 0.6.0 size, which 0.6.0 keeps untouched), "Seen on receipts as" with a delete on the product page, and merging two products that share a learned receipt name. |
 | 0.7.0 | Strain lookups: an offline strain and seed catalog first, then online sources (such as Leafly or a seed database) each behind its own toggle, as "Catalog lookups" requires. Which providers depends on their terms and APIs, researched during 0.4.0. Moved from 0.6.0 (maintainer, 2026-10-15): it waits on the sources' replies and the maintainer's choice. |
 | 0.8.0 | F-Droid groundwork: OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app. Moved from 0.7.0 (maintainer, 2026-10-15). |
 | any | "Notify me" on Play, in the first release after the maintainer files the background-location declaration and video. |
@@ -352,7 +353,7 @@ requirement rather than on features.
   - [ ] Online sources the maintainer picks, each its own toggle (off by
         default) with a disclosure card; search on submit only.
 
-- [ ] Simpler receipt scanning, 0.6.0 (maintainer, 2026-10-15): text
+- [ ] Simpler receipt scanning, 0.6.0 and 0.6.1 (maintainer, 2026-10-15): text
       recognition should fill the right parts of a new entry (brand,
       strain, form, size, price, shop, date) with less checking and
       typing. Options in
@@ -375,20 +376,20 @@ requirement rather than on features.
       - [x] Size and quantity on the purchase line, default size on the
             product (synced, with a compatibility fixture).
       - [x] Phone and licence numbers on spots (synced, with a fixture).
-      - [ ] A pack with an amount: read the amount as the pack's total when
+      - [x] 0.6.1: a pack with an amount: read the amount as the pack's total when
             amount × pack is implausibly large for the product, and an easy
             "each / in all" and unit change on the card (maintainer,
             2026-10-15).
-      - [ ] Merging two products that share a learned receipt name,
+      - [x] 0.6.1: merging two products that share a learned receipt name,
             keeping the most information from each (maintainer,
             2026-10-15).
-      - [ ] A second photo for long receipts, joined on overlapping rows.
-            Core done (`join_receipt_photos`); the camera's "Add the
-            rest" step comes with the Android review.
+      - [x] 0.6.1: a second photo for long receipts, joined on overlapping rows:
+            `join_receipt_photos` in the core, and "Add the rest of the
+            receipt" in the Android review.
       - [x] Android: review cards with chips, the shop header card, "Join
             with next line" and "Split here", the cut-off warning, and the
             photo's zoom.
-      - [ ] Android: "Seen on receipts as" with a delete on the product
+      - [x] 0.6.1: "Seen on receipts as" with a delete on the product
             page.
 
 - [ ] Product subtypes (maintainer, 2026-10-15; `docs/design-decisions.md`,

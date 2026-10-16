@@ -118,16 +118,20 @@ pub struct ItemBreakdown {
 
 impl ItemBreakdown {
     /// The size and pack count as a purchase line or product stores them
-    /// ([`PackageSize`]), or `None` when the line prints neither.
+    /// ([`PackageSize`]), or `None` when the line prints neither. With both
+    /// an amount and a pack, the amount is read as each piece's unless that
+    /// is implausible for the line's form ([`crate::amount_per`]).
     #[must_use]
     pub fn package_size(&self) -> Option<PackageSize> {
-        let size = PackageSize {
+        let mut size = PackageSize {
             amount: self.size.map(|s| SizeAmount {
                 milli: s.milli,
                 unit: s.unit.into(),
             }),
             pack: self.pack,
+            per: None,
         };
+        size.per = crate::amount_per(&size, self.form.as_ref());
         size.is_valid().then_some(size)
     }
 }
@@ -764,6 +768,8 @@ mod tests {
     #[test]
     fn package_sizes_map_onto_the_purchase_line() {
         let size = describe_item("BD PR 5PK 0.5G").package_size().unwrap();
+        // Five half-gram pre-rolls: plausible, so each piece's.
+        assert_eq!(size.per, Some(terpoir_model::AmountPer::Each));
         let amount = size.amount.unwrap();
         assert_eq!(
             (amount.milli, amount.unit, size.pack),
@@ -774,6 +780,10 @@ mod tests {
             size.amount.unwrap().unit,
             terpoir_model::SizeUnit::Milligram
         );
+        assert_eq!(size.per, None);
+        // 20 gummies of 100 mg would be 2000 mg: the pack's total.
+        let size = describe_item("GUMMIES 20PK 100MG").package_size().unwrap();
+        assert_eq!(size.per, Some(terpoir_model::AmountPer::Total));
         assert_eq!(describe_item("BD HYB").package_size(), None);
         // The units' slugs are the purchase line's.
         for unit in [SizeUnit::Gram, SizeUnit::Milligram, SizeUnit::Millilitre] {

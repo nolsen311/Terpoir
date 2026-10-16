@@ -375,7 +375,8 @@ pub struct Product {
     pub shops: BTreeSet<RecordId>,
     /// The usual package size, from its label: pre-fills a new purchase
     /// of it (since 0.6.0; a scalar field, so an older app keeps it
-    /// untouched).
+    /// untouched). What a pack's amount covers (since 0.6.1) is its own
+    /// scalar field, `default_size_per`, which 0.6.0 keeps untouched.
     pub default_size: Option<PackageSize>,
     /// Learned receipt names (docs/design-decisions.md, "Learned receipt
     /// names"): the exact receipt line texts the user linked to this
@@ -426,6 +427,83 @@ impl Product {
             receipt_names: BTreeSet::new(),
         }
     }
+
+    /// How much the product records: each field set (the name when it
+    /// isn't empty) and each entry of its sets and maps. Merging two
+    /// products keeps the one with more by default.
+    #[must_use]
+    pub fn detail_count(&self) -> usize {
+        let fields = [
+            !self.name.trim().is_empty(),
+            self.form.is_some(),
+            self.subtype.is_some(),
+            self.brand.is_some(),
+            self.thc.is_some(),
+            self.cbd.is_some(),
+            self.batch.is_some(),
+            self.package_date.is_some(),
+            self.default_size.is_some(),
+        ];
+        fields.iter().filter(|set| **set).count()
+            + self.strains.len()
+            + self.cannabinoids.len()
+            + self.terpenes.len()
+            + self.identifiers.len()
+            + self.shops.len()
+            + self.receipt_names.len()
+    }
+
+    /// Takes in what `other` records and this product doesn't, to merge
+    /// two records of one product (docs/design-decisions.md, "Simpler
+    /// review": keeping the most information from each). Each empty field
+    /// takes `other`'s (the subtype only when both have the same form, so
+    /// it stays under this product's form); the sets and maps (strains,
+    /// shops, scanned codes, terpenes, cannabinoids, learned receipt
+    /// names) take the union, this product's value winning for an entry
+    /// both have. Returns whether anything changed.
+    pub fn absorb(&mut self, other: &Self) -> bool {
+        let before = self.clone();
+        if self.name.trim().is_empty() {
+            self.name.clone_from(&other.name);
+        }
+        if self.form.is_none() {
+            self.form.clone_from(&other.form);
+        }
+        if self.subtype.is_none() && self.form == other.form {
+            self.subtype.clone_from(&other.subtype);
+        }
+        self.brand = self.brand.or(other.brand);
+        fill(&mut self.thc, &other.thc);
+        fill(&mut self.cbd, &other.cbd);
+        fill(&mut self.batch, &other.batch);
+        self.package_date = self.package_date.or(other.package_date);
+        fill(&mut self.default_size, &other.default_size);
+        self.strains.extend(other.strains.iter().copied());
+        self.shops.extend(other.shops.iter().copied());
+        self.receipt_names
+            .extend(other.receipt_names.iter().cloned());
+        for (k, v) in &other.cannabinoids {
+            self.cannabinoids
+                .entry(k.clone())
+                .or_insert_with(|| v.clone());
+        }
+        for (k, v) in &other.terpenes {
+            self.terpenes.entry(k.clone()).or_insert(*v);
+        }
+        for (k, v) in &other.identifiers {
+            self.identifiers
+                .entry(k.clone())
+                .or_insert_with(|| v.clone());
+        }
+        *self != before
+    }
+}
+
+/// Sets an empty `slot` to `from`.
+fn fill<T: Clone>(slot: &mut Option<T>, from: &Option<T>) {
+    if slot.is_none() {
+        slot.clone_from(from);
+    }
 }
 
 impl Record for Product {
@@ -470,6 +548,12 @@ impl Record for Product {
                 self.default_size.as_ref(),
                 PackageSize::to_value,
             )
+            .put(
+                "default_size_per",
+                self.default_size
+                    .as_ref()
+                    .map_or(Value::Null, PackageSize::per_value),
+            )
             .text_set("receipt_names", &self.receipt_names);
         f.finish()
     }
@@ -512,7 +596,13 @@ impl Record for Product {
             shops: r.id_set("shops")?,
             default_size: match r.value("default_size") {
                 Value::Null => None,
-                v => Some(PackageSize::from_value(v).ok_or(Error::InvalidField("default_size"))?),
+                v => {
+                    let mut size =
+                        PackageSize::from_value(v).ok_or(Error::InvalidField("default_size"))?;
+                    size.read_per(r.value("default_size_per"))
+                        .map_err(|()| Error::InvalidField("default_size_per"))?;
+                    Some(size)
+                }
             },
             receipt_names: r.text_set("receipt_names")?,
         })
@@ -531,6 +621,7 @@ impl Record for Product {
                 "batch",
                 "package_date",
                 "default_size",
+                "default_size_per",
             ],
             &[
                 "strains",
@@ -809,6 +900,7 @@ mod tests {
                 unit: SizeUnit::Gram,
             }),
             pack: None,
+            per: None,
         });
         p.receipt_names.insert("BD 3.5G HYB".into());
         p.receipt_names.insert("BD 1/8 HYB".into());
@@ -828,6 +920,28 @@ mod tests {
         assert_eq!(
             Product::from_document(&old).err(),
             Some(Error::InvalidField("default_size"))
+        );
+
+        // What a pack's amount covers (0.6.1) is its own field beside the
+        // size, whose tuple stays the three items 0.6.0 reads.
+        p.default_size = Some(PackageSize {
+            amount: Some(SizeAmount {
+                milli: 500,
+                unit: SizeUnit::Gram,
+            }),
+            pack: Some(5),
+            per: Some(super::super::AmountPer::Total),
+        });
+        round_trip(&p);
+        let doc = Document::create(&p, stamp()).unwrap();
+        assert!(matches!(doc.value("default_size"), Value::Tuple(t) if t.len() == 3));
+        assert_eq!(doc.value("default_size_per"), &Value::Text("total".into()));
+        assert!(Product::owns_field("default_size_per"));
+        let mut odd = doc.clone();
+        odd.set("default_size_per", Value::Int(3), stamp());
+        assert_eq!(
+            Product::from_document(&odd).err(),
+            Some(Error::InvalidField("default_size_per"))
         );
     }
 
@@ -1037,5 +1151,80 @@ mod tests {
     fn wrong_kind_is_rejected() {
         let doc = Document::create(&Brand { name: "x".into() }, stamp()).unwrap();
         assert_eq!(Strain::from_document(&doc).err(), Some(Error::WrongKind));
+    }
+
+    #[test]
+    fn merging_keeps_the_most_from_each_product() {
+        let id = |n| RecordId::from_bytes([n; 16]);
+        let mut keep = Product::new(String::new());
+        keep.form = Some(Form::Edible);
+        keep.strains.insert(id(1));
+        keep.terpenes
+            .insert(TagRef::Builtin("myrcene".into()), 1_000);
+        keep.thc = Some(LabelAmount {
+            milli: 10_000,
+            unit: LabelUnit::MgPerUnit,
+        });
+        keep.receipt_names.insert("ACME GUMMIES".into());
+        let mut other = Product::new("Gummies".into());
+        other.form = Some(Form::Edible);
+        other.subtype = Some(TagRef::Builtin("gummy".into()));
+        other.brand = Some(id(2));
+        other.strains.insert(id(3));
+        other
+            .terpenes
+            .insert(TagRef::Builtin("myrcene".into()), 9_000);
+        other
+            .terpenes
+            .insert(TagRef::Builtin("limonene".into()), 500);
+        other.thc = Some(LabelAmount {
+            milli: 99_000,
+            unit: LabelUnit::MgTotal,
+        });
+        other.batch = Some("LOT-1".into());
+        other.package_date = Some(20_000);
+        other
+            .identifiers
+            .insert("0850012345678".into(), IdentifierKind::Barcode);
+        other.shops.insert(id(4));
+        other.cannabinoids.insert(
+            Cannabinoid::Cbn,
+            LabelAmount {
+                milli: 2_000,
+                unit: LabelUnit::MgPerUnit,
+            },
+        );
+        other.receipt_names.insert("ACME GUMMIES".into());
+        other.receipt_names.insert("ACME GUMMY 10PK".into());
+        assert_eq!(keep.detail_count(), 5);
+        assert_eq!(other.detail_count(), 15);
+
+        assert!(keep.absorb(&other));
+        // Empty fields are filled; what the kept product had stays.
+        assert_eq!(keep.name, "Gummies");
+        assert_eq!(keep.subtype, Some(TagRef::Builtin("gummy".into())));
+        assert_eq!(keep.brand, Some(id(2)));
+        assert_eq!(keep.thc.as_ref().map(|t| t.milli), Some(10_000));
+        assert_eq!(keep.batch.as_deref(), Some("LOT-1"));
+        assert_eq!(keep.package_date, Some(20_000));
+        // Sets and maps are joined; the kept product's entries win.
+        assert_eq!(keep.strains, [id(1), id(3)].into());
+        assert_eq!(keep.terpenes[&TagRef::Builtin("myrcene".into())], 1_000);
+        assert_eq!(keep.terpenes.len(), 2);
+        assert_eq!(keep.identifiers.len(), 1);
+        assert_eq!(keep.shops, [id(4)].into());
+        assert_eq!(keep.cannabinoids.len(), 1);
+        assert_eq!(keep.receipt_names.len(), 2);
+        // Nothing left to take.
+        assert!(!keep.absorb(&other));
+
+        // A subtype under another form doesn't come along.
+        let mut flower = Product::new("Flower".into());
+        flower.form = Some(Form::Flower);
+        let mut patch = Product::new("Patch".into());
+        patch.form = Some(Form::Topical);
+        patch.subtype = Some(TagRef::Builtin("patch".into()));
+        assert!(!flower.absorb(&patch));
+        assert_eq!(flower.subtype, None);
     }
 }

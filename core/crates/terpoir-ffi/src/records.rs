@@ -11,10 +11,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use terpoir_model::{
-    Brand, Cannabinoid, Dose, DoseUnit, Form, IdentifierKind, Intention, LabelAmount, LabelUnit,
-    LocalTime, Location, Method, PackageSize, Price, Product, ProductLine, Provenance, Purchase,
-    PurchaseLine, PurchaseRef, RecordId, Session, SizeAmount, SizeUnit, Snippet, Social, Spot,
-    Strain, StrainType, SymptomResult, Tag, TagCategory, TagRef, TerpeneLevel, Timeline,
+    AmountPer, Brand, Cannabinoid, Dose, DoseUnit, Form, IdentifierKind, Intention, LabelAmount,
+    LabelUnit, LocalTime, Location, Method, PackageSize, Price, Product, ProductLine, Provenance,
+    Purchase, PurchaseLine, PurchaseRef, RecordId, Session, SizeAmount, SizeUnit, Snippet, Social,
+    Spot, Strain, StrainType, SymptomResult, Tag, TagCategory, TagRef, TerpeneLevel, Timeline,
     receipt_name_key,
 };
 use terpoir_scan::{normalize_licence, normalize_phone};
@@ -72,9 +72,10 @@ impl From<LocalTimeData> for LocalTime {
 }
 
 /// A package size as printed on a receipt or label (since 0.6.0): an
-/// amount (`3.5 g`, `100 mg`, `30 ml`), a pack count (`5PK`), or both, kept
-/// as printed. The units are a receipt item breakdown's (`size_milli`,
-/// `size_unit` and `pack` map straight onto it).
+/// amount (`3.5 g`, `100 mg`, `30 ml`), a pack count (`5PK`), or both. The
+/// units are a receipt item breakdown's (`size_milli`, `size_unit` and
+/// `pack` map straight onto it). With both, `per` says whether the amount
+/// is each piece's or the pack's total (`package_amount_per` suggests it).
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
 pub struct PackageSizeData {
     /// The amount in thousandths of `unit` (3.5 g is 3500); positive. Set
@@ -84,6 +85,12 @@ pub struct PackageSizeData {
     pub unit: Option<String>,
     /// Pieces in one package, at least 1.
     pub pack: Option<u32>,
+    /// `each` (the amount is each piece's) or `total` (the whole pack's),
+    /// or one from a newer app version; only with both `milli` and `pack`.
+    /// `None` when undecided. Last, with a default, so callers that
+    /// predate it compile.
+    #[uniffi(default = None)]
+    pub per: Option<String>,
 }
 
 impl PackageSizeData {
@@ -96,9 +103,15 @@ impl PackageSizeData {
             }),
             _ => return Err(CoreError::InvalidInput),
         };
+        let per = match self.per.as_deref() {
+            None => None,
+            Some("") => return Err(CoreError::InvalidInput),
+            Some(slug) => Some(AmountPer::from_slug(slug)),
+        };
         let size = PackageSize {
             amount,
             pack: self.pack,
+            per,
         };
         if size.is_valid() {
             Ok(size)
@@ -112,6 +125,7 @@ impl PackageSizeData {
             milli: size.amount.as_ref().map(|a| a.milli),
             unit: size.amount.as_ref().map(|a| a.unit.slug().to_owned()),
             pack: size.pack,
+            per: size.per.as_ref().map(|p| p.slug().to_owned()),
         }
     }
 }

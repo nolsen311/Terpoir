@@ -181,6 +181,7 @@ mod tests {
                 size: Some(PackageSize {
                     amount: None,
                     pack: Some(5),
+                    per: None,
                 }),
                 quantity: 2,
             },
@@ -208,6 +209,7 @@ mod tests {
         p.default_size = Some(PackageSize {
             amount: None,
             pack: Some(5),
+            per: None,
         });
         let doc = Document::create(&p, stamp()).unwrap();
         assert_eq!(IndexEntries::from_document(&doc), IndexEntries::default());
