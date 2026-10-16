@@ -447,6 +447,13 @@ requirement rather than on features.
 
 Ideas the maintainer wants kept, to be designed and scheduled later.
 
+- [ ] "Secure storage not responding" on unlock: tabled (maintainer,
+      2026-10-16). 0.5.2 limited unlocking to one Keystore operation at a
+      time (`docs/design-decisions.md`, "One open unlock operation"); the
+      maintainer saw it once more afterwards but couldn't repeat it, and
+      there is no evidence it recurs. Reopen with a problem report (Privacy
+      Center → Report a problem) if it comes back.
+
 - [ ] Solventless and solvent-based concentrates as a grouping for
       insights (tabled by the maintainer, 2026-10-15: possibly useful, but
       subtypes may be enough; `docs/design-decisions.md`, "Product

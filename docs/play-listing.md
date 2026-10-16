@@ -589,7 +589,10 @@ them; the other activities belong to Google's libraries.
     Long receipts can take a second photo. A pack like 5PK 0.5G reads as 0.5 g each or in all, and one tap switches it. Two products that are really one can be merged, keeping the most detail; nothing changes until you save. Products show the names they've had on receipts. Strains are picked by search instead of a wall of chips, and the rating starts from the middle face. The app shortcut, tiles and widget offer New entry as well as New note.
     </en-US>
     ```
-  - **0.6.0** (448 characters):
+  - **0.6.0** (448 characters). These overclaim: the second photo for a
+    long receipt shipped in 0.6.1, after the tag. The Play notes can't be
+    changed; the GitHub release page is corrected by hand
+    (`docs/follow-ups.md`).
     Headline: Simpler receipt scanning, and kinds of products
     Summary: receipt scanning rebuilt: shop first, a card per item ; lines you link are recognised next time ; zoom, join & split lines, two photos for long receipts ; kinds of products (bubble hash, infused pre-roll, your own) ; patches → 12-hour timeline ; insights: how it usually goes
     ```
