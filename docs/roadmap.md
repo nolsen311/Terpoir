@@ -481,8 +481,10 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       treat `UserNotAuthenticatedException` at that step as "unlock your
       phone first" and retry once the device is unlocked
       (`KeyguardManager.isDeviceLocked`, `ACTION_USER_PRESENT`), not as a
-      Keystore failure; the same for creating and restoring. Ask the
-      maintainer how the app was opened when it happened.
+      Keystore failure; the same for creating and restoring. The
+      maintainer opened the app from a "Notify me" alert at one of the
+      Play declaration's demo spots, which fits: a notification can open
+      the app while the phone is still locked.
 
 - [ ] Solventless and solvent-based concentrates as a grouping for
       insights (tabled by the maintainer, 2026-10-15: possibly useful, but
