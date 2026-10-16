@@ -71,7 +71,7 @@
 
 <main class="wrap">
   <h1>Privacy policy</h1>
-  <p class="meta">Effective 14 October 2026. Applies to the Terpoir app on Android (Google Play, F-Droid and GitHub versions) and to this website.</p>
+  <p class="meta">Effective 16 October 2026. Applies to the Terpoir app on Android (Google Play, F-Droid and GitHub versions) and to this website.</p>
 
   <div class="summary">
     <p><strong>Terpoir collects nothing.</strong> There is no account, no Terpoir server, no analytics, no advertising and no advertising ID. Your journal is encrypted on your phone, and only you hold the key.</p>
@@ -103,7 +103,7 @@
     <li><strong>Camera</strong>: for scanning labels, receipts and codes, only when you open a scanner. Photos stay in memory and are not saved to your gallery.</li>
     <li><strong>Microphone</strong>: for voice notes, transcribed by your phone’s on-device speech recognizer. Terpoir never receives or keeps the audio.</li>
     <li><strong>Location</strong> (approximate by default, precise only if you ask): to save a spot’s location and, with “Show me” on, to notice you are at a saved spot while the app is open. Locations are stored only inside your encrypted journal.</li>
-    <li><strong>Location “all the time”</strong>: the Google Play version does not request it. The F-Droid version and the foss APK on GitHub ask for it only if you turn on “Notify me” or purchase reminders; Android’s location service then watches your saved spots, so it holds their coordinates.</li>
+    <li><strong>Location “all the time”</strong>: asked only if you turn on “Notify me” or purchase reminders, right after a screen in the app that explains why. Android’s location service (on the Google Play version, Google Play services) then watches your saved spots, so it holds their coordinates, never their names. Your location never leaves your phone through Terpoir, and turning the feature off removes every watched spot.</li>
     <li><strong>Notifications</strong>: for reminders you turn on. By default they say nothing about your spots, and the lock screen never shows more than a discreet version.</li>
     <li><strong>Internet</strong>: only for the optional online map and, on Google Play, the Google features below. With the default settings, Terpoir opens no network connection.</li>
   </ul>
@@ -132,7 +132,7 @@
   <p>If you agree to download the open text-recognition engine, the Google Play Store delivers it. According to Google’s notes for <a href="https://developer.android.com/guide/playcore/feature-delivery#data-safety">Feature Delivery</a> and <a href="https://developer.android.com/guide/playcore/asset-delivery#data-safety">Asset Delivery</a>, the Play Store receives device metadata and the app version to deliver the right files, encrypted, not shared with third parties and deleted after a fixed period.</p>
 
   <h3>Google Play services location</h3>
-  <p>Included for geofencing, which the Google Play version does not offer in this release, so it is not used. Saved-spot locations come from Android’s own location service, only while the app is open.</p>
+  <p>Used only while “Notify me” or purchase reminders is on: Terpoir registers a geofence around each saved spot that has a location, so Google Play services on your phone holds those spots’ coordinates (never their names) and tells Terpoir when you stop at one or leave it. Turning the feature off removes every geofence. Terpoir sends no location to Google or anyone else. Saved-spot locations and “Show me” use Android’s own location service, only while the app is open.</p>
 
   <h2>Crash reports</h2>
   <p>Terpoir contains no crash reporter. If you have allowed your phone to share usage and diagnostics with Google, Android itself may send Google a report when an app crashes, and Google shows developers aggregated crash statistics in the Play Console. That is a setting of your phone, not of Terpoir; you can change it in Android’s settings.</p>

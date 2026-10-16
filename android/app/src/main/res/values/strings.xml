@@ -546,7 +546,14 @@
     <string name="check_in_note">A note for later (optional)</string>
     <string name="notify_setup_title">\"Notify me\" needs a few permissions</string>
     <string name="notify_setup_precise">Precise location, so an alert means the right spot.</string>
-    <string name="notify_setup_background">Location \"all the time\", so alerts work while Terpoir is closed. Android opens its settings for this: choose \"Allow all the time\".</string>
+    <string name="location_disclosure_title">Use your location in the background?</string>
+    <string name="location_disclosure_notify">Terpoir uses your location to alert you when you stop at one of your saved spots, even when the app is closed or not in use.</string>
+    <string name="location_disclosure_reminders">Terpoir uses your location to remind you to log a purchase when you leave one of your Re-up Spots, even when the app is closed or not in use.</string>
+    <string name="location_disclosure_both">Terpoir uses your location to alert you when you stop at one of your saved spots, and to remind you to log a purchase when you leave a Re-up Spot, even when the app is closed or not in use.</string>
+    <string name="location_disclosure_stays">Your location never leaves your phone. Android\'s location service (Google Play services, on phones that use it) watches only the spots you saved, by their coordinates, never their names. Turn it off any time in the Privacy Center.</string>
+    <string name="location_disclosure_how">Next, Android opens its settings: choose \"Allow all the time\".</string>
+    <string name="location_disclosure_continue">Continue</string>
+    <string name="location_disclosure_not_now">Not now</string>
     <string name="notify_setup_notifications">Notifications, to show the alert.</string>
     <string name="notify_setup_allow">Allow</string>
     <string name="ocr_module_title">Text recognition</string>

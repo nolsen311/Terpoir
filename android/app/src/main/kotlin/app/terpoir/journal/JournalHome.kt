@@ -399,7 +399,11 @@ private fun JournalList(
         // Purchase prompts use the same geofencing, so they need the same permissions.
         // Each location card can be swiped away (maintainer, 2026-10-15).
         if ((settings.notifyNearSpots || settings.purchasePrompts) && NOTIFY_SETUP !in dismissed) {
-            item(key = NOTIFY_SETUP) { Dismissible({ dismissed += NOTIFY_SETUP }) { NotifySetupCard(alerts, onPermissions) } }
+            item(key = NOTIFY_SETUP) {
+                Dismissible({ dismissed += NOTIFY_SETUP }) {
+                    NotifySetupCard(alerts, settings.notifyNearSpots, settings.purchasePrompts, onPermissions) { dismissed += NOTIFY_SETUP }
+                }
+            }
         }
         // "Show me", or the tap on a "Notify me" alert: which spot is near.
         if (settings.showNearbySpots || checkNearby) {
@@ -762,13 +766,28 @@ private fun Dismissible(onDismiss: () -> Unit, content: @Composable () -> Unit) 
 // POST_NOTIFICATIONS is asked only on Android 13+, where needs() lists it.
 @SuppressLint("InlinedApi")
 @Composable
-private fun NotifySetupCard(alerts: SpotAlerts, onGranted: () -> Unit) {
+private fun NotifySetupCard(
+    alerts: SpotAlerts,
+    notify: Boolean,
+    reminders: Boolean,
+    onGranted: () -> Unit,
+    onNotNow: () -> Unit,
+) {
     var needs by remember { mutableStateOf(alerts.needs()) }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         needs = alerts.needs()
         onGranted()
     }
     val next = needs.firstOrNull() ?: return
+    if (next == AlertNeed.BACKGROUND_LOCATION) {
+        BackgroundLocationDisclosure(
+            notify = notify,
+            reminders = reminders,
+            onContinue = { ask.launch(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) },
+            onNotNow = onNotNow,
+        )
+        return
+    }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.notify_setup_title), style = MaterialTheme.typography.titleMedium)
@@ -776,7 +795,8 @@ private fun NotifySetupCard(alerts: SpotAlerts, onGranted: () -> Unit) {
                 stringResource(
                     when (next) {
                         AlertNeed.PRECISE_LOCATION -> R.string.notify_setup_precise
-                        AlertNeed.BACKGROUND_LOCATION -> R.string.notify_setup_background
+                        // Shown by BackgroundLocationDisclosure instead.
+                        AlertNeed.BACKGROUND_LOCATION -> R.string.location_disclosure_how
                         AlertNeed.NOTIFICATIONS -> R.string.notify_setup_notifications
                     },
                 ),
@@ -793,6 +813,38 @@ private fun NotifySetupCard(alerts: SpotAlerts, onGranted: () -> Unit) {
                 },
             ) {
                 Text(stringResource(R.string.notify_setup_allow))
+            }
+        }
+    }
+}
+
+/**
+ * Google Play's prominent disclosure for location "all the time"
+ * (docs/play-listing.md, "Location declaration"): in the app, right before
+ * Android's prompt, every time it is about to be asked. It names the
+ * features that need it and says that location is used while the app is
+ * closed. "Continue" opens Android's prompt; "Not now" hides the card, and
+ * nothing is watched until the permission is granted.
+ */
+@Composable
+private fun BackgroundLocationDisclosure(notify: Boolean, reminders: Boolean, onContinue: () -> Unit, onNotNow: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.location_disclosure_title), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(
+                    when {
+                        notify && reminders -> R.string.location_disclosure_both
+                        reminders -> R.string.location_disclosure_reminders
+                        else -> R.string.location_disclosure_notify
+                    },
+                ),
+            )
+            Text(stringResource(R.string.location_disclosure_stays))
+            Text(stringResource(R.string.location_disclosure_how), style = MaterialTheme.typography.bodySmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                androidx.compose.material3.Button(onClick = onContinue) { Text(stringResource(R.string.location_disclosure_continue)) }
+                TextButton(onClick = onNotNow) { Text(stringResource(R.string.location_disclosure_not_now)) }
             }
         }
     }
