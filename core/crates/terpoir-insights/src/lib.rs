@@ -22,8 +22,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 mod shops;
+mod timeline;
 
 pub use shops::{Buy, Level, ShopEffect, ShopSessionFacts, ShopSummary, shop_insights};
+pub use timeline::{MIN_TIMELINE_SESSIONS, ON, TimelineFacts, TimelinePattern, timeline_patterns};
 
 /// Sessions needed on each side of a comparison (maintainer, 2026-10-12).
 pub const MIN_SESSIONS: usize = 5;

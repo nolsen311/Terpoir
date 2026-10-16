@@ -10,7 +10,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use terpoir_insights::{
-    Buy, Level, SessionFacts, ShopSessionFacts, insights, shop_insights, time_of_day,
+    Buy, Level, SessionFacts, ShopSessionFacts, TimelineFacts, insights, shop_insights,
+    time_of_day, timeline_patterns,
 };
 use terpoir_model::{
     DoseUnit, Product, ProductLine, Purchase, RecordId, Session, Spot, Strain, StrainDetail,
@@ -86,6 +87,32 @@ pub(crate) trait Source {
     fn brand_name(&self, id: &RecordId) -> Result<Option<String>>;
     /// "What I track": insights skip what is built on a hidden data point.
     fn tracking(&self) -> Result<TrackingPreferences>;
+}
+
+/// "How it usually goes" for a method, product or strain: its typical
+/// timeline from the points the user set (see
+/// `terpoir_insights::timeline_patterns`). Opt-in with the other insights,
+/// and empty while the timeline is hidden in "What I track".
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct TimelineInsightData {
+    /// `method`, `product` or `strain`.
+    pub category: String,
+    /// A method's slug, or the product's or strain's ID.
+    pub subject: String,
+    /// The product's or strain's display name; a method's slug.
+    pub name: String,
+    /// Sessions with set points, for tap-through.
+    pub sessions: Vec<String>,
+    /// Median minutes until it reached Mild or stronger, when at least 3
+    /// sessions show it.
+    pub onset_min: Option<u32>,
+    /// Median minutes until the strongest point.
+    pub peak_min: u32,
+    /// Median strongest level, 0 (None) to 5 (Intense).
+    pub peak_level: u8,
+    /// Median minutes until it dropped below Mild after the peak, when at
+    /// least 3 sessions show it.
+    pub eases_min: Option<u32>,
 }
 
 /// A shop's numbers (see `terpoir_insights::shop_insights`), with their
@@ -541,4 +568,91 @@ fn tag_key(tag: &TagRef) -> String {
         TagRef::Builtin(slug) => slug.clone(),
         TagRef::Custom(id) => format!("custom:{}", id.to_hex()),
     }
+}
+
+/// Typical timelines by method, product and strain (see
+/// [`TimelineInsightData`]): methods first, then products and strains by
+/// name.
+pub(crate) fn timelines(source: &dyn Source) -> Result<Vec<TimelineInsightData>> {
+    let tracking = source.tracking()?;
+    if !tracking.tracks(&TrackedField::Timeline) {
+        return Ok(Vec::new());
+    }
+    let show_strain = tracking.tracks(&TrackedField::Strain);
+    let show_brand = tracking.tracks(&TrackedField::Brand);
+    let sessions = source.sessions()?;
+    let mut products: BTreeMap<RecordId, Option<Product>> = BTreeMap::new();
+    let mut facts = Vec::new();
+    for (index, (_, session)) in sessions.iter().enumerate() {
+        if session.timeline_levels.is_empty() {
+            continue;
+        }
+        let mut groups = BTreeSet::new();
+        for line in session.lines.values() {
+            groups.insert(format!("method:{}", line.method.slug()));
+            let Some(product_id) = line.product else {
+                continue;
+            };
+            groups.insert(format!("product:{}", product_id.to_hex()));
+            if let std::collections::btree_map::Entry::Vacant(slot) = products.entry(product_id) {
+                slot.insert(source.product(&product_id)?);
+            }
+            if show_strain && let Some(Some(product)) = products.get(&product_id) {
+                for strain in &product.strains {
+                    groups.insert(format!("strain:{}", strain.to_hex()));
+                }
+            }
+        }
+        facts.push(TimelineFacts {
+            index,
+            groups,
+            levels: session.timeline_levels.clone(),
+        });
+    }
+    let mut out = Vec::new();
+    for pattern in timeline_patterns(&facts) {
+        let (category, subject) = pattern.group.split_once(':').unwrap_or(("", ""));
+        let name = match category {
+            "method" => Some(subject.to_owned()),
+            "product" => match RecordId::from_hex(subject).ok() {
+                Some(id) => match products.get(&id).cloned().flatten() {
+                    Some(p) => Some(product_label(source, &p, show_brand)?),
+                    None => None,
+                },
+                None => None,
+            },
+            "strain" => match RecordId::from_hex(subject).ok() {
+                Some(id) => source.strain(&id)?.map(|s| s.name),
+                None => None,
+            },
+            _ => None,
+        };
+        // A deleted product or strain has nothing to show.
+        let Some(name) = name else { continue };
+        out.push(TimelineInsightData {
+            category: category.to_owned(),
+            subject: subject.to_owned(),
+            name,
+            sessions: pattern
+                .sessions
+                .iter()
+                .map(|&i| sessions[i].0.to_hex())
+                .collect(),
+            onset_min: pattern.onset_min,
+            peak_min: pattern.peak_min,
+            peak_level: pattern.peak_level,
+            eases_min: pattern.eases_min,
+        });
+    }
+    let order = |c: &str| match c {
+        "method" => 0,
+        "product" => 1,
+        _ => 2,
+    };
+    out.sort_by(|a, b| {
+        order(&a.category)
+            .cmp(&order(&b.category))
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+    });
+    Ok(out)
 }

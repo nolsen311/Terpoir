@@ -8,7 +8,6 @@ import app.terpoir.core.BrandData
 import app.terpoir.core.ExportFile
 import app.terpoir.core.InsightData
 import app.terpoir.core.InsightFeedback
-import app.terpoir.core.ShopInsightData
 import app.terpoir.core.Journal
 import app.terpoir.core.NearbySpot
 import app.terpoir.core.ProductData
@@ -18,11 +17,13 @@ import app.terpoir.core.ReceiptShopMatch
 import app.terpoir.core.RecordType
 import app.terpoir.core.ScanSuggestion
 import app.terpoir.core.SessionData
+import app.terpoir.core.ShopInsightData
 import app.terpoir.core.SnippetData
 import app.terpoir.core.SpotData
 import app.terpoir.core.StrainData
 import app.terpoir.core.TagData
 import app.terpoir.core.TagSuggestion
+import app.terpoir.core.TimelineInsightData
 import app.terpoir.core.readExportArchive
 import app.terpoir.session.onJournal
 
@@ -212,6 +213,9 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
 
     /** Shop insights, per Re-up Spot; same opt-in as [insights]. */
     suspend fun shopInsights(): List<ShopInsightData> = io { journal.shopInsights() }
+
+    /** "How it usually goes": typical timelines by method, product and strain. */
+    suspend fun timelineInsights(): List<TimelineInsightData> = io { journal.timelineInsights() }
 
     /** Records the user's feedback on an insight (or a category, for muting). */
     suspend fun setInsightFeedback(key: String, feedback: InsightFeedback) = io { journal.setInsightFeedback(key, feedback, now()) }

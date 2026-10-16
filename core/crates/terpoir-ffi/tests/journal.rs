@@ -2983,3 +2983,72 @@ fn a_confirmed_shop_is_recognised_strongly_by_its_numbers() {
         Err(CoreError::NotFound)
     );
 }
+
+#[test]
+fn timeline_insights_show_how_it_usually_goes() {
+    let keys = create_keys().unwrap();
+    let dir = Device::new();
+    let journal = dir.open(&keys).unwrap();
+    let product = journal
+        .save_product(
+            None,
+            ProductData {
+                name: "Gummies".into(),
+                form: Some("edible".into()),
+                brand: None,
+                strains: vec![],
+                thc_milli: None,
+                thc_unit: None,
+                cbd_milli: None,
+                cbd_unit: None,
+                terpenes: vec![],
+                batch: None,
+                package_date_day: None,
+                identifiers: vec![],
+                shops: vec![],
+                cannabinoids: vec![],
+                subtype: None,
+                default_size: None,
+                receipt_names: vec![],
+            },
+            1,
+        )
+        .unwrap();
+    let points = |p: &[(u32, u8)]| {
+        p.iter()
+            .map(|&(minute, level)| TimelineLevelData { minute, level })
+            .collect::<Vec<_>>()
+    };
+    let shapes: [&[(u32, u8)]; 3] = [
+        &[(48, 1), (96, 3), (144, 4), (240, 1)],
+        &[(48, 2), (96, 4), (192, 1)],
+        &[(48, 1), (144, 4), (240, 1)],
+    ];
+    for (n, shape) in shapes.iter().enumerate() {
+        let mut s = session(Some(product.clone()));
+        s.timeline_levels = points(shape);
+        journal.save_session(None, s, 2 + n as u64).unwrap();
+    }
+    // A session without set points doesn't count.
+    journal
+        .save_session(None, session(Some(product.clone())), 9)
+        .unwrap();
+
+    let found = journal.timeline_insights().unwrap();
+    let names: Vec<(&str, &str)> = found
+        .iter()
+        .map(|t| (t.category.as_str(), t.name.as_str()))
+        .collect();
+    assert_eq!(names, [("method", "edible"), ("product", "Gummies")]);
+    let edible = &found[0];
+    assert_eq!(edible.sessions.len(), 3);
+    assert_eq!(edible.onset_min, Some(96));
+    assert_eq!((edible.peak_min, edible.peak_level), (144, 4));
+    assert_eq!(edible.eases_min, Some(240));
+
+    // Hidden with the timeline in "What I track".
+    journal
+        .set_data_point_tracked("timeline".into(), false, 20)
+        .unwrap();
+    assert!(journal.timeline_insights().unwrap().is_empty());
+}
