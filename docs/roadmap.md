@@ -206,7 +206,8 @@ without it.
         breaks one fails CI. (v0.1.0's, in
         `core/crates/terpoir-ffi/tests/fixtures/`; v0.2.0 to v0.2.2
         changed no format. v0.4.0's adds the richer strain fields; v0.6.0's,
-        written from its tag on 2026-10-16, subtypes and receipt formats.)
+        written from its tag on 2026-10-16, subtypes and receipt formats;
+        v0.6.1's, a pack's "each / in all" reading.)
   - [x] Downgrade: an older app opening a newer database refuses (as
         today) with a message to update, never a crash or a reset.
 - [ ] Bring-your-own-storage sync backends and direct device pairing.
