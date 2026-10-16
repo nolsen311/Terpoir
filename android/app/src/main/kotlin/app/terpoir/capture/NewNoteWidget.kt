@@ -11,13 +11,15 @@ import android.widget.RemoteViews
 import app.terpoir.R
 
 /**
- * The "New note" home-screen widget (opt-in; see [QuickCapture]): one button
- * and nothing else, no journal content of any kind.
+ * The quick-capture home-screen widget (opt-in; see [QuickCapture]): a
+ * "New note" and a "New entry" button and nothing else, no journal content
+ * of any kind.
  */
 class NewNoteWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         val views = RemoteViews(context.packageName, R.layout.widget_new_note).apply {
-            setOnClickPendingIntent(R.id.widget_new_note, QuickCapture.pendingIntent(context))
+            setOnClickPendingIntent(R.id.widget_new_note, QuickCapture.pendingIntent(context, QuickCapture.Target.NOTE))
+            setOnClickPendingIntent(R.id.widget_new_entry, QuickCapture.pendingIntent(context, QuickCapture.Target.ENTRY))
         }
         manager.updateAppWidget(ids, views)
     }

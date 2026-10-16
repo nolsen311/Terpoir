@@ -19,9 +19,10 @@ import app.terpoir.privacy.PrivacySettings
 /**
  * Quick capture (docs/design-decisions.md, "Quick capture"): one tap from
  * outside the app to a new note in the user's default mode (voice or
- * text). Every entry point opens the app; the journal unlocks as usual,
- * then the note opens. Every surface says only "New note", with a neutral
- * icon, and never shows journal content.
+ * text), or to a new entry. Every entry point opens the app. A note can be
+ * written while the journal is locked; an entry opens after unlock. Every
+ * surface says only "New note" or "New entry", with a neutral icon, and
+ * never shows journal content.
  *
  * - The app shortcut (long-press the icon) is on by default and can be
  *   hidden. It is dynamic, not declared in the manifest, so hiding it
@@ -29,41 +30,59 @@ import app.terpoir.privacy.PrivacySettings
  * - The Quick Settings tile and the home-screen widget are opt-in Privacy
  *   Center toggles. Their components ship disabled; turning one on enables
  *   it, and turning it off disables it again, which takes the tile out of
- *   Quick Settings and the widget out of the widget list.
+ *   Quick Settings and the widget out of the widget list. One toggle
+ *   covers both tiles ("New note" and "New entry"); the widget has both
+ *   buttons.
  */
 object QuickCapture {
     /** Opens a new note after unlock. */
     const val ACTION_NEW_NOTE = "app.terpoir.NEW_NOTE"
 
-    private const val SHORTCUT_ID = "new_note"
+    /** Opens a new entry (a session) after unlock. */
+    const val ACTION_NEW_ENTRY = "app.terpoir.NEW_ENTRY"
 
-    /** The intent every entry point launches. */
-    fun intent(context: Context): Intent =
+    /** What an entry point opens: its intent action, shortcut ID and label. */
+    enum class Target(val action: String, val shortcutId: String, val label: Int) {
+        NOTE(ACTION_NEW_NOTE, "new_note", R.string.capture_new_note),
+        ENTRY(ACTION_NEW_ENTRY, "new_entry", R.string.session_new),
+    }
+
+    /** The intent an entry point launches. */
+    fun intent(context: Context, target: Target): Intent =
         Intent(context, MainActivity::class.java)
-            .setAction(ACTION_NEW_NOTE)
+            .setAction(target.action)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
 
-    /** The same, for the tile and the widget. */
-    fun pendingIntent(context: Context): PendingIntent =
-        PendingIntent.getActivity(context, 0, intent(context), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    /** The same, for the tiles and the widget (one request code per target). */
+    fun pendingIntent(context: Context, target: Target): PendingIntent =
+        PendingIntent.getActivity(context, target.ordinal, intent(context, target), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
-    /** Shows or hides the "New note" app shortcut. */
+    /** Shows or hides the "New note" and "New entry" app shortcuts. */
     fun setShortcut(context: Context, shown: Boolean) {
         val shortcuts = context.getSystemService(ShortcutManager::class.java) ?: return
+        val ids = Target.entries.map { it.shortcutId }
         if (shown) {
             // A shortcut hidden earlier stays disabled until re-enabled.
-            shortcuts.enableShortcuts(listOf(SHORTCUT_ID))
-            val info = ShortcutInfo.Builder(context, SHORTCUT_ID)
-                .setShortLabel(context.getString(R.string.capture_new_note))
-                .setIcon(Icon.createWithResource(context, R.drawable.ic_add))
-                .setIntent(intent(context))
-                .build()
-            shortcuts.dynamicShortcuts = listOf(info)
+            shortcuts.enableShortcuts(ids)
+            shortcuts.dynamicShortcuts = Target.entries.map { target ->
+                ShortcutInfo.Builder(context, target.shortcutId)
+                    .setShortLabel(context.getString(target.label))
+                    .setIcon(Icon.createWithResource(context, R.drawable.ic_add))
+                    .setIntent(intent(context, target))
+                    .setRank(target.ordinal)
+                    .build()
+            }
         } else {
-            shortcuts.removeDynamicShortcuts(listOf(SHORTCUT_ID))
+            shortcuts.removeDynamicShortcuts(ids)
             // Copies the user pinned to the home screen stop working too.
-            shortcuts.disableShortcuts(listOf(SHORTCUT_ID), context.getString(R.string.capture_shortcut_hidden))
+            shortcuts.disableShortcuts(ids, context.getString(R.string.capture_shortcut_hidden))
         }
+    }
+
+    /** Enables or disables both Quick Settings tiles. */
+    fun setTiles(context: Context, enabled: Boolean) {
+        setComponent(context, NewNoteTileService::class.java, enabled)
+        setComponent(context, NewEntryTileService::class.java, enabled)
     }
 
     /** Enables or disables the tile's or the widget's component. */
@@ -78,7 +97,7 @@ object QuickCapture {
     /** Brings every surface in line with the settings (on app start). */
     fun sync(context: Context, settings: PrivacySettings) {
         setShortcut(context, settings.newNoteShortcut)
-        setComponent(context, NewNoteTileService::class.java, settings.quickSettingsTile)
+        setTiles(context, settings.quickSettingsTile)
         setComponent(context, NewNoteWidget::class.java, settings.homeWidget)
     }
 }

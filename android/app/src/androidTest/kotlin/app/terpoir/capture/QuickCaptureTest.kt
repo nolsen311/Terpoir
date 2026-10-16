@@ -42,10 +42,12 @@ class QuickCaptureTest {
         tile.set(true)
         widget.set(true)
         assertTrue(enabled(NewNoteTileService::class.java))
+        assertTrue(enabled(NewEntryTileService::class.java))
         assertTrue(enabled(NewNoteWidget::class.java))
         tile.set(false)
         widget.set(false)
         assertFalse(enabled(NewNoteTileService::class.java))
+        assertFalse(enabled(NewEntryTileService::class.java))
         assertFalse(enabled(NewNoteWidget::class.java))
     }
 
@@ -53,10 +55,10 @@ class QuickCaptureTest {
     fun shortcutCanBeHiddenAndShown() {
         val shortcuts = app.getSystemService(ShortcutManager::class.java)
         QuickCapture.setShortcut(app, true)
-        assertEquals(listOf("new_note"), shortcuts.dynamicShortcuts.map { it.id })
+        assertEquals(listOf("new_entry", "new_note"), shortcuts.dynamicShortcuts.map { it.id }.sorted())
         QuickCapture.setShortcut(app, false)
         assertTrue(shortcuts.dynamicShortcuts.isEmpty())
         QuickCapture.setShortcut(app, true)
-        assertEquals(listOf("new_note"), shortcuts.dynamicShortcuts.map { it.id })
+        assertEquals(listOf("new_entry", "new_note"), shortcuts.dynamicShortcuts.map { it.id }.sorted())
     }
 }

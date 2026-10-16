@@ -105,7 +105,7 @@ fun ProductEditor(
     var brands by remember { mutableStateOf<List<Entry<BrandData>>>(emptyList()) }
     var allStrains by remember { mutableStateOf<List<Entry<StrainData>>>(emptyList()) }
     var invalid by remember { mutableStateOf(false) }
-    var newName by remember { mutableStateOf<NewKind?>(null) }
+    var newBrand by remember { mutableStateOf(false) }
     var camera by remember { mutableStateOf<ProductScan?>(null) }
     var reading by remember { mutableStateOf(false) }
     var scanNote by remember { mutableStateOf<Int?>(null) }
@@ -335,7 +335,8 @@ fun ProductEditor(
         // "What I track": hidden data points are left out here; their saved
         // values are carried unchanged.
         if (tracking.shows(DataPoint.BRAND)) {
-            SectionTitle(stringResource(R.string.product_brand))
+            // The field's own label names it; no section title above it
+            // (maintainer, 2026-10-16).
             val noBrand = stringResource(R.string.product_no_brand)
             Dropdown(
                 label = stringResource(R.string.product_brand),
@@ -343,22 +344,29 @@ fun ProductEditor(
                 selected = brand,
                 onSelect = { brand = it },
             )
-            OutlinedButton(onClick = { newName = NewKind.BRAND }) { Text(stringResource(R.string.brand_new)) }
+            OutlinedButton(onClick = { newBrand = true }) { Text(stringResource(R.string.brand_new)) }
         }
 
         if (tracking.shows(DataPoint.STRAIN)) {
+            // A long strain list is searched, not shown whole (maintainer,
+            // 2026-10-16): the chosen strains, then a search to add more.
             SectionTitle(stringResource(R.string.product_strains))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (strain in allStrains) {
-                    val selected = strain.id in strains
-                    FilterChip(
-                        selected = selected,
-                        onClick = { strains = if (selected) strains - strain.id else strains + strain.id },
-                        label = { Text(strain.data.name) },
-                    )
-                }
-            }
-            OutlinedButton(onClick = { newName = NewKind.STRAIN }) { Text(stringResource(R.string.strain_new)) }
+            SearchPicker(
+                all = allStrains.map { it.id to it.data.name },
+                selected = strains,
+                searchLabel = stringResource(R.string.strain_search),
+                missingLabel = stringResource(R.string.strain_parent_missing),
+                onAdd = { strains = strains + it },
+                onRemove = { strains = strains - it },
+                newLabel = { stringResource(R.string.strain_new_named, it) },
+                onNew = { typed ->
+                    scope.launch {
+                        val strainId = repo.saveStrain(null, StrainData(typed, null, emptyList(), null, emptyList(), emptyList(), emptyList()))
+                        allStrains = repo.strains()
+                        strains = strains + strainId
+                    }
+                },
+            )
         }
 
         val showPotency = tracking.shows(DataPoint.POTENCY)
@@ -484,21 +492,15 @@ fun ProductEditor(
         )
     }
 
-    newName?.let { kind ->
+    if (newBrand) {
         NameDialog(
-            title = stringResource(if (kind == NewKind.BRAND) R.string.brand_new else R.string.strain_new),
-            onDismiss = { newName = null },
+            title = stringResource(R.string.brand_new),
+            onDismiss = { newBrand = false },
             onConfirm = { text ->
-                newName = null
+                newBrand = false
                 scope.launch {
-                    if (kind == NewKind.BRAND) {
-                        brand = repo.saveBrand(null, BrandData(text))
-                        brands = repo.brands()
-                    } else {
-                        val strainId = repo.saveStrain(null, StrainData(text, null, emptyList(), null, emptyList(), emptyList(), emptyList()))
-                        allStrains = repo.strains()
-                        strains = strains + strainId
-                    }
+                    brand = repo.saveBrand(null, BrandData(text))
+                    brands = repo.brands()
                 }
             },
         )
@@ -529,8 +531,6 @@ fun mergeBatch(existing: ProductData, new: ProductData): ProductData = existing.
     shops = (existing.shops + new.shops).distinct(),
     subtype = existing.subtype ?: new.subtype.takeIf { existing.form == null || existing.form == new.form },
 )
-
-private enum class NewKind { BRAND, STRAIN }
 
 @Composable
 private fun LabelRow(
@@ -584,7 +584,6 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
     var cannabinoids by remember { mutableStateOf<List<String>>(emptyList()) }
     var allStrains by remember { mutableStateOf<List<Entry<StrainData>>>(emptyList()) }
     var customTerpenes by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
-    var addingParent by remember { mutableStateOf(false) }
     LaunchedEffect(id) {
         allStrains = repo.strains()
         customTerpenes = repo.tags("terpene")
@@ -667,26 +666,23 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
 
         if (detailed) {
             SectionTitle(stringResource(R.string.strain_parents))
-            val names = allStrains.associate { it.id to it.data.name }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (parent in parents) {
-                    FilterChip(
-                        selected = true,
-                        onClick = { parents = parents - parent },
-                        label = { Text(names[parent] ?: stringResource(R.string.strain_parent_missing)) },
-                    )
-                }
-            }
-            val choices = allStrains.filter { it.id != id && it.id !in parents }
-            if (choices.isNotEmpty()) {
-                Dropdown<String?>(
-                    label = stringResource(R.string.strain_parent_add),
-                    options = choices.map { it.id to it.data.name },
-                    selected = null,
-                    onSelect = { picked -> picked?.let { parents = parents + it } },
-                )
-            }
-            OutlinedButton(onClick = { addingParent = true }) { Text(stringResource(R.string.strain_parent_new)) }
+            SearchPicker(
+                all = allStrains.filter { it.id != id }.map { it.id to it.data.name },
+                selected = parents,
+                searchLabel = stringResource(R.string.strain_parent_add),
+                missingLabel = stringResource(R.string.strain_parent_missing),
+                onAdd = { parents = parents + it },
+                onRemove = { parents = parents - it },
+                newLabel = { stringResource(R.string.strain_new_named, it) },
+                // A parent that isn't in the journal yet becomes a strain with only a name.
+                onNew = { typed ->
+                    scope.launch {
+                        val parentId = repo.saveStrain(null, StrainData(typed, null, emptyList(), null, emptyList(), emptyList(), emptyList()))
+                        allStrains = repo.strains()
+                        parents = parents + parentId
+                    }
+                },
+            )
 
             SectionTitle(stringResource(R.string.strain_cannabinoids))
             Text(stringResource(R.string.strain_cannabinoids_hint), style = MaterialTheme.typography.bodySmall)
@@ -705,18 +701,6 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
             OutlinedTextField(lineage, { lineage = it }, label = { Text(stringResource(R.string.strain_lineage)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         }
         if (id != null) DeleteButton(R.string.strain_delete, R.string.strain_delete_body) { scope.launch { repo.delete(id); onDone() } }
-    }
-
-    // A parent that isn't in the journal yet becomes a strain with only a name.
-    if (addingParent) {
-        NameDialog(stringResource(R.string.strain_parent_new), onDismiss = { addingParent = false }) { typed ->
-            addingParent = false
-            scope.launch {
-                val parentId = repo.saveStrain(null, StrainData(typed, null, emptyList(), null, emptyList(), emptyList(), emptyList()))
-                allStrains = repo.strains()
-                parents = parents + parentId
-            }
-        }
     }
 }
 

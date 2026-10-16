@@ -10,8 +10,8 @@ import org.junit.Test
 
 class RatingStepperTest {
     @Test
-    fun plusStartsAtTheLowestAndStopsAtTheTop() {
-        assertEquals(1, ratingUp(null))
+    fun plusStartsAboveTheMiddleAndStopsAtTheTop() {
+        assertEquals(4, ratingUp(null))
         assertEquals(4, ratingUp(3))
         assertEquals(5, ratingUp(5))
     }
@@ -20,7 +20,11 @@ class RatingStepperTest {
     fun minusAtTheLowestClearsTheRating() {
         assertEquals(2, ratingDown(3))
         assertNull(ratingDown(1))
-        assertNull(ratingDown(null))
+    }
+
+    @Test
+    fun minusWhenUnratedStartsBelowTheMiddle() {
+        assertEquals(2, ratingDown(null))
     }
 
     @Test
