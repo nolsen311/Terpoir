@@ -5,56 +5,42 @@
 package app.terpoir.journal
 
 import android.graphics.Bitmap
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
-import app.terpoir.core.ItemBreakdownData
+import app.terpoir.core.CoreException
 import app.terpoir.core.LocalTimeData
-import app.terpoir.core.PackageSizeData
 import app.terpoir.core.ProductData
 import app.terpoir.core.PurchaseData
 import app.terpoir.core.PurchaseLineData
+import app.terpoir.core.ReceiptRowItemData
 import app.terpoir.core.SpotData
 import app.terpoir.core.TagRefData
 import app.terpoir.core.TextRowData
 import app.terpoir.core.describeReceiptItem
-import app.terpoir.core.parseReceipt
-import app.terpoir.core.parseReceiptLine
+import app.terpoir.core.parseReceiptRowGroups
+import app.terpoir.core.parseReceiptRows
+import app.terpoir.core.receiptCutOff
 import app.terpoir.scan.CameraScreen
 import app.terpoir.scan.CaptureMode
 import app.terpoir.scan.Scanner
@@ -65,8 +51,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.util.Currency
 import java.util.Locale
-import kotlin.math.abs
-import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** What the scan screens need: the scanner and the COA-link setting. */
@@ -96,97 +81,117 @@ internal fun parsePrice(text: String, currency: String): Long? {
 private fun localCurrency(): String =
     runCatching { Currency.getInstance(Locale.getDefault()).currencyCode }.getOrNull() ?: "USD"
 
-/**
- * One receipt line in the checklist.
- *
- * @property rows the photo's rows it was read from; empty when typed in.
- */
-/**
- * The size and pack count a receipt line prints, as a purchase line keeps
- * them (the units are the same), or null when it prints neither.
- */
-internal fun ItemBreakdownData.packageSize(): PackageSizeData? {
-    val milli = sizeMilli?.takeIf { it > 0 && sizeUnit != null }
-    val pack = pack?.takeIf { it > 0u }
-    if (milli == null && pack == null) return null
-    return PackageSizeData(milli, sizeUnit.takeIf { milli != null }, pack)
-}
-
-private class ItemDraft(name: String, price: String, product: String?, val rows: List<Int> = emptyList()) {
-    var include by mutableStateOf(true)
-    var name by mutableStateOf(name)
-    var price by mutableStateOf(price)
-    var product by mutableStateOf(product)
-}
-
-/** Where the purchase was: no shop, a saved spot, or a new Re-up Spot. */
-private sealed interface ShopChoice {
-    data object None : ShopChoice
-
-    data class Existing(val id: String) : ShopChoice
-
-    data object New : ShopChoice
-}
-
 private enum class Phase { CAMERA, READING, REVIEW }
 
+/** What the shop card has open under "Which shop is this?". */
+private enum class ShopPicker { PHOTO, SPOTS }
+
 /**
- * Receipt scan: one photo becomes a checklist of products with prices, the
- * date and the shop. The photo is read on the device. A small copy stays in
- * memory while the user checks it, so they can tap lines the parser missed
- * or got wrong, and is recycled when the screen closes; nothing is written
- * to storage. Only what the user confirms is saved, as one purchase.
+ * Receipt scan: one photo becomes the shop, the date and a card per item,
+ * saved as one purchase (docs/design-decisions.md, "Simpler review"). The
+ * photo is read on the device, and the core reads the rows, matches the
+ * shop and suggests products. A small copy of the photo stays in memory
+ * while the user checks it, so they can tap lines the parser missed, and is
+ * recycled when the screen closes; nothing is written to storage. Nothing
+ * changes in the journal until Save: then the purchase is saved, the lines
+ * linked to products teach them their printed names, and a confirmed shop
+ * keeps the phone and licence numbers its receipt prints.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Unit) {
     val scope = rememberCoroutineScope()
     // "What I track": with prices and shops hidden, a receipt records what
     // was bought and when, nothing more.
-    val showPrice = LocalTracking.current.shows(DataPoint.PRICE_AND_SHOP)
+    val tracking = LocalTracking.current
+    val showPrice = tracking.shows(DataPoint.PRICE_AND_SHOP)
+    val showBrand = tracking.shows(DataPoint.BRAND)
+    val showStrain = tracking.shows(DataPoint.STRAIN)
     var phase by remember { mutableStateOf(Phase.CAMERA) }
-    var shopText by remember { mutableStateOf("") }
-    var shop by remember { mutableStateOf<ShopChoice>(ShopChoice.None) }
+    var shop by remember { mutableStateOf<ShopState>(if (showPrice) ShopState.Unknown else ShopState.None) }
+    var headerName by remember { mutableStateOf<String?>(null) }
+    var shopRow by remember { mutableStateOf<Int?>(null) }
+    var shopPicker by remember { mutableStateOf<ShopPicker?>(null) }
     var day by remember { mutableStateOf<Long?>(LocalDate.now().toEpochDay()) }
     var currency by remember { mutableStateOf(localCurrency()) }
+    var totalMinor by remember { mutableStateOf<Long?>(null) }
     var noText by remember { mutableStateOf(false) }
+    var cutOff by remember { mutableStateOf(false) }
+    var addingLine by remember { mutableStateOf(false) }
+    var rowList by remember { mutableStateOf(false) }
     val items = remember { mutableStateListOf<ItemDraft>() }
+    // Learned names the user undid ("matched" chip): product and line text.
+    val undone = remember { mutableStateListOf<Pair<String, String>>() }
     var products by remember { mutableStateOf<List<Entry<ProductData>>>(emptyList()) }
     var productLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var spots by remember { mutableStateOf<List<Entry<SpotData>>>(emptyList()) }
     var invalid by remember { mutableStateOf(false) }
     var photo by remember { mutableStateOf<Bitmap?>(null) }
     var rows by remember { mutableStateOf<List<TextRowData>>(emptyList()) }
-    var shopRow by remember { mutableStateOf<Int?>(null) }
     // The photo copy lives only while this screen does.
     DisposableEffect(Unit) { onDispose { photo?.recycle() } }
 
-    suspend fun matchProduct(name: String) = repo.findProducts(name, null, emptyList()).firstOrNull()?.id
+    fun draft(item: ReceiptRowItemData) = ItemDraft(
+        rows = item.rows.map { it.toInt() },
+        text = item.name,
+        price = item.priceMinor?.takeIf { showPrice }?.let { priceText(it, currency.trim().uppercase()) }.orEmpty(),
+        quantity = lineQuantity(item.quantity, item.breakdown),
+        breakdown = item.breakdown,
+    )
 
-    suspend fun useAsShop(row: Int?) {
-        if (!showPrice) return
+    suspend fun suggest(item: ItemDraft, first: Boolean) {
+        if (item.text.isBlank()) return
+        item.suggested(repo.suggestForReceiptItem(item.text, shop.spot()), first, showBrand, showStrain)
+    }
+
+    /** Reads the items again from the user's grouping of the rows; cards whose rows didn't change keep their edits. */
+    fun regroup(groups: List<List<Int>>) {
+        val scanned = parseReceiptRowGroups(rows, groups.map { g -> g.map { it.toUInt() } })
+        val kept = items.filter { it.rows.isNotEmpty() }.associateBy { it.rows }
+        val typed = items.filter { it.rows.isEmpty() }
+        val next = scanned.items.map { kept[it.rows.map(UInt::toInt)] ?: draft(it) }
+        items.clear()
+        items += next + typed
+        val fresh = next.filter { it !in kept.values }
+        scope.launch { fresh.forEach { suggest(it, first = true) } }
+    }
+
+    fun groups() = items.filter { it.rows.isNotEmpty() }.map { it.rows }
+
+    fun reset() {
+        photo?.recycle()
+        photo = null
+        rows = emptyList()
+        items.clear()
+        undone.clear()
+        shop = if (showPrice) ShopState.Unknown else ShopState.None
+        headerName = null
+        shopRow = null
+        shopPicker = null
+        totalMinor = null
+        noText = false
+        cutOff = false
+        addingLine = false
+        rowList = false
+        invalid = false
+        day = LocalDate.now().toEpochDay()
+    }
+
+    /** The user tapped the shop's name: a saved spot by that name is a guess to confirm, else a new shop. */
+    fun pickShopRow(row: Int) {
+        val text = rows[row].text.trim()
         shopRow = row
-        shopText = row?.let { rows[it].text }.orEmpty()
-        shop = when {
-            shopText.isBlank() -> ShopChoice.None
-            else -> repo.matchSpot(shopText)?.let { ShopChoice.Existing(it) } ?: ShopChoice.New
+        items.removeAll { row in it.rows }
+        scope.launch {
+            shop = repo.matchSpot(text)?.let { ShopState.Guessed(it) } ?: ShopState.New(text)
+            shopPicker = null
         }
     }
 
-    /** Tapping a row adds it as an item, or removes the item read from it. */
-    suspend fun toggleItem(row: Int) {
-        val tagged = items.firstOrNull { row in it.rows }
-        when {
-            tagged != null -> items.remove(tagged)
-            row == shopRow -> useAsShop(null)
-            else -> {
-                val line = parseReceiptLine(rows[row].text)
-                val price = line.priceMinor?.takeIf { showPrice }?.let { formatMilli(it * 10) }.orEmpty()
-                val draft = ItemDraft(line.name, price, line.name.takeIf { it.isNotBlank() }?.let { matchProduct(it) }, listOf(row))
-                // In printed order; typed items stay at the end.
-                val at = items.indexOfFirst { it.rows.isEmpty() || it.rows.first() > row }
-                if (at < 0) items += draft else items.add(at, draft)
-            }
-        }
+    // A different shop re-ranks the suggestions: what the user buys there comes first.
+    val spotKey = shop.spot()
+    LaunchedEffect(spotKey) {
+        if (phase == Phase.REVIEW) items.toList().forEach { suggest(it, first = false) }
     }
 
     when (phase) {
@@ -209,14 +214,20 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                             noText = true
                         } else {
                             rows = found
-                            // The parser's input lines are the rows, one each.
-                            val receipt = parseReceipt(found.joinToString("\n") { it.text })
+                            val receipt = parseReceiptRows(found)
                             receipt.dateDay?.let { day = it }
-                            useAsShop(receipt.shopLine?.toInt())
-                            for (item in receipt.items) {
-                                val price = if (showPrice) formatMilli(item.priceMinor * 10) else ""
-                                items += ItemDraft(item.name, price, matchProduct(item.name), item.lines.map { it.toInt() })
+                            totalMinor = receipt.totalMinor
+                            val edges = receiptCutOff(found, read.image.width, read.image.height)
+                            cutOff = edges.left || edges.top || edges.right || edges.bottom
+                            if (showPrice) {
+                                // The shop first: its purchases rank the suggestions.
+                                val match = repo.matchReceiptShop(found.map { it.text })
+                                shop = shopState(match)
+                                headerName = match.shop
+                                shopRow = (match.shopRow ?: match.row)?.toInt()
                             }
+                            items += receipt.items.map(::draft)
+                            items.toList().forEach { suggest(it, first = true) }
                         }
                         phase = Phase.REVIEW
                     }
@@ -229,84 +240,127 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
         Phase.REVIEW -> EditorScaffold(
             title = stringResource(R.string.scan_receipt),
             onClose = onDone,
-            saveEnabled = items.any { it.include && it.name.isNotBlank() },
+            saveEnabled = items.any { it.text.isNotBlank() },
             onSave = {
                 val code = currency.trim().uppercase()
-                val chosen = items.filter { it.include && it.name.isNotBlank() }
-                val prices = chosen.map { if (it.price.isBlank()) null else parsePrice(it.price, code) }
-                if ((showPrice && code.length != 3) || chosen.zip(prices).any { (item, price) -> item.price.isNotBlank() && price == null }) {
+                val chosen = items.filter { it.text.isNotBlank() }
+                val prices = chosen.map { if (!showPrice || it.price.isBlank()) null else parsePrice(it.price, code) }
+                if ((showPrice && code.length != 3) || chosen.zip(prices).any { (item, price) -> showPrice && item.price.isNotBlank() && price == null }) {
                     invalid = true
                     return@EditorScaffold
                 }
                 scope.launch {
-                    val spotId = when (val choice = shop) {
-                        ShopChoice.None -> null
-                        is ShopChoice.Existing -> choice.id
-                        ShopChoice.New -> repo.saveSpot(
-                            null,
-                            SpotData(shopText.trim(), listOf(TagRefData.Builtin("re_up")), null, null, null, null, false),
-                        )
+                    val choice = shop
+                    val spotId = when (choice) {
+                        is ShopState.New -> choice.name.trim().takeIf { it.isNotEmpty() }?.let {
+                            repo.saveSpot(null, SpotData(it, listOf(TagRefData.Builtin("re_up")), null, null, null, null, false))
+                        }
+                        else -> choice.spot()
                     }
+                    // A shop the user confirmed keeps its receipt's numbers, so it's recognised next time.
+                    if (spotId != null && choice.remembers() && rows.isNotEmpty()) repo.rememberReceiptShop(spotId, rows.map { it.text })
+                    val defaults = products.associate { it.id to it.data.defaultSize }
+                    val linked = mutableSetOf<Pair<String, String>>()
                     val lines = chosen.zip(prices).map { (item, price) ->
                         val product = item.product ?: repo.saveProduct(
                             null,
-                            ProductData(item.name.trim(), null, null, emptyList(), null, null, null, null, emptyList(), null, null, emptyList(), emptyList()),
+                            newProductData(
+                                item.newName,
+                                item.newBrand.takeIf { showBrand },
+                                item.newStrain.takeIf { showStrain },
+                                item.breakdown,
+                                item.text,
+                            ),
                         )
-                        // Size, pack and quantity as the line prints them.
-                        val breakdown = describeReceiptItem(item.name)
+                        // A printed line linked to a product links to it next time.
+                        if (item.rows.isNotEmpty()) {
+                            linked += product to item.text
+                            if (!item.matched) learn { repo.learnReceiptName(product, item.text) }
+                        }
                         PurchaseLineData(
                             null,
                             product,
                             null,
                             price,
                             code.takeIf { price != null },
-                            size = breakdown.packageSize(),
-                            quantity = breakdown.quantity?.takeIf { it > 0u } ?: 1u,
+                            // Size and pack as the line prints them, else the product's usual size.
+                            size = item.breakdown?.packageSize() ?: defaults[product],
+                            quantity = item.quantity,
                         )
+                    }
+                    for ((product, text) in undone) {
+                        if (product to text !in linked) learn { repo.forgetReceiptName(product, text) }
                     }
                     val date = LocalDate.ofEpochDay(day ?: LocalDate.now().toEpochDay())
                     val zoned = date.atTime(LocalTime.NOON).atZone(ZoneId.systemDefault())
                     val `when` = LocalTimeData(zoned.toInstant().toEpochMilli(), (zoned.offset.totalSeconds / 60).toShort())
                     repo.savePurchase(null, PurchaseData(`when`, spotId, lines))
+                    // Saved; no hand-off to a session (maintainer, 2026-10-15).
                     onDone()
                 }
             },
         ) {
             if (noText) Text(stringResource(R.string.scan_no_text_engine), style = MaterialTheme.typography.bodySmall)
-            Text(stringResource(R.string.receipt_check), style = MaterialTheme.typography.bodyMedium)
             val image = photo
-            if (image != null && rows.isNotEmpty()) {
-                Text(stringResource(R.string.receipt_tap_hint), style = MaterialTheme.typography.bodySmall)
-                ReceiptPhotoView(
-                    image = image,
-                    rows = rows,
-                    itemRows = items.flatMap { it.rows }.toSet(),
-                    shopRow = shopRow,
-                    onTap = { scope.launch { toggleItem(it) } },
-                    onHold = { row ->
-                        if (showPrice) {
-                            scope.launch {
-                                items.removeAll { row in it.rows }
-                                useAsShop(row)
-                            }
-                        }
-                    },
-                )
-            }
+            val itemRows = items.flatMap { it.rows }.toSet()
+            val canTap = image != null && rows.isNotEmpty()
+
             if (showPrice) {
-                SectionTitle(stringResource(R.string.receipt_shop))
-                val newSpot = stringResource(R.string.receipt_new_spot, shopText.ifBlank { "…" })
-                Dropdown(
-                    label = stringResource(R.string.receipt_shop),
-                    options = listOf<Pair<ShopChoice, String>>(ShopChoice.None to stringResource(R.string.receipt_no_shop)) +
-                        spots.map { ShopChoice.Existing(it.id) to it.data.name } +
-                        (ShopChoice.New to newSpot),
-                    selected = shop,
-                    onSelect = { shop = it },
-                )
-                if (shop == ShopChoice.New) {
-                    OutlinedTextField(shopText, { shopText = it }, label = { Text(stringResource(R.string.receipt_shop_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                ShopCard(
+                    state = shop,
+                    spotName = { id -> spots.firstOrNull { it.id == id }?.data?.name.orEmpty() },
+                    headerName = headerName,
+                    hasPhoto = canTap,
+                    hasSpots = spots.isNotEmpty(),
+                    onChange = { shop = it },
+                    onTapName = { shopPicker = if (shopPicker == ShopPicker.PHOTO) null else ShopPicker.PHOTO },
+                    onPickSpot = { shopPicker = if (shopPicker == ShopPicker.SPOTS) null else ShopPicker.SPOTS },
+                ) {
+                    when (shopPicker) {
+                        ShopPicker.PHOTO -> if (image != null) {
+                            Text(stringResource(R.string.receipt_shop_tap_hint), style = MaterialTheme.typography.bodySmall)
+                            ReceiptPhotoView(
+                                image = image,
+                                rows = rows,
+                                itemRows = itemRows,
+                                shopRow = shopRow,
+                                description = stringResource(R.string.receipt_photo),
+                                atTop = true,
+                                onTap = ::pickShopRow,
+                            )
+                            // The list alternative: the header's rows.
+                            ReceiptRowList(
+                                rows = rows,
+                                indices = rows.indices.take(SHOP_ROWS),
+                                label = { null },
+                                enabled = { true },
+                                onPick = ::pickShopRow,
+                            )
+                        }
+                        ShopPicker.SPOTS -> Dropdown(
+                            label = stringResource(R.string.receipt_my_spots),
+                            options = listOf<Pair<String?, String>>(null to "") + spots.map { it.id to it.data.name },
+                            selected = null,
+                            onSelect = { id ->
+                                if (id != null) {
+                                    shop = ShopState.Confirmed(id)
+                                    shopPicker = null
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        null -> {}
+                    }
                 }
+            }
+            if (cutOff) {
+                CutOffCard(
+                    onRetake = {
+                        reset()
+                        phase = Phase.CAMERA
+                    },
+                    onKeep = { cutOff = false },
+                )
             }
             DayField(stringResource(R.string.receipt_date), day) { day = it }
             if (showPrice) {
@@ -315,97 +369,88 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
 
             SectionTitle(stringResource(R.string.receipt_items))
             if (items.isEmpty()) Text(stringResource(R.string.receipt_no_items))
-            val newProduct = stringResource(R.string.receipt_new_product)
-            for (item in items) {
-                OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = item.include, onCheckedChange = { item.include = it })
-                            OutlinedTextField(item.name, { item.name = it }, label = { Text(stringResource(R.string.receipt_item)) }, singleLine = true, modifier = Modifier.weight(1f))
+            val context = ItemCardContext(
+                rowText = { rows[it].text },
+                productLabel = { id -> productLabels[id] ?: products.firstOrNull { it.id == id }?.data?.name.orEmpty() },
+                products = products.map { it.id to (productLabels[it.id] ?: it.data.name) }.sortedBy { it.second.lowercase() },
+                showPrice = showPrice,
+                showBrand = showBrand,
+                showStrain = showStrain,
+            )
+            for (item in items.toList()) {
+                key(item) {
+                    if (item.rows.isEmpty()) {
+                        // A typed line: broken down and matched as it's typed.
+                        LaunchedEffect(item.text) {
+                            delay(TYPING_PAUSE_MS)
+                            item.breakdown = item.text.takeIf { it.isNotBlank() }?.let { describeReceiptItem(it) }
+                            suggest(item, first = false)
                         }
-                        if (showPrice) {
-                            OutlinedTextField(
-                                item.price,
-                                { item.price = it },
-                                label = { Text(stringResource(R.string.receipt_price)) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
-                            )
-                        }
-                        Dropdown(
-                            label = stringResource(R.string.receipt_product),
-                            options = listOf<Pair<String?, String>>(null to newProduct) + products.map { it.id to (productLabels[it.id] ?: it.data.name) }.sortedBy { it.second.lowercase() },
-                            selected = item.product,
-                            onSelect = { item.product = it },
-                        )
                     }
+                    val index = groups().indexOf(item.rows)
+                    val joined = if (item.rows.isEmpty()) null else joinWithNext(groups(), index, rows.size, shopRow)
+                    ItemCard(
+                        item = item,
+                        context = context,
+                        onJoin = joined?.let { { regroup(it) } },
+                        onSplit = { at -> splitGroup(groups(), index, at)?.let(::regroup) },
+                        onRemove = { items.remove(item) },
+                        onUndoMatch = { item.product?.let { undone += it to item.text } },
+                        onTextChange = { item.text = it },
+                    )
                 }
             }
-            OutlinedButton(onClick = { items += ItemDraft("", "", null) }) { Text(stringResource(R.string.receipt_add_item)) }
+            if (showPrice) {
+                totalMinor?.let { Text(stringResource(R.string.receipt_total, formatPrice(it, currency.trim().uppercase())), style = MaterialTheme.typography.bodyMedium) }
+            }
+
+            // "Missing a line?": pick it on the photo or in the list, or type it.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (canTap) OutlinedButton(onClick = { addingLine = !addingLine }) { Text(stringResource(R.string.receipt_missing)) }
+                OutlinedButton(onClick = { items += ItemDraft(emptyList(), "", "", 1u, null) }) { Text(stringResource(R.string.receipt_type_line)) }
+            }
+            if (addingLine && image != null) {
+                Text(stringResource(R.string.receipt_missing_hint), style = MaterialTheme.typography.bodySmall)
+                ReceiptPhotoView(
+                    image = image,
+                    rows = rows,
+                    itemRows = itemRows,
+                    shopRow = shopRow,
+                    description = stringResource(R.string.receipt_photo),
+                    atTop = false,
+                    onTap = { row -> if (row !in itemRows && row != shopRow) regroup(addRowGroup(groups(), row)) },
+                )
+                TextButton(onClick = { rowList = !rowList }) {
+                    Text(stringResource(if (rowList) R.string.receipt_rows_hide else R.string.receipt_rows_show))
+                }
+                if (rowList) {
+                    val added = stringResource(R.string.receipt_row_added)
+                    val shopLabel = stringResource(R.string.receipt_row_shop)
+                    ReceiptRowList(
+                        rows = rows,
+                        indices = rows.indices.toList(),
+                        label = { row -> if (row in itemRows) added else if (row == shopRow) shopLabel else null },
+                        enabled = { row -> row !in itemRows && row != shopRow },
+                        onPick = { row -> regroup(addRowGroup(groups(), row)) },
+                    )
+                }
+            }
             if (invalid) Text(stringResource(R.string.error_amount), color = MaterialTheme.colorScheme.error)
         }
     }
 }
 
-
-/**
- * The receipt photo with a box on each row that was read: filled for rows
- * read as items, in another colour for the shop, outlined for the rest.
- * Tapping or holding anywhere on a row's line picks that row.
- */
-@Composable
-private fun ReceiptPhotoView(
-    image: Bitmap,
-    rows: List<TextRowData>,
-    itemRows: Set<Int>,
-    shopRow: Int?,
-    onTap: (Int) -> Unit,
-    onHold: (Int) -> Unit,
-) {
-    val bitmap = remember(image) { image.asImageBitmap() }
-    val item = MaterialTheme.colorScheme.primary
-    val shop = MaterialTheme.colorScheme.tertiary
-    val other = MaterialTheme.colorScheme.outline
-    val description = stringResource(R.string.receipt_photo)
-    val tap by rememberUpdatedState(onTap)
-    val hold by rememberUpdatedState(onHold)
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(image.width / image.height.toFloat())
-            .semantics { contentDescription = description }
-            .pointerInput(rows, image) {
-                val toImage = image.width / size.width.toFloat()
-                fun rowAt(offset: Offset): Int? {
-                    val y = offset.y * toImage
-                    // A little slack above and below, for small print.
-                    val slack = ROW_SLACK_DP.dp.toPx() * toImage
-                    return rows.indices
-                        .filter { y >= rows[it].top - slack && y <= rows[it].bottom + slack }
-                        .minByOrNull { abs((rows[it].top + rows[it].bottom) / 2f - y) }
-                }
-                detectTapGestures(
-                    onTap = { offset -> rowAt(offset)?.let(tap) },
-                    onLongPress = { offset -> rowAt(offset)?.let(hold) },
-                )
-            },
-    ) {
-        drawImage(bitmap, dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()))
-        val toView = size.width / image.width
-        val stroke = Stroke(width = 2.dp.toPx())
-        rows.forEachIndexed { index, row ->
-            val topLeft = Offset(row.left * toView, row.top * toView)
-            val box = Size((row.right - row.left) * toView, (row.bottom - row.top) * toView)
-            val color = when (index) {
-                shopRow -> shop
-                in itemRows -> item
-                else -> other
-            }
-            if (index == shopRow || index in itemRows) drawRect(color.copy(alpha = 0.25f), topLeft, box)
-            drawRect(color, topLeft, box, style = stroke)
-        }
+/** Learning or forgetting a receipt name is a convenience: a refusal (a line over 200 characters, a deleted product) doesn't stop the save. */
+private inline fun learn(block: () -> Unit) {
+    try {
+        block()
+    } catch (_: CoreException) {
+        // Nothing to learn from this line.
     }
 }
 
-/** Slack above and below a row that still picks it, in dp. */
-private const val ROW_SLACK_DP = 6
+/** How many header rows "Tap the shop's name" lists. */
+private const val SHOP_ROWS = 12
+
+/** How long typing pauses before a typed line is matched, in ms. */
+private const val TYPING_PAUSE_MS = 400L

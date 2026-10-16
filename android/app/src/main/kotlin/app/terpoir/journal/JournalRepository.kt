@@ -14,7 +14,9 @@ import app.terpoir.core.NearbySpot
 import app.terpoir.core.ProductData
 import app.terpoir.core.ProductMatch
 import app.terpoir.core.PurchaseData
+import app.terpoir.core.ReceiptShopMatch
 import app.terpoir.core.RecordType
+import app.terpoir.core.ScanSuggestion
 import app.terpoir.core.SessionData
 import app.terpoir.core.SnippetData
 import app.terpoir.core.SpotData
@@ -129,6 +131,30 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
 
     /** The saved spot a receipt's shop name most likely refers to. */
     suspend fun matchSpot(shop: String): String? = io { journal.matchSpot(shop) }
+
+    /**
+     * The saved spot a receipt's header belongs to, from its rows' text top
+     * to bottom: by a phone or licence number the spot is known by
+     * (strong), else by name (a guess). Matched by the core on the device.
+     */
+    suspend fun matchReceiptShop(rows: List<String>): ReceiptShopMatch = io { journal.matchReceiptShop(rows) }
+
+    /** Adds the phone and licence numbers a receipt's header prints to [spot], once the user confirmed it. */
+    suspend fun rememberReceiptShop(spot: String, rows: List<String>): Int = io { journal.rememberReceiptShop(spot, rows, now()).toInt() }
+
+    /**
+     * The user's products, brands and strains a receipt item's [text] may
+     * name, best first. A product that learned the exact text comes first,
+     * marked `learned`; everything else is a suggestion.
+     */
+    suspend fun suggestForReceiptItem(text: String, spot: String?): List<ScanSuggestion> =
+        io { journal.suggestForReceiptItem(text, spot) }
+
+    /** [product] learns a receipt line's text, so the same line links to it next time. */
+    suspend fun learnReceiptName(product: String, text: String) = io { journal.learnReceiptName(product, text, now()) }
+
+    /** [product] forgets a learned receipt line's text. Returns whether it had it. */
+    suspend fun forgetReceiptName(product: String, text: String): Boolean = io { journal.forgetReceiptName(product, text, now()) }
 
     /** Custom tags of one category (for example `effect`), by name. */
     suspend fun tags(category: String): List<Entry<TagData>> = io {
