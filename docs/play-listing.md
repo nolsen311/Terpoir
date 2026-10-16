@@ -573,6 +573,14 @@ them; the other activities belong to Google's libraries.
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.6.2** (358 characters):
+    Headline: Notify me comes to Google Play
+    Summary: "Notify me": alerts when you stop at a saved spot ; reminders to log a purchase as you leave a shop ; off until you turn them on ; your location never leaves your phone
+    ```
+    <en-US>
+    "Notify me" comes to Google Play: an optional alert when you stop at one of your saved spots, and a reminder to log a purchase when you leave a shop, even with the app closed. Both stay off until you turn them on in the Privacy Center, and the app explains what they use before Android asks for location "all the time". Your location never leaves your phone.
+    </en-US>
+    ```
   - **0.6.1** (442 characters):
     Headline: Long receipts, pack sizes, and New entry everywhere
     Summary: second photo for long receipts ; packs read as "each" or "in all" ; merge duplicate products (on save, with undo) ; pick strains by search ; rating starts from the middle face ; "New entry" on shortcuts, tiles & widget
