@@ -27,11 +27,12 @@ object Distribution {
 
     /**
      * Location "all the time", for "Notify me" and purchase reminders. Left
-     * out of the Play build (maintainer, 2026-10-13): its manifest removes
-     * ACCESS_BACKGROUND_LOCATION, and "Show me" covers spots while the app is
-     * open (docs/design-decisions.md, "Location and saved spots").
+     * out of the first Play releases (maintainer, 2026-10-13) and brought
+     * back with the background-location declaration and the in-app
+     * disclosure (maintainer, 2026-10-16; docs/play-listing.md, "Location
+     * declaration").
      */
-    const val BACKGROUND_LOCATION = false
+    const val BACKGROUND_LOCATION = true
 
     /** Google Play Age Signals. */
     val ageSignals: AgeSignals = PlayAgeSignals

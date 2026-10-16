@@ -32,8 +32,9 @@ per item or small group of items. Keep this file updated as items land.
       release, which leaves background location out (maintainer,
       2026-10-13). The full checklist, disclosure text, form answers and
       video script are in `docs/play-listing.md`, "Location declaration":
-  - [ ] Code PR (Claude): the Play build requests it, with the in-app
-        disclosure screen, privacy policy and Data safety updates.
+  - [x] Code PR (Claude): the Play build requests it, with the in-app
+        disclosure screen, privacy policy and Data safety updates
+        (2026-10-16).
   - [ ] Record the video on an internal-testing build; upload it
         unlisted.
   - [ ] Fill in App content → Sensitive app permissions → Location

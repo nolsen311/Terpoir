@@ -11,7 +11,8 @@ ready to paste. Written 2026-10-13 for the first Play release, version
   (`app/build/intermediates/merged_manifest/playRelease/`) and Google's own
   data disclosure pages, linked where used.
 - **Maintainer decisions** (2026-10-13):
-  - no background location in this release;
+  - no background location in the first releases; brought to Play with
+    the declaration below (maintainer, 2026-10-16);
   - health declaration: Sleep Management only (2026-10-14, after Play
     rejected Medication and Treatment Management for a personal account);
   - developer name "Terpoir", contact `terpoirapp@gmail.com`, website
@@ -49,7 +50,7 @@ Terpoir: Private Journal
 An encrypted journal for adults: note what you try and how it felt. No account.
 ```
 
-**Full description** (2809/4000):
+**Full description** (2958/4000):
 
 ```
 Terpoir is a private journal for adults who use cannabis where it is legal. Note what you tried, how much, and how it felt, then look back and see what actually works for you. It is a notebook, not a shop or a social network: Terpoir sells nothing, recommends nothing, and does not tell you to use more.
@@ -66,6 +67,7 @@ WHAT YOU CAN RECORD
 • Products, brands and strains, with label details such as THC and CBD amounts and top terpenes.
 • Notes in your own words, typed or spoken. Speech is turned into text by your phone's on-device recognizer; the audio is never kept.
 • Saved places, with an approximate location if you want one.
+• Optional alerts when you stop at a saved spot, even when the app is closed. Off until you turn them on, and your location never leaves your phone.
 
 QUICK TO USE
 • Scan a product label, a receipt or a barcode, and the details fill themselves in. Text recognition runs on your phone.
@@ -106,8 +108,9 @@ Notes on the copy:
   delivery or pick-up, or selling THC products
   ([Inappropriate Content](https://support.google.com/googleplay/android-developer/answer/9878810);
   `docs/design-decisions.md`, "App store policy").
-- **No background-location sentence:** background location isn't in this
-  release, so the prominent-disclosure sentence isn't needed.
+- **Background location:** the alerts bullet under "What you can record"
+  says the feature is optional and works while the app is closed, as the
+  in-app disclosure does (see "Location declaration").
 - **Graphics:** `android/release/store/icon-512.png` (app icon) and
   `android/release/store/feature-graphic-1024x500.png` (feature graphic).
   Phone screenshots are still to take, from the Play build with a sample
@@ -231,7 +234,7 @@ are on
 | ML Kit text recognition (`play-services-mlkit-text-recognition`, with Google Data Transport) | Only with "Google text recognition" on | Device information; app package and version; a device identifier and per-installation identifiers; performance metrics; API configuration; input and output sizes; event types; error codes. Encrypted in transit, not transferred to third parties | [ML Kit data disclosure](https://developers.google.com/ml-kit/android-data-disclosure) |
 | Play Feature Delivery and Play Asset Delivery | Only when the user agrees to download the open text-recognition engine | Device metadata and app version, to serve the right module and asset pack. Encrypted, not shared, deleted after a fixed period | [Feature Delivery](https://developer.android.com/guide/playcore/feature-delivery#data-safety), [Asset Delivery](https://developer.android.com/guide/playcore/asset-delivery#data-safety) |
 | Play Age Signals (`age-signals`) | At first launch | Nothing: "No data is collected by the Play Age Signals client library." | [Play Age Signals data safety](https://developer.android.com/google/play/age-signals/overview#data-safety) |
-| Google Play services location (`play-services-location`) | Not used: only "Notify me" geofencing calls it, which this release doesn't offer | Nothing | `docs/design-decisions.md` |
+| Google Play services location (`play-services-location`) | Only with "Notify me" or purchase reminders on: Terpoir registers geofences around saved spots | Nothing from Terpoir: the geofences are held by Play services on the phone. Google's core disclosure page covers only base, basement, OSS licenses and tasks; no location-library disclosure was found (checked 2026-10-16) | [Play services data disclosure](https://developers.google.com/android/guides/play-data-disclosure), `docs/design-decisions.md` |
 | Google Play services base, basement, tasks | Always (libraries) | Nothing: "do not collect any end-user data" | [Play services data disclosure](https://developers.google.com/android/guides/play-data-disclosure) |
 
 ### The form
@@ -299,6 +302,11 @@ Judgement calls, to revisit if Google's guidance changes:
 - **Optional** is allowed only if every user, on every device and in every
   region, can opt out. True here: every Google feature is a Privacy Center
   switch, off by default.
+- **Geofencing isn't declared as collecting location** (2026-10-16): Terpoir
+  sends no location anywhere, and Google publishes no data disclosure for
+  `play-services-location` that says it collects any. If Google publishes
+  one that does, declare Precise location as collected, optional, for App
+  functionality, under the same "collected, not shared" reasoning.
 
 ## Health apps declaration
 
@@ -399,10 +407,10 @@ and Terpoir declares no foreground service of its own.
 
 ## Location declaration
 
-Not needed yet: the Play build doesn't request
-`ACCESS_BACKGROUND_LOCATION`. "Show me" and spot locations use location
-only while the app is open. Bringing "Notify me" (and purchase reminders,
-which use the same geofences) to Play takes the steps below, in order.
+Needed from the release that brings "Notify me" (and purchase reminders,
+which use the same geofences) to the Play build, which requests
+`ACCESS_BACKGROUND_LOCATION` from then on (maintainer, 2026-10-16). The
+steps below, in order; the code is done.
 Google's rules move, so re-read
 [Location permissions](https://support.google.com/googleplay/android-developer/answer/9799150)
 and the [User Data policy's prominent disclosure](https://support.google.com/googleplay/android-developer/answer/11150561)
@@ -411,32 +419,33 @@ when starting.
 ### Checklist
 
 1. **Code (Claude, one PR, with no release yet):**
-   - [ ] Play flavor: `Distribution.BACKGROUND_LOCATION = true`; drop the
+   - [x] Play flavor: `Distribution.BACKGROUND_LOCATION = true`; drop the
          `tools:node="remove"` for `ACCESS_BACKGROUND_LOCATION` from
          `src/play/AndroidManifest.xml`; move the permission from
          `fossOnlyPermissions` to the shared allowlist in
          `app/build.gradle.kts`. `PrivacyTogglesTest` then expects it in
          both builds.
-   - [ ] **Prominent disclosure** right before Android's prompt: the
-         "Notify me needs a few permissions" card's background step
-         (`notify_setup_background`) becomes its own screen with the text
-         below, a "Continue" that opens Android's prompt and a "Not now"
-         that leaves the toggle off. The same screen for purchase
-         reminders. It must be in the app, separate from the privacy
-         policy, and shown before every request, not only the first.
-   - [ ] Privacy policy (`site/privacy.html`): the Google Play version
+   - [x] **Prominent disclosure** right before Android's prompt: the
+         "Notify me needs a few permissions" card's background step is
+         now its own card (`BackgroundLocationDisclosure` in
+         `JournalHome.kt`) with the text below, a "Continue" that opens
+         Android's prompt and a "Not now" that hides the card (nothing is
+         watched until the permission is granted). It names "Notify me",
+         purchase reminders or both, whichever is on. It is in the app,
+         separate from the privacy policy, and shown before every
+         request, not only the first.
+   - [x] Privacy policy (`site/privacy.html`): the Google Play version
          also asks for location "all the time", only after the user turns
          on "Notify me" or purchase reminders; what Google Play services
          holds (the spots' coordinates, never names).
-   - [ ] Data safety (above): `play-services-location` becomes "Used".
-         Check its [data disclosure](https://developers.google.com/android/guides/play-data-disclosure)
-         then; if Google says the Geofencing API collects location,
-         declare Precise location as collected, optional, for App
-         functionality, and follow the "collected, not shared" reasoning.
-   - [ ] Store listing: the "No background-location sentence" note goes;
-         the full description may say "optional alerts at your saved
-         spots, even when the app is closed".
-   - [ ] An internal-testing build to record the video from.
+   - [x] Data safety (above): `play-services-location` is now "Used".
+         No disclosure from Google says the Geofencing API collects
+         location (checked 2026-10-16), so nothing new is declared; see
+         the judgement calls.
+   - [x] Store listing: the full description says "Optional alerts when
+         you stop at a saved spot, even when the app is closed".
+   - [ ] An internal-testing build to record the video from: the
+         version bump's release, uploaded to internal testing first.
 2. **Play Console (maintainer), with the internal build uploaded:**
    - [ ] Record the video (below) on a phone running that build.
    - [ ] Upload it unlisted (for example YouTube) and copy the link.
@@ -451,21 +460,38 @@ when starting.
    - [ ] Tick the roadmap's "Notify me on Play" row and the maintainer
          item.
 
-### In-app disclosure (proposed)
+### In-app disclosure
 
-Title: **Use your location in the background?**
+Shown on the journal page, in place of the setup card's background step
+(`location_disclosure_*` strings). Title: **Use your location in the
+background?** Then one of, by what is on:
 
 ```
 Terpoir uses your location to alert you when you stop at one of your
-saved spots, and to remind you to log a purchase when you leave a shop,
-even when the app is closed or not in use. Your location never leaves
-your phone: Android's location service (Google Play services) watches
-only the spots you saved, by their coordinates, never their names.
-Turn it off any time in the Privacy Center.
+saved spots, even when the app is closed or not in use.
+```
+```
+Terpoir uses your location to remind you to log a purchase when you leave
+one of your Re-up Spots, even when the app is closed or not in use.
+```
+```
+Terpoir uses your location to alert you when you stop at one of your
+saved spots, and to remind you to log a purchase when you leave a Re-up
+Spot, even when the app is closed or not in use.
 ```
 
-Buttons: **Continue** (opens Android's prompt; choose "Allow all the
-time") and **Not now**.
+Then always:
+
+```
+Your location never leaves your phone. Android's location service (Google
+Play services, on phones that use it) watches only the spots you saved,
+by their coordinates, never their names. Turn it off any time in the
+Privacy Center.
+
+Next, Android opens its settings: choose "Allow all the time".
+```
+
+Buttons: **Continue** (opens Android's prompt) and **Not now**.
 
 ### Declaration form answers
 
