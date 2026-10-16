@@ -24,6 +24,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
@@ -31,6 +32,7 @@ import app.terpoir.core.InsightData
 import app.terpoir.core.InsightFeedback
 import app.terpoir.core.SessionData
 import app.terpoir.core.ShopInsightData
+import app.terpoir.core.TimelineInsightData
 import java.util.Locale
 import kotlinx.coroutines.launch
 
@@ -46,12 +48,14 @@ fun InsightsScreen(repo: JournalRepository, onOpenSession: (String) -> Unit, onC
     val scope = rememberCoroutineScope()
     var insights by remember { mutableStateOf<List<InsightData>?>(null) }
     var shops by remember { mutableStateOf<List<ShopInsightData>>(emptyList()) }
+    var timelines by remember { mutableStateOf<List<TimelineInsightData>>(emptyList()) }
     var sessions by remember { mutableStateOf<Map<String, SessionData>>(emptyMap()) }
     var expanded by remember { mutableStateOf<String?>(null) }
     var revision by remember { mutableIntStateOf(0) }
     LaunchedEffect(revision) {
         insights = repo.insights()
         shops = repo.shopInsights()
+        timelines = repo.timelineInsights()
         sessions = repo.sessions().associate { it.id to it.data }
     }
     fun feedback(key: String, kind: InsightFeedback) {
@@ -175,6 +179,47 @@ fun InsightsScreen(repo: JournalRepository, onOpenSession: (String) -> Unit, onC
                     }
                     if (expanded == shop.spot) {
                         for (id in shop.sessions) {
+                            val s = sessions[id] ?: continue
+                            TextButton(onClick = { onOpenSession(id) }) {
+                                Text(listOfNotNull(formatWhen(s.`when`.unixMs, s.`when`.utcOffsetMin), s.rating?.let { "${it}★" }).joinToString(" · "))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // "How it usually goes" (the session timeline's insights): typical
+        // timelines from the points the user set. The core returns none
+        // while the timeline is hidden in What I track.
+        if (timelines.isNotEmpty()) {
+            SectionTitle(stringResource(R.string.insights_timelines))
+            Text(stringResource(R.string.insights_timelines_explainer), style = MaterialTheme.typography.bodySmall)
+        }
+        val levelNames = stringArrayResource(R.array.timeline_levels)
+        for (t in timelines) {
+            val key = "timeline:${t.category}:${t.subject}"
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(if (t.category == "method") label(t.name) else t.name, style = MaterialTheme.typography.titleSmall)
+                    val parts = listOfNotNull(
+                        t.onsetMin?.let { stringResource(R.string.insights_timeline_onset, durationLabel(it.toInt())) },
+                        stringResource(
+                            R.string.insights_timeline_peak,
+                            durationLabel(t.peakMin.toInt()),
+                            levelNames.getOrElse(t.peakLevel.toInt()) { "" },
+                        ),
+                        t.easesMin?.let { stringResource(R.string.insights_timeline_eases, durationLabel(it.toInt())) },
+                    )
+                    Text(parts.joinToString(", "), style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        pluralStringResource(R.plurals.insights_timeline_sessions, t.sessions.size, t.sessions.size),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    TextButton(onClick = { expanded = if (expanded == key) null else key }) {
+                        Text(stringResource(R.string.insights_sessions))
+                    }
+                    if (expanded == key) {
+                        for (id in t.sessions) {
                             val s = sessions[id] ?: continue
                             TextButton(onClick = { onOpenSession(id) }) {
                                 Text(listOfNotNull(formatWhen(s.`when`.unixMs, s.`when`.utcOffsetMin), s.rating?.let { "${it}★" }).joinToString(" · "))

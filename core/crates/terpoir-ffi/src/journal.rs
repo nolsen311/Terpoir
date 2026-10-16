@@ -19,7 +19,7 @@ use terpoir_sync::{Clock, apply_pending, export_blobs, import_blob};
 use terpoir_tagging::CustomTag;
 use zeroize::Zeroizing;
 
-use crate::insights::{self, InsightData, InsightFeedback, ShopInsightData};
+use crate::insights::{self, InsightData, InsightFeedback, ShopInsightData, TimelineInsightData};
 use crate::keys::RotatedKeys;
 use crate::plaintext::{self, ExportFile};
 use crate::records::{
@@ -1296,6 +1296,17 @@ impl Journal {
     /// `Locked` or `Storage`.
     pub fn shop_insights(&self) -> Result<Vec<ShopInsightData>> {
         self.with(|u| insights::shops(&*u))
+    }
+
+    /// "How it usually goes": typical timelines by method, product and
+    /// strain, from the points the user set. Opt-in with the other
+    /// insights; empty while the timeline is hidden.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn timeline_insights(&self) -> Result<Vec<TimelineInsightData>> {
+        self.with(|u| insights::timelines(&*u))
     }
 
     /// Records the user's feedback on an insight (`key` is the insight's

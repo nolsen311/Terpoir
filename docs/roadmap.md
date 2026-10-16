@@ -419,7 +419,10 @@ requirement rather than on features.
         guessed points, "You last updated", in the session editor and the
         check-in screen; stored as levels per minute in the core.
   - [x] The timeline in shares.
-  - [ ] Insights that use the timeline (for example, how fast it comes on).
+  - [x] Insights that use the timeline: "How it usually goes" per method,
+        product and strain (comes on, peaks, eases off), from set points.
+  - [ ] Timeline comparisons ("comes on faster than your other edibles"),
+        once there is enough data to make them trustworthy.
 
 ## Phase 5: Stretch
 

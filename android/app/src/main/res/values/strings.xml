@@ -358,6 +358,15 @@
     <string name="insights_sessions">Sessions</string>
     <string name="insights_shops">Shops</string>
     <string name="insights_shops_explainer">Sessions grouped by the Re-up Spot each product came from: the shop picked on the session (From), the receipt it names, or the product\'s only shop in Where I buy it. A shop shows once it has 5 rated sessions.</string>
+    <string name="insights_timelines">How it usually goes</string>
+    <string name="insights_timelines_explainer">From the timeline points you set, never the chart\'s guesses: the middle value over your sessions. Shows once 3 sessions have points.</string>
+    <string name="insights_timeline_onset">comes on by %1$s</string>
+    <string name="insights_timeline_peak">peaks around %1$s at %2$s</string>
+    <string name="insights_timeline_eases">eases off by %1$s</string>
+    <plurals name="insights_timeline_sessions">
+        <item quantity="one">%d session</item>
+        <item quantity="other">%d sessions</item>
+    </plurals>
     <string name="insights_shop_rating">%1$s★ average</string>
     <string name="insights_shop_hits">%1$d%% hits</string>
     <plurals name="insights_shop_sessions">

@@ -46,7 +46,9 @@ pub use archive::{
 };
 pub use capture::{capture_ready, seal_capture};
 pub use error::{CoreError, Result};
-pub use insights::{InsightData, InsightFeedback, ShopEffectData, ShopInsightData};
+pub use insights::{
+    InsightData, InsightFeedback, ShopEffectData, ShopInsightData, TimelineInsightData,
+};
 pub use journal::{
     ImportResult, Journal, NearbySpot, ProductMatch, PromptFence, ReceiptShopMatch, RecordType,
     ScanSuggestion, SyncBlob, TagSuggestion,
