@@ -181,12 +181,14 @@ fn builtin(slug: &str) -> TagRefData {
 }
 
 /// Since 0.6.0: the gummies' package size, 10 pieces and 100 mg.
-fn gummies_size() -> PackageSizeData {
+/// The fixture's size; what its amount covers is written since 0.6.1
+/// (`pack_per` in the manifest).
+fn gummies_size(pack_per: bool) -> PackageSizeData {
     PackageSizeData {
         milli: Some(100_000),
         unit: Some("mg".into()),
         pack: Some(10),
-        per: Some("each".into()),
+        per: pack_per.then(|| "each".into()),
     }
 }
 
@@ -232,6 +234,7 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
     // Since 0.6.0, sizes and quantities, learned receipt names and shop
     // numbers.
     let receipt_formats = fixture.manifest["receipt_formats"].as_bool() == Some(true);
+    let pack_per = fixture.manifest["pack_per"].as_bool() == Some(true);
     assert_eq!(
         count(RecordType::Tag),
         2 + usize::from(subtype_tag.is_some())
@@ -362,7 +365,7 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
             },
             // Since 0.6.0; older fixtures have none.
             subtype: subtypes.then(|| builtin("gummy")),
-            default_size: receipt_formats.then(gummies_size),
+            default_size: receipt_formats.then(|| gummies_size(pack_per)),
             receipt_names: if receipt_formats {
                 vec!["ACME GUMMIES 10PK 100MG".to_owned()]
             } else {
@@ -384,7 +387,7 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
                 price_minor_units: Some(2_000),
                 price_currency: Some("USD".into()),
                 // Since 0.6.0; older fixtures have none, which reads as 1.
-                size: receipt_formats.then(gummies_size),
+                size: receipt_formats.then(|| gummies_size(pack_per)),
                 quantity: if receipt_formats { 2 } else { 1 },
             }],
         },

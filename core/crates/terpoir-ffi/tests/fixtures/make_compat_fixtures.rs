@@ -507,6 +507,7 @@ fn main() {
   "product_cannabinoids": true,
   "product_subtypes": true,
   "receipt_formats": true,
+  "pack_per": true,
   "ids": {{
     "brand": "{brand}",
     "deleted_brand": "{deleted_brand}",

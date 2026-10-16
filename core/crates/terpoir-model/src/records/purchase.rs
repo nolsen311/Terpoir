@@ -51,9 +51,11 @@ pub struct SizeAmount {
 /// says whether the amount is each piece's or the whole pack's, once that
 /// is decided. At least one of the amount and the pack is set.
 ///
-/// Stored as a tuple of four: the amount, its unit, the pack, and what the
-/// amount covers. Builds of 0.6.0 before the fourth item wrote three; those
-/// read with it unset.
+/// Stored as a tuple of three (the amount, its unit, the pack), as 0.6.0
+/// wrote it. What the amount covers (since 0.6.1) is stored beside it, in
+/// its own field (`line_size_per/<line>` on a purchase, `default_size_per`
+/// on a product), because 0.6.0 refuses a size tuple that isn't three
+/// items; this way it reads the size and keeps the reading untouched.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct PackageSize {
     /// The amount.
@@ -75,23 +77,40 @@ impl PackageSize {
                 .as_ref()
                 .map_or(Value::Null, |a| Value::Text(a.unit.slug().to_owned())),
             self.pack.map_or(Value::Null, |p| Value::Int(i64::from(p))),
-            self.per
-                .as_ref()
-                .map_or(Value::Null, |p| Value::Text(p.slug().to_owned())),
         ])
     }
 
-    /// Reads a stored size; `None` if it is malformed (nothing set, half an
-    /// amount, a zero or negative amount or pack, or what the amount covers
-    /// without both an amount and a pack).
+    /// What the amount covers, as stored beside the size; `Null` when
+    /// undecided.
+    pub(crate) fn per_value(&self) -> Value {
+        self.per
+            .as_ref()
+            .map_or(Value::Null, |p| Value::Text(p.slug().to_owned()))
+    }
+
+    /// Takes what the amount covers from its stored field: kept only when
+    /// the size has both an amount and a pack (an app from before 0.6.1 may
+    /// have changed the size and left it). `Err` for a value that isn't
+    /// text.
+    pub(crate) fn read_per(&mut self, value: &Value) -> core::result::Result<(), ()> {
+        self.per = match value {
+            Value::Null => None,
+            Value::Text(slug) => Some(AmountPer::from_slug(slug)),
+            _ => return Err(()),
+        }
+        .filter(|_| self.amount.is_some() && self.pack.is_some());
+        Ok(())
+    }
+
+    /// Reads a stored size, with what its amount covers undecided (see
+    /// [`read_per`](Self::read_per)); `None` if it is malformed (nothing
+    /// set, half an amount, a zero or negative amount or pack).
     pub(crate) fn from_value(value: &Value) -> Option<Self> {
         let Value::Tuple(items) = value else {
             return None;
         };
-        let (milli, unit, pack, per) = match items.as_slice() {
-            [milli, unit, pack] => (milli, unit, pack, &Value::Null),
-            [milli, unit, pack, per] => (milli, unit, pack, per),
-            _ => return None,
+        let [milli, unit, pack] = items.as_slice() else {
+            return None;
         };
         let amount = match (milli, unit) {
             (Value::Null, Value::Null) => None,
@@ -106,12 +125,11 @@ impl PackageSize {
             Value::Int(p) => Some(u32::try_from(*p).ok().filter(|p| *p >= 1)?),
             _ => return None,
         };
-        let per = match per {
-            Value::Null => None,
-            Value::Text(slug) => Some(AmountPer::from_slug(slug)),
-            _ => return None,
+        let size = Self {
+            amount,
+            pack,
+            per: None,
         };
-        let size = Self { amount, pack, per };
         size.is_valid().then_some(size)
     }
 
@@ -157,7 +175,9 @@ pub struct PurchaseLine {
     /// What it cost.
     pub price: Option<Price>,
     /// The package size bought (since 0.6.0). Stored in the purchase's
-    /// `line_sizes` map, so apps that predate it keep it untouched.
+    /// `line_sizes` map, and what a pack's amount covers (since 0.6.1) in
+    /// its `line_size_per` map, so apps that predate them keep them
+    /// untouched.
     pub size: Option<PackageSize>,
     /// How many were bought, at least 1 (since 0.6.0). Stored in the
     /// purchase's `line_quantities` map when more than 1; absent reads as 1.
@@ -253,6 +273,14 @@ impl Record for Purchase {
                 PackageSize::to_value,
             )
             .map(
+                "line_size_per",
+                self.lines.iter().filter_map(|(id, l)| {
+                    l.size.as_ref().filter(|s| s.per.is_some()).map(|s| (id, s))
+                }),
+                |id| id.to_hex(),
+                PackageSize::per_value,
+            )
+            .map(
                 "line_quantities",
                 self.lines
                     .iter()
@@ -283,6 +311,16 @@ impl Record for Purchase {
                 line.size = Some(size);
             }
         }
+        for (key, value) in r.entries("line_size_per") {
+            let id = RecordId::from_hex(key).map_err(|_| Error::InvalidField("line_size_per"))?;
+            if !matches!(value, Value::Text(_) | Value::Null) {
+                return Err(Error::InvalidField("line_size_per"));
+            }
+            if let Some(size) = lines.get_mut(&id).and_then(|l| l.size.as_mut()) {
+                size.read_per(value)
+                    .map_err(|()| Error::InvalidField("line_size_per"))?;
+            }
+        }
         for (key, value) in r.entries("line_quantities") {
             let quantity = match value {
                 Value::Int(q) => u32::try_from(*q).ok().filter(|q| *q >= 1),
@@ -306,7 +344,7 @@ impl Record for Purchase {
         owns(
             key,
             &["when", "spot"],
-            &["lines", "line_sizes", "line_quantities"],
+            &["lines", "line_sizes", "line_size_per", "line_quantities"],
         )
     }
 }
@@ -430,7 +468,7 @@ mod tests {
         assert!(matches!(doc.value(&format!("lines/{key}")), Value::Tuple(t) if t.len() == 4));
         assert_eq!(
             doc.value(&format!("line_sizes/{key}")),
-            &Value::Tuple(vec![Value::Null, Value::Null, Value::Int(10), Value::Null])
+            &Value::Tuple(vec![Value::Null, Value::Null, Value::Int(10)])
         );
         assert_eq!(doc.value(&format!("line_quantities/{key}")), &Value::Int(3));
         assert!(Purchase::owns_field(&format!("line_sizes/{key}")));
@@ -479,25 +517,17 @@ mod tests {
                 Value::Tuple(vec![Value::Null, Value::Null, Value::Int(0)]),
             ),
             ("line_sizes", Value::Int(3)),
-            // What the amount covers, without both an amount and a pack.
-            (
-                "line_sizes",
-                Value::Tuple(vec![
-                    Value::Null,
-                    Value::Null,
-                    Value::Int(5),
-                    Value::Text("each".into()),
-                ]),
-            ),
+            // A size tuple of four: 0.6.0 refuses it, so it is never written.
             (
                 "line_sizes",
                 Value::Tuple(vec![
                     Value::Int(500),
                     Value::Text("g".into()),
                     Value::Int(5),
-                    Value::Int(1),
+                    Value::Text("each".into()),
                 ]),
             ),
+            ("line_size_per", Value::Int(1)),
             ("line_quantities", Value::Int(0)),
             ("line_quantities", Value::Text("2".into())),
         ] {
@@ -508,7 +538,11 @@ mod tests {
     }
 
     #[test]
-    fn what_a_packs_amount_covers_round_trips_and_reads_from_three_items() {
+    fn what_a_packs_amount_covers_sits_beside_the_size_for_0_6_0() {
+        let when = LocalTime {
+            unix_ms: 0,
+            utc_offset_min: 0,
+        };
         let size = |per| PackageSize {
             amount: Some(SizeAmount {
                 milli: 500,
@@ -517,23 +551,41 @@ mod tests {
             pack: Some(5),
             per,
         };
+        let mut purchase = Purchase::new(when);
+        let line = |per| PurchaseLine {
+            product: None,
+            batch: None,
+            price: None,
+            size: Some(size(per)),
+            quantity: 1,
+        };
         for per in [
             None,
             Some(AmountPer::Each),
             Some(AmountPer::Total),
             Some(AmountPer::from_slug("per_serving")),
         ] {
-            let value = size(per.clone()).to_value();
-            assert!(matches!(&value, Value::Tuple(t) if t.len() == 4));
-            assert_eq!(PackageSize::from_value(&value), Some(size(per)));
+            purchase.lines.insert(id(1), line(per));
+            let doc = Document::create(&purchase, stamp()).unwrap();
+            assert!(Purchase::from_document(&doc).unwrap() == purchase);
+            // The size keeps the three items 0.6.0 reads.
+            let key = id(1).to_hex();
+            assert!(
+                matches!(doc.value(&format!("line_sizes/{key}")), Value::Tuple(t) if t.len() == 3)
+            );
         }
-        // Written by a 0.6.0 build before the fourth item: undecided.
-        let three = Value::Tuple(vec![
-            Value::Int(500),
-            Value::Text("g".into()),
-            Value::Int(5),
-        ]);
-        assert_eq!(PackageSize::from_value(&three), Some(size(None)));
+        let mut doc = Document::create(&purchase, stamp()).unwrap();
+        let key = id(1).to_hex();
+        assert!(Purchase::owns_field(&format!("line_size_per/{key}")));
+        // An app from before 0.6.1 drops the pack and leaves the reading:
+        // it no longer applies.
+        doc.set(
+            format!("line_sizes/{key}"),
+            Value::Tuple(vec![Value::Int(500), Value::Text("g".into()), Value::Null]),
+            stamp(),
+        );
+        let read = Purchase::from_document(&doc).unwrap();
+        assert_eq!(read.lines[&id(1)].size.as_ref().unwrap().per, None);
         // The whole package's amount.
         assert_eq!(size(Some(AmountPer::Each)).total_milli(), Some(2_500));
         assert_eq!(size(Some(AmountPer::Total)).total_milli(), Some(500));

@@ -375,7 +375,8 @@ pub struct Product {
     pub shops: BTreeSet<RecordId>,
     /// The usual package size, from its label: pre-fills a new purchase
     /// of it (since 0.6.0; a scalar field, so an older app keeps it
-    /// untouched).
+    /// untouched). What a pack's amount covers (since 0.6.1) is its own
+    /// scalar field, `default_size_per`, which 0.6.0 keeps untouched.
     pub default_size: Option<PackageSize>,
     /// Learned receipt names (docs/design-decisions.md, "Learned receipt
     /// names"): the exact receipt line texts the user linked to this
@@ -547,6 +548,12 @@ impl Record for Product {
                 self.default_size.as_ref(),
                 PackageSize::to_value,
             )
+            .put(
+                "default_size_per",
+                self.default_size
+                    .as_ref()
+                    .map_or(Value::Null, PackageSize::per_value),
+            )
             .text_set("receipt_names", &self.receipt_names);
         f.finish()
     }
@@ -589,7 +596,13 @@ impl Record for Product {
             shops: r.id_set("shops")?,
             default_size: match r.value("default_size") {
                 Value::Null => None,
-                v => Some(PackageSize::from_value(v).ok_or(Error::InvalidField("default_size"))?),
+                v => {
+                    let mut size =
+                        PackageSize::from_value(v).ok_or(Error::InvalidField("default_size"))?;
+                    size.read_per(r.value("default_size_per"))
+                        .map_err(|()| Error::InvalidField("default_size_per"))?;
+                    Some(size)
+                }
             },
             receipt_names: r.text_set("receipt_names")?,
         })
@@ -608,6 +621,7 @@ impl Record for Product {
                 "batch",
                 "package_date",
                 "default_size",
+                "default_size_per",
             ],
             &[
                 "strains",
@@ -906,6 +920,28 @@ mod tests {
         assert_eq!(
             Product::from_document(&old).err(),
             Some(Error::InvalidField("default_size"))
+        );
+
+        // What a pack's amount covers (0.6.1) is its own field beside the
+        // size, whose tuple stays the three items 0.6.0 reads.
+        p.default_size = Some(PackageSize {
+            amount: Some(SizeAmount {
+                milli: 500,
+                unit: SizeUnit::Gram,
+            }),
+            pack: Some(5),
+            per: Some(super::super::AmountPer::Total),
+        });
+        round_trip(&p);
+        let doc = Document::create(&p, stamp()).unwrap();
+        assert!(matches!(doc.value("default_size"), Value::Tuple(t) if t.len() == 3));
+        assert_eq!(doc.value("default_size_per"), &Value::Text("total".into()));
+        assert!(Product::owns_field("default_size_per"));
+        let mut odd = doc.clone();
+        odd.set("default_size_per", Value::Int(3), stamp());
+        assert_eq!(
+            Product::from_document(&odd).err(),
+            Some(Error::InvalidField("default_size_per"))
         );
     }
 
