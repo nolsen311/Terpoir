@@ -116,13 +116,14 @@ fun ProductEditor(
     var known by remember { mutableStateOf<Pair<ProductMatch, String>?>(null) }
     var duplicate by remember { mutableStateOf<Pair<ProductMatch, ProductData>?>(null) }
     var sharing by remember { mutableStateOf(false) }
-    // "Merge with…": the other products to pick from, and the one picked.
+    // "Merge with…": the other products to pick from, the one picked (in
+    // the dialog), and the merge confirmed, done at Save (maintainer,
+    // 2026-10-16) so closing the editor cancels it.
     var mergeChoices by remember { mutableStateOf<List<Pair<String, String>>?>(null) }
-    var mergeWith by remember { mutableStateOf<Pair<String, String>?>(null) }
-    // Bumped after a merge, to load the merged product again.
-    var reload by remember { mutableStateOf(0) }
+    var mergeWith by remember { mutableStateOf<EditorMerge?>(null) }
+    var pendingMerge by remember { mutableStateOf<EditorMerge?>(null) }
 
-    LaunchedEffect(id, reload) {
+    LaunchedEffect(id) {
         brands = repo.brands()
         allStrains = repo.strains()
         customSubtypes = repo.tags(SUBTYPE_CATEGORY)
@@ -282,6 +283,12 @@ fun ProductEditor(
                     duplicate = match to data
                 } else {
                     repo.saveProduct(id, data)
+                    // The edits are saved first, so a merge takes them in.
+                    pendingMerge?.let { m ->
+                        if (id != null) {
+                            if (m.keepThis) repo.mergeProducts(id, m.otherId) else repo.mergeProducts(m.otherId, id)
+                        }
+                    }
                     onDone()
                 }
             }
@@ -494,33 +501,47 @@ fun ProductEditor(
                         label = stringResource(R.string.product_merge_pick),
                         options = listOf<Pair<String?, String>>(null to "") + choices,
                         selected = null,
-                        onSelect = { picked -> choices.firstOrNull { it.first == picked }?.let { mergeWith = it } },
+                        onSelect = { picked ->
+                            choices.firstOrNull { it.first == picked }?.let { (otherId, otherName) ->
+                                scope.launch {
+                                    // Keeps the one recording more by default, as the receipt review does.
+                                    mergeWith = EditorMerge(otherId, otherName, repo.productToKeep(id, otherId) == id)
+                                }
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                     )
+                }
+            }
+            pendingMerge?.let { m ->
+                val thisName = name.ifBlank { stringResource(R.string.product_merge_this) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.product_merge_pending, m.otherName, if (m.keepThis) thisName else m.otherName),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { pendingMerge = null }) { Text(stringResource(R.string.merge_undo)) }
                 }
             }
             DeleteButton(R.string.product_delete, R.string.product_delete_body) { scope.launch { repo.delete(id); onDone() } }
         }
     }
 
-    mergeWith?.let { (otherId, otherName) ->
-        if (id != null) {
-            MergeProductsDialog(
-                keep = name.ifBlank { stringResource(R.string.product_merge_this) },
-                other = otherName,
-                onSwap = null,
-                note = stringResource(R.string.product_merge_unsaved),
-                onConfirm = {
-                    mergeWith = null
-                    mergeChoices = null
-                    scope.launch {
-                        repo.mergeProducts(id, otherId)
-                        reload++
-                    }
-                },
-                onDismiss = { mergeWith = null },
-            )
-        }
+    mergeWith?.let { m ->
+        val thisName = name.ifBlank { stringResource(R.string.product_merge_this) }
+        MergeProductsDialog(
+            keep = if (m.keepThis) thisName else m.otherName,
+            other = if (m.keepThis) m.otherName else thisName,
+            onSwap = { mergeWith = m.copy(keepThis = !m.keepThis) },
+            note = stringResource(R.string.product_merge_on_save),
+            onConfirm = {
+                mergeWith = null
+                mergeChoices = null
+                pendingMerge = m
+            },
+            onDismiss = { mergeWith = null },
+        )
     }
 
     known?.let { (match, knownName) ->
@@ -581,6 +602,9 @@ fun ProductEditor(
 }
 
 private enum class ProductScan { LABEL, CODE }
+
+/** "Merge with…" in the product editor: the other product, and whether this one is kept. */
+private data class EditorMerge(val otherId: String, val otherName: String, val keepThis: Boolean)
 
 /**
  * "Merge these products?": [keep] is kept and takes in what [other] has
