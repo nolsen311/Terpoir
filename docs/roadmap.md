@@ -327,14 +327,17 @@ requirement rather than on features.
 ## Feature releases
 
 - [ ] YOLO Mode widened (maintainer, 2026-10-16; `docs/design-decisions.md`,
-      "Presets and YOLO Mode"): Insights, every Location toggle with Google
-      Maps on Play, every notification toggle, catalogs (and online
+      "Presets and YOLO Mode"): Insights, every Location toggle but "Notify
+      me" (which stays separate) with Google Maps on Play, every
+      notification toggle, catalogs (and online
       lookups once built), Google text recognition, the tiles and widget,
       screen protection off, auto-lock when the phone locks, everything in
       What I track and the Terpenes strain detail. Keyboard and voice and
       Sync stay as they are. Decide while building how a preset sets the
       two journal settings, and keep the combined confirmation listing
       each toggle's card.
+- [ ] "Notify me" right under "Show me" in the Privacy Center's Location
+      group, so the two read as a pair (maintainer, 2026-10-16).
 - [ ] Settings save as they change (maintainer, 2026-10-16): What I track,
       the Privacy Center and other settings screens already apply each
       change at once, so a screen timeout or lock loses nothing. Drop the
@@ -462,12 +465,26 @@ requirement rather than on features.
 
 Ideas the maintainer wants kept, to be designed and scheduled later.
 
-- [ ] "Secure storage not responding" on unlock: tabled (maintainer,
-      2026-10-16). 0.5.2 limited unlocking to one Keystore operation at a
-      time (`docs/design-decisions.md`, "One open unlock operation"); the
-      maintainer saw it once more afterwards but couldn't repeat it, and
-      there is no evidence it recurs. Reopen with a problem report (Privacy
-      Center → Report a problem) if it comes back.
+- [ ] "Secure storage not responding" on unlock: reopened (maintainer,
+      2026-10-16) with a report from 0.6.2 (12), Play build, Android 17
+      (API 37): `android.security.keystore.UserNotAuthenticatedException`.
+      0.5.2 limited unlocking to one Keystore operation at a time
+      (`docs/design-decisions.md`, "One open unlock operation"); this looks
+      like a different cause. Likely: the master key's wrapping key is
+      created with `setUnlockedDeviceRequired(true)`, and Keystore refuses
+      to initialise its cipher with `UserNotAuthenticatedException` while
+      the phone itself is locked. `MainActivity.unlock` calls
+      `vault.decryptCipher()` before the prompt and maps any exception to
+      `error_keystore`, so an unlock attempted over the lock screen (the
+      app opened from a notification, tile or widget, or the automatic
+      prompt firing before the keyguard is gone) shows this error. Fix:
+      treat `UserNotAuthenticatedException` at that step as "unlock your
+      phone first" and retry once the device is unlocked
+      (`KeyguardManager.isDeviceLocked`, `ACTION_USER_PRESENT`), not as a
+      Keystore failure; the same for creating and restoring. The
+      maintainer opened the app from a "Notify me" alert at one of the
+      Play declaration's demo spots, which fits: a notification can open
+      the app while the phone is still locked.
 
 - [ ] Solventless and solvent-based concentrates as a grouping for
       insights (tabled by the maintainer, 2026-10-15: possibly useful, but

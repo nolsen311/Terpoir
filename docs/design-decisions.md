@@ -919,7 +919,7 @@ Scans get better at recognising what the user buys by using what the journal alr
     - **Added 2026-10-12 (maintainer):** the online map. On Play builds with a Google key, YOLO Mode sets Google Maps as its provider (maintainer, 2026-10-12); elsewhere it uses OpenFreeMap, or the user's own MapTiler key if one is set. Leaving YOLO Mode turns the map off and returns the provider to OpenFreeMap.
     - **Widened (maintainer, 2026-10-16), by Privacy Center group; not built yet (`docs/roadmap.md`):**
       - **Journal:** Insights on.
-      - **Location:** everything on: the online map (Google Maps on Play builds with a key, OpenFreeMap on foss), "Show me", "Notify me", purchase reminders, spot names and details in alerts. This replaces "Notify me stays its own choice": YOLO Mode turns it on, and Android's location "all the time" is still asked through the in-app disclosure card on the journal page, since no preset can grant a permission.
+      - **Location:** everything else on: the online map (Google Maps on Play builds with a key, OpenFreeMap on foss), "Show me", purchase reminders, spot names and details in alerts. **"Notify me" stays a separate toggle, outside YOLO Mode** (maintainer, 2026-10-16), and sits right under "Show me" in the Location group so the two read as a pair. Purchase reminders, which also need location "all the time", ask for it through the in-app disclosure card on the journal page, since no preset can grant a permission.
       - **Notifications:** everything on (follow-up check-ins and the rest of the group).
       - **Catalogs:** on; online lookups too, once that feature is complete (0.7.0).
       - **Scanning:** on (Google text recognition on Play).
