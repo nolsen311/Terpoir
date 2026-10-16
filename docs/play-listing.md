@@ -455,6 +455,14 @@ them; the other activities belong to Google's libraries.
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.6.0** (448 characters):
+    Headline: Simpler receipt scanning, and kinds of products
+    Summary: receipt scanning rebuilt: shop first, a card per item ; lines you link are recognised next time ; zoom, join & split lines, two photos for long receipts ; kinds of products (bubble hash, infused pre-roll, your own) ; patches → 12-hour timeline ; insights: how it usually goes
+    ```
+    <en-US>
+    Receipt scanning is rebuilt: the shop comes first, then a card per item with its size and quantity, and a line you link to a product is recognised next time. Zoom the photo, join or split lines, and add a second photo for a long receipt. Products can have a kind under their type, like bubble hash or an infused pre-roll, or your own. Patches get their own 12-hour timeline. Insights now show how a method, product or strain usually goes over time.
+    </en-US>
+    ```
   - **0.5.3** (487 characters):
     Headline: Rate sessions with faces, and a crash fixed
     Summary: fixed crash in Google text recognition ; sync folder & export picks are saved again ; rate sessions with faces 🫤 → 🤯 ; swipe between Products lists ; receipt & label scanning → floating buttons ; session timeline in shares ; keyboard no longer shifts the screen
