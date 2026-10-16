@@ -30,7 +30,14 @@ per item or small group of items. Keep this file updated as items land.
       permissions declaration form and a short demonstration video) before
       the first release that includes it. Not needed for the first Play
       release, which leaves background location out (maintainer,
-      2026-10-13).
+      2026-10-13). The full checklist, disclosure text, form answers and
+      video script are in `docs/play-listing.md`, "Location declaration":
+  - [ ] Code PR (Claude): the Play build requests it, with the in-app
+        disclosure screen, privacy policy and Data safety updates.
+  - [ ] Record the video on an internal-testing build; upload it
+        unlisted.
+  - [ ] Fill in App content → Sensitive app permissions → Location
+        permissions, and send it for review with that release.
 - [ ] Mastodon account for release announcements (2026-10-15;
       `docs/design-decisions.md`, "Release announcements"):
   - [ ] Create the account on mastodon.social (for example
