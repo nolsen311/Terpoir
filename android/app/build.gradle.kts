@@ -44,8 +44,8 @@ android {
         // crypto-bound unlock depends on (docs/design-decisions.md).
         minSdk = 30
         targetSdk = 37
-        versionCode = 9
-        versionName = "0.5.3"
+        versionCode = 10
+        versionName = "0.6.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
