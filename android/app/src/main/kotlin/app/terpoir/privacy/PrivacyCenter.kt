@@ -102,11 +102,20 @@ class PrivacyPreset(
     @StringRes val title: Int,
     @StringRes val description: Int,
     private val relaxed: Set<String>,
+    /** Settings that aren't privacy toggles, set too, after the toggles; listed in the confirmation. */
+    val extras: List<PresetExtra> = emptyList(),
 ) {
     /** The state this preset gives [toggle]. */
     fun stateFor(toggle: PrivacyToggle): Boolean =
         if (toggle.id in relaxed) !toggle.privateState else toggle.privateState
 }
+
+/**
+ * A setting a preset also sets that isn't a privacy toggle (a journal or
+ * lock setting): [label] in the preset's confirmation, [apply] when it is
+ * chosen. Leaving the preset doesn't undo it, since it relaxes nothing.
+ */
+class PresetExtra(@StringRes val label: Int, val apply: suspend () -> Unit)
 
 /**
  * Every privacy-relevant toggle, in one registry, and the presets over
@@ -134,6 +143,7 @@ class PrivacyCenter(val toggles: List<PrivacyToggle>, val presets: List<PrivacyP
      */
     suspend fun apply(preset: PrivacyPreset) {
         for (toggle in toggles) toggle.setForPreset(preset.stateFor(toggle), preset.id)
+        for (extra in preset.extras) extra.apply()
     }
 
     /** Toggles by section, in display order; empty sections are left out. */

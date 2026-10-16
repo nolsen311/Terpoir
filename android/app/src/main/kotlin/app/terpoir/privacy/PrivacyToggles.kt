@@ -13,8 +13,11 @@ import app.terpoir.alerts.SpotAlerts
 import app.terpoir.capture.NewNoteWidget
 import app.terpoir.capture.QuickCapture
 import app.terpoir.core.Journal
+import app.terpoir.journal.StrainDetail
 import app.terpoir.map.MapProvider
 import app.terpoir.map.OnlineMap
+import app.terpoir.session.LockSettings
+import app.terpoir.session.LockTimeout
 import app.terpoir.sync.FolderSync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,6 +26,7 @@ import kotlinx.coroutines.withContext
 fun buildPrivacyCenter(
     context: Context,
     settings: PrivacySettings,
+    lockSettings: LockSettings,
     alerts: SpotAlerts,
     checkIns: CheckIns,
     folderSync: FolderSync,
@@ -157,6 +161,38 @@ fun buildPrivacyCenter(
             onAction = { settings.showNearbySpots = true },
             offAction = { settings.showNearbySpots = false },
         ),
+        // "Notify me", right under "Show me" so the two read as a pair
+        // (maintainer, 2026-10-16). It and purchase reminders and the two
+        // alert tiers exist only in builds with background location.
+        // On registers geofences now if the journal is open (else at the
+        // next unlock) and once the permissions are granted, which the
+        // journal asks for. Off removes every geofence, the notification
+        // cache and any alert showing.
+        if (Distribution.BACKGROUND_LOCATION) {
+            PrivacyToggle(
+                id = "notify_near_spots",
+                group = PrivacyGroup.LOCATION,
+                card = PrivacyCard(
+                    title = R.string.notify_near,
+                    whatItDoes = R.string.notify_near_does,
+                    whatLeaves = R.string.notify_near_leaves,
+                    whoCanSee = R.string.notify_near_who,
+                    howToUndo = R.string.notify_near_undo,
+                ),
+                privateState = false,
+                isOn = { settings.notifyNearSpots },
+                onAction = {
+                    settings.notifyNearSpots = true
+                    alerts.refresh(journal())
+                },
+                offAction = {
+                    settings.notifyNearSpots = false
+                    alerts.clear()
+                },
+            )
+        } else {
+            null
+        },
         // Every build. On lets the spot editor open the map, with MapTiler
         // if the user saved their own key, else OpenFreeMap; YOLO Mode
         // chooses Google Maps instead on Play builds that offer it. The
@@ -188,44 +224,13 @@ fun buildPrivacyCenter(
             },
             presetOnAction = { presetId ->
                 settings.mapProvider = when {
-                    presetId == YOLO_MODE.id && Distribution.googleMaps(context) != null -> MapProvider.GOOGLE
+                    presetId == YOLO_ID && Distribution.googleMaps(context) != null -> MapProvider.GOOGLE
                     settings.mapTilerKeySaved -> MapProvider.MAPTILER
                     else -> MapProvider.DEFAULT
                 }
                 settings.onlineMap = true
             },
         ),
-        // This toggle and the next three exist only in builds with
-        // background location (foss; left out of Play, 2026-10-13).
-        // On registers geofences now if the journal is open (else at the
-        // next unlock) and once the permissions are granted, which the
-        // journal asks for. Off removes every geofence, the notification
-        // cache and any alert showing.
-        if (Distribution.BACKGROUND_LOCATION) {
-            PrivacyToggle(
-                id = "notify_near_spots",
-                group = PrivacyGroup.LOCATION,
-                card = PrivacyCard(
-                    title = R.string.notify_near,
-                    whatItDoes = R.string.notify_near_does,
-                    whatLeaves = R.string.notify_near_leaves,
-                    whoCanSee = R.string.notify_near_who,
-                    howToUndo = R.string.notify_near_undo,
-                ),
-                privateState = false,
-                isOn = { settings.notifyNearSpots },
-                onAction = {
-                    settings.notifyNearSpots = true
-                    alerts.refresh(journal())
-                },
-                offAction = {
-                    settings.notifyNearSpots = false
-                    alerts.clear()
-                },
-            )
-        } else {
-            null
-        },
         // On lets Re-up Spots opt in (spot editor) and registers their fences
         // with the next refresh, once the journal asks for the permissions.
         // Off removes the prompt fences and any pending state.
@@ -410,7 +415,7 @@ fun buildPrivacyCenter(
             offAction = { settings.voiceFirst = false },
         ),
     ),
-    presets = listOf(MOST_PRIVATE, YOLO_MODE),
+    presets = listOf(MOST_PRIVATE, yoloMode(lockSettings, journal)),
 )
 
 /** The online map's toggle ID, for the spot editor to find it. */
@@ -422,23 +427,61 @@ const val FOLDER_SYNC = "folder_sync"
 /** The default: every protection on, every optional feature off. */
 val MOST_PRIVATE = PrivacyPreset("most_private", R.string.preset_most_private, R.string.preset_most_private_does, emptySet())
 
+/** YOLO Mode's preset ID. */
+const val YOLO_ID = "yolo"
+
 /**
- * The platform's conveniences, chosen by the maintainer (2026-10-12).
- * Screen protection stays on, and "Notify me" stays its own choice
- * (location "all the time"). The hard lines hold in every preset.
+ * The platform's conveniences (docs/design-decisions.md, "Presets and YOLO
+ * Mode"), chosen by the maintainer (2026-10-12) and widened by group
+ * (2026-10-16). "Notify me" stays its own choice; Keyboard and voice, Sync
+ * and keys, and targeted symptoms stay private. The hard lines hold in
+ * every preset.
  */
-val YOLO_MODE = PrivacyPreset(
-    "yolo",
+val YOLO_TOGGLES = setOf(
+    // Journal.
+    "insights",
+    // Location: everything but "Notify me".
+    "show_nearby_spots",
+    ONLINE_MAP,
+    "purchase_prompts",
+    // Notifications.
+    "alert_names",
+    "alert_details",
+    "follow_up_check_ins",
+    // Catalogs and scanning.
+    "coa_links",
+    "google_text_recognition",
+    // OS integration: the "New note" and "New entry" tiles and widget.
+    "quick_settings_tile",
+    "home_widget",
+    // Device security: screen protection off (its relaxed state).
+    "screen_protection",
+)
+
+/**
+ * YOLO Mode. Besides its toggles it sets auto-lock to "when the phone
+ * locks", shows everything in What I track and sets the strain detail to
+ * Terpenes (all three the defaults); the journal ones only while it is
+ * open.
+ */
+fun yoloMode(lockSettings: LockSettings, journal: () -> Journal?) = PrivacyPreset(
+    YOLO_ID,
     R.string.preset_yolo,
     R.string.preset_yolo_does,
-    setOf(
-        "google_text_recognition",
-        "coa_links",
-        "show_nearby_spots",
-        "alert_names",
-        "alert_details",
-        "follow_up_check_ins",
-        // Added by the maintainer, 2026-10-12.
-        ONLINE_MAP,
+    YOLO_TOGGLES,
+    extras = listOf(
+        PresetExtra(R.string.preset_extra_auto_lock) { lockSettings.timeout = LockTimeout.WITH_DEVICE },
+        PresetExtra(R.string.preset_extra_track_everything) {
+            journal()?.let { j ->
+                withContext(Dispatchers.IO) {
+                    for (slug in j.hiddenDataPoints()) j.setDataPointTracked(slug, true, System.currentTimeMillis().toULong())
+                }
+            }
+        },
+        PresetExtra(R.string.preset_extra_strain_terpenes) {
+            journal()?.let { j ->
+                withContext(Dispatchers.IO) { j.setStrainDetail(StrainDetail.TERPENES.slug, System.currentTimeMillis().toULong()) }
+            }
+        },
     ),
 )

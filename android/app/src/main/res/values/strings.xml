@@ -228,10 +228,14 @@
     <string name="preset_most_private">Most private</string>
     <string name="preset_most_private_does">Every protection on and every optional feature off. This is the default.</string>
     <string name="preset_yolo">YOLO Mode</string>
-    <string name="preset_yolo_does">Turns on the conveniences that lean on your phone\'s platform: Google text recognition (on Google Play builds), opening lab-results links, the nearby-spot banner, spot names and details in alerts, follow-up check-ins, and the online map (where your version has one). Screen protection stays on, and \"Notify me\" stays your own choice. Some lines hold in every mode: no phone backups of your journal, no cloud model reading it, no analytics, and no Terpoir server.</string>
+    <string name="preset_yolo_does">Turns on the conveniences that lean on your phone\'s platform: Google text recognition (on Google Play builds), opening lab-results links, the nearby-spot banner, spot names and details in alerts, follow-up check-ins, the online map (where your version has one), insights, purchase reminders, and the \"New note\" and \"New entry\" tiles and widget, and turns screen protection off. \"Notify me\" stays your own choice, and keyboard, voice and sync settings don\'t change. Some lines hold in every mode: no phone backups of your journal, no cloud model reading it, no analytics, and no Terpoir server.</string>
     <string name="preset_confirm_title">Switch to %1$s?</string>
     <string name="preset_turns_on">Turns on: %1$s</string>
     <string name="preset_turns_off">Turns off: %1$s</string>
+    <string name="preset_also_sets">Also sets: %1$s</string>
+    <string name="preset_extra_auto_lock">auto-lock when your phone locks</string>
+    <string name="preset_extra_track_everything">everything shown in What I track</string>
+    <string name="preset_extra_strain_terpenes">strain detail: Terpenes</string>
     <string name="preset_nothing">Already set: nothing changes.</string>
     <string name="preset_apply">Switch</string>
     <string name="preset_review">Review</string>

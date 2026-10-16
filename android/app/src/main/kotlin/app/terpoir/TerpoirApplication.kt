@@ -92,7 +92,7 @@ class TerpoirApplication : Application() {
         // The key file it writes comes from the journal's own copy, once
         // there is a journal.
         folderSync = FolderSync(this) { runCatching { session.masterWrappedByRecovery() }.getOrNull() }
-        privacyCenter = buildPrivacyCenter(this, privacySettings, spotAlerts, checkIns, folderSync) {
+        privacyCenter = buildPrivacyCenter(this, privacySettings, lockSettings, spotAlerts, checkIns, folderSync) {
             (session.state as? JournalSession.State.Unlocked)?.journal
         }
         // Shortcut, tile and widget follow the settings (after a restore or

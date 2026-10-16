@@ -53,4 +53,14 @@ class PrivacyPresetTest {
         shield.on = false
         assertNull(center.currentPreset())
     }
+
+    @Test
+    fun extrasRunAfterTheTogglesAndDontChangeTheMatch() = kotlinx.coroutines.runBlocking {
+        var ran = 0
+        val withExtra = PrivacyPreset("extra", 0, 0, setOf("banner"), listOf(PresetExtra(0) { ran++ }))
+        val c = PrivacyCenter(listOf(shield.toggle, banner.toggle, beacon.toggle), listOf(mostPrivate, withExtra))
+        c.apply(withExtra)
+        assertEquals(1, ran)
+        assertEquals("extra", c.currentPreset()?.id)
+    }
 }

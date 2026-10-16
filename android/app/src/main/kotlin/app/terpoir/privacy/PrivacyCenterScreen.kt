@@ -196,7 +196,7 @@ fun PrivacyCenterScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(stringResource(option.description))
-                    if (changes.isEmpty()) Text(stringResource(R.string.preset_nothing))
+                    if (changes.isEmpty() && option.extras.isEmpty()) Text(stringResource(R.string.preset_nothing))
                     for ((toggle, on) in changes) {
                         Text(
                             stringResource(if (on) R.string.preset_turns_on else R.string.preset_turns_off, stringResource(toggle.card.title)),
@@ -206,6 +206,10 @@ fun PrivacyCenterScreen(
                             Text(stringResource(toggle.card.whatLeaves), style = MaterialTheme.typography.bodySmall)
                             Text(stringResource(toggle.card.whoCanSee), style = MaterialTheme.typography.bodySmall)
                         }
+                    }
+                    // Settings that aren't privacy toggles, set too.
+                    for (extra in option.extras) {
+                        Text(stringResource(R.string.preset_also_sets, stringResource(extra.label)), style = MaterialTheme.typography.titleSmall)
                     }
                 }
             },
