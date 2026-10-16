@@ -326,6 +326,21 @@ requirement rather than on features.
 
 ## Feature releases
 
+- [ ] YOLO Mode widened (maintainer, 2026-10-16; `docs/design-decisions.md`,
+      "Presets and YOLO Mode"): Insights, every Location toggle with Google
+      Maps on Play, every notification toggle, catalogs (and online
+      lookups once built), Google text recognition, the tiles and widget,
+      screen protection off, auto-lock when the phone locks, everything in
+      What I track and the Terpenes strain detail. Keyboard and voice and
+      Sync stay as they are. Decide while building how a preset sets the
+      two journal settings, and keep the combined confirmation listing
+      each toggle's card.
+- [ ] Settings save as they change (maintainer, 2026-10-16): What I track,
+      the Privacy Center and other settings screens already apply each
+      change at once, so a screen timeout or lock loses nothing. Drop the
+      Save button that is shown but never enabled on What I track (and any
+      other settings screen with one), so it doesn't suggest otherwise.
+
 - [x] Richer strains (`docs/design-decisions.md`, "Richer strains").
   - [x] 0.4.0: journal-wide detail setting (Simple / Terpenes / Detailed),
         the terpene picker guiding to 3 or fewer, terpene levels

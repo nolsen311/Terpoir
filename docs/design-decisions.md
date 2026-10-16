@@ -917,6 +917,16 @@ Scans get better at recognising what the user buys by using what the journal alr
   - A middle preset may come later if users ask for one.
   - **YOLO Mode's toggles (decided by the maintainer, 2026-10-12):** Google text recognition (Play only), open lab-results links, "Show me", spot names in alerts, details in alerts, and follow-up check-ins. Screen protection stays on, and "Notify me" stays its own choice because it needs location "all the time". New toggles join YOLO Mode only by a recorded decision.
     - **Added 2026-10-12 (maintainer):** the online map. On Play builds with a Google key, YOLO Mode sets Google Maps as its provider (maintainer, 2026-10-12); elsewhere it uses OpenFreeMap, or the user's own MapTiler key if one is set. Leaving YOLO Mode turns the map off and returns the provider to OpenFreeMap.
+    - **Widened (maintainer, 2026-10-16), by Privacy Center group; not built yet (`docs/roadmap.md`):**
+      - **Journal:** Insights on.
+      - **Location:** everything on: the online map (Google Maps on Play builds with a key, OpenFreeMap on foss), "Show me", "Notify me", purchase reminders, spot names and details in alerts. This replaces "Notify me stays its own choice": YOLO Mode turns it on, and Android's location "all the time" is still asked through the in-app disclosure card on the journal page, since no preset can grant a permission.
+      - **Notifications:** everything on (follow-up check-ins and the rest of the group).
+      - **Catalogs:** on; online lookups too, once that feature is complete (0.7.0).
+      - **Scanning:** on (Google text recognition on Play).
+      - **OS integration:** the Quick Settings tiles and the home-screen widget ("New note" and "New entry"); the app shortcuts are already on by default.
+      - **Keyboard and voice, Sync and keys:** unchanged (stay at their most private).
+      - **Device security:** screen protection off (replacing "screen protection stays on"); auto-lock "when the phone locks".
+      - **What I track:** everything shown; **strain detail:** Terpenes. These are journal settings, not privacy toggles, so how a preset sets them (and whether leaving YOLO Mode puts them back) is decided when it's built.
 - **Android implementation (2026-10-12):** a preset is a full set of toggle states (`PrivacyPreset`): its listed toggles relaxed, every other toggle at its most private state; IDs a build doesn't register are ignored. Applying one runs every toggle's own action, including toggles already in place, so leaving YOLO Mode runs every off-action it caused. The Privacy Center shows "Preset: Most private", "Preset: YOLO Mode" or "Preset: Custom", and a button per preset opens one combined confirmation listing each toggle it turns on or off, with the card of each one it relaxes.
 - **Threat model at onboarding:** one optional question ("What are you protecting this journal from?") suggests a preset. Skipping it, or any answer, leaves the defaults at most private until the user confirms a preset.
   - **Android:** asked at the top of the onboarding Privacy Center tour, never stored. "People who might pick up my phone", "Legal trouble where I live" and "Companies and apps tracking me" suggest Most private (already set). "Not much, I just want it to work well" suggests YOLO Mode, with a Review button that opens its confirmation.
