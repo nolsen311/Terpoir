@@ -84,7 +84,7 @@ fun ShareScreen(
     val preview: ImageBitmap? = remember(card) { card?.second?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }
     DisposableEffect(Unit) { onDispose { ShareProvider.clear() } }
 
-    EditorScaffold(title = stringResource(R.string.share_title), onClose = onClose, onSave = {}, saveEnabled = false) {
+    EditorScaffold(title = stringResource(R.string.share_title), onClose = onClose, onSave = null) {
         Text(stringResource(R.string.share_pick), style = MaterialTheme.typography.bodyMedium)
         extra()
         for (option in options) {

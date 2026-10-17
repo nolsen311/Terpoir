@@ -74,7 +74,7 @@ fun TextEngineGate(scanner: Scanner, title: String, onClose: () -> Unit, content
     when (val current = status) {
         null -> Unit
         EngineStatus.Ready -> content()
-        else -> EditorScaffold(title, onClose, onSave = {}, saveEnabled = false) {
+        else -> EditorScaffold(title, onClose, onSave = null) {
             Text(stringResource(engine.downloadPrompt), style = MaterialTheme.typography.bodyMedium)
             when (current) {
                 EngineStatus.NotInstalled, is EngineStatus.Failed -> {

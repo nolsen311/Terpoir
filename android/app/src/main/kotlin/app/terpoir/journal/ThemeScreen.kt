@@ -43,7 +43,7 @@ import app.terpoir.ui.theme.ThemeChoice
  */
 @Composable
 fun ThemeScreen(appearance: AppearanceSettings, onClose: () -> Unit) {
-    EditorScaffold(title = stringResource(R.string.theme_title), onClose = onClose, onSave = {}, saveEnabled = false) {
+    EditorScaffold(title = stringResource(R.string.theme_title), onClose = onClose, onSave = null) {
         ThemePreview()
         Text(stringResource(R.string.theme_intro), style = MaterialTheme.typography.bodySmall)
         Column(Modifier.selectableGroup()) {
