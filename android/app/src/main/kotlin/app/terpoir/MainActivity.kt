@@ -4,12 +4,17 @@
 
 package app.terpoir
 
+import android.app.KeyguardManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import android.security.keystore.KeyPermanentlyInvalidatedException
+import android.security.keystore.UserNotAuthenticatedException
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -43,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.withResumed
 import app.terpoir.alerts.CheckIns
 import app.terpoir.alerts.PurchasePrompts
@@ -137,6 +143,35 @@ class MainActivity : ComponentActivity() {
     /** When the last prompt closed ([SystemClock.elapsedRealtime]). */
     private var promptClosedAt = 0L
 
+    /**
+     * An unlock waited for the phone
+     * itself to be unlocked: the journal's key only works on an unlocked
+     * device (`setUnlockedDeviceRequired`), and a notification or tile can
+     * open the app before the keyguard is gone. When the user unlocks the
+     * phone, the app asks again on its own.
+     */
+    private var waitingForDevice = false
+
+    /** "User present": the phone was just unlocked. */
+    private val devicePresent = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (waitingForDevice) {
+                waitingForDevice = false
+                // Counts as coming back into view: the locked screen asks again.
+                appearances++
+            }
+        }
+    }
+
+    /** Whether the phone itself is locked (the keyguard is up). */
+    private fun deviceLocked(): Boolean = getSystemService(KeyguardManager::class.java)?.isDeviceLocked == true
+
+    /** The message for an attempt the locked phone refused; the next unlock of the phone retries it. */
+    private fun waitForDevice(): Int {
+        waitingForDevice = true
+        return R.string.error_device_locked
+    }
+
     private fun fromAlert(intent: Intent?) {
         when (intent?.action) {
             SpotAlerts.ACTION_NEAR_SPOT -> nearbyRequested = true
@@ -200,6 +235,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        ContextCompat.registerReceiver(this, devicePresent, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_NOT_EXPORTED)
         // The prompt's own PIN screen can stop and restart this activity;
         // that isn't the user coming back, and counting it would show the
         // prompt again right after they cancelled it.
@@ -215,6 +251,11 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         ScreenPrivacy.onPause(this)
         super.onPause()
+    }
+
+    override fun onStop() {
+        unregisterReceiver(devicePresent)
+        super.onStop()
     }
 
     /**
@@ -530,9 +571,13 @@ class MainActivity : ComponentActivity() {
     private fun createJournal(onError: (Int) -> Unit): Int? {
         val strict = app.lockSettings.strictBiometrics
         if (!UserAuthentication.isAvailable(this, strict)) return R.string.error_no_lock_screen
+        // Creating or restoring isn't retried on its own: the user taps again.
+        if (deviceLocked()) return R.string.error_device_locked_retry
         val cipher = try {
             app.session.vault.createWrappingKey(strict)
             app.session.vault.encryptCipher()
+        } catch (_: UserNotAuthenticatedException) {
+            return R.string.error_device_locked_retry
         } catch (e: Exception) {
             keystoreError = e
             return R.string.error_keystore
@@ -559,9 +604,13 @@ class MainActivity : ComponentActivity() {
     private fun restoreJournal(typed: String, archive: ExportArchive, onRestored: () -> Unit, onError: (Int) -> Unit): Int? {
         val strict = app.lockSettings.strictBiometrics
         if (!UserAuthentication.isAvailable(this, strict)) return R.string.error_no_lock_screen
+        // Creating or restoring isn't retried on its own: the user taps again.
+        if (deviceLocked()) return R.string.error_device_locked_retry
         val cipher = try {
             app.session.vault.createWrappingKey(strict)
             app.session.vault.encryptCipher()
+        } catch (_: UserNotAuthenticatedException) {
+            return R.string.error_device_locked_retry
         } catch (e: Exception) {
             keystoreError = e
             return R.string.error_keystore
@@ -589,10 +638,15 @@ class MainActivity : ComponentActivity() {
      * upgrades").
      */
     private fun unlock(onError: (Int) -> Unit): Int? {
+        // Not a Keystore failure: the key refuses to work until the phone is
+        // unlocked (docs/design-decisions.md, "Opened over the lock screen").
+        if (deviceLocked()) return waitForDevice()
         val cipher = try {
             app.session.vault.decryptCipher()
         } catch (_: KeyPermanentlyInvalidatedException) {
             return R.string.error_key_invalidated
+        } catch (_: UserNotAuthenticatedException) {
+            return waitForDevice()
         } catch (e: Exception) {
             keystoreError = e
             return R.string.error_keystore
