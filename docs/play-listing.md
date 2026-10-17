@@ -573,6 +573,14 @@ them; the other activities belong to Google's libraries.
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.6.4** (213 characters):
+    Headline: Tidier location buttons
+    Summary: the "You're near" card fits on one row ; location buttons in the spot editor are side by side and the same size
+    ```
+    <en-US>
+    The "You're near" card and the spot editor's location buttons are tidier: small icon buttons with a short label, side by side, instead of wide buttons of mixed sizes. Screen readers still hear each action in full.
+    </en-US>
+    ```
   - **0.6.3** (411 characters):
     Headline: Unlock from an alert, and a fuller YOLO Mode
     Summary: fixed unlocking from a "Notify me" alert on a locked phone ; YOLO Mode covers more (insights, reminders, tiles & widget) ; "Notify me" sits under "Show me" ; no Save button where changes save as you go
