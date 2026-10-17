@@ -709,6 +709,9 @@
     <string name="spot_location_approximate">Use approximate location</string>
     <string name="spot_location_precise">Use precise location</string>
     <string name="spot_location_map">Pick on map</string>
+    <string name="spot_location_approximate_short">Approximate</string>
+    <string name="spot_location_precise_short">Precise</string>
+    <string name="spot_location_map_short">Map</string>
     <string name="map_turn_on">Turn on the map</string>
     <string name="map_pick_title">Pick on map</string>
     <string name="map_pick_hint">Move the map until the circle is on the spot. Zoom in for a more exact point: the circle\'s size is how exact it is.</string>
@@ -727,6 +730,8 @@
     <string name="show_nearby_at">You\'re near %1$s</string>
     <string name="show_nearby_log_here">Log a session here</string>
     <string name="show_nearby_log_purchase">Log a purchase</string>
+    <string name="show_nearby_session_short">Session</string>
+    <string name="show_nearby_purchase_short">Purchase</string>
     <string name="spot_purchase_prompts">Remind me to log purchases here</string>
     <string name="spot_purchase_prompts_note">When you leave after a stop of a few minutes, Terpoir asks \"Quick log?\" once a day at most. The reminder never names this spot.</string>
     <string name="prompt_channel">Purchase reminders</string>
