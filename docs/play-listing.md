@@ -573,6 +573,14 @@ them; the other activities belong to Google's libraries.
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.6.3** (411 characters):
+    Headline: Unlock from an alert, and a fuller YOLO Mode
+    Summary: fixed unlocking from a "Notify me" alert on a locked phone ; YOLO Mode covers more (insights, reminders, tiles & widget) ; "Notify me" sits under "Show me" ; no Save button where changes save as you go
+    ```
+    <en-US>
+    Opening Terpoir from a "Notify me" alert while your phone is locked no longer shows "secure key storage did not respond": it now waits until you unlock your phone, then asks. YOLO Mode now also turns on insights, purchase reminders, the tiles and widget, and turns screen protection off; "Notify me" stays your own choice and sits right under "Show me". Screens that save as you go no longer show a Save button.
+    </en-US>
+    ```
   - **0.6.2** (358 characters):
     Headline: Notify me comes to Google Play
     Summary: "Notify me": alerts when you stop at a saved spot ; reminders to log a purchase as you leave a shop ; off until you turn them on ; your location never leaves your phone
