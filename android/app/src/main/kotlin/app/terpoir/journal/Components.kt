@@ -61,7 +61,9 @@ import app.terpoir.R
 fun EditorScaffold(
     title: String,
     onClose: () -> Unit,
-    onSave: () -> Unit,
+    // Null on screens that apply each change at once (settings, views):
+    // no Save button, so nothing suggests a change could be lost.
+    onSave: (() -> Unit)?,
     saveEnabled: Boolean = true,
     floatingActionButton: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
@@ -78,7 +80,7 @@ fun EditorScaffold(
                     }
                 },
                 actions = {
-                    TextButton(onClick = onSave, enabled = saveEnabled) { Text(stringResource(R.string.save)) }
+                    if (onSave != null) TextButton(onClick = onSave, enabled = saveEnabled) { Text(stringResource(R.string.save)) }
                 },
             )
         },

@@ -57,7 +57,7 @@ fun WhatITrackScreen(repo: JournalRepository, onChanged: () -> Unit, onClose: ()
         }
     }
 
-    EditorScaffold(title = stringResource(R.string.track_title), onClose = onClose, onSave = {}, saveEnabled = false) {
+    EditorScaffold(title = stringResource(R.string.track_title), onClose = onClose, onSave = null) {
         val current = tracking ?: return@EditorScaffold
         Text(stringResource(R.string.track_intro), style = MaterialTheme.typography.bodyMedium)
         for (point in DataPoint.entries) {

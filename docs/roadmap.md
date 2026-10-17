@@ -246,7 +246,7 @@ without it.
         Play App Signing) and the release-signing SSH key
         (`android/release/allowed_signers`) on terpoir.app ("Verify your
         download") and in the README, with the commands to check an APK,
-        `SHA256SUMS.sig` and the tags. Until 0.8.0 the hashes stay in each
+        `SHA256SUMS.sig` and the tags. Until 0.9.0 the hashes stay in each
         release's signed `SHA256SUMS`.
   - [ ] Backup release-signing SSH key: an `ed25519-sk` key on the backup
         YubiKey, added to `allowed_signers`, the site and the README
@@ -318,8 +318,9 @@ requirement rather than on features.
 | 0.6.0 | Simpler receipt scanning and product subtypes, together (maintainer, 2026-10-15): both change the synced format and share the scanning vocabulary, so one compatibility fixture and one update. Shipped: the review rebuilt as cards with the shop first, learned receipt names, size and quantity on purchase lines, shop phone and licence numbers, zoom, join and split; subtypes under each type (built-in and the user's own) and the Transdermal method; timeline insights ("How it usually goes"). |
 | 0.6.1 | The rest of simpler receipt scanning, built after 0.6.0 was tagged: two photos for a long receipt ("Add the rest of the receipt"), a pack's amount read as each or in all (stored beside the 0.6.0 size, which 0.6.0 keeps untouched), "Seen on receipts as" with a delete on the product page, and merging two products that share a learned receipt name (done at Save, with Undo; the editor's "Merge with…" can keep either, maintainer 2026-10-16). Also (maintainer, 2026-10-16): the rating centred and starting from the middle face, strains and parents picked by search, the product editor's extra "Brand" heading gone, and "New entry" beside "New note" on the app shortcut, Quick Settings tiles and widget. |
 | 0.6.2 | "Notify me" and purchase reminders on Google Play (maintainer, 2026-10-16): the Play build requests location "all the time" behind the in-app prominent disclosure. Released to internal testing first for the background-location declaration's video, and promoted once Google approves the declaration. |
-| 0.7.0 | Strain lookups: an offline strain and seed catalog first, then online sources (such as Leafly or a seed database) each behind its own toggle, as "Catalog lookups" requires. Which providers depends on their terms and APIs, researched during 0.4.0. Moved from 0.6.0 (maintainer, 2026-10-15): it waits on the sources' replies and the maintainer's choice. |
-| 0.8.0 | F-Droid groundwork: OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app. Moved from 0.7.0 (maintainer, 2026-10-15). |
+| 0.7.0 | Scan recognition from the journal, timeline comparisons and the offline strain catalog (maintainer, 2026-10-17): the rest of "Scan recognition from the journal" (OCR-tolerant suggestions ranked by shop and brand, brand and strain detection on labels, matched text broken down over time); "comes on faster than your other edibles"-style comparisons from the session timeline, once there is enough data to make them trustworthy; and the offline catalog from the candidate found, Kushy's MIT strain table (name, type, breeder, crosses; `docs/research/strain-lookups.md`, option 1), after its provenance is re-checked. |
+| 0.8.0 | Online strain lookups: sources the maintainer picks (such as Leafly or a seed database), each behind its own toggle, as "Catalog lookups" requires. Moved from 0.6.0 (maintainer, 2026-10-15), then from 0.7.0 (maintainer, 2026-10-17): it waits on the sources' replies and the maintainer's choice. |
+| 0.9.0 | F-Droid groundwork, a release of its own (maintainer, 2026-10-17): OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app. Moved from 0.7.0 (maintainer, 2026-10-15), then from 0.8.0 (2026-10-17). |
 | 1.0.0 | Public launch: Play production access, F-Droid submission, "Get Terpoir" with real links and fingerprints. |
 | 1.x | WebDAV / S3 sync; direct device pairing; scan recognition from the journal; personal gear; lock-screen capture. Order to be set after 1.0. |
 | 2.0 | iOS. |
@@ -338,11 +339,13 @@ requirement rather than on features.
       each toggle's card.
 - [x] "Notify me" right under "Show me" in the Privacy Center's Location
       group, so the two read as a pair (maintainer, 2026-10-16).
-- [ ] Settings save as they change (maintainer, 2026-10-16): What I track,
+- [x] Settings save as they change (maintainer, 2026-10-16): What I track,
       the Privacy Center and other settings screens already apply each
       change at once, so a screen timeout or lock loses nothing. Drop the
       Save button that is shown but never enabled on What I track (and any
-      other settings screen with one), so it doesn't suggest otherwise.
+      other settings screen with one), so it doesn't suggest otherwise Done
+      2026-10-17: What I track, Insights, Theme, Share and the
+      text-recognition download screen have no Save button.
 
 - [x] Richer strains (`docs/design-decisions.md`, "Richer strains").
   - [x] 0.4.0: journal-wide detail setting (Simple / Terpenes / Detailed),
@@ -364,7 +367,7 @@ requirement rather than on features.
           "Known for" cannabinoids on strains shipped in 0.4.0.
     - [x] 0.5.1: insights and the shop effect grouped by shared parent or
           dominant terpene.
-- [ ] Strain lookups, 0.7.0 (`docs/design-decisions.md`, "Catalog
+- [ ] Strain lookups: the offline catalog in 0.7.0, online sources in 0.8.0 (`docs/design-decisions.md`, "Catalog
       lookups"; maintainer, 2026-10-14: Leafly and a seed database).
   - [x] Research, during 0.4.0: for each candidate (Leafly, seed
         databases, open strain datasets), whether it has an API or a
@@ -374,12 +377,17 @@ requirement rather than on features.
         `docs/research/strain-lookups.md`. Done with gaps: only
         GitHub-hosted sources could be read, so the providers' terms are
         unverified until their domains are allowed (`docs/follow-ups.md`).
-  - [ ] The maintainer picks the sources.
-  - [ ] An offline catalog: downloaded in one piece, searched on the
-        device, filling a strain's type, terpenes, lineage and
-        cannabinoids as suggestions the user confirms.
-  - [ ] Online sources the maintainer picks, each its own toggle (off by
-        default) with a disclosure card; search on submit only.
+  - [x] The offline source (maintainer, 2026-10-17): the candidate
+        found, Kushy's MIT strain table, limited to its factual columns
+        (research option 1). Online sources still to pick.
+  - [ ] An offline catalog, 0.7.0: downloaded in one piece, searched on
+        the device, filling a strain's type, breeder and lineage (and the
+        few cannabinoid fields Kushy fills) as suggestions the user
+        confirms. Before shipping: re-check Kushy's provenance (the
+        research notes it may come from scraped sources) and add its MIT
+        notice to the licences screen.
+  - [ ] Online sources the maintainer picks, 0.8.0, each its own toggle
+        (off by default) with a disclosure card; search on submit only.
 
 - [ ] Simpler receipt scanning, 0.6.0 and 0.6.1 (maintainer, 2026-10-15): text
       recognition should fill the right parts of a new entry (brand,
@@ -434,7 +442,7 @@ requirement rather than on features.
         own with its usual method.
   - [x] Scanning terms for subtypes.
 
-- [ ] Scan recognition from the journal (`docs/design-decisions.md`,
+- [ ] Scan recognition from the journal, 0.7.0 (`docs/design-decisions.md`,
       "Scan recognition from the journal"): learned receipt names with
       automatic linking on an exact match; OCR-tolerant suggestions
       ranked by shop and brand; brand and strain detection on labels;
@@ -451,7 +459,7 @@ requirement rather than on features.
   - [x] Insights that use the timeline: "How it usually goes" per method,
         product and strain (comes on, peaks, eases off), from set points.
   - [ ] Timeline comparisons ("comes on faster than your other edibles"),
-        once there is enough data to make them trustworthy.
+        once there is enough data to make them trustworthy (0.7.0).
 
 ## Phase 5: Stretch
 
