@@ -716,16 +716,32 @@ private fun NearbySpotCard(spot: NearbySpot, onSessionAt: (String) -> Unit, onPu
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.show_nearby_at, spot.name), style = MaterialTheme.typography.titleMedium)
-            androidx.compose.material3.OutlinedButton(onClick = { onSessionAt(spot.id) }) {
-                Text(stringResource(R.string.show_nearby_log_here))
-            }
+        // One tidy row (maintainer, 2026-10-17): the spot's name, then an
+        // icon action per thing to log there, room for four.
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                stringResource(R.string.show_nearby_at, spot.name),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
+            )
+            IconAction(
+                icon = R.drawable.ic_journal,
+                label = stringResource(R.string.show_nearby_session_short),
+                description = stringResource(R.string.show_nearby_log_here),
+                onClick = { onSessionAt(spot.id) },
+            )
             // "Show me" stands in for purchase prompts at a Re-up Spot.
             if (spot.reUp && onPurchase != null) {
-                androidx.compose.material3.OutlinedButton(onClick = onPurchase) {
-                    Text(stringResource(R.string.show_nearby_log_purchase))
-                }
+                IconAction(
+                    icon = R.drawable.ic_receipt,
+                    label = stringResource(R.string.show_nearby_purchase_short),
+                    description = stringResource(R.string.show_nearby_log_purchase),
+                    onClick = onPurchase,
+                )
             }
         }
     }

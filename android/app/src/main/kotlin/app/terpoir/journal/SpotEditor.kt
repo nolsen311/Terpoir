@@ -215,23 +215,33 @@ fun SpotEditor(
         } else {
             Text(stringResource(R.string.spot_location_saved, current.accuracyM), style = MaterialTheme.typography.bodyMedium)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
+        // The ways to set it, as one even row of icons (maintainer, 2026-10-17).
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            IconAction(
+                icon = R.drawable.ic_location_area,
+                label = stringResource(R.string.spot_location_approximate_short),
+                description = stringResource(R.string.spot_location_approximate),
                 enabled = !locating,
                 onClick = { askLocation.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION)) },
-            ) { Text(stringResource(R.string.spot_location_approximate)) }
-            OutlinedButton(
+            )
+            IconAction(
+                icon = R.drawable.ic_location_precise,
+                label = stringResource(R.string.spot_location_precise_short),
+                description = stringResource(R.string.spot_location_precise),
                 enabled = !locating,
                 onClick = {
                     askLocation.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                 },
-            ) { Text(stringResource(R.string.spot_location_precise)) }
-        }
-        if (mapToggle != null) {
-            OutlinedButton(
-                enabled = !locating,
-                onClick = { if (mapToggle.isOn()) openMap(mapToggle) else askMap = true },
-            ) { Text(stringResource(R.string.spot_location_map)) }
+            )
+            if (mapToggle != null) {
+                IconAction(
+                    icon = R.drawable.ic_map,
+                    label = stringResource(R.string.spot_location_map_short),
+                    description = stringResource(R.string.spot_location_map),
+                    enabled = !locating,
+                    onClick = { if (mapToggle.isOn()) openMap(mapToggle) else askMap = true },
+                )
+            }
         }
         if (current != null) TextButton(onClick = { fix = null }) { Text(stringResource(R.string.spot_location_clear)) }
         if (locating) Text(stringResource(R.string.spot_locating))
