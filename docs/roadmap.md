@@ -325,7 +325,7 @@ requirement rather than on features.
 | 0.6.2 | "Notify me" and purchase reminders on Google Play (maintainer, 2026-10-16): the Play build requests location "all the time" behind the in-app prominent disclosure. Released to internal testing first for the background-location declaration's video, and promoted once Google approves the declaration. |
 | 0.6.3 | Fixes and settings (maintainer, 2026-10-16 and 17): unlocking from a "Notify me" alert on a locked phone waits for the phone instead of reporting a Keystore error; YOLO Mode widened by Privacy Center group, with "Notify me" kept separate and placed under "Show me"; no Save button on screens that save each change at once. Like 0.6.2, internal testing until Google approves the background-location declaration. |
 | 0.6.4 | Tidier location buttons (maintainer, 2026-10-17): the "Show me" card on one row with icon actions ("Session", and "Purchase" at a Re-up Spot), and the spot editor's "Approximate", "Precise" and "Map" side by side at one size. Like 0.6.2, internal testing until Google approves the background-location declaration. |
-| 0.7.0 | Scan recognition from the journal, timeline comparisons and the offline strain catalog (maintainer, 2026-10-17): the rest of "Scan recognition from the journal" (OCR-tolerant suggestions ranked by shop and brand, brand and strain detection on labels, matched text broken down over time); "comes on faster than your other edibles"-style comparisons from the session timeline, once there is enough data to make them trustworthy; and the offline catalog from the candidate found, Kushy's MIT strain table (name, type, breeder, crosses; `docs/research/strain-lookups.md`, option 1), bundled and on with no toggle; the provenance check was waived for its factual columns (maintainer, 2026-10-21). |
+| 0.7.0 | Scan recognition from the journal, timeline comparisons and the offline strain catalog (maintainer, 2026-10-17): the rest of "Scan recognition from the journal" (OCR-tolerant suggestions ranked by shop and brand, brand and strain detection on labels; matched text broken down over time went to the backlog, maintainer 2026-10-21); "comes on faster than your other edibles"-style comparisons from the session timeline, once there is enough data to make them trustworthy; and the offline catalog from the candidate found, Kushy's MIT strain table (name, type, breeder, crosses; `docs/research/strain-lookups.md`, option 1), bundled and on with no toggle; the provenance check was waived for its factual columns (maintainer, 2026-10-21). |
 | 0.8.0 | Online strain lookups: sources the maintainer picks (such as Leafly or a seed database), each behind its own toggle, as "Catalog lookups" requires. Moved from 0.6.0 (maintainer, 2026-10-15), then from 0.7.0 (maintainer, 2026-10-17): it waits on the sources' replies and the maintainer's choice. |
 | 0.9.0 | F-Droid groundwork, a release of its own (maintainer, 2026-10-17): OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app. Moved from 0.7.0 (maintainer, 2026-10-15), then from 0.8.0 (2026-10-17). |
 | 1.0.0 | Public launch: Play production access, F-Droid submission, "Get Terpoir" with real links and fingerprints. |
@@ -451,12 +451,14 @@ requirement rather than on features.
         own with its usual method.
   - [x] Scanning terms for subtypes.
 
-- [ ] Scan recognition from the journal, 0.7.0 (`docs/design-decisions.md`,
+- [x] Scan recognition from the journal, 0.7.0 (`docs/design-decisions.md`,
       "Scan recognition from the journal"): learned receipt names with
       automatic linking on an exact match; OCR-tolerant suggestions
       ranked by shop and brand; brand and strain detection on labels;
       matched text broken down into brand, strain, product type and size
       over time. Later, an offline strain database (per "Catalog lookups").
+      Done in 0.7.0 apart from "growing over time", moved to the backlog
+      (maintainer, 2026-10-21).
   - [x] Brand and strain detection on labels: the journal's brands and
         strains named in full fill an empty Brand and Strains, and the
         offline catalog's offers "Add …" chips (2026-10-21).
@@ -484,6 +486,14 @@ requirement rather than on features.
 ## Backlog (not yet scheduled)
 
 Ideas the maintainer wants kept, to be designed and scheduled later.
+
+- [ ] Scan recognition "growing over time" (backlogged by the maintainer,
+      2026-10-21, from 0.7.0): when a receipt line is linked to a product
+      and the rest of the line is already explained, remember which words
+      named the brand and which the strain (`STZ` → Stiiizy, `BD` → Blue
+      Dream), so later receipts recognise them in products not logged yet.
+      New synced data (needs a design entry and a compatibility fixture);
+      the hard part is attributing words safely.
 
 - [x] "Secure storage not responding" on unlock: reopened (maintainer,
       2026-10-16) with a report from 0.6.2 (12), Play build, Android 17
