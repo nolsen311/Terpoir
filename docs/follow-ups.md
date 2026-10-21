@@ -38,7 +38,7 @@ an item by moving it to "Resolved" with the decision and date.
 | `www.wikidata.org`, `query.wikidata.org` | Wikidata's strain coverage and properties, and its CC0 terms | Not checked; CC0 stated from general knowledge, marked unverified. | Allow the domains before Wikidata is chosen as a catalog source. |
 | `vdb.openthc.org` | OpenTHC VDB's data size, currency and data licence | Its GPL-3.0 site code on GitHub (`openthc/vdb`); the data licence is unstated there. | Allow the domain, or ask OpenTHC directly, before shipping its names. |
 | `huggingface.co`, `cannlytics.com` | Cannlytics' dataset cards and data licence | Its MIT code on GitHub (`cannlytics/cannlytics`); data licence unstated. | Allow the domains if Cannlytics' terpene statistics are wanted later. |
-| `kushy.net`, `web.archive.org` | Kushy's upstream sources (provenance of its effects and description columns) | The MIT dataset on GitHub (`kushyapp/cannabis-dataset`), read first-hand; the recommendation keeps only its factual columns. | Accept Kushy's factual columns without the provenance check, or allow the domains. |
+| `web.archive.org`, `archive.org` (`kushy.net` allowed 2026-10-21) | Kushy's upstream sources (provenance of its effects and description columns) | The MIT dataset on GitHub (`kushyapp/cannabis-dataset`), read first-hand; the recommendation keeps only its factual columns. `kushy.net` is now a parked domain (redirects to `ww547.kushy.net`), so only archived copies remain. On 2026-10-21 `web.archive.org` connected but was reset before any reply, and `archive.org` was refused by the proxy (403). | Accept Kushy's factual columns without the provenance check, or get `web.archive.org` and `archive.org` through. |
 
 ### Resolved
 
