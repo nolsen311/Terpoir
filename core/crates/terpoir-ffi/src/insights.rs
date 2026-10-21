@@ -11,11 +11,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use terpoir_insights::{
     Buy, Level, SessionFacts, ShopSessionFacts, TimelineFacts, insights, shop_insights,
-    time_of_day, timeline_patterns,
+    time_of_day, timeline_comparisons, timeline_patterns,
 };
 use terpoir_model::{
-    DoseUnit, Product, ProductLine, Purchase, RecordId, Session, Spot, Strain, StrainDetail,
-    TagRef, TrackedField, TrackingPreferences,
+    DoseUnit, Method, Product, ProductLine, Purchase, RecordId, Session, Spot, Strain,
+    StrainDetail, TagRef, TrackedField, TrackingPreferences,
 };
 
 use crate::error::Result;
@@ -113,6 +113,46 @@ pub struct TimelineInsightData {
     /// Median minutes until it dropped below Mild after the peak, when at
     /// least 3 sessions show it.
     pub eases_min: Option<u32>,
+    /// For a product or strain: how it differs from the user's other
+    /// sessions with the same method, where the difference is clear enough
+    /// to state (`terpoir_insights::timeline_comparisons`). Last, with a
+    /// default, so callers that predate it compile.
+    #[uniffi(default = [])]
+    pub comparisons: Vec<TimelineComparisonData>,
+}
+
+/// "Comes on faster than your other edibles".
+#[derive(Clone, PartialEq, Eq, Debug, uniffi::Record)]
+pub struct TimelineComparisonData {
+    /// The method compared within, such as `edible`.
+    pub method: String,
+    /// `onset`, `peak_time`, `peak_level` or `eases`.
+    pub measure: String,
+    /// This product's or strain's median: minutes, or a level 0 to 5 for
+    /// `peak_level`.
+    pub this: u32,
+    /// The other sessions' median.
+    pub others: u32,
+    /// How many of this one's sessions show it.
+    pub sessions: u32,
+    /// How many other sessions show it.
+    pub others_count: u32,
+}
+
+/// Minutes between a method's timeline points: the smallest gap, from
+/// consumption to the first point and between points.
+fn point_step(method: &Method) -> u32 {
+    let plan = method.timeline_plan();
+    if plan.at.is_empty() {
+        return plan.minutes / plan.points.max(1);
+    }
+    let mut previous = 0;
+    let mut step = u32::MAX;
+    for &at in plan.at {
+        step = step.min(at - previous);
+        previous = at;
+    }
+    step
 }
 
 /// A shop's numbers (see `terpoir_insights::shop_insights`), with their
@@ -609,6 +649,29 @@ pub(crate) fn timelines(source: &dyn Source) -> Result<Vec<TimelineInsightData>>
             levels: session.timeline_levels.clone(),
         });
     }
+    // Clear differences from the method's other sessions, by group.
+    let mut steps: BTreeMap<String, u32> = BTreeMap::new();
+    for fact in &facts {
+        for slug in fact.groups.iter().filter_map(|g| g.strip_prefix("method:")) {
+            steps
+                .entry(slug.to_owned())
+                .or_insert_with(|| point_step(&Method::from_slug(slug)));
+        }
+    }
+    let mut comparisons: BTreeMap<String, Vec<TimelineComparisonData>> = BTreeMap::new();
+    for c in timeline_comparisons(&facts, &steps) {
+        comparisons
+            .entry(c.group.clone())
+            .or_default()
+            .push(TimelineComparisonData {
+                method: c.method,
+                measure: c.measure.slug().to_owned(),
+                this: c.this,
+                others: c.others,
+                sessions: u32::try_from(c.sessions.len()).unwrap_or(u32::MAX),
+                others_count: u32::try_from(c.others_count).unwrap_or(u32::MAX),
+            });
+    }
     let mut out = Vec::new();
     for pattern in timeline_patterns(&facts) {
         let (category, subject) = pattern.group.split_once(':').unwrap_or(("", ""));
@@ -642,6 +705,7 @@ pub(crate) fn timelines(source: &dyn Source) -> Result<Vec<TimelineInsightData>>
             peak_min: pattern.peak_min,
             peak_level: pattern.peak_level,
             eases_min: pattern.eases_min,
+            comparisons: comparisons.remove(&pattern.group).unwrap_or_default(),
         });
     }
     let order = |c: &str| match c {

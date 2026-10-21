@@ -16,7 +16,7 @@
 #![forbid(unsafe_code)]
 
 use terpoir_model::StrainType;
-use terpoir_scan::{MatchKind, normalize_name, score_name};
+use terpoir_scan::{MatchKind, names_in_label, normalize_name, score_name};
 
 /// The header the catalog file starts with.
 const HEADER: &str = "name\ttype\tbreeder\tparents";
@@ -168,6 +168,39 @@ impl StrainCatalog {
         found.truncate(limit);
         found.into_iter().map(|(.., m)| m).collect()
     }
+
+    /// Catalog strains a label names in full
+    /// ([`terpoir_scan::names_in_label`]), longest name first, at most
+    /// `limit`, leaving out names in `exclude` (the journal's own strains,
+    /// already offered). Stricter than for the journal's own names, since
+    /// the catalog holds thousands: a name needs two words or six letters,
+    /// so a label's "Haze" or "Kush" alone suggests nothing.
+    #[must_use]
+    pub fn find_in_label(
+        &self,
+        text: &str,
+        exclude: &[String],
+        limit: usize,
+    ) -> Vec<&CatalogStrain> {
+        let excluded: Vec<String> = exclude.iter().map(|n| normalize_name(n)).collect();
+        let candidates: Vec<&(CatalogStrain, String)> = self
+            .strains
+            .iter()
+            .filter(|(_, normalized)| {
+                let words = normalized.split(' ').count();
+                let letters = normalized.chars().filter(|c| *c != ' ').count();
+                (words >= 2 || letters >= 6) && !excluded.contains(normalized)
+            })
+            .collect();
+        let names: Vec<&str> = candidates.iter().map(|(s, _)| s.name.as_str()).collect();
+        let mut found: Vec<&(CatalogStrain, String)> = names_in_label(text, &names)
+            .into_iter()
+            .map(|i| candidates[i])
+            .collect();
+        found.sort_by_key(|(_, normalized)| std::cmp::Reverse(normalized.len()));
+        found.truncate(limit);
+        found.into_iter().map(|(strain, _)| strain).collect()
+    }
 }
 
 #[cfg(test)]
@@ -236,6 +269,27 @@ mod tests {
         assert!(catalog.search("", 5).is_empty());
         assert!(catalog.search("Blue", 0).is_empty());
         assert!(catalog.search("zzz", 5).is_empty());
+    }
+
+    #[test]
+    fn finds_names_on_a_label() {
+        let catalog = StrainCatalog::parse(SAMPLE).unwrap();
+        let label = "ACME FARMS\nBLUE DREAM\nHAZE x Blueberry\n3.5g";
+        // Haze alone is too short to suggest; Blue Dream and Blueberry are
+        // found, the longer first.
+        let found: Vec<&str> = catalog
+            .find_in_label(label, &[], 5)
+            .iter()
+            .map(|s| s.name.as_str())
+            .collect();
+        assert_eq!(found, ["Blue Dream", "Blueberry"]);
+        let without: Vec<&str> = catalog
+            .find_in_label(label, &["blue dream".into()], 5)
+            .iter()
+            .map(|s| s.name.as_str())
+            .collect();
+        assert_eq!(without, ["Blueberry"]);
+        assert_eq!(catalog.find_in_label(label, &[], 1).len(), 1);
     }
 
     #[test]

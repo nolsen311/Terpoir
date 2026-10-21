@@ -3073,6 +3073,37 @@ fn timeline_insights_show_how_it_usually_goes() {
     assert_eq!(edible.onset_min, Some(96));
     assert_eq!((edible.peak_min, edible.peak_level), (144, 4));
     assert_eq!(edible.eases_min, Some(240));
+    // With no other edibles, nothing to compare the gummies with.
+    assert!(found[1].comparisons.is_empty());
+
+    // Three other edibles that come on and peak later, and milder.
+    for n in 0..3 {
+        let mut s = session(None);
+        s.timeline_levels = points(&[(48, 0), (96, 0), (192, 3), (240, 1)]);
+        journal.save_session(None, s, 10 + n).unwrap();
+    }
+    let found = journal.timeline_insights().unwrap();
+    let gummies = found.iter().find(|t| t.category == "product").unwrap();
+    let compared: Vec<(&str, &str, u32, u32)> = gummies
+        .comparisons
+        .iter()
+        .map(|c| (c.method.as_str(), c.measure.as_str(), c.this, c.others))
+        .collect();
+    assert_eq!(
+        compared,
+        [
+            ("edible", "onset", 96, 192),
+            ("edible", "peak_time", 144, 192),
+            ("edible", "peak_level", 4, 3),
+        ]
+    );
+    assert_eq!(
+        (
+            gummies.comparisons[0].sessions,
+            gummies.comparisons[0].others_count
+        ),
+        (3, 3)
+    );
 
     // Hidden with the timeline in "What I track".
     journal
@@ -3275,4 +3306,55 @@ fn catalog_parents_link_to_journal_strains() {
     let ids = journal.strain_ids_named(found[0].parents.clone()).unwrap();
     assert_eq!(ids, vec![String::new(), haze]);
     assert!(StrainCatalog::open("not a catalog".into()).is_err());
+}
+
+#[test]
+fn labels_name_journal_brands_and_strains() {
+    let keys = create_keys().unwrap();
+    let dir = Device::new();
+    let journal = dir.open(&keys).unwrap();
+    let acme = journal
+        .save_brand(
+            None,
+            BrandData {
+                name: "Acme Farms".into(),
+            },
+            1_000,
+        )
+        .unwrap();
+    let strain = |name: &str| StrainData {
+        name: name.into(),
+        lineage: None,
+        terpenes: vec![],
+        strain_type: None,
+        terpene_levels: vec![],
+        parents: vec![],
+        cannabinoids: vec![],
+        breeder: None,
+    };
+    let dream = journal
+        .save_strain(None, strain("Blue Dream"), 1_001)
+        .unwrap();
+    journal.save_strain(None, strain("Dream"), 1_002).unwrap();
+    journal.save_strain(None, strain("OG Kush"), 1_003).unwrap();
+    let found = journal
+        .names_on_label("ACME FARMS\nBLUE DREAM 3.5G\nTHC 22%".into())
+        .unwrap();
+    let got: Vec<(&str, &str)> = found
+        .iter()
+        .map(|n| (n.record_type.as_str(), n.id.as_str()))
+        .collect();
+    assert_eq!(got, [("brand", acme.as_str()), ("strain", dream.as_str())]);
+
+    let catalog = StrainCatalog::open(
+        "name\ttype\tbreeder\tparents\nBlue Dream\tsativa\t\t\nPineapple Express\t\t\t\n".into(),
+    )
+    .unwrap();
+    let label = "BLUE DREAM\nPINEAPPLE EXPRESS";
+    let names: Vec<String> = catalog
+        .find_in_label(label.into(), vec!["Blue Dream".into()], 3)
+        .into_iter()
+        .map(|s| s.name)
+        .collect();
+    assert_eq!(names, ["Pineapple Express"]);
 }

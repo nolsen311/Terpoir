@@ -573,6 +573,14 @@ them; the other activities belong to Google's libraries.
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.7.0** (445 characters):
+    Headline: A strain catalog, and labels that know your strains
+    Summary: a built-in strain catalog, searched on your phone ; label scans fill in your brands and strains ; insights compare a product with the rest ; a breeder field on strains
+    ```
+    <en-US>
+    A built-in strain catalog: as you name a strain, matching strains appear with their type, breeder and parents, and one tap fills in what's empty. It's searched on your phone; nothing is sent. Scanning a label now fills in the brand and strains you already have, and offers catalog strains it finds. Insights compare how a product feels with your other sessions of the same kind, once there's enough data to be sure. Strains have a breeder field.
+    </en-US>
+    ```
   - **0.6.4** (213 characters):
     Headline: Tidier location buttons
     Summary: the "You're near" card fits on one row ; location buttons in the spot editor are side by side and the same size
