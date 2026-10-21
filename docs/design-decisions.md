@@ -882,6 +882,13 @@ Scans get better at recognising what the user buys by using what the journal alr
 - Options for less leakage: offline catalog, encrypted DNS (Android Private DNS, iOS profiles), VPN or Tor (Orbot).
 - Engineering: search on explicit submit only (no type-ahead), cache results in the encrypted store, app-level API keys (no per-user identifiers), minimal headers.
 - Check each provider's terms on caching and offline redistribution.
+- **Offline strain catalog (decided 2026-10-21, maintainer):**
+  - **Source:** Kushy's MIT strain table, factual columns only (name, type, breeder, parents), built by `core/crates/terpoir-catalog/data/make_strains.py` from a pinned commit. The provenance check was waived: Kushy's site is gone and the Internet Archive couldn't be read from a session. Descriptions, effects, ailments, flavors, terpenes and the cannabinoid figures (no stated unit) are left out. "Hybrid" is dropped: 92% of rows carry it, so it reads as the dataset's default rather than a fact.
+  - **Bundled, not downloaded:** about 260 KB of text (74 KB compressed), an asset in the app, so nothing is fetched and the foss build needs no host. An exception to "Optional components" for catalogs this small; a large catalog would still be a download the user chooses.
+  - **Always on, no toggle:** searching happens on the phone, so nothing leaves it; as "Local user-created entries and downloadable offline catalogs always available" says.
+  - **In the strain editor:** as the name is typed, up to three matches show with their facts and a credit line. "Use" takes the catalog's spelling of the name and fills only what is still empty: the type, the breeder and the lineage notes (`A × B`); at the Detailed step, parents too, linked to strains already in the journal by name (`Journal::strain_ids_named`) or created as name-only strains at Save, so cancelling leaves nothing behind. Nothing is saved until the user saves.
+  - **Core:** `terpoir-catalog` parses the file and ranks names as the receipt matcher does (`terpoir_scan::score_name`); the FFI's `StrainCatalog` takes the file's text from the platform.
+  - **Strain breeder:** strains gain `breeder` (free text, synced, additive: older apps keep it untouched). Shown and edited beside the lineage notes, from the Terpenes step up; the plaintext export's JSON carries it. The fixture generator writes one, and `compat_fixtures.rs` expects it from fixtures whose manifest sets `strain_breeder`.
 
 ## OS indexing and integrations
 - Default: index nothing, donate no activities.
@@ -951,7 +958,7 @@ While releases are early, errors offer "Send a report", and the app offers it on
 - **Privacy policy:** says reports exist, what they hold, that a sent report reaches the developer with the sender's address, and that a bug may be posted publicly without it.
 
 ## Optional components (decided)
-- The base app ships only what every user needs. Heavy, optional pieces (text-recognition engines, language data, the bundled tagging model, offline catalogs) are downloads the user chooses, each named in the Privacy Center or the feature that uses it, with its size, and removable.
+- The base app ships only what every user needs. Heavy, optional pieces (text-recognition engines, language data, the bundled tagging model, offline catalogs) are downloads the user chooses, each named in the Privacy Center or the feature that uses it, with its size, and removable. Exception: the offline strain catalog is small enough to bundle ("Catalog lookups", 2026-10-21).
 - **Code** (native libraries, Kotlin/Java): only through the store. Google Play forbids downloading executable code from anywhere else, so on Play it comes as an on-demand feature module. F-Droid has no equivalent, so code the foss build needs is bundled; only data is optional there.
 - **Data** (models, language packs, catalogs): Play Asset Delivery on Play. Elsewhere, once the app has the INTERNET permission, from a neutral host with a SHA-256 pinned in the app, never terpoir.app.
 - Removing a component deletes its files; turning off the feature that uses it offers to remove it.

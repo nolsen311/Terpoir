@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -20,8 +21,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,13 +37,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
 import app.terpoir.core.BrandData
 import app.terpoir.core.CannabinoidAmountData
+import app.terpoir.core.CatalogStrainData
 import app.terpoir.core.IdentifierData
 import app.terpoir.core.ProductData
 import app.terpoir.core.ProductMatch
@@ -59,6 +66,7 @@ import app.terpoir.scan.CameraScreen
 import app.terpoir.scan.CaptureMode
 import app.terpoir.scan.DecodedCode
 import app.terpoir.share.ProductShare
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -704,10 +712,18 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
     var loaded by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var lineage by remember { mutableStateOf("") }
+    var breeder by remember { mutableStateOf("") }
     var type by remember { mutableStateOf<String?>(null) }
     var terpenes by remember { mutableStateOf<List<TagRefData>>(emptyList()) }
     var levels by remember { mutableStateOf<Map<TagRefData, String>>(emptyMap()) }
     var parents by remember { mutableStateOf<List<String>>(emptyList()) }
+    // Parents from a catalog suggestion that aren't in the journal yet: they
+    // become name-only strains at Save, so cancelling leaves nothing behind.
+    var newParents by remember { mutableStateOf<List<String>>(emptyList()) }
+    var suggestions by remember { mutableStateOf<List<CatalogStrainData>>(emptyList()) }
+    // The name a suggestion was taken from: no more suggestions for it.
+    var usedName by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
     var cannabinoids by remember { mutableStateOf<List<String>>(emptyList()) }
     var allStrains by remember { mutableStateOf<List<Entry<StrainData>>>(emptyList()) }
     var customTerpenes by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
@@ -717,7 +733,9 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
         id?.let { repo.strain(it) }?.let {
             original = it
             name = it.name
+            usedName = it.name
             lineage = it.lineage.orEmpty()
+            breeder = it.breeder.orEmpty()
             type = it.strainType
             terpenes = it.terpenes
             levels = it.terpeneLevels.associate { l -> l.terpene to l.level }
@@ -725,6 +743,16 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
             cannabinoids = it.cannabinoids
         }
         loaded = true
+    }
+    // The offline catalog, searched on the phone as the name is typed.
+    LaunchedEffect(name, loaded) {
+        val query = name.trim()
+        if (!loaded || query.length < 2 || query == usedName) {
+            suggestions = emptyList()
+            return@LaunchedEffect
+        }
+        delay(250)
+        suggestions = OfflineCatalog.search(context, query)
     }
     if (!loaded) return
     val step = tracking.strainDetail
@@ -737,7 +765,7 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
         onSave = {
             val kept = original
             // What this step doesn't show is saved as it was.
-            val data = StrainData(
+            fun data(created: List<String>) = StrainData(
                 name = name.trim(),
                 lineage = if (step == StrainDetail.SIMPLE) kept?.lineage else lineage.trim().ifEmpty { null },
                 terpenes = if (showTerpenes) terpenes else kept?.terpenes.orEmpty(),
@@ -747,16 +775,42 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
                 } else {
                     kept?.terpeneLevels.orEmpty()
                 },
-                parents = if (detailed) parents else kept?.parents.orEmpty(),
+                parents = if (detailed) parents + created else kept?.parents.orEmpty(),
                 cannabinoids = if (detailed) cannabinoids else kept?.cannabinoids.orEmpty(),
+                breeder = if (step == StrainDetail.SIMPLE) kept?.breeder else breeder.trim().ifEmpty { null },
             )
             scope.launch {
-                repo.saveStrain(id, data)
+                val created = if (detailed) {
+                    newParents.map { repo.saveStrain(null, StrainData(it, null, emptyList(), null, emptyList(), emptyList(), emptyList())) }
+                } else {
+                    emptyList()
+                }
+                repo.saveStrain(id, data(created))
                 onDone()
             }
         },
     ) {
         OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.strain_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        if (suggestions.isNotEmpty()) {
+            CatalogSuggestions(suggestions) { s ->
+                // Fills only what is still empty; the user checks it before saving.
+                name = s.name
+                usedName = s.name
+                suggestions = emptyList()
+                if (type == null) type = s.strainType
+                if (breeder.isBlank()) breeder = s.breeder.orEmpty()
+                if (s.parents.isNotEmpty()) {
+                    if (lineage.isBlank()) lineage = s.parents.joinToString(" × ")
+                    if (detailed) {
+                        scope.launch {
+                            val ids = repo.strainIdsNamed(s.parents)
+                            parents = (parents + ids.filterNotNull()).distinct()
+                            newParents = (newParents + s.parents.filterIndexed { i, _ -> ids[i] == null }).distinct()
+                        }
+                    }
+                }
+            }
+        }
         SectionTitle(stringResource(R.string.strain_type))
         SingleChoiceChips(vocab.strainTypes, type) { type = it }
         Text(stringResource(R.string.strain_type_note), style = MaterialTheme.typography.bodySmall)
@@ -810,6 +864,18 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
                     }
                 },
             )
+            if (newParents.isNotEmpty()) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (parent in newParents) {
+                        InputChip(
+                            selected = false,
+                            onClick = { newParents = newParents - parent },
+                            label = { Text(stringResource(R.string.strain_parent_new_on_save, parent)) },
+                            trailingIcon = { Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.remove)) },
+                        )
+                    }
+                }
+            }
 
             SectionTitle(stringResource(R.string.strain_cannabinoids))
             Text(stringResource(R.string.strain_cannabinoids_hint), style = MaterialTheme.typography.bodySmall)
@@ -826,8 +892,40 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
 
         if (step != StrainDetail.SIMPLE) {
             OutlinedTextField(lineage, { lineage = it }, label = { Text(stringResource(R.string.strain_lineage)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(breeder, { breeder = it }, label = { Text(stringResource(R.string.strain_breeder)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         }
         if (id != null) DeleteButton(R.string.strain_delete, R.string.strain_delete_body) { scope.launch { repo.delete(id); onDone() } }
+    }
+}
+
+/**
+ * Strains from the offline catalog that match the name being typed. Using
+ * one fills what is still empty; nothing is saved until the user saves.
+ */
+@Composable
+private fun CatalogSuggestions(suggestions: List<CatalogStrainData>, onUse: (CatalogStrainData) -> Unit) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.catalog_suggestions_title), style = MaterialTheme.typography.labelLarge)
+            for (s in suggestions) {
+                val facts = listOfNotNull(
+                    s.strainType?.let { label(it) },
+                    s.breeder?.let { stringResource(R.string.catalog_bred_by, it) },
+                    s.parents.takeIf { it.isNotEmpty() }?.joinToString(" × "),
+                ).joinToString(" · ").ifEmpty { stringResource(R.string.catalog_name_only) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(s.name, style = MaterialTheme.typography.bodyLarge)
+                        Text(facts, style = MaterialTheme.typography.bodySmall)
+                    }
+                    val use = stringResource(R.string.catalog_use_named, s.name)
+                    TextButton(onClick = { onUse(s) }, modifier = Modifier.semantics { contentDescription = use }) {
+                        Text(stringResource(R.string.catalog_use))
+                    }
+                }
+            }
+            Text(stringResource(R.string.catalog_credit), style = MaterialTheme.typography.bodySmall)
+        }
     }
 }
 

@@ -194,6 +194,11 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
 
     suspend fun saveStrain(id: String?, data: StrainData): String = io { journal.saveStrain(id, data, now()) }
 
+    /** For each name, the journal's strain with that name, or null. */
+    suspend fun strainIdsNamed(names: List<String>): List<String?> = io {
+        journal.strainIdsNamed(names).map { it.ifEmpty { null } }
+    }
+
     suspend fun saveBrand(id: String?, data: BrandData): String = io { journal.saveBrand(id, data, now()) }
 
     suspend fun saveSpot(id: String?, data: SpotData): String = io { journal.saveSpot(id, data, now()) }

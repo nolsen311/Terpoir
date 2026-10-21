@@ -114,6 +114,11 @@ unstated).
   the style used by commercial strain sites. Before shipping, consider
   dropping the effects/ailment/flavor/description columns and keeping only
   the factual fields (name, type, breeder, crosses).
+- **Shipped (maintainer, 2026-10-21):** the factual fields only, bundled
+  with the app as the offline catalog, without the provenance check
+  (`kushy.net` is parked and `web.archive.org` couldn't be read; see
+  `docs/follow-ups.md`). Design: `docs/design-decisions.md`, "Catalog
+  lookups".
 
 ### OpenTHC Variety Database (code verified, data unverified)
 - Repo: https://github.com/openthc/vdb, licensed GPL-3.0 (LICENSE file). Last
