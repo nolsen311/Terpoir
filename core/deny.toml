@@ -15,7 +15,15 @@ all-features = true
 yanked = "deny"
 unmaintained = "all"
 unsound = "all"
-ignore = []
+ignore = [
+    # basic-toml is unmaintained (archived 2025-03-02). It comes in only
+    # through askama_derive, which uniffi_bindgen uses to generate the
+    # Kotlin and Swift bindings at build time; it parses askama's template
+    # config and is never linked into the app. askama_derive 0.16.1, the
+    # newest, still depends on it. Drop this when uniffi's askama moves off
+    # it.
+    { id = "RUSTSEC-2026-0374", reason = "build-time only (uniffi_bindgen → askama_derive); no maintained replacement upstream yet" },
+]
 
 [licenses]
 # Licenses compatible with GPL-3.0-or-later. Adding one needs a reason in
