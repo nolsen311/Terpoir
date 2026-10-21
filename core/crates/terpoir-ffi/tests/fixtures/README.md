@@ -48,7 +48,8 @@ Written by `make_compat_fixtures.rs` with fixed contents and clock:
 - brand "Acme", and brand "Gone", deleted (only its ID remains, as a marker);
 - strain "Blue Dream" (lineage, terpenes, type); since 0.4.0 also terpene
   levels (myrcene dominant, pinene secondary), parent "Haze" (a name-only
-  strain, `parent_strain` in the manifest) and the cannabinoid CBG;
+  strain, `parent_strain` in the manifest) and the cannabinoid CBG; since
+  0.7.0 also the breeder "DJ Short" (`strain_breeder` in the manifest);
 - spot "Corner shop" (purpose, coordinates, radius, purchase prompts on);
   since 0.6.0 also the phone number 5550102030 and the licence number
   C100000123LIC (`receipt_formats` in the manifest);
