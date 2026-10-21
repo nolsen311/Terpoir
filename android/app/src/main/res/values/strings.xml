@@ -369,6 +369,18 @@
     <string name="insights_timeline_onset">comes on by %1$s</string>
     <string name="insights_timeline_peak">peaks around %1$s at %2$s</string>
     <string name="insights_timeline_eases">eases off by %1$s</string>
+    <plurals name="insights_compare_others">
+        <item quantity="one">%d other session</item>
+        <item quantity="other">%d other sessions</item>
+    </plurals>
+    <string name="insights_compare_onset_faster">Comes on faster than your other %1$s sessions: about %2$s against %3$s (%4$s).</string>
+    <string name="insights_compare_onset_slower">Comes on slower than your other %1$s sessions: about %2$s against %3$s (%4$s).</string>
+    <string name="insights_compare_peak_sooner">Peaks sooner than your other %1$s sessions: about %2$s against %3$s (%4$s).</string>
+    <string name="insights_compare_peak_later">Peaks later than your other %1$s sessions: about %2$s against %3$s (%4$s).</string>
+    <string name="insights_compare_peak_stronger">Peaks stronger than your other %1$s sessions: %2$s against %3$s (%4$s).</string>
+    <string name="insights_compare_peak_milder">Peaks milder than your other %1$s sessions: %2$s against %3$s (%4$s).</string>
+    <string name="insights_compare_eases_sooner">Eases off sooner than your other %1$s sessions: about %2$s against %3$s (%4$s).</string>
+    <string name="insights_compare_eases_later">Lasts longer than your other %1$s sessions: eases off about %2$s against %3$s (%4$s).</string>
     <plurals name="insights_timeline_sessions">
         <item quantity="one">%d session</item>
         <item quantity="other">%d sessions</item>

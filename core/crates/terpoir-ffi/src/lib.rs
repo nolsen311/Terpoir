@@ -49,7 +49,8 @@ pub use capture::{capture_ready, seal_capture};
 pub use catalog::{CatalogStrainData, StrainCatalog};
 pub use error::{CoreError, Result};
 pub use insights::{
-    InsightData, InsightFeedback, ShopEffectData, ShopInsightData, TimelineInsightData,
+    InsightData, InsightFeedback, ShopEffectData, ShopInsightData, TimelineComparisonData,
+    TimelineInsightData,
 };
 pub use journal::{
     ImportResult, Journal, LabelName, NearbySpot, ProductMatch, PromptFence, ReceiptShopMatch,
