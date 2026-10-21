@@ -9,6 +9,7 @@ import app.terpoir.core.ExportFile
 import app.terpoir.core.InsightData
 import app.terpoir.core.InsightFeedback
 import app.terpoir.core.Journal
+import app.terpoir.core.LabelName
 import app.terpoir.core.NearbySpot
 import app.terpoir.core.ProductData
 import app.terpoir.core.ProductMatch
@@ -193,6 +194,14 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
     suspend fun saveProduct(id: String?, data: ProductData): String = io { journal.saveProduct(id, data, now()) }
 
     suspend fun saveStrain(id: String?, data: StrainData): String = io { journal.saveStrain(id, data, now()) }
+
+    /** The journal's brands and strains a scanned label names in full. */
+    suspend fun namesOnLabel(text: String): List<LabelName> = io { journal.namesOnLabel(text) }
+
+    /** For each name, the journal's strain with that name, or null. */
+    suspend fun strainIdsNamed(names: List<String>): List<String?> = io {
+        journal.strainIdsNamed(names).map { it.ifEmpty { null } }
+    }
 
     suspend fun saveBrand(id: String?, data: BrandData): String = io { journal.saveBrand(id, data, now()) }
 

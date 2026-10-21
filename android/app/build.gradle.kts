@@ -44,8 +44,8 @@ android {
         // crypto-bound unlock depends on (docs/design-decisions.md).
         minSdk = 30
         targetSdk = 37
-        versionCode = 14
-        versionName = "0.6.4"
+        versionCode = 15
+        versionName = "0.7.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
@@ -315,6 +315,42 @@ val copyPrivacyPolicy by tasks.registering(CopyPrivacyPolicy::class) {
     outputDir.set(layout.buildDirectory.dir("generated/privacy/assets"))
 }
 
+// --- The offline strain catalog ------------------------------------------
+//
+// The core's catalog file and its MIT notice, bundled as assets: the catalog
+// is searched on the device and never downloaded (docs/design-decisions.md,
+// "Catalog lookups").
+
+/** Copies the strain catalog and its licence notice into a generated assets directory. */
+abstract class CopyStrainCatalog : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val catalog: RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val licence: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val out = outputDir.get().asFile
+        out.deleteRecursively()
+        catalog.get().asFile.copyTo(out.resolve("catalog/strains-kushy.tsv"))
+        licence.get().asFile.copyTo(out.resolve("licenses/Kushy-MIT.txt"))
+    }
+}
+
+val copyStrainCatalog by tasks.registering(CopyStrainCatalog::class) {
+    description = "Copies the offline strain catalog and its licence into the app's assets."
+    val data = rootProject.layout.projectDirectory.dir("../core/crates/terpoir-catalog/data")
+    catalog.set(data.file("strains-kushy.tsv"))
+    licence.set(data.file("LICENSE-kushy.txt"))
+    outputDir.set(layout.buildDirectory.dir("generated/catalog/assets"))
+}
+
 /**
  * Groups that must never reach the FOSS build: Play services, Firebase,
  * Google Data Transport (ML Kit's usage metrics), Play Billing, Play Core /
@@ -493,6 +529,7 @@ androidComponents {
         variant.sources.jniLibs?.addGeneratedSourceDirectory(buildRustCore, CargoNdkBuild::outputDir)
         variant.sources.kotlin?.addGeneratedSourceDirectory(generateCoreBindings, UniffiBindgen::outputDir)
         variant.sources.assets?.addGeneratedSourceDirectory(copyPrivacyPolicy, CopyPrivacyPolicy::outputDir)
+        variant.sources.assets?.addGeneratedSourceDirectory(copyStrainCatalog, CopyStrainCatalog::outputDir)
         // The Play manifest's Google Maps key: this build type's own key.
         if (variant.flavorName == "play") {
             variant.manifestPlaceholders.put("googleMapsKey", googleMapsKeys[variant.buildType].orEmpty())

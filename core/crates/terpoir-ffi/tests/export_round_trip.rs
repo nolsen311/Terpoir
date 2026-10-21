@@ -153,6 +153,7 @@ fn fill(journal: &Journal) -> Filled {
                 terpene_levels: vec![],
                 parents: vec![],
                 cannabinoids: vec![],
+                breeder: Some("DJ Short".into()),
             },
             1,
         )

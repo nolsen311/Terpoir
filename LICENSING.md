@@ -76,6 +76,15 @@ license texts ship in the app (`android/app/src/main/assets/licenses/`),
 and their sources are in [android/ocr/README.md](android/ocr/README.md).
 This software is based in part on the work of the Independent JPEG Group.
 
+## Bundled strain catalog
+
+The offline strain catalog (`core/crates/terpoir-catalog/data/`) is built
+from Kushy's strain dataset, which is MIT-licensed ("Copyright (c)
+2016-present, Kushy."). Its license text ships in the app
+(`assets/licenses/Kushy-MIT.txt`, copied at build time from
+`core/crates/terpoir-catalog/data/LICENSE-kushy.txt`); its source is in
+that directory's README.
+
 ## Trademarks
 
 The GPL grants rights to the code, not to the Terpoir name or logo. GPLv3

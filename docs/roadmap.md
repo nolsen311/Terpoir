@@ -7,7 +7,7 @@ per item or small group of items. Keep this file updated as items land.
 
 ## Maintainer tasks (outside the code)
 
-- [ ] Squash-merge PR #1 with a `Signed-off-by:` line in the merge message.
+- [x] Squash-merge PR #1 with a `Signed-off-by:` line in the merge message.
 - [x] Settings → Code security: enable Dependabot alerts and Dependabot
       security updates. (Managed in `Terpoir-infra` since its first apply,
       2026-10-13.)
@@ -26,7 +26,7 @@ per item or small group of items. Keep this file updated as items land.
       closed-testing requirements. (Done; first review passed 2026-10-14.)
 - [ ] Recruit closed testers: 12 opted in for 14 days in a row before
       Play production access (3 as of 2026-10-14).
-- [ ] Play Console: declare background location for "Notify me" (the
+- [x] Play Console: declare background location for "Notify me" (the
       permissions declaration form and a short demonstration video) before
       the first release that includes it. Not needed for the first Play
       release, which leaves background location out (maintainer,
@@ -35,33 +35,38 @@ per item or small group of items. Keep this file updated as items land.
   - [x] Code PR (Claude): the Play build requests it, with the in-app
         disclosure screen, privacy policy and Data safety updates
         (2026-10-16).
-  - [ ] Record the video on an internal-testing build; upload it
+  - [x] Record the video on an internal-testing build; upload it
         unlisted.
-  - [ ] Fill in App content → Sensitive app permissions → Location
-        permissions, and send it for review with that release.
-- [ ] Mastodon account for release announcements (2026-10-15;
+  - [x] Fill in App content → Sensitive app permissions → Location
+        permissions, and send it for review with that release
+        (done by 2026-10-21).
+- [x] Mastodon account for release announcements (2026-10-15;
       `docs/design-decisions.md`, "Release announcements"):
-  - [ ] Create the account on mastodon.social (for example
+  - [x] Create the account on mastodon.social (for example
         `terpoirapp`); mark it as a bot ("automated account") in its
         profile settings.
-  - [ ] Preferences → Development → New application, with only the
+  - [x] Preferences → Development → New application, with only the
         `write:statuses` and `write:media` scopes; copy its access token.
-  - [ ] Add the token as `MASTODON_TOKEN` in the Terpoir repository's
+  - [x] Add the token as `MASTODON_TOKEN` in the Terpoir repository's
         `announce` environment (Settings → Environments), after
         Terpoir-infra has created it.
-  - [ ] Copy the token to Keeper, folder `Terpoir` (Terpoir-infra D9).
+  - [x] Copy the token to Keeper, folder `Terpoir` (Terpoir-infra D9).
 - [ ] Strain data permission requests (2026-10-15;
       `docs/research/strain-lookups.md`). Fill in your name, send, then
-      record each answer in the research doc:
-  - [ ] Kannapedia / Medicinal Genomics, `info@medicinalgenomics.com`:
+      record each answer in the research doc (all sent by 2026-10-21;
+      answers still to record):
+  - [x] Kannapedia / Medicinal Genomics, `info@medicinalgenomics.com`:
         saved as a Gmail draft.
-  - [ ] AllBud, `legal@allbud.com`: saved as a Gmail draft.
-  - [ ] SeedFinder.eu: no address published; send through its contact
+  - [x] AllBud, `legal@allbud.com`: saved as a Gmail draft.
+  - [x] SeedFinder.eu: no address published; send through its contact
         form. Its text is a Gmail draft with no recipient.
-  - [ ] TerpHunter: no address published; send through its contact form
-        (text saved as a Gmail draft with no recipient).
-        Also ask about the coming Pro API and where its strain profiles
-        come from.
+  - [x] TerpHunter: sent through its contact form (2026-10-15). Its
+        maintainer replied with personal Pro access through an MCP endpoint
+        (2026-10-20); recorded in the research doc.
+  - [x] TerpHunter follow-up sent (2026-10-21): bundling, per-user
+        sign-in from the app, measured versus inferred values.
+  - [ ] TerpHunter: try the connector and send feedback, then record the
+        answer.
 
 ## Phase 0: Repository and CI foundations
 
@@ -320,7 +325,7 @@ requirement rather than on features.
 | 0.6.2 | "Notify me" and purchase reminders on Google Play (maintainer, 2026-10-16): the Play build requests location "all the time" behind the in-app prominent disclosure. Released to internal testing first for the background-location declaration's video, and promoted once Google approves the declaration. |
 | 0.6.3 | Fixes and settings (maintainer, 2026-10-16 and 17): unlocking from a "Notify me" alert on a locked phone waits for the phone instead of reporting a Keystore error; YOLO Mode widened by Privacy Center group, with "Notify me" kept separate and placed under "Show me"; no Save button on screens that save each change at once. Like 0.6.2, internal testing until Google approves the background-location declaration. |
 | 0.6.4 | Tidier location buttons (maintainer, 2026-10-17): the "Show me" card on one row with icon actions ("Session", and "Purchase" at a Re-up Spot), and the spot editor's "Approximate", "Precise" and "Map" side by side at one size. Like 0.6.2, internal testing until Google approves the background-location declaration. |
-| 0.7.0 | Scan recognition from the journal, timeline comparisons and the offline strain catalog (maintainer, 2026-10-17): the rest of "Scan recognition from the journal" (OCR-tolerant suggestions ranked by shop and brand, brand and strain detection on labels, matched text broken down over time); "comes on faster than your other edibles"-style comparisons from the session timeline, once there is enough data to make them trustworthy; and the offline catalog from the candidate found, Kushy's MIT strain table (name, type, breeder, crosses; `docs/research/strain-lookups.md`, option 1), after its provenance is re-checked. |
+| 0.7.0 | Scan recognition from the journal, timeline comparisons and the offline strain catalog (maintainer, 2026-10-17): the rest of "Scan recognition from the journal" (OCR-tolerant suggestions ranked by shop and brand, brand and strain detection on labels; matched text broken down over time went to the backlog, maintainer 2026-10-21); "comes on faster than your other edibles"-style comparisons from the session timeline, once there is enough data to make them trustworthy; and the offline catalog from the candidate found, Kushy's MIT strain table (name, type, breeder, crosses; `docs/research/strain-lookups.md`, option 1), bundled and on with no toggle; the provenance check was waived for its factual columns (maintainer, 2026-10-21). |
 | 0.8.0 | Online strain lookups: sources the maintainer picks (such as Leafly or a seed database), each behind its own toggle, as "Catalog lookups" requires. Moved from 0.6.0 (maintainer, 2026-10-15), then from 0.7.0 (maintainer, 2026-10-17): it waits on the sources' replies and the maintainer's choice. |
 | 0.9.0 | F-Droid groundwork, a release of its own (maintainer, 2026-10-17): OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app. Moved from 0.7.0 (maintainer, 2026-10-15), then from 0.8.0 (2026-10-17). |
 | 1.0.0 | Public launch: Play production access, F-Droid submission, "Get Terpoir" with real links and fingerprints. |
@@ -382,16 +387,18 @@ requirement rather than on features.
   - [x] The offline source (maintainer, 2026-10-17): the candidate
         found, Kushy's MIT strain table, limited to its factual columns
         (research option 1). Online sources still to pick.
-  - [ ] An offline catalog, 0.7.0: downloaded in one piece, searched on
-        the device, filling a strain's type, breeder and lineage (and the
-        few cannabinoid fields Kushy fills) as suggestions the user
-        confirms. Before shipping: re-check Kushy's provenance (the
-        research notes it may come from scraped sources) and add its MIT
-        notice to the licences screen.
+  - [x] An offline catalog, 0.7.0: bundled with the app (about 260 KB,
+        maintainer, 2026-10-21) and searched on the device as a strain's
+        name is typed, filling its type, breeder and parents as suggestions
+        the user confirms; strains gain a breeder field. Kushy's provenance
+        check was waived (maintainer, 2026-10-21: factual columns only);
+        its cannabinoid figures were left out (no stated unit). Its MIT
+        notice ships with the app's other notices
+        (`assets/licenses/Kushy-MIT.txt`).
   - [ ] Online sources the maintainer picks, 0.8.0, each its own toggle
         (off by default) with a disclosure card; search on submit only.
 
-- [ ] Simpler receipt scanning, 0.6.0 and 0.6.1 (maintainer, 2026-10-15): text
+- [x] Simpler receipt scanning, 0.6.0 and 0.6.1 (maintainer, 2026-10-15): text
       recognition should fill the right parts of a new entry (brand,
       strain, form, size, price, shop, date) with less checking and
       typing. Options in
@@ -430,7 +437,7 @@ requirement rather than on features.
       - [x] 0.6.1: "Seen on receipts as" with a delete on the product
             page.
 
-- [ ] Product subtypes (maintainer, 2026-10-15; `docs/design-decisions.md`,
+- [x] Product subtypes (maintainer, 2026-10-15; `docs/design-decisions.md`,
       "Product subtypes"). In 0.6.0, with simpler receipt scanning
       (maintainer, 2026-10-15).
   - [x] The maintainer confirms the Transdermal timing (12 hours, points
@@ -444,12 +451,17 @@ requirement rather than on features.
         own with its usual method.
   - [x] Scanning terms for subtypes.
 
-- [ ] Scan recognition from the journal, 0.7.0 (`docs/design-decisions.md`,
+- [x] Scan recognition from the journal, 0.7.0 (`docs/design-decisions.md`,
       "Scan recognition from the journal"): learned receipt names with
       automatic linking on an exact match; OCR-tolerant suggestions
       ranked by shop and brand; brand and strain detection on labels;
       matched text broken down into brand, strain, product type and size
       over time. Later, an offline strain database (per "Catalog lookups").
+      Done in 0.7.0 apart from "growing over time", moved to the backlog
+      (maintainer, 2026-10-21).
+  - [x] Brand and strain detection on labels: the journal's brands and
+        strains named in full fill an empty Brand and Strains, and the
+        offline catalog's offers "Add …" chips (2026-10-21).
 
 - [ ] Session timeline (maintainer, 2026-10-15; `docs/design-decisions.md`,
       "Session timeline"): how strong it felt over time replaces onset,
@@ -460,7 +472,7 @@ requirement rather than on features.
   - [x] The timeline in shares.
   - [x] Insights that use the timeline: "How it usually goes" per method,
         product and strain (comes on, peaks, eases off), from set points.
-  - [ ] Timeline comparisons ("comes on faster than your other edibles"),
+  - [x] Timeline comparisons ("comes on faster than your other edibles"),
         once there is enough data to make them trustworthy (0.7.0).
 
 ## Phase 5: Stretch
@@ -474,6 +486,14 @@ requirement rather than on features.
 ## Backlog (not yet scheduled)
 
 Ideas the maintainer wants kept, to be designed and scheduled later.
+
+- [ ] Scan recognition "growing over time" (backlogged by the maintainer,
+      2026-10-21, from 0.7.0): when a receipt line is linked to a product
+      and the rest of the line is already explained, remember which words
+      named the brand and which the strain (`STZ` → Stiiizy, `BD` → Blue
+      Dream), so later receipts recognise them in products not logged yet.
+      New synced data (needs a design entry and a compatibility fixture);
+      the hard part is attributing words safely.
 
 - [x] "Secure storage not responding" on unlock: reopened (maintainer,
       2026-10-16) with a report from 0.6.2 (12), Play build, Android 17

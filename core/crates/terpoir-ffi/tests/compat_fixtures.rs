@@ -286,6 +286,9 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
             terpene_levels,
             parents,
             cannabinoids,
+            // Since 0.7.0.
+            breeder: (fixture.manifest["strain_breeder"].as_bool() == Some(true))
+                .then(|| "DJ Short".into()),
         },
     );
     if let Some(parent) = &parent_strain {
@@ -301,6 +304,7 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
                 terpene_levels: vec![],
                 parents: vec![],
                 cannabinoids: vec![],
+                breeder: None,
             },
         );
     }

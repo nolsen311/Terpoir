@@ -13,10 +13,10 @@ use std::sync::Arc;
 use terpoir_ffi::{
     BrandData, CannabinoidAmountData, CoreError, ExportArchive, IdentifierData, InsightFeedback,
     Journal, LocalTimeData, NewKeys, PackageSizeData, ProductData, ProductLineData, PurchaseData,
-    PurchaseLineData, RecordType, SessionData, SnippetData, SpotData, StrainData, SymptomData,
-    TagData, TagIntensity, TagProvenance, TagRefData, TerpeneLevelData, TimelineLevelData,
-    check_export_archive, check_in_minutes_for_methods, check_recovery_key, create_keys,
-    keys_for_restore, master_key_from_recovery, read_export_archive, readable_blobs,
+    PurchaseLineData, RecordType, SessionData, SnippetData, SpotData, StrainCatalog, StrainData,
+    SymptomData, TagData, TagIntensity, TagProvenance, TagRefData, TerpeneLevelData,
+    TimelineLevelData, check_export_archive, check_in_minutes_for_methods, check_recovery_key,
+    create_keys, keys_for_restore, master_key_from_recovery, read_export_archive, readable_blobs,
     subtypes_for_form, sync_folder_key_file, timeline_plan_for_methods, trackable_data_points,
     vocabulary,
 };
@@ -126,6 +126,7 @@ fn full_lifecycle() {
                 terpene_levels: vec![],
                 parents: vec![],
                 cannabinoids: vec![],
+                breeder: None,
             },
             1,
         )
@@ -1589,6 +1590,7 @@ fn shop_insights_compare_brands_and_strains_across_shops() {
                 terpene_levels: vec![],
                 parents: vec![],
                 cannabinoids: vec![],
+                breeder: None,
             },
             2,
         )
@@ -1799,6 +1801,7 @@ fn deleting_a_data_point_clears_it_everywhere() {
                 terpene_levels: vec![],
                 parents: vec![],
                 cannabinoids: vec![],
+                breeder: None,
             },
             1,
         )
@@ -2079,6 +2082,7 @@ fn strains_keep_levels_parents_and_cannabinoids() {
                 terpene_levels: vec![],
                 parents: vec![],
                 cannabinoids: vec![],
+                breeder: None,
             },
             1,
         )
@@ -2094,6 +2098,7 @@ fn strains_keep_levels_parents_and_cannabinoids() {
         }],
         parents: vec![parent.clone()],
         cannabinoids: vec!["cbg".into()],
+        breeder: None,
     };
     let mut with_stray = saved.clone();
     // A level for a terpene the strain doesn't list is dropped.
@@ -2141,6 +2146,7 @@ fn insights_fall_back_to_a_strains_dominant_terpene() {
         }],
         parents: vec![],
         cannabinoids: vec![],
+        breeder: None,
     };
     let product = |name: &str, strain: String, terpenes: Vec<TagIntensity>| ProductData {
         name: name.into(),
@@ -2221,6 +2227,7 @@ fn family_strain(name: &str, parents: Vec<String>, terpene: Option<&str>) -> Str
             .collect(),
         parents,
         cannabinoids: vec![],
+        breeder: None,
     }
 }
 
@@ -2462,6 +2469,7 @@ fn receipt_items_and_shops_are_matched_against_the_journal() {
                     terpene_levels: vec![],
                     parents: vec![],
                     cannabinoids: vec![],
+                    breeder: None,
                 },
                 1,
             )
@@ -3065,6 +3073,37 @@ fn timeline_insights_show_how_it_usually_goes() {
     assert_eq!(edible.onset_min, Some(96));
     assert_eq!((edible.peak_min, edible.peak_level), (144, 4));
     assert_eq!(edible.eases_min, Some(240));
+    // With no other edibles, nothing to compare the gummies with.
+    assert!(found[1].comparisons.is_empty());
+
+    // Three other edibles that come on and peak later, and milder.
+    for n in 0..3 {
+        let mut s = session(None);
+        s.timeline_levels = points(&[(48, 0), (96, 0), (192, 3), (240, 1)]);
+        journal.save_session(None, s, 10 + n).unwrap();
+    }
+    let found = journal.timeline_insights().unwrap();
+    let gummies = found.iter().find(|t| t.category == "product").unwrap();
+    let compared: Vec<(&str, &str, u32, u32)> = gummies
+        .comparisons
+        .iter()
+        .map(|c| (c.method.as_str(), c.measure.as_str(), c.this, c.others))
+        .collect();
+    assert_eq!(
+        compared,
+        [
+            ("edible", "onset", 96, 192),
+            ("edible", "peak_time", 144, 192),
+            ("edible", "peak_level", 4, 3),
+        ]
+    );
+    assert_eq!(
+        (
+            gummies.comparisons[0].sessions,
+            gummies.comparisons[0].others_count
+        ),
+        (3, 3)
+    );
 
     // Hidden with the timeline in "What I track".
     journal
@@ -3223,4 +3262,99 @@ fn merging_two_products_keeps_the_most_and_repoints_their_lines() {
         phone.product_to_keep(a, session_a),
         Err(CoreError::WrongType)
     );
+}
+
+#[test]
+fn catalog_parents_link_to_journal_strains() {
+    let keys = create_keys().unwrap();
+    let dir = Device::new();
+    let journal = dir.open(&keys).unwrap();
+    let haze = journal
+        .save_strain(
+            None,
+            StrainData {
+                name: "Haze".into(),
+                lineage: None,
+                terpenes: vec![],
+                strain_type: None,
+                terpene_levels: vec![],
+                parents: vec![],
+                cannabinoids: vec![],
+                breeder: Some("Haze Brothers".into()),
+            },
+            1_000,
+        )
+        .unwrap();
+    assert_eq!(
+        journal
+            .get_strain(haze.clone())
+            .unwrap()
+            .unwrap()
+            .breeder
+            .as_deref(),
+        Some("Haze Brothers")
+    );
+    let catalog = StrainCatalog::open(
+        "name\ttype\tbreeder\tparents\nBlue Dream\tsativa\t\tBlueberry | Haze\n".into(),
+    )
+    .unwrap();
+    assert_eq!(catalog.size(), 1);
+    let found = catalog.search("blue dr".into(), 5);
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].strain_type.as_deref(), Some("sativa"));
+    assert_eq!(found[0].match_kind, "prefix");
+    let ids = journal.strain_ids_named(found[0].parents.clone()).unwrap();
+    assert_eq!(ids, vec![String::new(), haze]);
+    assert!(StrainCatalog::open("not a catalog".into()).is_err());
+}
+
+#[test]
+fn labels_name_journal_brands_and_strains() {
+    let keys = create_keys().unwrap();
+    let dir = Device::new();
+    let journal = dir.open(&keys).unwrap();
+    let acme = journal
+        .save_brand(
+            None,
+            BrandData {
+                name: "Acme Farms".into(),
+            },
+            1_000,
+        )
+        .unwrap();
+    let strain = |name: &str| StrainData {
+        name: name.into(),
+        lineage: None,
+        terpenes: vec![],
+        strain_type: None,
+        terpene_levels: vec![],
+        parents: vec![],
+        cannabinoids: vec![],
+        breeder: None,
+    };
+    let dream = journal
+        .save_strain(None, strain("Blue Dream"), 1_001)
+        .unwrap();
+    journal.save_strain(None, strain("Dream"), 1_002).unwrap();
+    journal.save_strain(None, strain("OG Kush"), 1_003).unwrap();
+    let found = journal
+        .names_on_label("ACME FARMS\nBLUE DREAM 3.5G\nTHC 22%".into())
+        .unwrap();
+    let got: Vec<(&str, &str)> = found
+        .iter()
+        .map(|n| (n.record_type.as_str(), n.id.as_str()))
+        .collect();
+    assert_eq!(got, [("brand", acme.as_str()), ("strain", dream.as_str())]);
+
+    let catalog = StrainCatalog::open(
+        "name\ttype\tbreeder\tparents\nBlue Dream\tsativa\t\t\nPineapple Express\t\t\t\n".into(),
+    )
+    .unwrap();
+    let label = "BLUE DREAM\nPINEAPPLE EXPRESS";
+    let names: Vec<String> = catalog
+        .find_in_label(label.into(), vec!["Blue Dream".into()], 3)
+        .into_iter()
+        .map(|s| s.name)
+        .collect();
+    assert_eq!(names, ["Pineapple Express"]);
 }

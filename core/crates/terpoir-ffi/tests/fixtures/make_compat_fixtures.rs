@@ -162,6 +162,7 @@ fn main() {
                 terpene_levels: vec![],
                 parents: vec![],
                 cannabinoids: vec![],
+                breeder: None,
             },
             T0 + 3,
         )
@@ -186,6 +187,8 @@ fn main() {
                 ],
                 parents: vec![parent_strain.clone()],
                 cannabinoids: vec!["cbg".into()],
+                // Since 0.7.0.
+                breeder: Some("DJ Short".into()),
             },
             T0 + 3,
         )
@@ -508,6 +511,7 @@ fn main() {
   "product_subtypes": true,
   "receipt_formats": true,
   "pack_per": true,
+  "strain_breeder": true,
   "ids": {{
     "brand": "{brand}",
     "deleted_brand": "{deleted_brand}",

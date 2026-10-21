@@ -369,6 +369,18 @@
     <string name="insights_timeline_onset">comes on by %1$s</string>
     <string name="insights_timeline_peak">peaks around %1$s at %2$s</string>
     <string name="insights_timeline_eases">eases off by %1$s</string>
+    <plurals name="insights_compare_others">
+        <item quantity="one">%d other session</item>
+        <item quantity="other">%d other sessions</item>
+    </plurals>
+    <string name="insights_compare_onset_faster">Comes on faster than your other %1$s sessions: about %2$s against %3$s (%4$s).</string>
+    <string name="insights_compare_onset_slower">Comes on slower than your other %1$s sessions: about %2$s against %3$s (%4$s).</string>
+    <string name="insights_compare_peak_sooner">Peaks sooner than your other %1$s sessions: about %2$s against %3$s (%4$s).</string>
+    <string name="insights_compare_peak_later">Peaks later than your other %1$s sessions: about %2$s against %3$s (%4$s).</string>
+    <string name="insights_compare_peak_stronger">Peaks stronger than your other %1$s sessions: %2$s against %3$s (%4$s).</string>
+    <string name="insights_compare_peak_milder">Peaks milder than your other %1$s sessions: %2$s against %3$s (%4$s).</string>
+    <string name="insights_compare_eases_sooner">Eases off sooner than your other %1$s sessions: about %2$s against %3$s (%4$s).</string>
+    <string name="insights_compare_eases_later">Lasts longer than your other %1$s sessions: eases off about %2$s against %3$s (%4$s).</string>
     <plurals name="insights_timeline_sessions">
         <item quantity="one">%d session</item>
         <item quantity="other">%d sessions</item>
@@ -482,6 +494,14 @@
     <string name="strain_edit">Edit strain</string>
     <string name="strain_name">Name</string>
     <string name="strain_lineage">Lineage notes</string>
+    <string name="strain_breeder">Breeder</string>
+    <string name="strain_parent_new_on_save">%1$s (new)</string>
+    <string name="catalog_suggestions_title">From the strain catalog</string>
+    <string name="catalog_bred_by">Bred by %1$s</string>
+    <string name="catalog_name_only">Name only</string>
+    <string name="catalog_use">Use</string>
+    <string name="catalog_use_named">Use %1$s from the strain catalog</string>
+    <string name="catalog_credit">From Kushy\'s open strain list (MIT), searched on your phone: nothing is sent. Using one fills only what\'s empty; check it before you save.</string>
     <string name="strain_terpenes">Terpenes it\'s known for</string>
     <string name="strain_terpenes_hint">Pick the ones that stand out. Most strains are known for one to three.</string>
     <string name="strain_terpenes_many">That\'s more than most strains are known for. Keep them if they all stand out; levels below can say which lead.</string>
@@ -519,6 +539,8 @@
     <string name="brand_delete_body">Its key is destroyed, so it can\'t be recovered. Its products stay.</string>
     <string name="scan_label">Scan label</string>
     <string name="scan_label_hint">Fill the frame with the label and hold steady. The photo is read on your phone and then discarded.</string>
+    <string name="label_catalog_strains">Also on the label, from the strain catalog:</string>
+    <string name="label_catalog_add">Add %1$s</string>
     <string name="scan_label_filled">Filled in from the label. Check each field before saving.</string>
     <string name="scan_code">Scan code</string>
     <string name="scan_code_hint">Point at a barcode, QR code or package tag. It is read on your phone; nothing is photographed.</string>

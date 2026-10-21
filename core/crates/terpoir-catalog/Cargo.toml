@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+
+[package]
+name = "terpoir-catalog"
+description = "Terpoir's offline strain catalog, searched on the device"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+terpoir-model.workspace = true
+terpoir-scan.workspace = true
+
+[lints]
+workspace = true
