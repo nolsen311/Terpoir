@@ -527,6 +527,8 @@
     <string name="brand_delete_body">Its key is destroyed, so it can\'t be recovered. Its products stay.</string>
     <string name="scan_label">Scan label</string>
     <string name="scan_label_hint">Fill the frame with the label and hold steady. The photo is read on your phone and then discarded.</string>
+    <string name="label_catalog_strains">Also on the label, from the strain catalog:</string>
+    <string name="label_catalog_add">Add %1$s</string>
     <string name="scan_label_filled">Filled in from the label. Check each field before saving.</string>
     <string name="scan_code">Scan code</string>
     <string name="scan_code_hint">Point at a barcode, QR code or package tag. It is read on your phone; nothing is photographed.</string>

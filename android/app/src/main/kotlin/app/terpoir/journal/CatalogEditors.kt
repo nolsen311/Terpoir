@@ -130,6 +130,10 @@ fun ProductEditor(
     var mergeChoices by remember { mutableStateOf<List<Pair<String, String>>?>(null) }
     var mergeWith by remember { mutableStateOf<EditorMerge?>(null) }
     var pendingMerge by remember { mutableStateOf<EditorMerge?>(null) }
+    // Catalog strains the last label scan named that aren't in the journal:
+    // offered as chips, added only when tapped.
+    var labelCatalog by remember { mutableStateOf<List<CatalogStrainData>>(emptyList()) }
+    val context = LocalContext.current
 
     LaunchedEffect(id) {
         brands = repo.brands()
@@ -220,6 +224,17 @@ fun ProductEditor(
                                 if (tracking.shows(DataPoint.TERPENES) && label.terpenes.isNotEmpty()) terpenes = label.terpenes
                                 for (tag in label.packageTags) {
                                     if (identifiers.none { it.code == tag }) identifiers = identifiers + IdentifierData(tag, "package_tag")
+                                }
+                                // Brands and strains of the journal's that the label names in
+                                // full fill an empty Brand and Strains (one brand only: two
+                                // found leave the choice to the user).
+                                val named = repo.namesOnLabel(text)
+                                if (tracking.shows(DataPoint.BRAND) && brand == null) {
+                                    named.filter { it.recordType == "brand" }.singleOrNull()?.let { brand = it.id }
+                                }
+                                if (tracking.shows(DataPoint.STRAIN)) {
+                                    if (strains.isEmpty()) strains = named.filter { it.recordType == "strain" }.map { it.id }
+                                    labelCatalog = OfflineCatalog.findInLabel(context, text, allStrains.map { it.data.name })
                                 }
                                 R.string.scan_label_filled
                             }
@@ -393,6 +408,38 @@ fun ProductEditor(
                     }
                 },
             )
+            if (labelCatalog.isNotEmpty()) {
+                Text(stringResource(R.string.label_catalog_strains), style = MaterialTheme.typography.bodySmall)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (s in labelCatalog) {
+                        AssistChip(
+                            onClick = {
+                                // Like a typed new strain, it becomes a strain at once, with
+                                // the catalog's type, breeder and parents as lineage notes.
+                                labelCatalog = labelCatalog - s
+                                scope.launch {
+                                    val strainId = repo.saveStrain(
+                                        null,
+                                        StrainData(
+                                            name = s.name,
+                                            lineage = s.parents.takeIf { it.isNotEmpty() }?.joinToString(" × "),
+                                            terpenes = emptyList(),
+                                            strainType = s.strainType,
+                                            terpeneLevels = emptyList(),
+                                            parents = emptyList(),
+                                            cannabinoids = emptyList(),
+                                            breeder = s.breeder,
+                                        ),
+                                    )
+                                    allStrains = repo.strains()
+                                    strains = strains + strainId
+                                }
+                            },
+                            label = { Text(stringResource(R.string.label_catalog_add, s.name)) },
+                        )
+                    }
+                }
+            }
         }
 
         val showPotency = tracking.shows(DataPoint.POTENCY)

@@ -334,9 +334,78 @@ pub fn match_names(text: &str, candidates: &[NameCandidate]) -> Vec<NameMatch> {
     found
 }
 
+/// Which of `names` a label names in full: each found name's index, in the
+/// order of `names`.
+///
+/// A name counts when one of the label's lines (or the label's text run
+/// together, for a name wrapped over two lines) contains all its words in
+/// order, after the same folding as the receipt matcher (`0/O`, `1/l/I`,
+/// …). Names under three letters never count. A name whose words lie
+/// inside another found name's is dropped (`Dream` when `Blue Dream` is
+/// found), so a label for Blue Dream doesn't also suggest Dream.
+///
+/// Only names in full: initials or a cut-off name on a label are too weak
+/// to fill a field (docs/design-decisions.md, "Scan recognition from the
+/// journal").
+#[must_use]
+pub fn names_in_label(text: &str, names: &[&str]) -> Vec<usize> {
+    let mut lines: Vec<Vec<String>> = text
+        .lines()
+        .map(fold_words)
+        .filter(|l| !l.is_empty())
+        .collect();
+    let joined: Vec<String> = lines.concat();
+    lines.push(joined);
+    let folded: Vec<Vec<String>> = names.iter().map(|n| fold_words(n)).collect();
+    let found: Vec<usize> = folded
+        .iter()
+        .enumerate()
+        .filter(|(_, name)| {
+            letter_count(name) >= 3 && lines.iter().any(|line| contains_words(line, name))
+        })
+        .map(|(i, _)| i)
+        .collect();
+    found
+        .iter()
+        .copied()
+        .filter(|&i| {
+            !found.iter().any(|&j| {
+                j != i
+                    && folded[j].len() > folded[i].len()
+                    && contains_words(&folded[j], &folded[i])
+            })
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn names_in_label_need_whole_names() {
+        let label = "ACME FARMS\nBLUE DREAM 3.5G\nTHC 22.1%\nBatch 0G-17";
+        let names = [
+            "Acme Farms",
+            "Blue Dream",
+            "Dream",
+            "Blue",
+            "OG Kush",
+            "BD",
+            "Ac",
+        ];
+        assert_eq!(names_in_label(label, &names), [0, 1]);
+        // Recognition confusions fold, and a wrapped name is found.
+        assert_eq!(
+            names_in_label("BLUE DRE4M\nB1ue\nDream", &["Blue Dream"]),
+            [0]
+        );
+        assert_eq!(
+            names_in_label("GIRL SCOUT\nC00KIES", &["Girl Scout Cookies"]),
+            [0]
+        );
+        assert!(names_in_label("", &["Blue Dream"]).is_empty());
+    }
 
     fn kind(query: &str, name: &str) -> Option<MatchKind> {
         score_name(query, name).map(|(k, _)| k)

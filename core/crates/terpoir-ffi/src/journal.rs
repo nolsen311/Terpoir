@@ -13,7 +13,7 @@ use terpoir_model::{
     RecordKind, Session, Snippet, Spot, Strain, Tag, TagCategory, TagRef, TrackingPreferences,
     migrate, receipt_name_key, usual_method,
 };
-use terpoir_scan::{names_match, normalize_name};
+use terpoir_scan::{names_in_label, names_match, normalize_name};
 use terpoir_store::Store;
 use terpoir_sync::{Clock, apply_pending, export_blobs, import_blob};
 use terpoir_tagging::CustomTag;
@@ -56,6 +56,18 @@ pub struct TagSuggestion {
     pub start: u32,
     /// End of that phrase (exclusive), in UTF-16 code units.
     pub end: u32,
+}
+
+/// A brand or strain of the journal's that a scanned label names in full
+/// (`Journal::names_on_label`).
+#[derive(Clone, PartialEq, Eq, Debug, uniffi::Record)]
+pub struct LabelName {
+    /// The record's ID.
+    pub id: String,
+    /// `brand` or `strain`.
+    pub record_type: String,
+    /// Its name.
+    pub name: String,
 }
 
 /// One of the user's products, brands or strains suggested for a receipt
@@ -608,6 +620,44 @@ impl Journal {
             Ok(u.get::<Purchase>(&id)?
                 .as_ref()
                 .map(PurchaseData::from_model))
+        })
+    }
+
+    /// The journal's brands and strains that a scanned label's text names
+    /// in full (`terpoir_scan::names_in_label`): brands first, then strains,
+    /// each by name. The product editor fills an empty Brand and Strains
+    /// with them, and the duplicate check then narrows by brand.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn names_on_label(&self, text: String) -> Result<Vec<LabelName>> {
+        self.with(|u| {
+            let mut records: Vec<(RecordId, &'static str, String)> = Vec::new();
+            for id in u.store.ids_of_kind(RecordKind::Brand)? {
+                if let Some(brand) = u.store.get_record::<Brand>(&u.master, &id)? {
+                    records.push((id, "brand", brand.name));
+                }
+            }
+            for id in u.store.ids_of_kind(RecordKind::Strain)? {
+                if let Some(strain) = u.store.get_record::<Strain>(&u.master, &id)? {
+                    records.push((id, "strain", strain.name));
+                }
+            }
+            let names: Vec<&str> = records.iter().map(|(_, _, n)| n.as_str()).collect();
+            let mut found: Vec<LabelName> = names_in_label(&text, &names)
+                .into_iter()
+                .map(|i| LabelName {
+                    id: records[i].0.to_hex(),
+                    record_type: records[i].1.to_owned(),
+                    name: records[i].2.clone(),
+                })
+                .collect();
+            found.sort_by(|a, b| {
+                (a.record_type != "brand", a.name.to_lowercase())
+                    .cmp(&(b.record_type != "brand", b.name.to_lowercase()))
+            });
+            Ok(found)
         })
     }
 

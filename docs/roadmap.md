@@ -457,6 +457,9 @@ requirement rather than on features.
       ranked by shop and brand; brand and strain detection on labels;
       matched text broken down into brand, strain, product type and size
       over time. Later, an offline strain database (per "Catalog lookups").
+  - [x] Brand and strain detection on labels: the journal's brands and
+        strains named in full fill an empty Brand and Strains, and the
+        offline catalog's offers "Add …" chips (2026-10-21).
 
 - [ ] Session timeline (maintainer, 2026-10-15; `docs/design-decisions.md`,
       "Session timeline"): how strong it felt over time replaces onset,

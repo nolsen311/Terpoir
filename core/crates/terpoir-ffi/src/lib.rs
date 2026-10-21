@@ -52,8 +52,8 @@ pub use insights::{
     InsightData, InsightFeedback, ShopEffectData, ShopInsightData, TimelineInsightData,
 };
 pub use journal::{
-    ImportResult, Journal, NearbySpot, ProductMatch, PromptFence, ReceiptShopMatch, RecordType,
-    ScanSuggestion, SyncBlob, TagSuggestion,
+    ImportResult, Journal, LabelName, NearbySpot, ProductMatch, PromptFence, ReceiptShopMatch,
+    RecordType, ScanSuggestion, SyncBlob, TagSuggestion,
 };
 pub use keys::{
     NewKeys, PassphraseWrapped, RotatedKeys, check_recovery_key, create_keys,
