@@ -237,7 +237,7 @@ fun InsightsScreen(repo: JournalRepository, onOpenSession: (String) -> Unit, onC
     }
 }
 
-/** "Comes on faster than your other edible sessions: about 45 min against 1 h 30 min (4 sessions)." */
+/** "Comes on faster than your other edible sessions: about 45 min against 1 h 30 min (4 other sessions)." */
 @Composable
 private fun comparisonText(c: TimelineComparisonData, levelNames: Array<String>): String {
     val method = label(c.method).lowercase()
@@ -253,7 +253,8 @@ private fun comparisonText(c: TimelineComparisonData, levelNames: Array<String>)
     } else {
         durationLabel(c.`this`.toInt()) to durationLabel(c.others.toInt())
     }
-    return stringResource(res, method, mine, theirs, c.othersCount.toInt())
+    val others = pluralStringResource(R.plurals.insights_compare_others, c.othersCount.toInt(), c.othersCount.toInt())
+    return stringResource(res, method, mine, theirs, others)
 }
 
 /** What was compared, as the start of a sentence. */
