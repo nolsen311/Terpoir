@@ -4,9 +4,7 @@
 
 package app.terpoir.map
 
-import java.util.concurrent.TimeUnit
-import okhttp3.Call
-import okhttp3.Connection
+import java.lang.reflect.Proxy
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Interceptor
 import okhttp3.Protocol
@@ -20,32 +18,29 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MapGatewayTest {
-    /** Records what the gateway lets through, without any network. */
-    private class Recorder(private val request: Request) : Interceptor.Chain {
+    /**
+     * Records what the gateway lets through, without any network. The chain
+     * is a dynamic proxy answering only what the gateway calls (`request`,
+     * `proceed`), so new members OkHttp adds to `Interceptor.Chain` don't
+     * break the test; anything else fails loudly.
+     */
+    private class Recorder(private val request: Request) {
         var sent: Request? = null
 
-        override fun request() = request
-
-        override fun proceed(request: Request): Response {
-            sent = request
-            return Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(200).message("OK").build()
-        }
-
-        override fun connection(): Connection? = null
-
-        override fun call(): Call = throw UnsupportedOperationException()
-
-        override fun connectTimeoutMillis() = 0
-
-        override fun withConnectTimeout(timeout: Int, unit: TimeUnit) = this
-
-        override fun readTimeoutMillis() = 0
-
-        override fun withReadTimeout(timeout: Int, unit: TimeUnit) = this
-
-        override fun writeTimeoutMillis() = 0
-
-        override fun withWriteTimeout(timeout: Int, unit: TimeUnit) = this
+        val chain: Interceptor.Chain = Proxy.newProxyInstance(
+            Interceptor.Chain::class.java.classLoader,
+            arrayOf(Interceptor.Chain::class.java),
+        ) { _, method, args ->
+            when (method.name) {
+                "request" -> request
+                "proceed" -> {
+                    val sending = args!![0] as Request
+                    sent = sending
+                    Response.Builder().request(sending).protocol(Protocol.HTTP_1_1).code(200).message("OK").build()
+                }
+                else -> throw UnsupportedOperationException(method.name)
+            }
+        } as Interceptor.Chain
     }
 
     private fun request(url: String) = Request.Builder().url(url).header("User-Agent", "MapLibre Android/13.6.1 (Pixel 9; Android 16)").build()
@@ -71,14 +66,14 @@ class MapGatewayTest {
     @Test
     fun refusesEverythingWhileOff() {
         val chain = Recorder(request("https://tiles.openfreemap.org/styles/liberty"))
-        assertThrows(MapGateway.Refused::class.java) { MapGateway.Guard({ false }, { ofm }).intercept(chain) }
+        assertThrows(MapGateway.Refused::class.java) { MapGateway.Guard({ false }, { ofm }).intercept(chain.chain) }
         assertNull(chain.sent)
     }
 
     @Test
     fun refusesOtherHostsWhileOn() {
         val chain = Recorder(request("https://tiles.example/0/0/0.pbf"))
-        assertThrows(MapGateway.Refused::class.java) { MapGateway.Guard({ true }, { ofm }).intercept(chain) }
+        assertThrows(MapGateway.Refused::class.java) { MapGateway.Guard({ true }, { ofm }).intercept(chain.chain) }
         assertNull(chain.sent)
     }
 
@@ -86,17 +81,17 @@ class MapGatewayTest {
     fun followsAProviderChangeAtOnce() {
         var provider = maptiler
         val guard = MapGateway.Guard({ true }, { provider })
-        guard.intercept(Recorder(request("https://api.maptiler.com/tiles/v3/0/0/0.pbf")))
+        guard.intercept(Recorder(request("https://api.maptiler.com/tiles/v3/0/0/0.pbf")).chain)
         provider = ofm
         val chain = Recorder(request("https://api.maptiler.com/tiles/v3/0/0/0.pbf"))
-        assertThrows(MapGateway.Refused::class.java) { guard.intercept(chain) }
+        assertThrows(MapGateway.Refused::class.java) { guard.intercept(chain.chain) }
         assertNull(chain.sent)
     }
 
     @Test
     fun sendsOnlyTheAppNameAsUserAgent() {
         val chain = Recorder(request("https://tiles.openfreemap.org/planet"))
-        MapGateway.Guard({ true }, { ofm }).intercept(chain)
+        MapGateway.Guard({ true }, { ofm }).intercept(chain.chain)
         assertEquals(listOf("Terpoir"), chain.sent?.headers("User-Agent"))
     }
 
