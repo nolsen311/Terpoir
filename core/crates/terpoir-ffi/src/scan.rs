@@ -592,3 +592,34 @@ mod tests {
         );
     }
 }
+
+/// What a shared strain page seems to say (see
+/// `terpoir_scan::parse_strain_page`); every field is only a suggestion.
+#[derive(Clone, PartialEq, Eq, Debug, uniffi::Record)]
+pub struct StrainPageData {
+    /// Built-in terpene slugs, the most prominent first.
+    pub terpenes: Vec<String>,
+    /// The dominant terpene's slug, if the page shows one.
+    pub dominant: Option<String>,
+    /// `indica`, `sativa` or `hybrid`.
+    pub strain_type: Option<String>,
+    /// Parent strains, by name.
+    pub parents: Vec<String>,
+    /// Who bred it.
+    pub breeder: Option<String>,
+}
+
+/// Reads the text of a strain's web page the user shared to Terpoir (as
+/// text, or a screenshot read on the phone).
+#[uniffi::export]
+#[must_use]
+pub fn parse_strain_page(text: String) -> StrainPageData {
+    let page = terpoir_scan::parse_strain_page(&text);
+    StrainPageData {
+        terpenes: page.terpenes.iter().map(|t| t.slug().to_owned()).collect(),
+        dominant: page.dominant.map(|t| t.slug().to_owned()),
+        strain_type: page.strain_type.map(|t| t.slug().to_owned()),
+        parents: page.parents,
+        breeder: page.breeder,
+    }
+}

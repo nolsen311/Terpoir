@@ -37,13 +37,13 @@ pub struct LabelScan {
 }
 
 /// A line as characters, with a lower-case copy at the same indices.
-struct Line {
-    chars: Vec<char>,
-    lower: Vec<char>,
+pub(crate) struct Line {
+    pub(crate) chars: Vec<char>,
+    pub(crate) lower: Vec<char>,
 }
 
 impl Line {
-    fn new(text: &str) -> Self {
+    pub(crate) fn new(text: &str) -> Self {
         let chars: Vec<char> = text.chars().collect();
         let lower = chars
             .iter()
@@ -174,7 +174,7 @@ fn cannabinoid(lines: &[Line], name: &str) -> Option<LabelAmountGuess> {
         .or_else(|| lines.iter().find_map(|l| amount_for(l, name)))
 }
 
-const TERPENES: &[(&str, Terpene)] = &[
+pub(crate) const TERPENES: &[(&str, Terpene)] = &[
     ("myrcene", Terpene::Myrcene),
     ("limonene", Terpene::Limonene),
     ("caryophyllene", Terpene::Caryophyllene),
@@ -188,7 +188,7 @@ const TERPENES: &[(&str, Terpene)] = &[
     ("pinene", Terpene::AlphaPinene),
 ];
 
-fn terpene_at(line: &Line, at: usize, name: &str, default: &Terpene) -> Terpene {
+pub(crate) fn terpene_at(line: &Line, at: usize, name: &str, default: &Terpene) -> Terpene {
     if name != "pinene" {
         return default.clone();
     }
@@ -201,7 +201,7 @@ fn terpene_at(line: &Line, at: usize, name: &str, default: &Terpene) -> Terpene 
     }
 }
 
-fn terpenes(lines: &[Line]) -> Vec<(Terpene, i64)> {
+pub(crate) fn terpenes(lines: &[Line]) -> Vec<(Terpene, i64)> {
     let mut found: Vec<(usize, usize, Terpene, i64)> = Vec::new();
     for (n, line) in lines.iter().enumerate() {
         for (name, terpene) in TERPENES {
@@ -225,7 +225,7 @@ fn terpenes(lines: &[Line]) -> Vec<(Terpene, i64)> {
 }
 
 /// Terpene names may carry a prefix (`β-caryophyllene`, `trans-nerolidol`).
-fn find_terpene(line: &Line, name: &str) -> Vec<usize> {
+pub(crate) fn find_terpene(line: &Line, name: &str) -> Vec<usize> {
     let pat: Vec<char> = name.chars().collect();
     let n = pat.len();
     (0..=line.lower.len().saturating_sub(n))

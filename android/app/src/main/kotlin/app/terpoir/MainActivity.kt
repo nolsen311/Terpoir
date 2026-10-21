@@ -66,6 +66,7 @@ import app.terpoir.journal.DataCard
 import app.terpoir.journal.JournalHome
 import app.terpoir.journal.JournalRepository
 import app.terpoir.journal.ScanServices
+import app.terpoir.journal.SharedPage
 import app.terpoir.map.MapProvider
 import app.terpoir.map.MapProviderCard
 import app.terpoir.onboarding.AgeGate
@@ -124,6 +125,9 @@ class MainActivity : ComponentActivity() {
     /** Opened from a "New entry" shortcut, tile or widget: after unlock, a new entry. */
     private var newEntryRequested by mutableStateOf(false)
 
+    /** A strain's page shared to Terpoir (text or a screenshot): after unlock, read it. */
+    private var sharedPage by mutableStateOf<SharedPage?>(null)
+
     /** A note was just written while locked: say so on the lock screen. */
     private var captureSaved by mutableStateOf(false)
 
@@ -178,6 +182,7 @@ class MainActivity : ComponentActivity() {
             CheckIns.ACTION_CHECK_IN -> checkInRequested = true
             PurchasePrompts.ACTION_QUICK_LOG -> quickLogRequested = true
             QuickCapture.ACTION_NEW_ENTRY -> newEntryRequested = true
+            Intent.ACTION_SEND -> sharedPage = SharedPage.from(intent)
             QuickCapture.ACTION_NEW_NOTE -> {
                 newNoteRequested = true
                 captureSaved = false
@@ -401,6 +406,8 @@ class MainActivity : ComponentActivity() {
                     onNewNoteOpened = { newNoteRequested = false },
                     newEntry = newEntryRequested,
                     onNewEntryOpened = { newEntryRequested = false },
+                    shared = sharedPage,
+                    onSharedOpened = { sharedPage = null },
                     onEdited = {
                         scope.launch {
                             app.spotAlerts.refresh(state.journal)

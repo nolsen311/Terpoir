@@ -74,6 +74,19 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Sharing a strain's page back: selected text or a
+                 screenshot, read on the phone (docs/design-decisions.md,
+                 "Sharing back what you found"). -->
+            <intent-filter android:label="@string/share_to_terpoir">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter android:label="@string/share_to_terpoir">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
         </activity>
 
         <!-- Quick capture (opt-in Privacy Center toggles): both ship

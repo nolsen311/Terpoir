@@ -398,9 +398,9 @@ requirement rather than on features.
   - [x] "Look up on the web", 0.8.0 (maintainer, 2026-10-21): saved sites
         opened in the browser with the strain's name, its own toggle; the
         app fetches nothing.
-  - [ ] Sharing back to Terpoir, 0.8.0: selected text or a screenshot of a
-        strain's page, read on the phone into suggestions (agreed in
-        outline 2026-10-21; details to settle).
+  - [x] Sharing back to Terpoir, 0.8.0: selected text or a screenshot of a
+        strain's page, read on the phone into suggestions for the last
+        strain looked up, another, or a new one (maintainer, 2026-10-21).
   - [ ] Online sources the maintainer picks, 0.8.0, each its own toggle
         (off by default) with a disclosure card; search on submit only.
 

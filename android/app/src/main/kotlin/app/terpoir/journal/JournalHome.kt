@@ -114,6 +114,9 @@ private sealed interface Screen {
 
     data object WhatITrack : Screen
     data object Theme : Screen
+
+    /** A strain's web page shared to Terpoir. */
+    data class Shared(val page: SharedPage) : Screen
 }
 
 private enum class Tab { JOURNAL, PRODUCTS, SETTINGS }
@@ -143,6 +146,8 @@ fun JournalHome(
     onNewNoteOpened: () -> Unit,
     newEntry: Boolean,
     onNewEntryOpened: () -> Unit,
+    shared: SharedPage?,
+    onSharedOpened: () -> Unit,
     onEdited: () -> Unit,
     privacyCenter: @Composable (onClose: () -> Unit, settings: @Composable () -> Unit) -> Unit,
 ) {
@@ -186,6 +191,30 @@ fun JournalHome(
             onNewEntryOpened()
         }
     }
+    // A strain's page shared to Terpoir: read it when "Look up on the web"
+    // is on, else say so and offer its setting (the Settings tab).
+    var sharedOff by remember { mutableStateOf(false) }
+    LaunchedEffect(shared) {
+        if (shared != null) {
+            if (settings.webLookups) stack.add(Screen.Shared(shared)) else sharedOff = true
+            onSharedOpened()
+        }
+    }
+    if (sharedOff) {
+        AlertDialog(
+            onDismissRequest = { sharedOff = false },
+            title = { Text(stringResource(R.string.shared_page_off_title)) },
+            text = { Text(stringResource(R.string.shared_page_off_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    sharedOff = false
+                    stack.retainAll { it == Screen.Home }
+                    tab = Tab.SETTINGS
+                }) { Text(stringResource(R.string.shared_page_off_settings)) }
+            },
+            dismissButton = { TextButton(onClick = { sharedOff = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
     // Opened from a "Quick check-in?" reminder.
     LaunchedEffect(checkInSession) {
         if (checkInSession != null) {
@@ -216,6 +245,13 @@ fun JournalHome(
             is Screen.Note -> NoteScreen(repo, settings, vocab, screen.id, pop)
             is Screen.Strain -> StrainEditor(repo, vocab, screen.id, pop)
             is Screen.Brand -> BrandEditor(repo, screen.id, pop)
+            is Screen.Shared -> SharedPageScreen(
+                repo,
+                scan,
+                screen.page,
+                onOpenStrain = { id -> stack[stack.lastIndex] = Screen.Strain(id) },
+                onDone = pop,
+            )
             Screen.Home -> Scaffold(
                 bottomBar = {
                     NavigationBar {

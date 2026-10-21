@@ -48,7 +48,7 @@ import kotlinx.coroutines.launch
  * sites live in the journal (docs/design-decisions.md, "Catalog lookups").
  */
 @Composable
-fun WebLookup(repo: JournalRepository, strain: String) {
+fun WebLookup(repo: JournalRepository, strain: String, strainId: String?) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var sites by remember { mutableStateOf<List<LookupSiteData>>(emptyList()) }
@@ -68,6 +68,9 @@ fun WebLookup(repo: JournalRepository, strain: String) {
                     onClick = {
                         menu = false
                         val address = lookupAddress(site.template, strain) ?: return@DropdownMenuItem
+                        // A page shared back afterwards is most likely about this strain.
+                        LastLookup.strainId = strainId
+                        LastLookup.name = strain
                         noBrowser = try {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(address)))
                             false
