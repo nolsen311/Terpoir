@@ -33,6 +33,12 @@ object OfflineCatalog {
             load(context)?.search(query, limit.toUInt()).orEmpty()
         }
 
+    /** Catalog strains a scanned label names in full, leaving out [exclude] (the journal's own). */
+    suspend fun findInLabel(context: Context, text: String, exclude: List<String>, limit: Int = SUGGESTIONS): List<CatalogStrainData> =
+        withContext(Dispatchers.Default) {
+            load(context)?.findInLabel(text, exclude, limit.toUInt()).orEmpty()
+        }
+
     private suspend fun load(context: Context): StrainCatalog? = lock.withLock {
         catalog ?: runCatching {
             val text = context.applicationContext.assets.open(ASSET).bufferedReader().use { it.readText() }

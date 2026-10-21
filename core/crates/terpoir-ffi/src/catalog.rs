@@ -8,6 +8,9 @@
 
 use std::sync::Arc;
 
+use terpoir_catalog::CatalogStrain;
+use terpoir_scan::MatchKind;
+
 use crate::{CoreError, Result};
 
 /// The offline strain catalog.
@@ -59,19 +62,44 @@ impl StrainCatalog {
         u32::try_from(self.catalog.len()).unwrap_or(u32::MAX)
     }
 
+    /// Catalog strains a scanned label names in full, longest name first,
+    /// at most `limit`, leaving out names in `exclude` (the journal's own
+    /// strains, offered already). Two words or six letters at least.
+    #[must_use]
+    pub fn find_in_label(
+        &self,
+        text: String,
+        exclude: Vec<String>,
+        limit: u32,
+    ) -> Vec<CatalogStrainData> {
+        self.catalog
+            .find_in_label(
+                &text,
+                &exclude,
+                usize::try_from(limit).unwrap_or(usize::MAX),
+            )
+            .into_iter()
+            .map(|s| data(s, MatchKind::Words))
+            .collect()
+    }
+
     /// Up to `limit` strains whose names match `query`, best first.
     #[must_use]
     pub fn search(&self, query: String, limit: u32) -> Vec<CatalogStrainData> {
         self.catalog
             .search(&query, usize::try_from(limit).unwrap_or(usize::MAX))
             .into_iter()
-            .map(|m| CatalogStrainData {
-                name: m.strain.name.clone(),
-                strain_type: m.strain.strain_type.as_ref().map(|t| t.slug().to_owned()),
-                breeder: m.strain.breeder.clone(),
-                parents: m.strain.parents.clone(),
-                match_kind: m.kind.slug().to_owned(),
-            })
+            .map(|m| data(m.strain, m.kind))
             .collect()
+    }
+}
+
+fn data(strain: &CatalogStrain, kind: MatchKind) -> CatalogStrainData {
+    CatalogStrainData {
+        name: strain.name.clone(),
+        strain_type: strain.strain_type.as_ref().map(|t| t.slug().to_owned()),
+        breeder: strain.breeder.clone(),
+        parents: strain.parents.clone(),
+        match_kind: kind.slug().to_owned(),
     }
 }

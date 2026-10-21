@@ -54,7 +54,8 @@ pub use header::{
 pub use label::{LabelAmountGuess, LabelScan, parse_label};
 pub use layout::{TextPiece, TextRow, group_rows};
 pub use matching::{
-    CLOSE, CandidateKind, MatchKind, NameCandidate, NameMatch, match_names, score_name,
+    CLOSE, CandidateKind, MatchKind, NameCandidate, NameMatch, match_names, names_in_label,
+    score_name,
 };
 pub use name::{names_match, normalize_name};
 pub use pack::amount_per;

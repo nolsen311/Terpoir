@@ -3276,3 +3276,54 @@ fn catalog_parents_link_to_journal_strains() {
     assert_eq!(ids, vec![String::new(), haze]);
     assert!(StrainCatalog::open("not a catalog".into()).is_err());
 }
+
+#[test]
+fn labels_name_journal_brands_and_strains() {
+    let keys = create_keys().unwrap();
+    let dir = Device::new();
+    let journal = dir.open(&keys).unwrap();
+    let acme = journal
+        .save_brand(
+            None,
+            BrandData {
+                name: "Acme Farms".into(),
+            },
+            1_000,
+        )
+        .unwrap();
+    let strain = |name: &str| StrainData {
+        name: name.into(),
+        lineage: None,
+        terpenes: vec![],
+        strain_type: None,
+        terpene_levels: vec![],
+        parents: vec![],
+        cannabinoids: vec![],
+        breeder: None,
+    };
+    let dream = journal
+        .save_strain(None, strain("Blue Dream"), 1_001)
+        .unwrap();
+    journal.save_strain(None, strain("Dream"), 1_002).unwrap();
+    journal.save_strain(None, strain("OG Kush"), 1_003).unwrap();
+    let found = journal
+        .names_on_label("ACME FARMS\nBLUE DREAM 3.5G\nTHC 22%".into())
+        .unwrap();
+    let got: Vec<(&str, &str)> = found
+        .iter()
+        .map(|n| (n.record_type.as_str(), n.id.as_str()))
+        .collect();
+    assert_eq!(got, [("brand", acme.as_str()), ("strain", dream.as_str())]);
+
+    let catalog = StrainCatalog::open(
+        "name\ttype\tbreeder\tparents\nBlue Dream\tsativa\t\t\nPineapple Express\t\t\t\n".into(),
+    )
+    .unwrap();
+    let label = "BLUE DREAM\nPINEAPPLE EXPRESS";
+    let names: Vec<String> = catalog
+        .find_in_label(label.into(), vec!["Blue Dream".into()], 3)
+        .into_iter()
+        .map(|s| s.name)
+        .collect();
+    assert_eq!(names, ["Pineapple Express"]);
+}
