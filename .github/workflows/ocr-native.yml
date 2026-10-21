@@ -98,7 +98,7 @@ jobs:
           "$JAVA_HOME/bin/javac" -version
           android/ocr-native/build.sh "$RUNNER_TEMP/ocr-native"
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ocr-native-${{ matrix.copy }}
           path: ${{ runner.temp }}/ocr-native
@@ -114,12 +114,12 @@ jobs:
           persist-credentials: false
           sparse-checkout: android/ocr-native
 
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ocr-native-first
           path: ${{ runner.temp }}/first
 
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ocr-native-second
           path: ${{ runner.temp }}/second
@@ -180,7 +180,7 @@ jobs:
           key: deps-${{ runner.os }}-${{ hashFiles('android/gradle/verification-metadata.xml', 'android/gradle/wrapper/gradle-wrapper.properties', 'core/Cargo.lock', '.github/scripts/setup-android-core.sh') }}
           restore-keys: deps-${{ runner.os }}-
 
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ocr-native-first
           path: ${{ runner.temp }}/ocr-native
@@ -249,7 +249,7 @@ jobs:
           key: deps-${{ runner.os }}-${{ hashFiles('android/gradle/verification-metadata.xml', 'android/gradle/wrapper/gradle-wrapper.properties', 'core/Cargo.lock', '.github/scripts/setup-android-core.sh') }}
           restore-keys: deps-${{ runner.os }}-
 
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ocr-native-first
           path: ${{ runner.temp }}/ocr-native
