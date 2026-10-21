@@ -44,12 +44,12 @@ pub use error::{Error, Result};
 pub use records::{
     AmountPer, Brand, Cannabinoid, CoreEffect, DEFAULT_SPOT_RADIUS_M, Dose, DoseUnit, Flavor, Form,
     IdentifierKind, InsightFeedbackList, Intention, LabelAmount, LabelUnit, LocalTime, Location,
-    MAX_RECEIPT_NAME_CHARS, MIN_SPOT_RADIUS_M, Method, Mood, PackageSize, Price, Product,
-    ProductLine, Provenance, Purchase, PurchaseLine, PurchaseRef, Record, RecordKind, Session,
-    SizeAmount, SizeUnit, Snippet, Social, Spot, SpotPurpose, Strain, StrainDetail, StrainType,
-    Subtype, SymptomResult, Tag, TagCategory, TagRef, TargetedSymptom, Terpene, TerpeneLevel,
-    Timeline, TimelinePlan, TrackedField, TrackingPreferences, check_in_minutes_for,
-    receipt_name_key, timeline_plan_for, usual_method,
+    LookupSite, LookupSites, MAX_RECEIPT_NAME_CHARS, MIN_SPOT_RADIUS_M, Method, Mood, PackageSize,
+    Price, Product, ProductLine, Provenance, Purchase, PurchaseLine, PurchaseRef, Record,
+    RecordKind, Session, SizeAmount, SizeUnit, Snippet, Social, Spot, SpotPurpose, Strain,
+    StrainDetail, StrainType, Subtype, SymptomResult, Tag, TagCategory, TagRef, TargetedSymptom,
+    Terpene, TerpeneLevel, Timeline, TimelinePlan, TrackedField, TrackingPreferences,
+    check_in_minutes_for, receipt_name_key, timeline_plan_for, usual_method,
 };
 pub use stamp::{DeviceId, Hlc, Stamp};
 pub use terpoir_crypto::RecordId;

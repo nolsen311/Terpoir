@@ -10,6 +10,7 @@ import app.terpoir.core.InsightData
 import app.terpoir.core.InsightFeedback
 import app.terpoir.core.Journal
 import app.terpoir.core.LabelName
+import app.terpoir.core.LookupSiteData
 import app.terpoir.core.NearbySpot
 import app.terpoir.core.ProductData
 import app.terpoir.core.ProductMatch
@@ -194,6 +195,17 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
     suspend fun saveProduct(id: String?, data: ProductData): String = io { journal.saveProduct(id, data, now()) }
 
     suspend fun saveStrain(id: String?, data: StrainData): String = io { journal.saveStrain(id, data, now()) }
+
+    /** The saved lookup sites, by name. */
+    suspend fun lookupSites(): List<LookupSiteData> = io { journal.lookupSites() }
+
+    /** Adds a lookup site (`id` null) or changes one. */
+    suspend fun saveLookupSite(id: String?, name: String, template: String): String = io {
+        journal.saveLookupSite(id, name, template, now())
+    }
+
+    /** Removes a lookup site. */
+    suspend fun deleteLookupSite(id: String) = io { journal.deleteLookupSite(id, now()) }
 
     /** The journal's brands and strains a scanned label names in full. */
     suspend fun namesOnLabel(text: String): List<LabelName> = io { journal.namesOnLabel(text) }

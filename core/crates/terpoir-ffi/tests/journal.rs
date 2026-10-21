@@ -16,7 +16,8 @@ use terpoir_ffi::{
     PurchaseLineData, RecordType, SessionData, SnippetData, SpotData, StrainCatalog, StrainData,
     SymptomData, TagData, TagIntensity, TagProvenance, TagRefData, TerpeneLevelData,
     TimelineLevelData, check_export_archive, check_in_minutes_for_methods, check_recovery_key,
-    create_keys, keys_for_restore, master_key_from_recovery, read_export_archive, readable_blobs,
+    create_keys, keys_for_restore, lookup_address, lookup_template_from_example,
+    lookup_template_valid, master_key_from_recovery, read_export_archive, readable_blobs,
     subtypes_for_form, sync_folder_key_file, timeline_plan_for_methods, trackable_data_points,
     vocabulary,
 };
@@ -3357,4 +3358,77 @@ fn labels_name_journal_brands_and_strains() {
         .map(|s| s.name)
         .collect();
     assert_eq!(names, ["Pineapple Express"]);
+}
+
+#[test]
+fn lookup_sites_are_saved_edited_and_forgotten() {
+    let keys = create_keys().unwrap();
+    let dir = Device::new();
+    let journal = dir.open(&keys).unwrap();
+    assert!(journal.lookup_sites().unwrap().is_empty());
+    let template = lookup_template_from_example(
+        "https://www.allbud.com/marijuana-strains/search?q=blue+dream".into(),
+        "Blue Dream".into(),
+    )
+    .unwrap();
+    let allbud = journal
+        .save_lookup_site(None, " AllBud ".into(), template.clone(), 1_000)
+        .unwrap();
+    let mine = journal
+        .save_lookup_site(
+            None,
+            "a site".into(),
+            "https://example.org/{strain-}".into(),
+            1_001,
+        )
+        .unwrap();
+    let names: Vec<String> = journal
+        .lookup_sites()
+        .unwrap()
+        .into_iter()
+        .map(|s| s.name)
+        .collect();
+    assert_eq!(names, ["a site", "AllBud"]);
+    assert_eq!(
+        lookup_address(template, "OG Kush".into()).as_deref(),
+        Some("https://www.allbud.com/marijuana-strains/search?q=OG+Kush")
+    );
+
+    // Refused: not https, no placeholder, an unknown ID.
+    for bad in ["http://example.org/{strain}", "https://example.org/"] {
+        assert_eq!(
+            journal.save_lookup_site(None, "x".into(), bad.into(), 1_002),
+            Err(CoreError::InvalidInput)
+        );
+        assert!(!lookup_template_valid(bad.into()));
+    }
+    assert_eq!(
+        journal.save_lookup_site(
+            Some("nope".into()),
+            "x".into(),
+            "https://e.org/{strain}".into(),
+            1_002
+        ),
+        Err(CoreError::NotFound)
+    );
+
+    journal
+        .save_lookup_site(
+            Some(mine.clone()),
+            "Mine".into(),
+            "https://example.org/s/{strain}".into(),
+            1_003,
+        )
+        .unwrap();
+    journal.delete_lookup_site(allbud, 1_004).unwrap();
+    let left = journal.lookup_sites().unwrap();
+    assert_eq!(left.len(), 1);
+    assert_eq!(
+        (left[0].id.as_str(), left[0].name.as_str()),
+        (mine.as_str(), "Mine")
+    );
+
+    // The toggle's off-action.
+    journal.forget_lookup_sites(1_005).unwrap();
+    assert!(journal.lookup_sites().unwrap().is_empty());
 }

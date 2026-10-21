@@ -291,6 +291,26 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
                 .then(|| "DJ Short".into()),
         },
     );
+    // Since 0.8.0, a saved lookup site.
+    let sites: Vec<(String, String)> = journal
+        .lookup_sites()
+        .unwrap()
+        .into_iter()
+        .map(|s| (s.name, s.template))
+        .collect();
+    if fixture.manifest["lookup_sites"].as_bool() == Some(true) {
+        assert_eq!(
+            sites,
+            [(
+                "AllBud".to_owned(),
+                "https://www.allbud.com/marijuana-strains/search?q={strain+}".to_owned()
+            )],
+            "{}: lookup sites",
+            fixture.name()
+        );
+    } else {
+        assert!(sites.is_empty(), "{}: lookup sites", fixture.name());
+    }
     if let Some(parent) = &parent_strain {
         check(
             fixture,

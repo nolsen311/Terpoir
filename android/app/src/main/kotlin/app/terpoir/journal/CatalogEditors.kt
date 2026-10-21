@@ -45,6 +45,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.terpoir.R
+import app.terpoir.TerpoirApplication
 import app.terpoir.core.BrandData
 import app.terpoir.core.CannabinoidAmountData
 import app.terpoir.core.CatalogStrainData
@@ -771,6 +772,7 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
     // The name a suggestion was taken from: no more suggestions for it.
     var usedName by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val webLookups = remember { (context.applicationContext as TerpoirApplication).privacySettings.webLookups }
     var cannabinoids by remember { mutableStateOf<List<String>>(emptyList()) }
     var allStrains by remember { mutableStateOf<List<Entry<StrainData>>>(emptyList()) }
     var customTerpenes by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
@@ -838,6 +840,8 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
         },
     ) {
         OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.strain_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        // "Look up on the web" (Privacy Center, Catalogs; off by default).
+        if (webLookups && name.isNotBlank()) WebLookup(repo, name.trim())
         if (suggestions.isNotEmpty()) {
             CatalogSuggestions(suggestions) { s ->
                 // Fills only what is still empty; the user checks it before saving.

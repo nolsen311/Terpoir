@@ -1490,6 +1490,51 @@ impl Journal {
         self.with(|u| insights::timelines(&*u))
     }
 
+    /// The saved lookup sites for "Look up on the web", by name.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn lookup_sites(&self) -> Result<Vec<crate::LookupSiteData>> {
+        self.with(|u| crate::lookup::list(&*u))
+    }
+
+    /// Adds a lookup site (`id` `None`) or changes one; returns its ID.
+    ///
+    /// # Errors
+    ///
+    /// `InvalidInput` for an empty or overlong name or a template that
+    /// isn't an `https` address with one placeholder; `NotFound` for an
+    /// unknown `id`; `Locked` or `Storage`.
+    pub fn save_lookup_site(
+        &self,
+        id: Option<String>,
+        name: String,
+        template: String,
+        now_ms: u64,
+    ) -> Result<String> {
+        self.with(|u| crate::lookup::put(u, id, &name, &template, now_ms))
+    }
+
+    /// Removes a lookup site.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn delete_lookup_site(&self, id: String, now_ms: u64) -> Result<()> {
+        self.with(|u| crate::lookup::remove(u, &id, now_ms))
+    }
+
+    /// Removes every lookup site, on every device: "Look up on the web"'s
+    /// off-action.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn forget_lookup_sites(&self, now_ms: u64) -> Result<()> {
+        self.with(|u| crate::lookup::forget(u, now_ms))
+    }
+
     /// Records the user's feedback on an insight (`key` is the insight's
     /// key, or its category for [`InsightFeedback::Muted`]). Kept in a
     /// synced record, so it holds on every device and in exports.
@@ -1797,6 +1842,7 @@ impl Journal {
             crate::capture::rotate(u, &new_master)?;
             crate::tracking::rotate(u, &new_master)?;
             crate::feedback::rotate(u, &new_master)?;
+            crate::lookup::rotate(u, &new_master)?;
             let rotated = RotatedKeys {
                 master_key: new_master.expose_secret().to_vec(),
                 master_wrapped_by_recovery: kek.wrap_master_key(&new_master)?.as_bytes().to_vec(),

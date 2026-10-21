@@ -12,6 +12,7 @@ use crate::{Document, Error, Result, Value};
 
 mod catalog;
 mod feedback;
+mod lookup;
 mod purchase;
 mod session;
 mod snippet;
@@ -24,6 +25,7 @@ pub use catalog::{
     Product, Strain, StrainType, Subtype, Terpene, TerpeneLevel, receipt_name_key, usual_method,
 };
 pub use feedback::InsightFeedbackList;
+pub use lookup::{LookupSite, LookupSites};
 pub use purchase::{AmountPer, PackageSize, Price, Purchase, PurchaseLine, SizeAmount, SizeUnit};
 pub use session::{
     CoreEffect, Dose, DoseUnit, Intention, Method, ProductLine, PurchaseRef, Session, Social,
@@ -60,11 +62,13 @@ pub enum RecordKind {
     Tracking,
     /// The user's feedback on insights (one per journal).
     InsightFeedback,
+    /// The user's saved lookup sites (one per journal).
+    LookupSites,
 }
 
 impl RecordKind {
     /// Every kind.
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Session,
         Self::Product,
         Self::Strain,
@@ -75,6 +79,7 @@ impl RecordKind {
         Self::Purchase,
         Self::Tracking,
         Self::InsightFeedback,
+        Self::LookupSites,
     ];
 
     /// The stable numeric code.
@@ -91,6 +96,7 @@ impl RecordKind {
             Self::Purchase => 8,
             Self::Tracking => 9,
             Self::InsightFeedback => 10,
+            Self::LookupSites => 11,
         }
     }
 
@@ -108,6 +114,7 @@ impl RecordKind {
             8 => Self::Purchase,
             9 => Self::Tracking,
             10 => Self::InsightFeedback,
+            11 => Self::LookupSites,
             _ => return None,
         })
     }
