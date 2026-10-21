@@ -325,7 +325,7 @@ requirement rather than on features.
 | 0.6.2 | "Notify me" and purchase reminders on Google Play (maintainer, 2026-10-16): the Play build requests location "all the time" behind the in-app prominent disclosure. Released to internal testing first for the background-location declaration's video, and promoted once Google approves the declaration. |
 | 0.6.3 | Fixes and settings (maintainer, 2026-10-16 and 17): unlocking from a "Notify me" alert on a locked phone waits for the phone instead of reporting a Keystore error; YOLO Mode widened by Privacy Center group, with "Notify me" kept separate and placed under "Show me"; no Save button on screens that save each change at once. Like 0.6.2, internal testing until Google approves the background-location declaration. |
 | 0.6.4 | Tidier location buttons (maintainer, 2026-10-17): the "Show me" card on one row with icon actions ("Session", and "Purchase" at a Re-up Spot), and the spot editor's "Approximate", "Precise" and "Map" side by side at one size. Like 0.6.2, internal testing until Google approves the background-location declaration. |
-| 0.7.0 | Scan recognition from the journal, timeline comparisons and the offline strain catalog (maintainer, 2026-10-17): the rest of "Scan recognition from the journal" (OCR-tolerant suggestions ranked by shop and brand, brand and strain detection on labels, matched text broken down over time); "comes on faster than your other edibles"-style comparisons from the session timeline, once there is enough data to make them trustworthy; and the offline catalog from the candidate found, Kushy's MIT strain table (name, type, breeder, crosses; `docs/research/strain-lookups.md`, option 1), after its provenance is re-checked. |
+| 0.7.0 | Scan recognition from the journal, timeline comparisons and the offline strain catalog (maintainer, 2026-10-17): the rest of "Scan recognition from the journal" (OCR-tolerant suggestions ranked by shop and brand, brand and strain detection on labels, matched text broken down over time); "comes on faster than your other edibles"-style comparisons from the session timeline, once there is enough data to make them trustworthy; and the offline catalog from the candidate found, Kushy's MIT strain table (name, type, breeder, crosses; `docs/research/strain-lookups.md`, option 1), bundled and on with no toggle; the provenance check was waived for its factual columns (maintainer, 2026-10-21). |
 | 0.8.0 | Online strain lookups: sources the maintainer picks (such as Leafly or a seed database), each behind its own toggle, as "Catalog lookups" requires. Moved from 0.6.0 (maintainer, 2026-10-15), then from 0.7.0 (maintainer, 2026-10-17): it waits on the sources' replies and the maintainer's choice. |
 | 0.9.0 | F-Droid groundwork, a release of its own (maintainer, 2026-10-17): OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app. Moved from 0.7.0 (maintainer, 2026-10-15), then from 0.8.0 (2026-10-17). |
 | 1.0.0 | Public launch: Play production access, F-Droid submission, "Get Terpoir" with real links and fingerprints. |
@@ -387,12 +387,14 @@ requirement rather than on features.
   - [x] The offline source (maintainer, 2026-10-17): the candidate
         found, Kushy's MIT strain table, limited to its factual columns
         (research option 1). Online sources still to pick.
-  - [ ] An offline catalog, 0.7.0: downloaded in one piece, searched on
-        the device, filling a strain's type, breeder and lineage (and the
-        few cannabinoid fields Kushy fills) as suggestions the user
-        confirms. Before shipping: re-check Kushy's provenance (the
-        research notes it may come from scraped sources) and add its MIT
-        notice to the licences screen.
+  - [x] An offline catalog, 0.7.0: bundled with the app (about 260 KB,
+        maintainer, 2026-10-21) and searched on the device as a strain's
+        name is typed, filling its type, breeder and parents as suggestions
+        the user confirms; strains gain a breeder field. Kushy's provenance
+        check was waived (maintainer, 2026-10-21: factual columns only);
+        its cannabinoid figures were left out (no stated unit). Its MIT
+        notice ships with the app's other notices
+        (`assets/licenses/Kushy-MIT.txt`).
   - [ ] Online sources the maintainer picks, 0.8.0, each its own toggle
         (off by default) with a disclosure card; search on submit only.
 

@@ -642,6 +642,8 @@ pub struct Strain {
     pub name: String,
     /// Lineage, free text (for example "OG Kush × Durban Poison").
     pub lineage: Option<String>,
+    /// Who bred it (for example "DJ Short"), as free text.
+    pub breeder: Option<String>,
     /// Terpenes the strain is known for.
     pub terpenes: BTreeSet<TagRef>,
     /// Indica/sativa/hybrid label.
@@ -665,6 +667,7 @@ impl Strain {
         Self {
             name,
             lineage: None,
+            breeder: None,
             terpenes: BTreeSet::new(),
             strain_type: None,
             terpene_levels: BTreeMap::new(),
@@ -708,6 +711,7 @@ impl Record for Strain {
         let mut f = Fields::default();
         f.put("name", Value::Text(self.name.clone()))
             .text("lineage", self.lineage.as_ref())
+            .text("breeder", self.breeder.as_ref())
             .tag_set("terpenes", &self.terpenes)
             .opt("type", self.strain_type.as_ref(), |t| {
                 Value::Text(t.slug().to_owned())
@@ -742,6 +746,7 @@ impl Record for Strain {
         Ok(Self {
             name: r.required_text("name")?,
             lineage: r.text("lineage")?,
+            breeder: r.text("breeder")?,
             terpenes: r.tag_set("terpenes")?,
             strain_type: r.slug("type", StrainType::from_slug)?,
             terpene_levels: r.tag_map("terpene_levels", |v| match v {
@@ -756,7 +761,7 @@ impl Record for Strain {
     fn owns_field(key: &str) -> bool {
         owns(
             key,
-            &["name", "lineage", "type"],
+            &["name", "lineage", "breeder", "type"],
             &["terpenes", "terpene_levels", "parents", "cannabinoids"],
         )
     }
@@ -1074,6 +1079,7 @@ mod tests {
         round_trip(&Strain {
             name: "Blue Dream".into(),
             lineage: Some("Blueberry × Haze".into()),
+            breeder: Some("DJ Short".into()),
             terpenes: [TagRef::Builtin("myrcene".into())].into(),
             strain_type: Some(StrainType::Hybrid),
             ..Strain::new(String::new())

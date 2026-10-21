@@ -640,6 +640,10 @@ pub struct StrainData {
     /// Cannabinoids besides THC and CBD the strain is known for (`cbn`,
     /// `cbg`, `thca`, `cbdv`, or one from a newer app version).
     pub cannabinoids: Vec<String>,
+    /// Who bred it. Last, with a default, so existing callers keep
+    /// compiling.
+    #[uniffi(default = None)]
+    pub breeder: Option<String>,
 }
 
 /// A terpene's rough level in a strain.
@@ -664,6 +668,7 @@ impl StrainData {
         Ok(Strain {
             name: self.name.clone(),
             lineage: self.lineage.clone(),
+            breeder: self.breeder.clone(),
             terpenes,
             strain_type: self.strain_type.as_deref().map(StrainType::from_slug),
             terpene_levels,
@@ -694,6 +699,7 @@ impl StrainData {
                 .collect(),
             parents: ids_to_strings(&s.parents),
             cannabinoids: s.cannabinoids.iter().map(|c| c.slug().to_owned()).collect(),
+            breeder: s.breeder.clone(),
         }
     }
 }

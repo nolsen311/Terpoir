@@ -611,6 +611,37 @@ impl Journal {
         })
     }
 
+    /// For each of `names`, the journal's strain with that name (ignoring
+    /// case, spacing and punctuation), or an empty string when there is
+    /// none: so a catalog suggestion's parents can be linked to strains the
+    /// user already has.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`.
+    pub fn strain_ids_named(&self, names: Vec<String>) -> Result<Vec<String>> {
+        self.with(|u| {
+            let mut strains = Vec::new();
+            for id in u.store.ids_of_kind(RecordKind::Strain)? {
+                if let Some(strain) = u.store.get_record::<Strain>(&u.master, &id)? {
+                    strains.push((id, strain));
+                }
+            }
+            Ok(names
+                .iter()
+                .map(|name| {
+                    let wanted = normalize_name(name);
+                    strains
+                        .iter()
+                        .filter(|_| !wanted.is_empty())
+                        .find(|(_, s)| normalize_name(&s.name) == wanted)
+                        .map(|(id, _)| id.to_hex())
+                        .unwrap_or_default()
+                })
+                .collect())
+        })
+    }
+
     /// Products that may be the one being entered: those sharing any of
     /// `codes`, then those with the same name and, when both have one, the
     /// same brand. Code matches come first.

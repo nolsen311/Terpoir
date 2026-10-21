@@ -1091,6 +1091,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "terpoir-catalog"
+version = "0.1.0"
+dependencies = [
+ "terpoir-model",
+ "terpoir-scan",
+]
+
+[[package]]
 name = "terpoir-crypto"
 version = "0.1.0"
 dependencies = [
@@ -1112,6 +1120,7 @@ version = "0.1.0"
 dependencies = [
  "proptest",
  "serde_json",
+ "terpoir-catalog",
  "terpoir-crypto",
  "terpoir-insights",
  "terpoir-model",

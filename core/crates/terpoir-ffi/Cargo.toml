@@ -19,6 +19,7 @@ name = "terpoir_ffi"
 
 [dependencies]
 serde_json.workspace = true
+terpoir-catalog.workspace = true
 terpoir-crypto.workspace = true
 terpoir-insights.workspace = true
 terpoir-model.workspace = true

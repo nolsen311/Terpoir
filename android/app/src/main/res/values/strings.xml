@@ -482,6 +482,14 @@
     <string name="strain_edit">Edit strain</string>
     <string name="strain_name">Name</string>
     <string name="strain_lineage">Lineage notes</string>
+    <string name="strain_breeder">Breeder</string>
+    <string name="strain_parent_new_on_save">%1$s (new)</string>
+    <string name="catalog_suggestions_title">From the strain catalog</string>
+    <string name="catalog_bred_by">Bred by %1$s</string>
+    <string name="catalog_name_only">Name only</string>
+    <string name="catalog_use">Use</string>
+    <string name="catalog_use_named">Use %1$s from the strain catalog</string>
+    <string name="catalog_credit">From Kushy\'s open strain list (MIT), searched on your phone: nothing is sent. Using one fills only what\'s empty; check it before you save.</string>
     <string name="strain_terpenes">Terpenes it\'s known for</string>
     <string name="strain_terpenes_hint">Pick the ones that stand out. Most strains are known for one to three.</string>
     <string name="strain_terpenes_many">That\'s more than most strains are known for. Keep them if they all stand out; levels below can say which lead.</string>

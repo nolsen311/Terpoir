@@ -29,6 +29,7 @@ use std::sync::Once;
 
 mod archive;
 mod capture;
+mod catalog;
 mod error;
 mod feedback;
 mod insights;
@@ -45,6 +46,7 @@ pub use archive::{
     read_export_archive, readable_blobs, sync_folder_key_file,
 };
 pub use capture::{capture_ready, seal_capture};
+pub use catalog::{CatalogStrainData, StrainCatalog};
 pub use error::{CoreError, Result};
 pub use insights::{
     InsightData, InsightFeedback, ShopEffectData, ShopInsightData, TimelineInsightData,
