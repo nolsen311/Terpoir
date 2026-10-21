@@ -58,10 +58,12 @@ per item or small group of items. Keep this file updated as items land.
   - [ ] AllBud, `legal@allbud.com`: saved as a Gmail draft.
   - [ ] SeedFinder.eu: no address published; send through its contact
         form. Its text is a Gmail draft with no recipient.
-  - [ ] TerpHunter: no address published; send through its contact form
-        (text saved as a Gmail draft with no recipient).
-        Also ask about the coming Pro API and where its strain profiles
-        come from.
+  - [x] TerpHunter: sent through its contact form (2026-10-15). Its
+        maintainer replied with personal Pro access through an MCP endpoint
+        (2026-10-20); recorded in the research doc.
+  - [ ] TerpHunter follow-up: send the reply saved as a Gmail draft
+        (bundling, per-user sign-in from the app, measured versus inferred
+        values), try the connector and send feedback, then record the answer.
 
 ## Phase 0: Repository and CI foundations
 

@@ -40,8 +40,9 @@ offline catalog, and remove the one online candidate:
   written permission from Medicinal Genomics.
 - **TerpHunter** has the right fields (parents, chemotype, terpene profile),
   but no public API yet ("Pro — Coming later"); its own API needs a login,
-  and its terms forbid scraping and redistribution. Revisit when the Pro API
-  ships.
+  and its terms forbid scraping and redistribution. Its maintainer answered
+  the permission request (2026-10-20) with personal Pro access through an MCP
+  endpoint, not yet with permission for the app; see "Reply" below.
 
 Recommendation; the maintainer picks one:
 
@@ -82,7 +83,7 @@ unstated).
 | SeedFinder.eu | **No API**: "discontinued per july 1st, 2024"; HTML pages only | "personal or private use; commercial use is prohibited"; no reproduction or distribution (verified) | n/a | n/a (pages load Google Analytics, Microsoft Clarity) | ~42,000 strain pages, 2,146 breeders: type, breeder, flowering time, parents, hybrids, user effects/aroma/taste; lab cannabinoids for 91 varieties; no terpenes | Unusable without written permission |
 | Kannapedia | **No API**; one 2.8 MB HTML list, filtered in the browser; VCF downloads | No terms of use on either Kannapedia or its owner's site; owner's footer: "Copyright all right reserved" (verified) | Free to view | n/a (Google Analytics only after consent) | 1,462 public samples (2,418 registered): chemotype from DNA, genetic relatives by distance, gene variants incl. terpene synthases; registrant cannabinoids and terpenes (sparse); no parents | Unusable without written permission |
 | AllBud | Internal API (`/api/`) answers 401; HTML pages | "personal, non-commercial use only"; no robots or storing (verified) | Account (not offered to third parties) | n/a (Google Analytics, ad network, ShareThis) | ~16,000 strains: type with sativa/indica %, THC/CBD/CBN, description, effects, "may relieve", flavors, aromas, reviews; no terpenes or parent fields | Unusable |
-| TerpHunter | No public API: "Pro — Coming later: Full API access ... Bulk data export"; site API answers 401 without a login | No "scrape, crawl, or bulk-download"; no right "to redistribute our aggregated data" (verified) | Free account (email), not shareable | Query, account, IP (first-party page-view stats only) | 5,200+ strains (parents, chemotype, terpene profile, partly AI-made); 8,000+ lab-tested products in MI, OH, MO | Unusable now; revisit when the Pro API ships |
+| TerpHunter | No public API: "Pro — Coming later: Full API access ... Bulk data export"; site API answers 401 without a login | No "scrape, crawl, or bulk-download"; no right "to redistribute our aggregated data" (verified) | Free account (email), not shareable | Query, account, IP (first-party page-view stats only) | 5,200+ strains (parents, chemotype, terpene profile, partly AI-made); 8,000+ lab-tested products in MI, OH, MO | Not usable in the app yet: the maintainer has personal Pro access for evaluation; bundling, per-user lookups and sources asked again (2026-10-21) |
 | Leafly | No public strain API (per secondary sources) | **Unverified** | Partner or retailer key only | n/a | Rich (terpenes, effects, lab data) | Unusable |
 | Kaggle Leafly scrapes | Bulk download | Unverified; derived from Leafly content | Kaggle account | n/a | Leafly fields | Unusable (provenance) |
 | The Strain API (evanbusse) | API (status unknown) | Unverified | Unverified | Query, IP | Unverified | Unverified; likely unusable |
@@ -349,6 +350,32 @@ unstated).
   bundle, and the strain fields are partly AI-made from unnamed sources.
   Revisit when the Pro API ships: check whether its terms allow use from an
   app, caching, and a key per user, and ask where the strain data comes from.
+- **Reply (2026-10-19 and 2026-10-20, by email):** TerpHunter's maintainer
+  gave the Terpoir maintainer's own account Pro access, paid for out of
+  pocket, and asked only that it not be abused, and for feedback.
+  - **Access:** an MCP endpoint, `https://terphunter.com/mcp`, signed in
+    with OAuth through a TerpHunter account (claude.ai custom connector or
+    Claude Code), or a personal API key on request, sent as
+    `Authorization: Bearer …` and *"don't share it"*. Its examples cover
+    lineage and usual terpenes per strain, in-stock products by terpene,
+    lab results per product, prices and state possession limits.
+  - **Sources:** *"The data comes from dispensary menus and lab results and
+    is updated nightly."* Nothing says which strain-level values are
+    measured and which are inferred.
+  - **Not answered:** permission to bundle (still redistribution under the
+    terms), use from an open-source app without a shared key, and per-value
+    provenance. The personal key cannot go in the app.
+  - **Asked again (2026-10-21, Gmail draft for the maintainer to send):**
+    the three questions, plus one design that would fit Terpoir's rules:
+    each user signs in with their own TerpHunter account in the app (the
+    OAuth flow the MCP endpoint already uses), and the phone queries
+    TerpHunter directly: off by default, behind its own toggle and
+    disclosure card, strain lookups only. Also asked whether such users
+    would need Pro, whether the MCP endpoint may be called from an app, and
+    whether a field marks measured versus inferred values.
+  - **Meanwhile:** the maintainer evaluates data quality through the
+    connector (strains they know well) and sends feedback. Any app use waits
+    on the answers above and stays in 0.8.0 (online lookups).
 
 ### Leafly (unverified)
 - Leafly's own pages (`www.leafly.com`, `leafly.com`, `developer.leafly.com`,
