@@ -329,7 +329,7 @@ requirement rather than on features.
 | 0.8.0 | Online strain lookups: sources the maintainer picks (such as Leafly or a seed database), each behind its own toggle, as "Catalog lookups" requires. Moved from 0.6.0 (maintainer, 2026-10-15), then from 0.7.0 (maintainer, 2026-10-17): it waits on the sources' replies and the maintainer's choice. |
 | 0.9.0 | F-Droid groundwork, a release of its own (maintainer, 2026-10-17): OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app. Moved from 0.7.0 (maintainer, 2026-10-15), then from 0.8.0 (2026-10-17). |
 | 1.0.0 | Public launch: Play production access, F-Droid submission, "Get Terpoir" with real links and fingerprints. |
-| 1.x | WebDAV / S3 sync; direct device pairing; scan recognition from the journal; personal gear; lock-screen capture. Order to be set after 1.0. |
+| 1.x | WebDAV / S3 sync; direct device pairing; scan recognition "growing over time" (backlog); personal gear; lock-screen capture. Order to be set after 1.0. |
 | 2.0 | iOS. |
 
 ## Feature releases
@@ -395,6 +395,12 @@ requirement rather than on features.
         its cannabinoid figures were left out (no stated unit). Its MIT
         notice ships with the app's other notices
         (`assets/licenses/Kushy-MIT.txt`).
+  - [x] "Look up on the web", 0.8.0 (maintainer, 2026-10-21): saved sites
+        opened in the browser with the strain's name, its own toggle; the
+        app fetches nothing.
+  - [ ] Sharing back to Terpoir, 0.8.0: selected text or a screenshot of a
+        strain's page, read on the phone into suggestions (agreed in
+        outline 2026-10-21; details to settle).
   - [ ] Online sources the maintainer picks, 0.8.0, each its own toggle
         (off by default) with a disclosure card; search on submit only.
 
@@ -463,7 +469,7 @@ requirement rather than on features.
         strains named in full fill an empty Brand and Strains, and the
         offline catalog's offers "Add …" chips (2026-10-21).
 
-- [ ] Session timeline (maintainer, 2026-10-15; `docs/design-decisions.md`,
+- [x] Session timeline (maintainer, 2026-10-15; `docs/design-decisions.md`,
       "Session timeline"): how strong it felt over time replaces onset,
       peak and duration.
   - [x] Points per method, the hold-and-flick indicator, the chart with

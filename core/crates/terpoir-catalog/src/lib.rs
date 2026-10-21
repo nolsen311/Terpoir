@@ -15,6 +15,8 @@
 
 #![forbid(unsafe_code)]
 
+pub mod lookup;
+
 use terpoir_model::StrainType;
 use terpoir_scan::{MatchKind, names_in_label, normalize_name, score_name};
 

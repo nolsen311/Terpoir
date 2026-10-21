@@ -350,6 +350,27 @@ fun buildPrivacyCenter(
             onAction = { settings.coaLinks = true },
             offAction = { settings.coaLinks = false },
         ),
+        // "Look up on the web": the app fetches nothing, it only hands the
+        // browser a saved site's address with the strain's name. Off deletes
+        // the saved sites, on every device (the removal syncs).
+        PrivacyToggle(
+            id = "web_lookups",
+            group = PrivacyGroup.CATALOGS,
+            card = PrivacyCard(
+                title = R.string.web_lookups,
+                whatItDoes = R.string.web_lookups_does,
+                whatLeaves = R.string.web_lookups_leaves,
+                whoCanSee = R.string.web_lookups_who,
+                howToUndo = R.string.web_lookups_undo,
+            ),
+            privateState = false,
+            isOn = { settings.webLookups },
+            onAction = { settings.webLookups = true },
+            offAction = {
+                settings.webLookups = false
+                withContext(Dispatchers.IO) { journal()?.forgetLookupSites(System.currentTimeMillis().toULong()) }
+            },
+        ),
         // Play build only. On only switches the scanner's engine; Play
         // services downloads the model when a scan first needs it, after
         // the scanner asks. Off switches back and lets Play services remove
@@ -450,6 +471,7 @@ val YOLO_TOGGLES = setOf(
     "follow_up_check_ins",
     // Catalogs and scanning.
     "coa_links",
+    "web_lookups",
     "google_text_recognition",
     // OS integration: the "New note" and "New entry" tiles and widget.
     "quick_settings_tile",

@@ -424,6 +424,15 @@ fn main() {
             T0 + 13,
         )
         .unwrap();
+    // Since 0.8.0: a saved lookup site.
+    journal
+        .save_lookup_site(
+            None,
+            "AllBud".into(),
+            "https://www.allbud.com/marijuana-strains/search?q={strain+}".into(),
+            T0 + 13,
+        )
+        .unwrap();
     let attachment = journal
         .add_attachment(session.clone(), attachment_bytes(), T0 + 14)
         .unwrap();
@@ -512,6 +521,7 @@ fn main() {
   "receipt_formats": true,
   "pack_per": true,
   "strain_breeder": true,
+  "lookup_sites": true,
   "ids": {{
     "brand": "{brand}",
     "deleted_brand": "{deleted_brand}",

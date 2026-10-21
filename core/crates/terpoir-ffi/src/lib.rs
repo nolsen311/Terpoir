@@ -35,6 +35,7 @@ mod feedback;
 mod insights;
 mod journal;
 mod keys;
+mod lookup;
 mod plaintext;
 mod records;
 mod scan;
@@ -59,6 +60,9 @@ pub use journal::{
 pub use keys::{
     NewKeys, PassphraseWrapped, RotatedKeys, check_recovery_key, create_keys,
     master_key_from_passphrase, master_key_from_recovery, wrap_master_key_with_passphrase,
+};
+pub use lookup::{
+    LookupSiteData, lookup_address, lookup_template_from_example, lookup_template_valid,
 };
 pub use plaintext::ExportFile;
 pub use records::{

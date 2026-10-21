@@ -37,6 +37,15 @@ class PrivacySettings(context: Context) {
         set(value) = prefs.edit().putBoolean(KEY_COA_LINKS, value).apply()
 
     /**
+     * "Look up on the web": opening a saved site in the browser with a
+     * strain's name filled in. Off by default: the site learns the name and
+     * the user's IP address. The saved sites live in the journal.
+     */
+    var webLookups: Boolean
+        get() = prefs.getBoolean(KEY_WEB_LOOKUPS, false)
+        set(value) = prefs.edit().putBoolean(KEY_WEB_LOOKUPS, value).apply()
+
+    /**
      * The new-note button starts in voice mode (on-device recognition
      * only). On by default: keyboards see everything typed, while on-device
      * voice is seen by no one else.
@@ -188,6 +197,7 @@ class PrivacySettings(context: Context) {
     private companion object {
         const val KEY_SCREEN_PROTECTION = "screen_protection"
         const val KEY_COA_LINKS = "coa_links"
+        const val KEY_WEB_LOOKUPS = "web_lookups"
         const val KEY_VOICE_FIRST = "voice_first"
         const val KEY_SHOW_NEARBY = "show_nearby_spots"
         const val KEY_VOICE_INTRO_SEEN = "voice_intro_seen"
