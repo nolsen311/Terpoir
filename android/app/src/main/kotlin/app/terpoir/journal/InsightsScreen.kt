@@ -32,6 +32,7 @@ import app.terpoir.core.InsightData
 import app.terpoir.core.InsightFeedback
 import app.terpoir.core.SessionData
 import app.terpoir.core.ShopInsightData
+import app.terpoir.core.TimelineComparisonData
 import app.terpoir.core.TimelineInsightData
 import java.util.Locale
 import kotlinx.coroutines.launch
@@ -211,6 +212,10 @@ fun InsightsScreen(repo: JournalRepository, onOpenSession: (String) -> Unit, onC
                         t.easesMin?.let { stringResource(R.string.insights_timeline_eases, durationLabel(it.toInt())) },
                     )
                     Text(parts.joinToString(", "), style = MaterialTheme.typography.bodyLarge)
+                    // Only differences the core judged clear enough to state.
+                    for (c in t.comparisons) {
+                        Text(comparisonText(c, levelNames), style = MaterialTheme.typography.bodyMedium)
+                    }
                     Text(
                         pluralStringResource(R.plurals.insights_timeline_sessions, t.sessions.size, t.sessions.size),
                         style = MaterialTheme.typography.bodySmall,
@@ -230,6 +235,25 @@ fun InsightsScreen(repo: JournalRepository, onOpenSession: (String) -> Unit, onC
             }
         }
     }
+}
+
+/** "Comes on faster than your other edible sessions: about 45 min against 1 h 30 min (4 sessions)." */
+@Composable
+private fun comparisonText(c: TimelineComparisonData, levelNames: Array<String>): String {
+    val method = label(c.method).lowercase()
+    val earlier = c.`this` < c.others
+    val res = when (c.measure) {
+        "onset" -> if (earlier) R.string.insights_compare_onset_faster else R.string.insights_compare_onset_slower
+        "peak_time" -> if (earlier) R.string.insights_compare_peak_sooner else R.string.insights_compare_peak_later
+        "peak_level" -> if (earlier) R.string.insights_compare_peak_milder else R.string.insights_compare_peak_stronger
+        else -> if (earlier) R.string.insights_compare_eases_sooner else R.string.insights_compare_eases_later
+    }
+    val (mine, theirs) = if (c.measure == "peak_level") {
+        levelNames.getOrElse(c.`this`.toInt()) { "" } to levelNames.getOrElse(c.others.toInt()) { "" }
+    } else {
+        durationLabel(c.`this`.toInt()) to durationLabel(c.others.toInt())
+    }
+    return stringResource(res, method, mine, theirs, c.othersCount.toInt())
 }
 
 /** What was compared, as the start of a sentence. */

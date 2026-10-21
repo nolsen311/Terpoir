@@ -3073,6 +3073,37 @@ fn timeline_insights_show_how_it_usually_goes() {
     assert_eq!(edible.onset_min, Some(96));
     assert_eq!((edible.peak_min, edible.peak_level), (144, 4));
     assert_eq!(edible.eases_min, Some(240));
+    // With no other edibles, nothing to compare the gummies with.
+    assert!(found[1].comparisons.is_empty());
+
+    // Three other edibles that come on and peak later, and milder.
+    for n in 0..3 {
+        let mut s = session(None);
+        s.timeline_levels = points(&[(48, 0), (96, 0), (192, 3), (240, 1)]);
+        journal.save_session(None, s, 10 + n).unwrap();
+    }
+    let found = journal.timeline_insights().unwrap();
+    let gummies = found.iter().find(|t| t.category == "product").unwrap();
+    let compared: Vec<(&str, &str, u32, u32)> = gummies
+        .comparisons
+        .iter()
+        .map(|c| (c.method.as_str(), c.measure.as_str(), c.this, c.others))
+        .collect();
+    assert_eq!(
+        compared,
+        [
+            ("edible", "onset", 96, 192),
+            ("edible", "peak_time", 144, 192),
+            ("edible", "peak_level", 4, 3),
+        ]
+    );
+    assert_eq!(
+        (
+            gummies.comparisons[0].sessions,
+            gummies.comparisons[0].others_count
+        ),
+        (3, 3)
+    );
 
     // Hidden with the timeline in "What I track".
     journal

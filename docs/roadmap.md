@@ -467,7 +467,7 @@ requirement rather than on features.
   - [x] The timeline in shares.
   - [x] Insights that use the timeline: "How it usually goes" per method,
         product and strain (comes on, peaks, eases off), from set points.
-  - [ ] Timeline comparisons ("comes on faster than your other edibles"),
+  - [x] Timeline comparisons ("comes on faster than your other edibles"),
         once there is enough data to make them trustworthy (0.7.0).
 
 ## Phase 5: Stretch
