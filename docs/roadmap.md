@@ -7,7 +7,7 @@ per item or small group of items. Keep this file updated as items land.
 
 ## Maintainer tasks (outside the code)
 
-- [ ] Squash-merge PR #1 with a `Signed-off-by:` line in the merge message.
+- [x] Squash-merge PR #1 with a `Signed-off-by:` line in the merge message.
 - [x] Settings → Code security: enable Dependabot alerts and Dependabot
       security updates. (Managed in `Terpoir-infra` since its first apply,
       2026-10-13.)
@@ -26,7 +26,7 @@ per item or small group of items. Keep this file updated as items land.
       closed-testing requirements. (Done; first review passed 2026-10-14.)
 - [ ] Recruit closed testers: 12 opted in for 14 days in a row before
       Play production access (3 as of 2026-10-14).
-- [ ] Play Console: declare background location for "Notify me" (the
+- [x] Play Console: declare background location for "Notify me" (the
       permissions declaration form and a short demonstration video) before
       the first release that includes it. Not needed for the first Play
       release, which leaves background location out (maintainer,
@@ -35,35 +35,38 @@ per item or small group of items. Keep this file updated as items land.
   - [x] Code PR (Claude): the Play build requests it, with the in-app
         disclosure screen, privacy policy and Data safety updates
         (2026-10-16).
-  - [ ] Record the video on an internal-testing build; upload it
+  - [x] Record the video on an internal-testing build; upload it
         unlisted.
-  - [ ] Fill in App content → Sensitive app permissions → Location
-        permissions, and send it for review with that release.
-- [ ] Mastodon account for release announcements (2026-10-15;
+  - [x] Fill in App content → Sensitive app permissions → Location
+        permissions, and send it for review with that release
+        (done by 2026-10-21).
+- [x] Mastodon account for release announcements (2026-10-15;
       `docs/design-decisions.md`, "Release announcements"):
-  - [ ] Create the account on mastodon.social (for example
+  - [x] Create the account on mastodon.social (for example
         `terpoirapp`); mark it as a bot ("automated account") in its
         profile settings.
-  - [ ] Preferences → Development → New application, with only the
+  - [x] Preferences → Development → New application, with only the
         `write:statuses` and `write:media` scopes; copy its access token.
-  - [ ] Add the token as `MASTODON_TOKEN` in the Terpoir repository's
+  - [x] Add the token as `MASTODON_TOKEN` in the Terpoir repository's
         `announce` environment (Settings → Environments), after
         Terpoir-infra has created it.
-  - [ ] Copy the token to Keeper, folder `Terpoir` (Terpoir-infra D9).
+  - [x] Copy the token to Keeper, folder `Terpoir` (Terpoir-infra D9).
 - [ ] Strain data permission requests (2026-10-15;
       `docs/research/strain-lookups.md`). Fill in your name, send, then
-      record each answer in the research doc:
-  - [ ] Kannapedia / Medicinal Genomics, `info@medicinalgenomics.com`:
+      record each answer in the research doc (all sent by 2026-10-21;
+      answers still to record):
+  - [x] Kannapedia / Medicinal Genomics, `info@medicinalgenomics.com`:
         saved as a Gmail draft.
-  - [ ] AllBud, `legal@allbud.com`: saved as a Gmail draft.
-  - [ ] SeedFinder.eu: no address published; send through its contact
+  - [x] AllBud, `legal@allbud.com`: saved as a Gmail draft.
+  - [x] SeedFinder.eu: no address published; send through its contact
         form. Its text is a Gmail draft with no recipient.
   - [x] TerpHunter: sent through its contact form (2026-10-15). Its
         maintainer replied with personal Pro access through an MCP endpoint
         (2026-10-20); recorded in the research doc.
-  - [ ] TerpHunter follow-up: send the reply saved as a Gmail draft
-        (bundling, per-user sign-in from the app, measured versus inferred
-        values), try the connector and send feedback, then record the answer.
+  - [x] TerpHunter follow-up sent (2026-10-21): bundling, per-user
+        sign-in from the app, measured versus inferred values.
+  - [ ] TerpHunter: try the connector and send feedback, then record the
+        answer.
 
 ## Phase 0: Repository and CI foundations
 
@@ -393,7 +396,7 @@ requirement rather than on features.
   - [ ] Online sources the maintainer picks, 0.8.0, each its own toggle
         (off by default) with a disclosure card; search on submit only.
 
-- [ ] Simpler receipt scanning, 0.6.0 and 0.6.1 (maintainer, 2026-10-15): text
+- [x] Simpler receipt scanning, 0.6.0 and 0.6.1 (maintainer, 2026-10-15): text
       recognition should fill the right parts of a new entry (brand,
       strain, form, size, price, shop, date) with less checking and
       typing. Options in
@@ -432,7 +435,7 @@ requirement rather than on features.
       - [x] 0.6.1: "Seen on receipts as" with a delete on the product
             page.
 
-- [ ] Product subtypes (maintainer, 2026-10-15; `docs/design-decisions.md`,
+- [x] Product subtypes (maintainer, 2026-10-15; `docs/design-decisions.md`,
       "Product subtypes"). In 0.6.0, with simpler receipt scanning
       (maintainer, 2026-10-15).
   - [x] The maintainer confirms the Transdermal timing (12 hours, points
