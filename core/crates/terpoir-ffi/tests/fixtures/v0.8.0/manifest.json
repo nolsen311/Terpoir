@@ -1,0 +1,32 @@
+{
+  "core_version": "0.1.0",
+  "recovery_key": "0400-20G3-0G2G-C1R8-1450-P30D-1R7H-048J-2CA1-A5GQ-30CH-M6RW-3MF1-Y1YN",
+  "passphrase": "terpoir fixture passphrase",
+  "maptiler_key": "FixtureMapTilerKey0",
+  "product_cannabinoids": true,
+  "product_subtypes": true,
+  "receipt_formats": true,
+  "pack_per": true,
+  "strain_breeder": true,
+  "lookup_sites": true,
+  "ids": {
+    "brand": "1d29b99beb1068114675731db644d627",
+    "deleted_brand": "63a80356206810fcdb44ccf717a498c9",
+    "strain": "78117ee5c9084da3d8a198a4e7677108",
+    "parent_strain": "5d62e6b539e2019e8c14306d9f6ba900",
+    "spot": "4b1202dcee70c55a6f179bb6cec6d14e",
+    "product": "e2bb20f5f56903f918e85d1da8b6ef29",
+    "purchase": "195640f8738a1ff1a98be1fff16391a3",
+    "purchase_line": "19c5b18fe9bc06d5f51c2d176cbd947c",
+    "tag": "3fc48e96ea8af17da403bd6886679ac3",
+    "symptom_tag": "d401975b8ac15105fa6b2899667ec356",
+    "subtype_tag": "72f44a42a161f18b2a292fc000ed17c4",
+    "session": "5288c53dcb38a67e2946b9ab6ece7da9",
+    "snippet": "ba83f9fb16da2d4e89c6ba9e5314aff0",
+    "captured_note": "bc21cdfc61f953fa64ba60ce8cd08650",
+    "attachment": "5c93a933ded5e0bd652e69addb0afc0a"
+  },
+  "sync_blobs_before_edit": ["5d83d3b4d5684830065aa0e57e2a7b1f"],
+  "sync_blobs_final": ["7b6ab8ca3757946aaed224f0d05106d2", "8ad75c1f37043efa04e3f7aa831e8cc8"],
+  "session_timeline": true
+}
