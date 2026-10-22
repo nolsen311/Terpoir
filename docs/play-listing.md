@@ -573,6 +573,14 @@ them; the other activities belong to Google's libraries.
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.8.1** (439 characters):
+    Headline: Archive the products you're done with
+    Summary: archive finished products, out of the list and the pickers until you buy them again ; product cards lead with the strain ; the Products list opens at the top ; no extra copies of Terpoir after sharing a page back
+    ```
+    <en-US>
+    Archive the products you're done with, from a product's page or a long press on its card. They move to a section at the bottom of the Products list and out of the product pickers, and come back on their own when you buy one again. Product cards now lead with the strain, with the brand in the corner and potency on the right. Fixes: the Products list opens at the top, and sharing a page back no longer leaves extra copies of Terpoir open.
+    </en-US>
+    ```
   - **0.8.0** (371 characters):
     Headline: Look up strains on the web, and share back what you find
     Summary: look up a strain on the sites you save ; share a page's text or a screenshot back to fill in the strain ; off until you turn it on
