@@ -221,7 +221,8 @@ without it.
         changed no format. v0.4.0's adds the richer strain fields; v0.6.0's,
         written from its tag on 2026-10-16, subtypes and receipt formats;
         v0.6.1's, a pack's "each / in all" reading; v0.7.0's, a strain's
-        breeder; v0.8.0's, a saved web lookup site.)
+        breeder; v0.8.0's, a saved web lookup site; v0.8.1's, an archived
+        product.)
   - [x] Downgrade: an older app opening a newer database refuses (as
         today) with a message to update, never a crash or a reset.
 - [ ] Bring-your-own-storage sync backends and direct device pairing.
