@@ -17,8 +17,10 @@ builds the way `release.yml` does, so the two match:
   (`.github/scripts/setup-android-core.sh`, built with `--locked`), and the
   SDK packages the OCR libraries need (`android/ocr-native/build.sh
   --sdk-packages`).
-- `env.sh`: sourced first in the build step, so Cargo is on the `PATH` and
-  JDK 21 is used, as in CI.
+- `env.sh`: sourced first in the build step, so Cargo is on the `PATH`,
+  JDK 21 is used, and `SOURCE_DATE_EPOCH` is the commit time, as in CI.
+  fdroid sets that variable before cloning, from the metadata file's
+  commit, which would change the Rust core's embedded OpenSSL build date.
 - `fastlane/metadata/android/en-US/` (repository root): the listing. The
   descriptions are the Play listing's (`docs/play-listing.md`) with the
   `foss` build's differences: Tesseract built in, the optional online map,
@@ -67,4 +69,10 @@ fdroid build app.terpoir:<versionCode>
 ```
 
 To test a commit before its tag exists, set the build's `commit` to it in
-the copy.
+the copy and commit the copy (fdroid dates the build from the metadata
+file's commit until `env.sh` replaces it). Put F-Droid's
+[`gradlew-fdroid`](https://gitlab.com/fdroid/gradlew-fdroid) on the `PATH`
+as `gradle`, as on its build server. Until a release is built from the
+same commit, `Binaries` points at an older APK and the final comparison
+fails; compare `build/app.terpoir/android/app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk`
+with `release.yml`'s build instead (2026-10-22: byte-identical).
