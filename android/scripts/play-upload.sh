@@ -62,13 +62,22 @@ if [ -z "$token" ]; then
     [ -n "$account" ] || die "set TERPOIR_PLAY_SERVICE_ACCOUNT (the Play publisher service account's email)"
     command -v gcloud >/dev/null || die "gcloud not found"
     # gcloud can't scope an impersonated token, and the Play API needs its
-    # own scope, so ask the IAM Credentials API directly.
-    token=$(curl -sSf -X POST \
-        -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+    # own scope, so ask the IAM Credentials API directly. Google's error
+    # message is kept: it says whether the role, the API or the login is
+    # missing. The token itself is never printed.
+    user_token=$(gcloud auth print-access-token) || die "gcloud has no login (gcloud auth login)"
+    echo "Getting a Play token for $account as $(gcloud config get-value account 2>/dev/null)"
+    reply=$(curl -sS -X POST \
+        -H "Authorization: Bearer $user_token" \
         -H "Content-Type: application/json" \
         -d '{"scope":["https://www.googleapis.com/auth/androidpublisher"],"lifetime":"600s"}' \
-        "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/$account:generateAccessToken" \
-        | jq -er .accessToken) || die "couldn't get a token for $account (gcloud auth login; Token Creator role on it)"
+        "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/$account:generateAccessToken") \
+        || die "couldn't reach the IAM Credentials API"
+    unset user_token
+    token=$(jq -r '.accessToken // empty' <<<"$reply" 2>/dev/null || true)
+    [ -n "$token" ] || die "couldn't get a token for $account: $(jq -r '.error.message // .' <<<"$reply" 2>/dev/null || echo "$reply")
+  (the active gcloud account needs the Token Creator role on it: gcloud auth list)"
+    unset reply
 fi
 
 call() { # method path [curl args...]
@@ -78,7 +87,12 @@ call() { # method path [curl args...]
     out=$(curl -sS -X "$method" -H "Authorization: Bearer $token" -w '\n%{http_code}' "$@" "$api$path") || die "$method $path failed"
     local code=${out##*$'\n'}
     local body=${out%$'\n'*}
-    [[ "$code" == 2* ]] || die "$method $path: HTTP $code: $(jq -r '.error.message // .' <<<"$body" 2>/dev/null || echo "$body")"
+    local hint=""
+    [ "$code" = 403 ] && hint="
+  (Play doesn't grant the service account access to $package. If the Play
+  Console's Users and permissions already looks right, remove the service
+  account there and invite it again: docs/releasing.md, \"Google Play\")"
+    [[ "$code" == 2* ]] || die "$method $path: HTTP $code: $(jq -r '.error.message // .' <<<"$body" 2>/dev/null || echo "$body")$hint"
     printf '%s' "$body"
 }
 

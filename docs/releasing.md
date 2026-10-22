@@ -99,7 +99,33 @@ scoped to the Play Developer API.
    ```bash
    export TERPOIR_PLAY_SERVICE_ACCOUNT=terpoir-play-publisher@<project>.iam.gserviceaccount.com
    ```
-   `gcloud auth login` as the maintainer's Google account.
+   `gcloud auth login` as a Google account holding the Token Creator role
+   on the service account (`gcloud auth list` shows which one is active).
+
+**If Play answers 403 "The caller does not have permission"** while the
+token step succeeds and the Play Console shows the service account with the
+right permissions: remove the service account in Users and permissions and
+invite it again with the same permissions, then wait 10–15 minutes. On
+2026-10-22 a week-old invite with correct-looking grants was refused this
+way until it was re-invited. To test access without uploading anything,
+open and discard an edit:
+
+```bash
+TOKEN=$(curl -sS -X POST \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "Content-Type: application/json" \
+  -d '{"scope":["https://www.googleapis.com/auth/androidpublisher"],"lifetime":"600s"}' \
+  "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/$TERPOIR_PLAY_SERVICE_ACCOUNT:generateAccessToken" \
+  | jq -r .accessToken)
+EDIT=$(curl -sS -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{}' \
+  "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/app.terpoir/edits" \
+  | tee /dev/stderr | jq -r '.id // empty')
+[ -n "$EDIT" ] && curl -sS -X DELETE -H "Authorization: Bearer $TOKEN" \
+  "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/app.terpoir/edits/$EDIT" \
+  && echo "access works; edit $EDIT discarded"
+unset TOKEN
+```
 
 **Track and status:** by default the bundle goes to the **internal** track
 as a **draft** release, which waits in the Play Console for "Start
