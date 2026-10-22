@@ -249,6 +249,12 @@ without it.
       YubiKey (`android/scripts/sign-release.sh`, `docs/releasing.md`).
 - [ ] Reproducible Android builds verified in CI; SBOM; signed release
       hashes published on terpoir.app; signing fingerprints in README.
+  - [x] Reproducible Android builds verified in CI: the core and the whole
+        foss APK (`Reproducible build`, `android-core` and `foss-apk`;
+        2026-10-22).
+  - [x] SBOMs (CycloneDX) on every release: foss and Play, the Rust core
+        per Android target, the OCR libraries' sources (maintainer chose
+        the CycloneDX tools, 2026-10-22).
   - [x] Both signing-certificate fingerprints (the maintainer's key and
         Play App Signing) and the release-signing SSH key
         (`android/release/allowed_signers`) on terpoir.app ("Verify your

@@ -144,6 +144,22 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # CycloneDX SBOMs of what the builds above contain, with their own
+      # SBOM-SHA256SUMS (SHA256SUMS lists only the APK, so it checks alone).
+      - name: SBOMs
+        working-directory: .
+        env:
+          OCR_AAR: ${{ steps.ocr.outputs.aar }}
+        run: |
+          set -euo pipefail
+          .github/scripts/release-sboms.sh "$RUNNER_TEMP/release" "${GITHUB_REF_NAME#v}" "$OCR_AAR"
+          {
+            echo "### SBOMs"
+            echo '```'
+            cat "$RUNNER_TEMP/release/SBOM-SHA256SUMS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: terpoir-release-unsigned
@@ -182,6 +198,7 @@ jobs:
           - Install **terpoir-foss-${GITHUB_REF_NAME#v}.apk**. For the Google Play version, install Terpoir from Google Play.
           - Signed with the maintainer's own key, not Google's: it won't install over a Google Play copy, or the reverse.
           - \`SHA256SUMS\` lists the APK's hash.
+          - The \`.cdx.json\` files are CycloneDX SBOMs: every library in the app, the Rust core and the text recognition libraries (\`SBOM-SHA256SUMS\` lists their hashes).
           NOTES
           gh release create "$GITHUB_REF_NAME" release/* \
             --draft --verify-tag \

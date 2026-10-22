@@ -150,7 +150,11 @@ The steps, for doing them separately:
    - checks the tag is on `main` and matches `versionName`, and that
      `docs/play-listing.md` has the version's release notes, headline and
      summary, and that its Mastodon post fits;
-   - builds the unsigned foss APK and Play bundle, and runs every check;
+   - builds the unsigned foss APK and Play bundle (the Rust core and the
+     OCR libraries from source, reproducibly), and runs every check;
+   - writes CycloneDX SBOMs of the foss and Play builds, the Rust core (per
+     Android target) and the OCR libraries' sources, with
+     `SBOM-SHA256SUMS` (`.github/scripts/release-sboms.sh`);
    - creates a draft release holding them and `UNSIGNED-SHA256SUMS`, its
      page opening with the release notes under "What's new".
 
@@ -196,6 +200,10 @@ The steps, for doing them separately:
   mappings (`terpoir-foss-<version>-mapping.txt`, and the Play one) as
   release assets; `play-upload.sh` also gives Play its mapping. Decode a trace with the Android build-tools' `retrace`:
   `retrace terpoir-foss-<version>-mapping.txt trace.txt`.
+- **SBOMs:** the `.cdx.json` assets and `SBOM-SHA256SUMS` stay on the
+  release as CI made them; `sign-release.sh` doesn't touch them, and the
+  signed `SHA256SUMS` lists only the APK, so `sha256sum -c SHA256SUMS`
+  works with the APK alone.
 
 - **Signature schemes:** minSdk is 30, so `apksigner` signs with APK
   Signature Scheme v3 only. v1/v2 aren't needed, and v4 (`.idsig` files,

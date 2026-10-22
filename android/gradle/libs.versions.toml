@@ -8,6 +8,7 @@
 [versions]
 agp = "9.4.1"
 kotlin = "2.4.21"
+cyclonedx = "3.5.1"
 activity-compose = "1.13.0"
 lifecycle = "2.11.0"
 compose-bom = "2026.09.00"
@@ -126,3 +127,9 @@ android-dynamic-feature = { id = "com.android.dynamic-feature", version.ref = "a
 android-asset-pack = { id = "com.android.asset-pack", version.ref = "agp" }
 # Compose compiler; also pins the Kotlin version used by AGP's built-in Kotlin.
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+# Release SBOMs (CycloneDX, `cyclonedxBom`; docs/design-decisions.md,
+# "Builds and releases"). Build time only, never in the app; Apache-2.0.
+# Reads the resolved dependencies and their POM metadata through Gradle's
+# own repositories, so verification-metadata.xml checks everything it
+# fetches; no telemetry.
+cyclonedx = { id = "org.cyclonedx.bom", version.ref = "cyclonedx" }
