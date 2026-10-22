@@ -42,6 +42,7 @@ mod number;
 mod pack;
 mod receipt;
 mod stitch;
+mod strain_page;
 mod terms;
 mod wrap;
 
@@ -61,6 +62,7 @@ pub use name::{names_match, normalize_name};
 pub use pack::amount_per;
 pub use receipt::{Receipt, ReceiptItem, ReceiptLine, parse_receipt, parse_receipt_line};
 pub use stitch::{JoinedRows, join_receipt_photos};
+pub use strain_page::{StrainPage, parse_strain_page};
 pub use terms::{ItemBreakdown, Size, SizeUnit, describe_item};
 pub use wrap::{
     CutOff, RowItem, RowReceipt, find_cut_off, item_row_groups, parse_receipt_row_groups,

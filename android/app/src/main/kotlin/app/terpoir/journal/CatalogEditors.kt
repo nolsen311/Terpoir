@@ -841,7 +841,7 @@ fun StrainEditor(repo: JournalRepository, vocab: Vocabulary, id: String?, onDone
     ) {
         OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.strain_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         // "Look up on the web" (Privacy Center, Catalogs; off by default).
-        if (webLookups && name.isNotBlank()) WebLookup(repo, name.trim())
+        if (webLookups && name.isNotBlank()) WebLookup(repo, name.trim(), id)
         if (suggestions.isNotEmpty()) {
             CatalogSuggestions(suggestions) { s ->
                 // Fills only what is still empty; the user checks it before saving.
