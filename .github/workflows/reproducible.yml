@@ -11,9 +11,16 @@
 #   build it (`-Pterpoir.reproducible`), the second time with a different
 #   Cargo home, as another machine would have.
 # - foss-apk: the whole unsigned foss release APK, as release.yml builds it
-#   (with the OCR libraries from source),
-#   the second time with a different Cargo home and Gradle home. F-Droid
+#   (with the OCR libraries from source, built once by ocr-aar), on two
+#   runners at once (foss-apk-build), the second from another path with a
+#   different Cargo home and Gradle home; foss-apk compares them. F-Droid
 #   publishes the maintainer-signed APK only if its own build matches.
+#
+# On pull requests android-core and the foss-apk jobs run only when the
+# build itself changes (build scripts, Gradle files, ProGuard rules, the
+# OCR recipe, core/ or .github/), not for app code alone (maintainer,
+# 2026-10-22: they are the slowest checks). Pushes to main, the weekly run
+# and manual runs check everything.
 
 name: Reproducible build
 
@@ -21,6 +28,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -40,7 +50,7 @@ jobs:
       pull-requests: read
     outputs:
       run: ${{ steps.files.outputs.run }}
-      android: ${{ steps.android.outputs.android }}
+      build: ${{ steps.build.outputs.build }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -54,12 +64,16 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: .github/scripts/changes.sh '^(core/|\.github/)' >> "$GITHUB_OUTPUT"
 
-      - name: Check the changed files (Android)
-        id: android
+      # What can change how the app is built: the build scripts, Gradle's
+      # files, ProGuard rules, the OCR recipe, the core and CI itself.
+      - name: Check the changed files (Android build)
+        id: build
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: .github/scripts/changes.sh '^(android/|core/|\.github/)' | sed 's/^run=/android=/' >> "$GITHUB_OUTPUT"
+        run: |
+          .github/scripts/changes.sh '^(core/|\.github/|android/[^/]+$|android/gradle/|android/ocr-native/|android/[^/]+/(build\.gradle\.kts|proguard-rules\.pro)$)' \
+            | sed 's/^run=/build=/' >> "$GITHUB_OUTPUT"
 
   reproducible:
     needs: changes
@@ -105,7 +119,7 @@ jobs:
 
   android-core:
     needs: changes
-    if: needs.changes.outputs.android == 'true'
+    if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -163,23 +177,49 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  foss-apk:
+  # The OCR libraries from source, once for both APK builds, as release.yml
+  # builds them; the OCR workflow checks their own reproducibility.
+  ocr-aar:
     needs: changes
-    if: needs.changes.outputs.android == 'true'
+    if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          path: first
           persist-credentials: false
 
+      - name: Build the OCR native libraries
+        run: .github/scripts/ocr-from-source.sh "$RUNNER_TEMP/ocr-native"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: reproducible-ocr-aar
+          path: ${{ runner.temp }}/ocr-native/*.aar
+          if-no-files-found: error
+          retention-days: 1
+
+  # The two APK builds, on separate runners at the same time. The second
+  # builds from another path with another Cargo home and Gradle home.
+  foss-apk-build:
+    needs: ocr-aar
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - copy: first
+            checkout: first
+            other-homes: false
+          - copy: second
+            checkout: elsewhere/second-checkout
+            other-homes: true
+    steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          path: elsewhere/second-checkout
+          path: ${{ matrix.checkout }}
           persist-credentials: false
 
       - name: Validate Gradle wrapper
-        working-directory: first/android
+        working-directory: ${{ matrix.checkout }}/android
         run: |
           set -euo pipefail
           actual=$(sha256sum gradle/wrapper/gradle-wrapper.jar | cut -d' ' -f1)
@@ -188,74 +228,89 @@ jobs:
             | grep -qx "$actual"
 
       - name: Set up Rust core toolchain
-        working-directory: first
+        working-directory: ${{ matrix.checkout }}
         run: .github/scripts/setup-android-core.sh
 
-      # Built once, outside both checkouts, as release.yml builds it; the
-      # OCR workflow checks its own reproducibility.
-      - name: Build the OCR native libraries
-        id: ocr
-        working-directory: first
-        run: echo "aar=$(.github/scripts/ocr-from-source.sh "$RUNNER_TEMP/ocr-native")" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: reproducible-ocr-aar
+          path: ${{ runner.temp }}/ocr-native
 
-      # The runner's disk holds one build at a time: the first checkout and
-      # its Gradle home go once its APK is kept.
-      - name: First build
-        working-directory: first/android
+      - name: Build
+        id: build
+        working-directory: ${{ matrix.checkout }}/android
         env:
-          OCR_AAR: ${{ steps.ocr.outputs.aar }}
+          OTHER_HOMES: ${{ matrix.other-homes }}
+          COPY: ${{ matrix.copy }}
         run: |
           set -euo pipefail
           export JAVA_HOME="$JAVA_HOME_21_X64"
-          ./gradlew --no-daemon --no-build-cache -Pterpoir.reproducible=true -Pterpoir.ocr.aar="$OCR_AAR" :app:assembleFossRelease
-          mkdir -p "$RUNNER_TEMP/apks"
-          cp app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk "$RUNNER_TEMP/apks/first.apk"
-          # As release.yml checks it (that workflow only runs on a tag).
-          (cd .. && .github/scripts/check-ocr-libs.sh "$RUNNER_TEMP/apks/first.apk")
-          rm -rf /tmp/terpoir-android-core "$GITHUB_WORKSPACE/first" ~/.gradle
+          if [ "$OTHER_HOMES" = true ]; then
+            export CARGO_HOME="$RUNNER_TEMP/cargo-home"
+            export GRADLE_USER_HOME="$RUNNER_TEMP/gradle-home"
+          fi
+          aar=$(ls "$RUNNER_TEMP"/ocr-native/*.aar)
+          echo "aar=$aar" >> "$GITHUB_OUTPUT"
+          ./gradlew --no-daemon --no-build-cache -Pterpoir.reproducible=true -Pterpoir.ocr.aar="$aar" :app:assembleFossRelease
+          mkdir -p "$RUNNER_TEMP/apk"
+          cp app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk "$RUNNER_TEMP/apk/$COPY.apk"
+          sha256sum "$RUNNER_TEMP/apk/$COPY.apk"
 
-      - name: Second build (another Cargo home and Gradle home)
-        working-directory: elsewhere/second-checkout/android
+      # As release.yml checks the APK and writes the SBOMs (that workflow
+      # only runs on a tag); once is enough.
+      - name: Check the shipped OCR libraries and write the release SBOMs
+        if: matrix.copy == 'second'
+        working-directory: ${{ matrix.checkout }}
         env:
-          OCR_AAR: ${{ steps.ocr.outputs.aar }}
+          OCR_AAR: ${{ steps.build.outputs.aar }}
         run: |
           set -euo pipefail
-          export JAVA_HOME="$JAVA_HOME_21_X64"
+          .github/scripts/check-ocr-libs.sh "$RUNNER_TEMP/apk/second.apk"
           export CARGO_HOME="$RUNNER_TEMP/cargo-home"
           export GRADLE_USER_HOME="$RUNNER_TEMP/gradle-home"
-          ./gradlew --no-daemon --no-build-cache -Pterpoir.reproducible=true -Pterpoir.ocr.aar="$OCR_AAR" :app:assembleFossRelease
-          cp app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk "$RUNNER_TEMP/apks/second.apk"
+          .github/scripts/release-sboms.sh "$RUNNER_TEMP/sboms" 0.0.0-check "$OCR_AAR"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: foss-apk-${{ matrix.copy }}
+          path: ${{ runner.temp }}/apk/${{ matrix.copy }}.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  # The comparison. Keeps the job name the check had when it built both
+  # APKs itself. Both APKs stay as artifacts for 14 days, for diffoscope
+  # when they differ.
+  foss-apk:
+    needs: [changes, foss-apk-build]
+    # Runs (and fails) when a build failed too: a skipped check would pass.
+    if: always() && needs.changes.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Both builds succeeded
+        env:
+          BUILDS: ${{ needs.foss-apk-build.result }}
+        run: |
+          if [ "$BUILDS" != success ]; then
+            echo "::error::An APK build (or the OCR build) did not succeed: $BUILDS."
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: foss-apk-*
+          merge-multiple: true
+          path: apks
 
       - name: Compare
-        id: compare
-        working-directory: ${{ runner.temp }}/apks
+        working-directory: apks
         run: |
           set -euo pipefail
           sha256sum first.apk second.apk
           if ! cmp -s first.apk second.apk; then
-            echo "::error::The foss APK is not reproducible: the two builds differ (both kept as an artifact)."
+            echo "::error::The foss APK is not reproducible: the two builds differ (both kept as the foss-apk-first and foss-apk-second artifacts)."
             exit 1
           fi
           {
             echo "### Reproducible foss APK (unsigned)"
             echo "\`$(sha256sum first.apk | cut -d' ' -f1)\`"
           } >> "$GITHUB_STEP_SUMMARY"
-
-      # release.yml's SBOM step, which otherwise runs only on a tag.
-      - name: Release SBOMs
-        working-directory: elsewhere/second-checkout
-        env:
-          OCR_AAR: ${{ steps.ocr.outputs.aar }}
-        run: |
-          set -euo pipefail
-          export CARGO_HOME="$RUNNER_TEMP/cargo-home"
-          export GRADLE_USER_HOME="$RUNNER_TEMP/gradle-home"
-          .github/scripts/release-sboms.sh "$RUNNER_TEMP/sboms" 0.0.0-check "$OCR_AAR"
-
-      # Both APKs, to compare with diffoscope when they differ.
-      - if: failure() && steps.compare.outcome == 'failure'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: foss-apk-differing-builds
-          path: ${{ runner.temp }}/apks
-          retention-days: 14
