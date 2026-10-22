@@ -1,0 +1,1 @@
+Ready for F-Droid, and easier to check. Text recognition is now built from its source code with its logging taken out, so it no longer writes status lines to your phone's system log. Every release now lists what it is built from, and the checksums of its downloads are published on terpoir.app.
