@@ -1,0 +1,40 @@
+Categories:
+  - Health Manager
+  - Note
+License: GPL-3.0-or-later
+AuthorName: Terpoir
+AuthorEmail: terpoirapp@gmail.com
+WebSite: https://terpoir.app
+SourceCode: https://github.com/nolsen311/Terpoir
+IssueTracker: https://github.com/nolsen311/Terpoir/issues
+Changelog: https://github.com/nolsen311/Terpoir/releases
+
+AutoName: Terpoir
+
+RepoType: git
+Repo: https://github.com/nolsen311/Terpoir.git
+Binaries: https://github.com/nolsen311/Terpoir/releases/download/v%v/terpoir-foss-%v.apk
+
+Builds:
+  - versionName: 0.9.0
+    versionCode: 18
+    commit: v0.9.0
+    subdir: android/app
+    sudo:
+      - apt-get update
+      - apt-get install -y openjdk-21-jdk-headless
+    output: build/outputs/apk/foss/release/app-foss-release-unsigned.apk
+    prebuild: ../fdroid/setup.sh
+    build:
+      - source ../fdroid/env.sh
+      - ../ocr-native/build.sh ../ocr-native/out
+      - gradle --console plain -Pterpoir.reproducible=true -Pterpoir.ocr.aar=../ocr-native/out/tesseract4android-4.9.0.aar
+        assembleFossRelease
+    ndk: 30.0.16248370
+
+AllowedAPKSigningKeys: 559b5933953e2f130a23db5a4f610d1283d4b6a71ee67f9cdece3ec9b6ef2ca9
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[0-9]+\.[0-9]+\.[0-9]+$
+CurrentVersion: 0.9.0
+CurrentVersionCode: 18

@@ -1,0 +1,49 @@
+Terpoir is a private journal for adults who use cannabis where it is legal. Note what you tried, how much, and how it felt, then look back and see what actually works for you. It is a notebook, not a shop or a social network: Terpoir sells nothing, recommends nothing, and does not tell you to use more.
+
+<b>Private by design</b>
+<ul>
+<li>No account, no sign-up, no Terpoir server. Your journal lives on your phone.</li>
+<li>Everything is encrypted on the device. It unlocks with your fingerprint, face or screen lock, and a recovery key that only you hold.</li>
+<li>No ads, no analytics, no tracking. The developer never sees your journal.</li>
+<li>Kept out of phone backups, so your entries are never copied to a backup service.</li>
+<li>Every optional feature is a switch in the Privacy Center, with a plain card saying what it does, what leaves your phone, and how to undo it. The defaults are the most private settings.</li>
+</ul>
+
+<b>What you can record</b>
+<ul>
+<li>Sessions: when, which products, how much, and the effects you felt, with an intensity for each.</li>
+<li>Products, brands and strains, with label details such as THC and CBD amounts and top terpenes. A built-in strain catalog suggests names, types and breeders, searched on your phone.</li>
+<li>Notes in your own words, typed or spoken. Speech is turned into text by your phone's on-device recognizer; the audio is never kept.</li>
+<li>Saved places, with an approximate location if you want one.</li>
+<li>Optional alerts when you stop at a saved spot, even when the app is closed. Off until you turn them on, and your location never leaves your phone.</li>
+</ul>
+
+<b>Quick to use</b>
+<ul>
+<li>Scan a product label, a receipt or a barcode, and the details fill themselves in. Text recognition (Tesseract) is built in and runs on your phone.</li>
+<li>A quick-note tile and widget let you jot something down without opening the journal; the note is sealed until you unlock.</li>
+</ul>
+
+<b>See your own patterns</b>
+<ul>
+<li>Insights are worked out on your phone from your own entries: which products tend to help you sleep or relax, and which ones you would rather skip.</li>
+<li>Mark an insight as wrong or hide it, and Terpoir remembers.</li>
+</ul>
+
+<b>Your data stays yours</b>
+<ul>
+<li>Optional sync to a folder you choose, such as a Syncthing folder. Only encrypted files are written there.</li>
+<li>Export everything at any time, as an encrypted file or a readable copy.</li>
+<li>Open source under the GPL. Anyone can read the code and check these promises.</li>
+</ul>
+
+<b>Optional online map</b>
+Picking a spot on a map loads map tiles from OpenFreeMap, or from MapTiler with your own key. It is off until you turn it on, and its card says what the map server sees. Without it, Terpoir works fully.
+
+<b>For adults only</b>
+Terpoir is for adults of legal age to use cannabis where they live. It asks you to confirm this on first launch.
+
+<b>Not medical advice</b>
+Terpoir is a personal self-tracking tool. It is not a medical device and does not diagnose, treat, cure, or prevent any medical condition. Consult a healthcare professional for medical advice, diagnosis, or treatment.
+
+Privacy policy: https://terpoir.app/privacy
