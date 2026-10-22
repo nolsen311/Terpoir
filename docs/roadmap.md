@@ -313,6 +313,14 @@ without it.
       recipe with `Binaries` and `AllowedAPKSigningKeys`, and
       `fastlane/metadata/android/en-US/` for the listing. Test with
       `fdroid build` before submitting to `fdroiddata`.
+      - [x] `android/fdroid/`: `setup.sh` (pinned rustup, toolchain,
+            targets, `cargo-ndk`, SDK packages), the recipe with `Binaries`
+            and `AllowedAPKSigningKeys`, and the `fastlane` listing with
+            changelogs, which `release.yml` requires (2026-10-22). Passes
+            `fdroid lint` and `fdroid scanner`.
+      - [ ] `fdroid build` of the 0.9.0 tag matches the signed release
+            (needs a machine that can download the OCR source tarballs),
+            then the `fdroiddata` merge request at 1.0.0.
 - [ ] Trademark Statement of Use after launch.
 - [ ] Register the FOSS build's signing certificate for Android developer
       verification (Play Console, Android developer verification,

@@ -439,6 +439,7 @@ Making a new note should take one tap from outside the app. Every entry point op
 ### Distribution channels
 - **Google Play** (mainstream Android).
 - **F-Droid** (de-Googled users; builds from source and can publish the maintainer-signed APK when builds match byte for byte). Requires a **FOSS build flavor** without Play services: AOSP location fallback, no Gemini Nano tier, no Play age signals, no Play Billing, no Google Maps.
+  - Recipe (2026-10-22; `android/fdroid/README.md`): kept in this repository and copied to `fdroiddata` at submission (1.0.0). It builds as `release.yml` does (pinned toolchain from `setup.sh`, the OCR AAR from source, `-Pterpoir.reproducible`, JDK 21) and lists `Binaries` and `AllowedAPKSigningKeys`, so F-Droid publishes the maintainer-signed APK once its build matches. Updates come from tags (`UpdateCheckMode: Tags`). The listing is `fastlane/metadata/android/en-US/`; each version's `changelogs/<versionCode>.txt` repeats its Play notes, and `release.yml` requires it.
 - **GitHub Releases:** maintainer-signed APKs (works with update tools such as Obtainium).
 - **App Store** (iOS).
 

@@ -166,7 +166,10 @@ The steps, for doing them separately:
 1. **Version:** a PR raises `versionCode` and sets `versionName` in
    `android/app/build.gradle.kts`, and adds the version's release notes and
    its **Headline:** and **Summary:** lines to `docs/play-listing.md` (the
-   release image uses the headline, the Mastodon post the summary). Merge it.
+   release image uses the headline, the Mastodon post the summary), with
+   the same notes in
+   `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` for
+   F-Droid. Merge it.
 2. **Tag** that commit on `main`, signed with the YubiKey's SSH key, and
    push the tag:
    ```bash
@@ -176,7 +179,8 @@ The steps, for doing them separately:
 3. **CI** (`.github/workflows/release.yml`):
    - checks the tag is on `main` and matches `versionName`, and that
      `docs/play-listing.md` has the version's release notes, headline and
-     summary, and that its Mastodon post fits;
+     summary, that F-Droid's changelog file holds the same notes, and that
+     its Mastodon post fits;
    - builds the unsigned foss APK and Play bundle (the Rust core and the
      OCR libraries from source, reproducibly), and runs every check;
    - writes CycloneDX SBOMs of the foss and Play builds, the Rust core (per

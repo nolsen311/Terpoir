@@ -25,6 +25,8 @@ Builds:
       - apt-get install -y openjdk-21-jdk-headless
     output: build/outputs/apk/foss/release/app-foss-release-unsigned.apk
     prebuild: ../fdroid/setup.sh
+    scandelete:
+      - core/crates/terpoir-ffi/tests/fixtures
     build:
       - source ../fdroid/env.sh
       - ../ocr-native/build.sh ../ocr-native/out
