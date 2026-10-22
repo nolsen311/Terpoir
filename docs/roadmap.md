@@ -255,6 +255,9 @@ without it.
   - [x] SBOMs (CycloneDX) on every release: foss and Play, the Rust core
         per Android target, the OCR libraries' sources (maintainer chose
         the CycloneDX tools, 2026-10-22).
+  - [x] Signed release hashes on terpoir.app/releases/, every release
+        from 0.1.0, published by `release.sh` through a pull request
+        (`publish-hashes.sh`, 2026-10-22).
   - [x] Both signing-certificate fingerprints (the maintainer's key and
         Play App Signing) and the release-signing SSH key
         (`android/release/allowed_signers`) on terpoir.app ("Verify your

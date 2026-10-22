@@ -141,8 +141,9 @@ real names.
 **Shortcut:** once the version PR is merged, `android/scripts/release.sh
 v0.1.0` does steps 2 to 6 below in one run. It asks before it tags and
 pushes, signs the tag, waits for CI, runs `sign-release.sh --upload` (PIN
-once, a touch per signature), asks before publishing on GitHub, and asks
-before sending the bundle to Google Play. It is safe to
+once, a touch per signature), asks before publishing on GitHub, asks
+before opening the pull request that publishes the hashes on terpoir.app
+(step 5), and asks before sending the bundle to Google Play. It is safe to
 re-run after an interruption. Set `TERPOIR_UPLOAD_SLOT=82` (and
 `TERPOIR_SSH_KEY`) in the environment as for `sign-release.sh`. It writes
 signed builds under `~/terpoir-releases` (`TERPOIR_WORK_DIR`). Nothing is
@@ -206,6 +207,14 @@ The steps, for doing them separately:
    Mastodon, `announce.yml`):
    ```bash
    gh release edit v0.1.0 --draft=false
+   ```
+   Then publish its signed hashes on terpoir.app/releases/: this checks
+   `SHA256SUMS.sig` against `android/release/allowed_signers`, copies the
+   files to `site/releases/v0.1.0/`, regenerates the page, and opens a pull
+   request from a temporary worktree with your sign-off. The site deploys
+   when it merges.
+   ```bash
+   android/scripts/publish-hashes.sh --pr v0.1.0
    ```
 6. **Google Play** (see the one-time setup above):
    ```bash
