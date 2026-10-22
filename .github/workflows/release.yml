@@ -3,7 +3,8 @@
 # See LICENSING.md for the additional permission under GPLv3 section 7.
 #
 # Release builds (docs/releasing.md). A v* tag on main builds the unsigned
-# foss APK and Play bundle, runs the same checks as the Android workflow,
+# foss APK and Play bundle (the Rust core and the OCR libraries from source,
+# reproducibly, as F-Droid builds them), runs the same checks as the Android workflow,
 # and puts them in a draft GitHub release with their hashes. Nothing here
 # signs: the maintainer signs offline with the YubiKey
 # (android/scripts/sign-release.sh), uploads the signed APK, publishes, and
@@ -95,15 +96,32 @@ jobs:
         working-directory: .
         run: .github/scripts/setup-android-core.sh
 
+      # Both flavors use the OCR libraries built here from pinned source,
+      # never JitPack's prebuilt ones (which log; docs/design-decisions.md,
+      # "Logs and crash reports"), as F-Droid builds them.
+      - name: Build the OCR native libraries
+        id: ocr
+        working-directory: .
+        run: echo "aar=$(.github/scripts/ocr-from-source.sh "$RUNNER_TEMP/ocr-native")" >> "$GITHUB_OUTPUT"
+
       - name: Build and check
         env:
           GOOGLE_MAPS_API_KEY_RELEASE: ${{ secrets.GOOGLE_MAPS_API_KEY_RELEASE }}
+          OCR_AAR: ${{ steps.ocr.outputs.aar }}
         run: |
           set -euo pipefail
           export JAVA_HOME="$JAVA_HOME_21_X64"
           # The Rust core built reproducibly (app/build.gradle.kts, CargoNdkBuild).
           ./gradlew --no-daemon --no-build-cache -Pterpoir.reproducible=true \
+            -Pterpoir.ocr.aar="$OCR_AAR" \
             assembleFossRelease bundlePlayRelease check
+
+      - name: Check the shipped OCR libraries
+        working-directory: .
+        run: |
+          .github/scripts/check-ocr-libs.sh \
+            android/app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk \
+            android/app/build/outputs/bundle/playRelease/app-play-release.aab
 
       - name: Collect
         run: |
