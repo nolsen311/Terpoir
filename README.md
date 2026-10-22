@@ -62,7 +62,9 @@ sha256sum -c SHA256SUMS
 git -c gpg.ssh.allowedSignersFile=android/release/allowed_signers verify-tag v0.2.2
 ```
 
-Reproducible-build hashes will be published on terpoir.app too.
+Every release's signed `SHA256SUMS` is also on
+[terpoir.app/releases](https://terpoir.app/releases/), so a download can be
+checked against two places.
 
 **No one from Terpoir will ever ask for your recovery key.**
 

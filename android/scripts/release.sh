@@ -6,8 +6,9 @@
 # Drives a whole release from the maintainer's machine (docs/releasing.md):
 # signs and pushes the tag, waits for the Release workflow's draft, runs
 # sign-release.sh (YubiKey PIN once, a touch per signature), asks before
-# publishing on GitHub, then asks before sending the bundle to Google Play
-# (play-upload.sh). Nothing is signed or stored in CI; this only chains
+# publishing on GitHub, then before opening a pull request that publishes
+# the signed hashes on terpoir.app (publish-hashes.sh), then before
+# sending the bundle to Google Play (play-upload.sh). Nothing is signed or stored in CI; this only chains
 # the manual steps, and each outward-facing one asks first.
 #
 # Usage: android/scripts/release.sh vX.Y.Z
@@ -102,11 +103,20 @@ echo "Signing (YubiKey PIN, then a touch per signature)"
 echo
 gh release view "$tag" --repo "$repo" --json assets --jq '.assets[].name'
 echo
+published=false
 if confirm "Publish $tag on GitHub now? Check the draft first: https://github.com/$repo/releases"; then
     gh release edit "$tag" --repo "$repo" --draft=false
+    published=true
     echo "Published."
 else
     echo "Left as a draft. Publish later: gh release edit $tag --repo $repo --draft=false"
+fi
+
+# The signed hashes on terpoir.app: a pull request, live once merged.
+if $published && confirm "Open a pull request publishing $tag's signed hashes on terpoir.app?"; then
+    "$here/publish-hashes.sh" --pr "$tag"
+elif $published; then
+    echo "Not opened. Later: android/scripts/publish-hashes.sh --pr $tag"
 fi
 
 # 5. Google Play.
