@@ -295,7 +295,7 @@ without it.
       - [x] Path remapping and the core's reproducible Android build
             (`-Pterpoir.reproducible`, set by release builds), checked from
             two checkouts with different Cargo homes (2026-10-22).
-      - [ ] The whole foss APK in the reproducible-build check.
+      - [x] The whole foss APK in the reproducible-build check (2026-10-22).
     - Then: a helper script that installs the pinned Rust toolchain,
       targets and `cargo-ndk` (like Mullvad's `android/fdroid-build/`), the
       recipe with `Binaries` and `AllowedAPKSigningKeys`, and
