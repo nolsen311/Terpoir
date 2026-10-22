@@ -6,6 +6,11 @@
 # Sourced by each F-Droid build step after android/fdroid/setup.sh: puts
 # Cargo on the PATH and uses JDK 21, which release.yml and the OCR
 # workflow build with (the OCR AAR's committed hashes come from it).
+#
+# Sets SOURCE_DATE_EPOCH to the commit time, as release builds have it.
+# fdroid sets it before cloning, from the time of the fdroiddata metadata
+# file instead, which would change the Rust core's embedded OpenSSL build
+# date and so the APK.
 
 CARGO_HOME=${CARGO_HOME:-$HOME/.cargo}
 export CARGO_HOME
@@ -17,3 +22,5 @@ for jdk in /usr/lib/jvm/java-21-openjdk-amd64 /usr/lib/jvm/java-21-openjdk; do
         break
     fi
 done
+SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+export SOURCE_DATE_EPOCH
