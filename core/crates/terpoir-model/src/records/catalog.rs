@@ -385,6 +385,11 @@ pub struct Product {
     /// per entry (`receipt_names/<text>`), so an older app keeps them
     /// untouched and two devices' names merge. Never indexed.
     pub receipt_names: BTreeSet<String>,
+    /// Archived ("done", maintainer, 2026-10-22): kept with its history but
+    /// out of the Products list's main section and the pickers. A new
+    /// purchase of it unarchives it. Since 0.8.1; a scalar field stored
+    /// only while true, so an older app keeps it untouched.
+    pub archived: bool,
 }
 
 /// The longest learned receipt name kept, in characters.
@@ -425,6 +430,7 @@ impl Product {
             shops: BTreeSet::new(),
             default_size: None,
             receipt_names: BTreeSet::new(),
+            archived: false,
         }
     }
 
@@ -460,9 +466,11 @@ impl Product {
     /// it stays under this product's form); the sets and maps (strains,
     /// shops, scanned codes, terpenes, cannabinoids, learned receipt
     /// names) take the union, this product's value winning for an entry
-    /// both have. Returns whether anything changed.
+    /// both have. It stays archived only if both were. Returns whether
+    /// anything changed.
     pub fn absorb(&mut self, other: &Self) -> bool {
         let before = self.clone();
+        self.archived &= other.archived;
         if self.name.trim().is_empty() {
             self.name.clone_from(&other.name);
         }
@@ -554,7 +562,9 @@ impl Record for Product {
                     .as_ref()
                     .map_or(Value::Null, PackageSize::per_value),
             )
-            .text_set("receipt_names", &self.receipt_names);
+            .text_set("receipt_names", &self.receipt_names)
+            // Not archived is the default and is stored as absent.
+            .opt("archived", self.archived.then_some(true), Value::Bool);
         f.finish()
     }
 
@@ -605,6 +615,7 @@ impl Record for Product {
                 }
             },
             receipt_names: r.text_set("receipt_names")?,
+            archived: r.bool("archived")?.unwrap_or(false),
         })
     }
 
@@ -622,6 +633,7 @@ impl Record for Product {
                 "package_date",
                 "default_size",
                 "default_size_per",
+                "archived",
             ],
             &[
                 "strains",
@@ -864,6 +876,33 @@ mod tests {
         // A subtype from a newer app version round-trips as is.
         patch.subtype = Some(TagRef::Builtin("microdose_strip".into()));
         round_trip(&patch);
+        patch.archived = true;
+        round_trip(&patch);
+    }
+
+    #[test]
+    fn archived_is_stored_only_while_true() {
+        let mut p = Product::new("Done".into());
+        assert!(!p.to_fields().contains_key("archived"));
+        p.archived = true;
+        assert_eq!(p.to_fields().get("archived"), Some(&Value::Bool(true)));
+        // Saved before 0.8.1: not archived.
+        let mut doc = Document::new(RecordId::from_bytes([9; 16]), RecordKind::Product);
+        doc.set("name", Value::Text("Old".into()), stamp());
+        assert!(!Product::from_document(&doc).unwrap().archived);
+    }
+
+    #[test]
+    fn a_merged_product_stays_archived_only_if_both_were() {
+        let mut keep = Product::new("A".into());
+        keep.archived = true;
+        let mut other = Product::new("B".into());
+        assert!(keep.absorb(&other));
+        assert!(!keep.archived);
+        keep.archived = true;
+        other.archived = true;
+        assert!(!keep.absorb(&other));
+        assert!(keep.archived);
     }
 
     #[test]

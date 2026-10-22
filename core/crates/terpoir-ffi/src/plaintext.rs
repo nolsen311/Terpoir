@@ -301,6 +301,7 @@ fn products_csv(docs: &[Document], names: &Names) -> String {
         "default_pack",
         "default_size_per",
         "receipt_names",
+        "archived",
     ]);
     for doc in docs {
         let Ok(p) = Product::from_document(doc) else {
@@ -336,6 +337,7 @@ fn products_csv(docs: &[Document], names: &Names) -> String {
             opt(p.default_size.as_ref().and_then(|s| s.pack)),
             opt(size_per(p.default_size.as_ref())),
             join(p.receipt_names.iter().cloned()),
+            opt(p.archived.then_some(true)),
         ]);
     }
     out.finish()

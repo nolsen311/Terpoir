@@ -206,6 +206,7 @@ fn fill(journal: &Journal) -> Filled {
                 subtype: None,
                 default_size: None,
                 receipt_names: vec![],
+                archived: false,
             },
             2,
         )

@@ -400,7 +400,11 @@ private fun LineEditor(
             val none = stringResource(R.string.session_no_product)
             Dropdown(
                 label = stringResource(R.string.session_product),
-                options = listOf<Pair<String?, String>>(null to none) + products.map { it.id to (productLabels[it.id] ?: it.data.name) }.sortedBy { it.second.lowercase() },
+                // Archived products are left out, unless this line already has one.
+                options = listOf<Pair<String?, String>>(null to none) +
+                    products.filter { !it.data.archived || it.id == line.product }
+                        .map { it.id to (productLabels[it.id] ?: it.data.name) }
+                        .sortedBy { it.second.lowercase() },
                 selected = line.product,
                 onSelect = { productId ->
                     val method = productId?.let(usualMethods::get) ?: line.method

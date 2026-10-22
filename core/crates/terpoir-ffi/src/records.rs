@@ -486,6 +486,11 @@ pub struct ProductData {
     /// page shows them ("Seen on receipts as") with a delete.
     #[uniffi(default = [])]
     pub receipt_names: Vec<String>,
+    /// Archived (since 0.8.1): out of the Products list's main section and
+    /// the pickers, still matched by scans. A new purchase of it
+    /// unarchives it.
+    #[uniffi(default = false)]
+    pub archived: bool,
 }
 
 /// A cannabinoid amount from a product's label.
@@ -572,6 +577,7 @@ impl ProductData {
                 .map(PackageSizeData::to_model)
                 .transpose()?,
             receipt_names: normalised_set(&self.receipt_names, receipt_name_key)?,
+            archived: self.archived,
         })
     }
 
@@ -616,6 +622,7 @@ impl ProductData {
             subtype: p.subtype.as_ref().map(TagRefData::from_model),
             default_size: p.default_size.as_ref().map(PackageSizeData::from_model),
             receipt_names: p.receipt_names.iter().cloned().collect(),
+            archived: p.archived,
         }
     }
 }

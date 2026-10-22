@@ -244,6 +244,8 @@ fn main() {
                 subtype: Some(builtin("gummy")),
                 default_size: Some(gummies_size()),
                 receipt_names: vec!["ACME GUMMIES 10PK 100MG".into()],
+                // Since 0.8.1; archived at the end, after its purchase.
+                archived: false,
             },
             T0 + 5,
         )
@@ -433,6 +435,12 @@ fn main() {
             T0 + 13,
         )
         .unwrap();
+    // Since 0.8.1: the product archived ("done").
+    let mut done = journal.get_product(product.clone()).unwrap().unwrap();
+    done.archived = true;
+    journal
+        .save_product(Some(product.clone()), done, T0 + 13)
+        .unwrap();
     let attachment = journal
         .add_attachment(session.clone(), attachment_bytes(), T0 + 14)
         .unwrap();
@@ -522,6 +530,7 @@ fn main() {
   "pack_per": true,
   "strain_breeder": true,
   "lookup_sites": true,
+  "product_archived": true,
   "ids": {{
     "brand": "{brand}",
     "deleted_brand": "{deleted_brand}",
