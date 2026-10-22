@@ -3,6 +3,9 @@
 // See LICENSING.md for the additional permission under GPLv3 section 7.
 
 import com.android.build.api.artifact.SingleArtifact
+import java.io.ByteArrayOutputStream
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.zip.ZipFile
 import javax.inject.Inject
 
@@ -172,7 +175,18 @@ dependencies {
 // built library with the core's own uniffi-bindgen. Both outputs are
 // generated sources: nothing is committed.
 
-/** Cross-compiles the Rust core with cargo-ndk. */
+/**
+ * Cross-compiles the Rust core with cargo-ndk.
+ *
+ * With [reproducible] (`-Pterpoir.reproducible`, set by release builds and
+ * F-Droid), the library is the same byte for byte on any machine: Rust's
+ * paths into `$CARGO_HOME` are remapped to `/cargo`, and the build runs in
+ * [REPRODUCIBLE_DIR] with the NDK linked there, because the vendored
+ * OpenSSL compiles in its build directory and compiler path as plain
+ * strings, which no prefix map reaches. `SOURCE_DATE_EPOCH` (the commit
+ * time unless set) replaces OpenSSL's build date. One reproducible build
+ * at a time per machine.
+ */
 abstract class CargoNdkBuild : DefaultTask() {
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -190,22 +204,53 @@ abstract class CargoNdkBuild : DefaultTask() {
     @get:Input
     abstract val platform: Property<Int>
 
+    @get:Input
+    abstract val reproducible: Property<Boolean>
+
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
 
     @get:Inject
     abstract val execOperations: ExecOperations
 
+    companion object {
+        /** Where reproducible builds of the core run: the same path on every machine. */
+        const val REPRODUCIBLE_DIR = "/tmp/terpoir-android-core"
+    }
+
     @TaskAction
     fun build() {
         val out = outputDir.get().asFile
         out.deleteRecursively()
+        val core = coreDir.get().asFile
+        var ndk = ndkDir.get().asFile.absolutePath
+        val env = mutableMapOf<String, String>()
+        if (reproducible.get()) {
+            val fixed = File(REPRODUCIBLE_DIR).apply { mkdirs() }
+            val link = fixed.resolve("ndk").toPath()
+            Files.deleteIfExists(link)
+            Files.createSymbolicLink(link, Paths.get(ndk))
+            ndk = link.toString()
+            val cargoHome = System.getenv("CARGO_HOME") ?: File(System.getProperty("user.home"), ".cargo").path
+            env["CARGO_TARGET_DIR"] = fixed.resolve("target").path
+            env["RUSTFLAGS"] = "--remap-path-prefix=$cargoHome=/cargo"
+            env["SOURCE_DATE_EPOCH"] = System.getenv("SOURCE_DATE_EPOCH") ?: run {
+                val time = ByteArrayOutputStream()
+                execOperations.exec {
+                    workingDir = core
+                    commandLine("git", "log", "-1", "--format=%ct")
+                    standardOutput = time
+                }
+                time.toString().trim()
+            }
+        }
         execOperations.exec {
-            workingDir = coreDir.get().asFile
+            workingDir = core
+            environment(env)
             // Both names, so a different NDK in the environment (CI runners
             // set ANDROID_NDK_ROOT) can't be picked up instead.
-            environment("ANDROID_NDK_HOME", ndkDir.get().asFile.absolutePath)
-            environment("ANDROID_NDK_ROOT", ndkDir.get().asFile.absolutePath)
+            environment("ANDROID_NDK_HOME", ndk)
+            environment("ANDROID_NDK_ROOT", ndk)
             commandLine(
                 listOf("cargo", "ndk") +
                     abis.get().flatMap { listOf("-t", it) } +
@@ -275,6 +320,7 @@ val buildRustCore by tasks.registering(CargoNdkBuild::class) {
     ndkDir.set(androidComponents.sdkComponents.ndkDirectory)
     abis.set(android.defaultConfig.ndk.abiFilters.sorted())
     platform.set(android.defaultConfig.minSdk ?: error("minSdk unset"))
+    reproducible.set(providers.gradleProperty("terpoir.reproducible").map { it.toBoolean() }.orElse(false))
     outputDir.set(layout.buildDirectory.dir("generated/rust/jniLibs"))
 }
 

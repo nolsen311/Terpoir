@@ -2,11 +2,14 @@
 # Copyright (C) 2026 The Terpoir Authors
 # See LICENSING.md for the additional permission under GPLv3 section 7.
 #
-# Reproducible-build check for the Rust core: builds the release library
-# twice, from checkouts in different directories, with a clean build cache
-# each time, and fails unless the two are byte-for-byte identical.
-# core/scripts/reproducible-build.sh is the same recipe anyone can run to
-# verify a published hash.
+# Reproducible-build checks: each builds twice, from checkouts in different
+# directories, with a clean build cache each time, and fails unless the two
+# are byte-for-byte identical.
+# - reproducible: the Rust core for the host. core/scripts/reproducible-build.sh
+#   is the same recipe anyone can run to verify a published hash.
+# - android-core: the Rust core for Android, as release builds and F-Droid
+#   build it (`-Pterpoir.reproducible`), the second time with a different
+#   Cargo home, as another machine would have.
 
 name: Reproducible build
 
@@ -33,6 +36,7 @@ jobs:
       pull-requests: read
     outputs:
       run: ${{ steps.files.outputs.run }}
+      android: ${{ steps.android.outputs.android }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -45,6 +49,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: .github/scripts/changes.sh '^(core/|\.github/)' >> "$GITHUB_OUTPUT"
+
+      - name: Check the changed files (Android)
+        id: android
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: .github/scripts/changes.sh '^(android/|core/|\.github/)' | sed 's/^run=/android=/' >> "$GITHUB_OUTPUT"
 
   reproducible:
     needs: changes
@@ -87,3 +98,63 @@ jobs:
           fi
           echo "### Reproducible core library" >> "$GITHUB_STEP_SUMMARY"
           echo "\`libterpoir_ffi.so\` (x86_64-unknown-linux-gnu): \`$first\`" >> "$GITHUB_STEP_SUMMARY"
+
+  android-core:
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: first
+          persist-credentials: false
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: elsewhere/second-checkout
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        working-directory: first/android
+        run: |
+          set -euo pipefail
+          actual=$(sha256sum gradle/wrapper/gradle-wrapper.jar | cut -d' ' -f1)
+          curl -sSfL --proto '=https' --tlsv1.2 https://services.gradle.org/versions/all \
+            | python3 -c "import json,sys; print('\n'.join(v['wrapperChecksum'] for v in json.load(sys.stdin) if v.get('wrapperChecksum')))" \
+            | grep -qx "$actual"
+
+      - name: Set up Rust core toolchain
+        working-directory: first
+        run: .github/scripts/setup-android-core.sh
+
+      - name: First build
+        working-directory: first/android
+        run: |
+          set -euo pipefail
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          ./gradlew --no-daemon --no-build-cache -Pterpoir.reproducible=true :app:buildRustCore
+          (cd app/build/generated/rust/jniLibs && sha256sum */libterpoir_ffi.so) | tee "$RUNNER_TEMP/first.sha256"
+          rm -rf /tmp/terpoir-android-core
+
+      - name: Second build (another Cargo home)
+        working-directory: elsewhere/second-checkout/android
+        run: |
+          set -euo pipefail
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          export CARGO_HOME="$RUNNER_TEMP/cargo-home"
+          ./gradlew --no-daemon --no-build-cache -Pterpoir.reproducible=true :app:buildRustCore
+          (cd app/build/generated/rust/jniLibs && sha256sum */libterpoir_ffi.so) | tee "$RUNNER_TEMP/second.sha256"
+
+      - name: Compare
+        run: |
+          set -euo pipefail
+          if ! diff "$RUNNER_TEMP/first.sha256" "$RUNNER_TEMP/second.sha256"; then
+            echo "::error::The Android core library is not reproducible: the two builds differ."
+            exit 1
+          fi
+          {
+            echo "### Reproducible Android core library"
+            echo '```'
+            cat "$RUNNER_TEMP/first.sha256"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
