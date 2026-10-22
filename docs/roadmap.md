@@ -326,7 +326,7 @@ requirement rather than on features.
 | 0.6.3 | Fixes and settings (maintainer, 2026-10-16 and 17): unlocking from a "Notify me" alert on a locked phone waits for the phone instead of reporting a Keystore error; YOLO Mode widened by Privacy Center group, with "Notify me" kept separate and placed under "Show me"; no Save button on screens that save each change at once. Like 0.6.2, internal testing until Google approves the background-location declaration. |
 | 0.6.4 | Tidier location buttons (maintainer, 2026-10-17): the "Show me" card on one row with icon actions ("Session", and "Purchase" at a Re-up Spot), and the spot editor's "Approximate", "Precise" and "Map" side by side at one size. Like 0.6.2, internal testing until Google approves the background-location declaration. |
 | 0.7.0 | Scan recognition from the journal, timeline comparisons and the offline strain catalog (maintainer, 2026-10-17): the rest of "Scan recognition from the journal" (OCR-tolerant suggestions ranked by shop and brand, brand and strain detection on labels; matched text broken down over time went to the backlog, maintainer 2026-10-21); "comes on faster than your other edibles"-style comparisons from the session timeline, once there is enough data to make them trustworthy; and the offline catalog from the candidate found, Kushy's MIT strain table (name, type, breeder, crosses; `docs/research/strain-lookups.md`, option 1), bundled and on with no toggle; the provenance check was waived for its factual columns (maintainer, 2026-10-21). |
-| 0.8.0 | Online strain lookups: sources the maintainer picks (such as Leafly or a seed database), each behind its own toggle, as "Catalog lookups" requires. Moved from 0.6.0 (maintainer, 2026-10-15), then from 0.7.0 (maintainer, 2026-10-17): it waits on the sources' replies and the maintainer's choice. |
+| 0.8.0 | Strain lookups you drive (maintainer, 2026-10-21 and 22): "Look up on the web" (saved sites opened in the browser, its own toggle) and sharing a strain's page back to fill the strain. Online sources inside the app moved to a later release, numbered once a source agrees (maintainer, 2026-10-22): they wait on the sources' replies and the maintainer's choice. Like 0.6.2 to 0.7.0, internal testing until Google approves the background-location declaration. |
 | 0.9.0 | F-Droid groundwork, a release of its own (maintainer, 2026-10-17): OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app. Moved from 0.7.0 (maintainer, 2026-10-15), then from 0.8.0 (2026-10-17). |
 | 1.0.0 | Public launch: Play production access, F-Droid submission, "Get Terpoir" with real links and fingerprints. |
 | 1.x | WebDAV / S3 sync; direct device pairing; scan recognition "growing over time" (backlog); personal gear; lock-screen capture. Order to be set after 1.0. |
@@ -374,7 +374,7 @@ requirement rather than on features.
           "Known for" cannabinoids on strains shipped in 0.4.0.
     - [x] 0.5.1: insights and the shop effect grouped by shared parent or
           dominant terpene.
-- [ ] Strain lookups: the offline catalog in 0.7.0, online sources in 0.8.0 (`docs/design-decisions.md`, "Catalog
+- [ ] Strain lookups: the offline catalog in 0.7.0, web lookups in 0.8.0, online sources later (`docs/design-decisions.md`, "Catalog
       lookups"; maintainer, 2026-10-14: Leafly and a seed database).
   - [x] Research, during 0.4.0: for each candidate (Leafly, seed
         databases, open strain datasets), whether it has an API or a
@@ -401,7 +401,8 @@ requirement rather than on features.
   - [x] Sharing back to Terpoir, 0.8.0: selected text or a screenshot of a
         strain's page, read on the phone into suggestions for the last
         strain looked up, another, or a new one (maintainer, 2026-10-21).
-  - [ ] Online sources the maintainer picks, 0.8.0, each its own toggle
+  - [ ] Online sources the maintainer picks, after 0.8.0 (moved
+        2026-10-22, waiting on the sources' replies), each its own toggle
         (off by default) with a disclosure card; search on submit only.
 
 - [x] Simpler receipt scanning, 0.6.0 and 0.6.1 (maintainer, 2026-10-15): text

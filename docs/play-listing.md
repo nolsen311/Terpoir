@@ -573,6 +573,14 @@ them; the other activities belong to Google's libraries.
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.8.0** (371 characters):
+    Headline: Look up strains on the web, and share back what you find
+    Summary: look up a strain on the sites you save ; share a page's text or a screenshot back to fill in the strain ; off until you turn it on
+    ```
+    <en-US>
+    Look up on the web: save the strain sites you like, then open any strain on one with a tap. Add a site by pasting the address of a search you did there. Found something useful? Share the text or a screenshot back to Terpoir and it fills in the strain's terpenes, type, parents and breeder for you to check. Off until you turn it on; Terpoir never visits the sites itself.
+    </en-US>
+    ```
   - **0.7.0** (445 characters):
     Headline: A strain catalog, and labels that know your strains
     Summary: a built-in strain catalog, searched on your phone ; label scans fill in your brands and strains ; insights compare a product with the rest ; a breeder field on strains
