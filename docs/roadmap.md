@@ -287,6 +287,9 @@ without it.
     - `release.yml` builds the foss APK with JitPack's prebuilt OCR
       libraries; it must build `android/ocr-native` and pass
       `-Pterpoir.ocr.aar` as F-Droid will.
+      - [x] Done (2026-10-22): release builds of both flavors use the
+            from-source libraries, checked against `SHA256SUMS` and for
+            logging; the reproducible-APK check builds the same way.
     - The Rust core library embeds build-machine paths (`$CARGO_HOME`
       registry sources, OpenSSL's build directory under `core/target`), so
       it differs between GitHub's runners and F-Droid's build server. Remap

@@ -60,8 +60,12 @@ reaching the SDK through a different path). It requires the
 two results to be identical and to match `SHA256SUMS`, and keeps them as a
 workflow artifact for 90 days. It runs weekly, on manual dispatch, and when
 anything here (or the NDK pin) changes. It is not a required check, and the
-app's own CI does not wait for it: the main build keeps using the JitPack
-AAR.
+app's own CI does not wait for it: its test builds keep using the JitPack
+AAR. Release builds don't: `release.yml` runs this recipe
+(`.github/scripts/ocr-from-source.sh`, which also checks the outputs
+against `SHA256SUMS`) and builds both flavors with the AAR, and
+`.github/scripts/check-ocr-libs.sh` checks the shipped libraries. The
+Reproducible build workflow's `foss-apk` job builds the same way.
 
 To bump a version: edit its line in `sources.txt` (version, URL, SHA-256 of
 the new tarball), push, and copy the hashes the workflow prints into
@@ -89,8 +93,8 @@ module `:ocr`, with the language data as an asset pack
 (`docs/design-decisions.md`, Rapid product entry; `android/ocr/README.md`).
 
 `settings.gradle.kts` declares the JitPack repository only when the property
-is unset, so a from-source build never contacts JitPack. App CI builds
-without the property. The workflow's `foss-app` job builds the `foss`
+is unset, so a from-source build never contacts JitPack. App CI's test builds
+go without the property; release builds (`release.yml`) and F-Droid set it. The workflow's `foss-app` job builds the `foss`
 release with it and checks that the APK ships these libraries, none of which
 calls Android's logger. Its `foss-device` job builds the `foss` debug app
 with them and runs `BundledTextEngineTest` on an Android 11 emulator: the
