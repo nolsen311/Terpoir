@@ -10,6 +10,9 @@
 # - android-core: the Rust core for Android, as release builds and F-Droid
 #   build it (`-Pterpoir.reproducible`), the second time with a different
 #   Cargo home, as another machine would have.
+# - foss-apk: the whole unsigned foss release APK, as release.yml builds it,
+#   the second time with a different Cargo home and Gradle home. F-Droid
+#   publishes the maintainer-signed APK only if its own build matches.
 
 name: Reproducible build
 
@@ -158,3 +161,76 @@ jobs:
             cat "$RUNNER_TEMP/first.sha256"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  foss-apk:
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: first
+          persist-credentials: false
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: elsewhere/second-checkout
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        working-directory: first/android
+        run: |
+          set -euo pipefail
+          actual=$(sha256sum gradle/wrapper/gradle-wrapper.jar | cut -d' ' -f1)
+          curl -sSfL --proto '=https' --tlsv1.2 https://services.gradle.org/versions/all \
+            | python3 -c "import json,sys; print('\n'.join(v['wrapperChecksum'] for v in json.load(sys.stdin) if v.get('wrapperChecksum')))" \
+            | grep -qx "$actual"
+
+      - name: Set up Rust core toolchain
+        working-directory: first
+        run: .github/scripts/setup-android-core.sh
+
+      # The runner's disk holds one build at a time: the first checkout and
+      # its Gradle home go once its APK is kept.
+      - name: First build
+        working-directory: first/android
+        run: |
+          set -euo pipefail
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          ./gradlew --no-daemon --no-build-cache -Pterpoir.reproducible=true :app:assembleFossRelease
+          mkdir -p "$RUNNER_TEMP/apks"
+          cp app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk "$RUNNER_TEMP/apks/first.apk"
+          rm -rf /tmp/terpoir-android-core "$GITHUB_WORKSPACE/first" ~/.gradle
+
+      - name: Second build (another Cargo home and Gradle home)
+        working-directory: elsewhere/second-checkout/android
+        run: |
+          set -euo pipefail
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          export CARGO_HOME="$RUNNER_TEMP/cargo-home"
+          export GRADLE_USER_HOME="$RUNNER_TEMP/gradle-home"
+          ./gradlew --no-daemon --no-build-cache -Pterpoir.reproducible=true :app:assembleFossRelease
+          cp app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk "$RUNNER_TEMP/apks/second.apk"
+
+      - name: Compare
+        id: compare
+        working-directory: ${{ runner.temp }}/apks
+        run: |
+          set -euo pipefail
+          sha256sum first.apk second.apk
+          if ! cmp -s first.apk second.apk; then
+            echo "::error::The foss APK is not reproducible: the two builds differ (both kept as an artifact)."
+            exit 1
+          fi
+          {
+            echo "### Reproducible foss APK (unsigned)"
+            echo "\`$(sha256sum first.apk | cut -d' ' -f1)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Both APKs, to compare with diffoscope when they differ.
+      - if: failure() && steps.compare.outcome == 'failure'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: foss-apk-differing-builds
+          path: ${{ runner.temp }}/apks
+          retention-days: 14
