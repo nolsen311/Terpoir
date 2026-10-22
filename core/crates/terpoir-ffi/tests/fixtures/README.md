@@ -73,6 +73,8 @@ Written by `make_compat_fixtures.rs` with fixed contents and clock:
 - a note on the session, and a note captured while locked and merged;
 - "What I track" with terpenes hidden (since 0.4.0, also the Detailed
   strain step), and one insight dismissed.
+- since 0.8.0, a saved web lookup site, "AllBud" (`lookup_sites` in the
+  manifest).
 
 ## Adding the next release
 
