@@ -100,28 +100,12 @@ calls Android's logger. Its `foss-device` job builds the `foss` debug app
 with them and runs `BundledTextEngineTest` on an Android 11 emulator: the
 libraries load and Tesseract reads rendered text.
 
-### F-Droid recipe (outline)
+### F-Droid
 
-```yaml
-Builds:
-  - versionName: x.y.z
-    versionCode: N
-    commit: vx.y.z
-    subdir: android/app
-    gradle:
-      - foss
-    ndk: r30
-    prebuild:
-      - sdkmanager $(../ocr-native/build.sh --sdk-packages)
-    build:
-      - ../ocr-native/build.sh ../ocr-native/out
-    gradleprops:
-      - terpoir.ocr.aar=../ocr-native/out/tesseract4android-4.9.0.aar
-```
-
-The exact fields (and whether the tarballs come in as `srclibs` instead of
-being downloaded by the script) are settled with F-Droid when the app is
-submitted (Phase 4); `OCR_DOWNLOADS` supports either way. F-Droid can check
-its build against `SHA256SUMS`.
+F-Droid's recipe (`android/fdroid/`) builds the AAR with this script and
+sets `terpoir.ocr.aar`. Whether the tarballs come in as `srclibs` instead
+of being downloaded by the script is settled with F-Droid when the app is
+submitted; `OCR_DOWNLOADS` supports either way. F-Droid can check its
+build against `SHA256SUMS`.
 
 [Tesseract4Android]: https://github.com/adaptech-cz/Tesseract4Android

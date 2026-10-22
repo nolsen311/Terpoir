@@ -57,8 +57,9 @@ jobs:
 
       # The version's Play notes (docs/play-listing.md), for the release page.
       # A version PR adds them with the headline and summary the Mastodon
-      # post uses (announce.yml), so a tag missing any, or whose post is
-      # too long, stops here rather than after publishing.
+      # post uses (announce.yml) and F-Droid's changelog file, so a tag
+      # missing any, or whose post is too long, stops here rather than after
+      # publishing.
       - name: Read the release notes
         id: notes
         working-directory: .
@@ -68,6 +69,13 @@ jobs:
           .github/scripts/release-headline.sh "$version" > /dev/null
           .github/scripts/release-post.sh "$version" "https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}" > /dev/null
           notes=$(.github/scripts/release-notes.sh "$version")
+          # F-Droid shows the same notes from its changelog file.
+          code=$(sed -n 's/^ *versionCode = \([0-9]*\)$/\1/p' android/app/build.gradle.kts)
+          changelog=fastlane/metadata/android/en-US/changelogs/$code.txt
+          if [ ! -f "$changelog" ] || [ "$(cat "$changelog")" != "$notes" ]; then
+            echo "::error::$changelog must hold the version's Play notes."
+            exit 1
+          fi
           printf 'notes=%s\n' "$notes" >> "$GITHUB_OUTPUT"
 
       # Read-only, and saved only from main (android.yml); every artifact is
