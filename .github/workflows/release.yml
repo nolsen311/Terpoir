@@ -101,7 +101,8 @@ jobs:
         run: |
           set -euo pipefail
           export JAVA_HOME="$JAVA_HOME_21_X64"
-          ./gradlew --no-daemon --no-build-cache \
+          # The Rust core built reproducibly (app/build.gradle.kts, CargoNdkBuild).
+          ./gradlew --no-daemon --no-build-cache -Pterpoir.reproducible=true \
             assembleFossRelease bundlePlayRelease check
 
       - name: Collect

@@ -292,6 +292,10 @@ without it.
       it differs between GitHub's runners and F-Droid's build server. Remap
       them (`--remap-path-prefix`) and extend the reproducible-build check
       to a different `CARGO_HOME` and to the whole foss APK.
+      - [x] Path remapping and the core's reproducible Android build
+            (`-Pterpoir.reproducible`, set by release builds), checked from
+            two checkouts with different Cargo homes (2026-10-22).
+      - [ ] The whole foss APK in the reproducible-build check.
     - Then: a helper script that installs the pinned Rust toolchain,
       targets and `cargo-ndk` (like Mullvad's `android/fdroid-build/`), the
       recipe with `Binaries` and `AllowedAPKSigningKeys`, and
