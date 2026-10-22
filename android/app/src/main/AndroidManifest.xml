@@ -64,11 +64,15 @@
         android:theme="@style/Theme.Terpoir">
         <!-- adjustResize: the keyboard is reported as an inset, which the
              Compose root pads by (safeDrawingPadding), instead of the
-             system panning the whole window on top of that. -->
+             system panning the whole window on top of that.
+             singleTask: a page shared from the browser goes to the open
+             journal (onNewIntent) instead of starting another copy of the
+             app inside the browser's task. -->
         <activity
             android:name=".MainActivity"
             android:configChanges="uiMode"
             android:exported="true"
+            android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
