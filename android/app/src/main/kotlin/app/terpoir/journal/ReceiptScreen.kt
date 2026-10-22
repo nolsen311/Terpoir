@@ -594,7 +594,8 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                 rowText = { rows[it].text },
                 size = ::sizeOf,
                 productLabel = { id -> productLabels[id] ?: products.firstOrNull { it.id == id }?.data?.name.orEmpty() },
-                products = products.map { it.id to (productLabels[it.id] ?: it.data.name) }.sortedBy { it.second.lowercase() },
+                // Picking by hand leaves archived products out; scans still match them.
+                products = products.filter { !it.data.archived }.map { it.id to (productLabels[it.id] ?: it.data.name) }.sortedBy { it.second.lowercase() },
                 showPrice = showPrice,
                 showBrand = showBrand,
                 showStrain = showStrain,

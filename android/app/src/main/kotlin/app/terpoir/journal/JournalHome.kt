@@ -8,7 +8,9 @@ import android.Manifest
 import android.annotation.SuppressLint
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +30,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,6 +57,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -634,6 +639,15 @@ private fun CatalogLists(
     fun amount(milli: Long, unit: String?): String =
         if (unit == "percent") "${formatMilli(milli)}%" else listOfNotNull(formatMilli(milli), unit?.let { label(it) }).joinToString(" ")
     // Each product titled by its strains, brand in the corner, and type, name and potency below.
+    // Archived products go in their own section at the bottom, shown on request.
+    var showArchived by rememberSaveable { mutableStateOf(false) }
+    val listScope = rememberCoroutineScope()
+    val toggleArchived: (String) -> Unit = { id ->
+        listScope.launch {
+            repo.product(id)?.let { repo.saveProduct(id, it.copy(archived = !it.archived)) }
+            products = repo.products()
+        }
+    }
     val productRows = products.map { p ->
         val d = p.data
         val potency = if (!showPotency) {
@@ -650,8 +664,9 @@ private fun CatalogLists(
             is TagRefData.Custom -> subtypeNames[st.id]
             null -> null
         } ?: d.form?.let { label(it) }
-        p.id to productTitle(d.name, d.strains.mapNotNull(strainNames::get), d.brand?.let(brandNames::get), kind, potency)
+        Triple(p.id, productTitle(d.name, d.strains.mapNotNull(strainNames::get), d.brand?.let(brandNames::get), kind, potency), d.archived)
     }.sortedBy { it.second.title.lowercase() }
+    val (archivedRows, activeRows) = productRows.partition { it.third }
     // The lists swipe sideways (maintainer, 2026-10-15). The buttons above
     // follow the swipe, and tapping one scrolls to its list.
     val pager = rememberPagerState(initialPage = catalogs.indexOf(catalog).coerceAtLeast(0)) { catalogs.size }
@@ -698,8 +713,27 @@ private fun CatalogLists(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 when (catalogs[page]) {
-                    Catalog.PRODUCTS -> items(productRows, key = { it.first }) { (id, row) ->
-                        ProductRow(row) { onOpen(Screen.Product(id)) }
+                    Catalog.PRODUCTS -> {
+                        items(activeRows, key = { it.first }) { (id, row) ->
+                            ProductRow(row, archived = false, onToggleArchived = { toggleArchived(id) }) { onOpen(Screen.Product(id)) }
+                        }
+                        if (archivedRows.isNotEmpty()) {
+                            item(key = "archived") {
+                                TextButton(onClick = { showArchived = !showArchived }) {
+                                    Text(
+                                        stringResource(
+                                            if (showArchived) R.string.products_hide_archived else R.string.products_show_archived,
+                                            archivedRows.size,
+                                        ),
+                                    )
+                                }
+                            }
+                            if (showArchived) {
+                                items(archivedRows, key = { it.first }) { (id, row) ->
+                                    ProductRow(row, archived = true, onToggleArchived = { toggleArchived(id) }) { onOpen(Screen.Product(id)) }
+                                }
+                            }
+                        }
                     }
                     Catalog.STRAINS -> items(strains, key = { it.id }) { s ->
                         CatalogRow(s.data.name, s.data.strainType?.let { label(it) }.orEmpty()) { onOpen(Screen.Strain(s.id)) }
@@ -932,50 +966,66 @@ private fun CatalogRow(title: String, detail: String, onClick: () -> Unit) {
 /**
  * A product in the catalog (maintainer, 2026-10-22, prototype C): the strain
  * in the serif title face with the brand in the top corner; below, its type
- * and name, with potency at the other end.
+ * and name, with potency at the other end. A long press offers Archive (or
+ * Unarchive); an archived product's card is the quieter tone.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ProductRow(row: ProductTitle, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = CardTones.raised),
-        border = CardTones.border,
-    ) {
-        Column(modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    row.title,
-                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, lineHeight = 28.sp),
-                    modifier = Modifier.weight(1f).alignByBaseline(),
-                )
-                if (row.brand.isNotEmpty()) {
-                    Text(
-                        row.brand,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.End,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 160.dp).alignByBaseline(),
-                    )
-                }
-            }
-            if (row.detail.isNotEmpty() || row.potency.isNotEmpty()) {
+private fun ProductRow(row: ProductTitle, archived: Boolean, onToggleArchived: () -> Unit, onClick: () -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    val archiveLabel = stringResource(if (archived) R.string.product_unarchive else R.string.product_archive)
+    Box {
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            DropdownMenuItem(text = { Text(archiveLabel) }, onClick = {
+                menu = false
+                onToggleArchived()
+            })
+        }
+        Card(
+            modifier = Modifier.fillMaxWidth().combinedClickable(
+                onClick = onClick,
+                onLongClickLabel = archiveLabel,
+                onLongClick = { menu = true },
+            ),
+            colors = CardDefaults.cardColors(containerColor = if (archived) CardTones.quiet else CardTones.raised),
+            border = CardTones.border,
+        ) {
+            Column(modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        row.detail,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        row.title,
+                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, lineHeight = 28.sp),
                         modifier = Modifier.weight(1f).alignByBaseline(),
                     )
-                    if (row.potency.isNotEmpty()) {
+                    if (row.brand.isNotEmpty()) {
                         Text(
-                            row.potency,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.alignByBaseline(),
+                            row.brand,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.End,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 160.dp).alignByBaseline(),
                         )
+                    }
+                }
+                if (row.detail.isNotEmpty() || row.potency.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            row.detail,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f).alignByBaseline(),
+                        )
+                        if (row.potency.isNotEmpty()) {
+                            Text(
+                                row.potency,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.alignByBaseline(),
+                            )
+                        }
                     }
                 }
             }

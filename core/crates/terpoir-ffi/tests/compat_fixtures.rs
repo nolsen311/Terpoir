@@ -395,6 +395,8 @@ fn check_records(fixture: &Fixture, journal: &Journal) {
             } else {
                 vec![]
             },
+            // Since 0.9.0; older fixtures' products aren't archived.
+            archived: fixture.manifest["product_archived"].as_bool() == Some(true),
         },
     );
     check(

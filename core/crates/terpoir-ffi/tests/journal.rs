@@ -156,6 +156,7 @@ fn full_lifecycle() {
                 subtype: None,
                 default_size: None,
                 receipt_names: vec![],
+                archived: false,
             },
             1,
         )
@@ -809,6 +810,7 @@ fn the_plaintext_export_has_every_record_readably() {
                 subtype: None,
                 default_size: None,
                 receipt_names: vec![],
+                archived: false,
             },
             2,
         )
@@ -1126,6 +1128,7 @@ fn insights_need_evidence_and_respect_feedback() {
         subtype: None,
         default_size: None,
         receipt_names: vec![],
+        archived: false,
     };
     let heavy = journal
         .save_product(None, product("Heavy", "myrcene"), 1)
@@ -1232,6 +1235,7 @@ fn with_terpene_insights(journal: &Journal) {
                     subtype: None,
                     default_size: None,
                     receipt_names: vec![],
+                    archived: false,
                 },
                 1,
             )
@@ -1428,6 +1432,7 @@ fn shop_insights_attribute_sessions_to_where_products_were_bought() {
                     subtype: None,
                     default_size: None,
                     receipt_names: vec![],
+                    archived: false,
                 },
                 2,
             )
@@ -1619,6 +1624,7 @@ fn shop_insights_compare_brands_and_strains_across_shops() {
                     subtype: None,
                     default_size: None,
                     receipt_names: vec![],
+                    archived: false,
                 },
                 3,
             )
@@ -1848,6 +1854,7 @@ fn deleting_a_data_point_clears_it_everywhere() {
                 subtype: None,
                 default_size: None,
                 receipt_names: vec![],
+                archived: false,
             },
             1,
         )
@@ -2167,6 +2174,7 @@ fn insights_fall_back_to_a_strains_dominant_terpene() {
         subtype: None,
         default_size: None,
         receipt_names: vec![],
+        archived: false,
     };
     let sleepy = journal
         .save_strain(None, strain("Sleepy", "myrcene"), 1)
@@ -2252,6 +2260,7 @@ fn strain_product(name: &str, strain: String, shops: Vec<String>) -> ProductData
         subtype: None,
         default_size: None,
         receipt_names: vec![],
+        archived: false,
     }
 }
 
@@ -2423,6 +2432,7 @@ fn products_keep_label_cannabinoids() {
         subtype: None,
         default_size: None,
         receipt_names: vec![],
+        archived: false,
     };
     let id = journal.save_product(None, product.clone(), 1).unwrap();
     // Read back in cannabinoid order (cbn before cbg is not guaranteed by
@@ -2530,6 +2540,7 @@ fn receipt_items_and_shops_are_matched_against_the_journal() {
                 subtype: None,
                 default_size: None,
                 receipt_names: vec![],
+                archived: false,
             },
             4,
         )
@@ -2649,6 +2660,7 @@ fn plain_product(name: &str) -> ProductData {
         subtype: None,
         default_size: None,
         receipt_names: vec![],
+        archived: false,
     }
 }
 
@@ -2738,9 +2750,9 @@ fn purchase_lines_keep_size_and_quantity_and_products_a_default_size() {
     let files = journal.export_plaintext(10).unwrap();
     let products_csv = String::from_utf8(files[2].bytes.clone()).unwrap();
     assert!(products_csv.lines().next().unwrap().ends_with(
-        ",shops,default_size,default_size_unit,default_pack,default_size_per,receipt_names"
+        ",shops,default_size,default_size_unit,default_pack,default_size_per,receipt_names,archived"
     ));
-    assert!(products_csv.contains(",3.5,g,,,"));
+    assert!(products_csv.contains(",3.5,g,,,,"));
     let purchases_csv = String::from_utf8(files[3].bytes.clone()).unwrap();
     assert!(
         purchases_csv
@@ -3039,6 +3051,7 @@ fn timeline_insights_show_how_it_usually_goes() {
                 subtype: None,
                 default_size: None,
                 receipt_names: vec![],
+                archived: false,
             },
             1,
         )
@@ -3431,4 +3444,54 @@ fn lookup_sites_are_saved_edited_and_forgotten() {
     // The toggle's off-action.
     journal.forget_lookup_sites(1_005).unwrap();
     assert!(journal.lookup_sites().unwrap().is_empty());
+}
+
+#[test]
+fn a_new_purchase_unarchives_its_products() {
+    let device = Device::new();
+    let keys = create_keys().unwrap();
+    let journal = device.open(&keys).unwrap();
+    let mut data = plain_product("Blue Dream");
+    data.archived = true;
+    let product = journal.save_product(None, data, 1).unwrap();
+    assert!(
+        journal
+            .get_product(product.clone())
+            .unwrap()
+            .unwrap()
+            .archived
+    );
+    let purchase = PurchaseData {
+        when: LocalTimeData {
+            unix_ms: 1_759_900_000_000,
+            utc_offset_min: 0,
+        },
+        spot: None,
+        lines: vec![PurchaseLineData {
+            line_id: None,
+            product: Some(product.clone()),
+            batch: None,
+            price_minor_units: None,
+            price_currency: None,
+            size: None,
+            quantity: 1,
+        }],
+    };
+    let id = journal.save_purchase(None, purchase.clone(), 2).unwrap();
+    assert!(
+        !journal
+            .get_product(product.clone())
+            .unwrap()
+            .unwrap()
+            .archived
+    );
+
+    // Editing an older purchase leaves an archived product archived.
+    let mut done = journal.get_product(product.clone()).unwrap().unwrap();
+    done.archived = true;
+    journal
+        .save_product(Some(product.clone()), done, 3)
+        .unwrap();
+    journal.save_purchase(Some(id), purchase, 4).unwrap();
+    assert!(journal.get_product(product).unwrap().unwrap().archived);
 }

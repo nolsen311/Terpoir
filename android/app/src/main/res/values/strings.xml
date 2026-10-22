@@ -628,6 +628,11 @@
     <string name="product_shops">Where I buy it</string>
     <string name="product_receipt_names">Seen on receipts as</string>
     <string name="product_merge">Merge with…</string>
+    <string name="product_archive">Archive</string>
+    <string name="product_unarchive">Unarchive</string>
+    <string name="product_archived_note">Archived: out of the products list and the product pickers until you buy it again.</string>
+    <string name="products_show_archived">Show archived (%1$d)</string>
+    <string name="products_hide_archived">Hide archived (%1$d)</string>
     <string name="product_merge_pick">Merge with which product?</string>
     <string name="product_merge_none">There are no other products to merge with.</string>
     <string name="product_merge_title">Merge these products?</string>

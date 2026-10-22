@@ -282,6 +282,8 @@ fun ProductEditor(
             defaultSize = original?.defaultSize,
             // Learned from receipts, and forgotten here one by one.
             receiptNames = receiptNames,
+            // Changed by Archive / Unarchive below, or a new purchase.
+            archived = original?.archived ?: false,
         )
     }
 
@@ -538,6 +540,21 @@ fun ProductEditor(
             }
         }
         if (id != null) {
+            val archived = original?.archived == true
+            if (archived) Text(stringResource(R.string.product_archived_note), style = MaterialTheme.typography.bodySmall)
+            // Archive / Unarchive saves the product's edits with it and closes, like Save.
+            OutlinedButton(onClick = {
+                val data = data()
+                if (data == null) {
+                    invalid = true
+                } else {
+                    scope.launch {
+                        repo.saveProduct(id, data.copy(archived = !archived))
+                        pendingMerge?.let { m -> if (m.keepThis) repo.mergeProducts(id, m.otherId) else repo.mergeProducts(m.otherId, id) }
+                        onDone()
+                    }
+                }
+            }) { Text(stringResource(if (archived) R.string.product_unarchive else R.string.product_archive)) }
             // Shares what is saved, not unsaved edits.
             OutlinedButton(onClick = { sharing = true }) { Text(stringResource(R.string.share)) }
             // "Merge with…": another record of the same product joins this one.
