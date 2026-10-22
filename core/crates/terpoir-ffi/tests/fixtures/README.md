@@ -75,7 +75,7 @@ Written by `make_compat_fixtures.rs` with fixed contents and clock:
   strain step), and one insight dismissed.
 - since 0.8.0, a saved web lookup site, "AllBud" (`lookup_sites` in the
   manifest).
-- since 0.9.0, the product archived at the end, after its purchase
+- since 0.8.1, the product archived at the end, after its purchase
   (`product_archived` in the manifest).
 
 ## Adding the next release

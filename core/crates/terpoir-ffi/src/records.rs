@@ -486,7 +486,7 @@ pub struct ProductData {
     /// page shows them ("Seen on receipts as") with a delete.
     #[uniffi(default = [])]
     pub receipt_names: Vec<String>,
-    /// Archived (since 0.9.0): out of the Products list's main section and
+    /// Archived (since 0.8.1): out of the Products list's main section and
     /// the pickers, still matched by scans. A new purchase of it
     /// unarchives it.
     #[uniffi(default = false)]

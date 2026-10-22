@@ -387,7 +387,7 @@ pub struct Product {
     pub receipt_names: BTreeSet<String>,
     /// Archived ("done", maintainer, 2026-10-22): kept with its history but
     /// out of the Products list's main section and the pickers. A new
-    /// purchase of it unarchives it. Since 0.9.0; a scalar field stored
+    /// purchase of it unarchives it. Since 0.8.1; a scalar field stored
     /// only while true, so an older app keeps it untouched.
     pub archived: bool,
 }
@@ -886,7 +886,7 @@ mod tests {
         assert!(!p.to_fields().contains_key("archived"));
         p.archived = true;
         assert_eq!(p.to_fields().get("archived"), Some(&Value::Bool(true)));
-        // Saved before 0.9.0: not archived.
+        // Saved before 0.8.1: not archived.
         let mut doc = Document::new(RecordId::from_bytes([9; 16]), RecordKind::Product);
         doc.set("name", Value::Text("Old".into()), stamp());
         assert!(!Product::from_document(&doc).unwrap().archived);

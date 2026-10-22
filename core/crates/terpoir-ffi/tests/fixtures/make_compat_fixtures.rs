@@ -244,7 +244,7 @@ fn main() {
                 subtype: Some(builtin("gummy")),
                 default_size: Some(gummies_size()),
                 receipt_names: vec!["ACME GUMMIES 10PK 100MG".into()],
-                // Since 0.9.0; archived at the end, after its purchase.
+                // Since 0.8.1; archived at the end, after its purchase.
                 archived: false,
             },
             T0 + 5,
@@ -435,7 +435,7 @@ fn main() {
             T0 + 13,
         )
         .unwrap();
-    // Since 0.9.0: the product archived ("done").
+    // Since 0.8.1: the product archived ("done").
     let mut done = journal.get_product(product.clone()).unwrap().unwrap();
     done.archived = true;
     journal
