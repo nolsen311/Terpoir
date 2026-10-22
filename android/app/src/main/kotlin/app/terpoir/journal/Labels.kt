@@ -198,21 +198,25 @@ fun productLabel(name: String, brand: String?, strains: List<String>): String {
     }
 }
 
-/** How a product shows in the catalog: [title] over [subtitle]. */
-data class ProductTitle(val title: String, val subtitle: String)
+/**
+ * How a product shows in the catalog: [title] with [brand] in the opposite
+ * corner, and below them [detail] with [potency] at the other end. Empty
+ * parts are left out.
+ */
+data class ProductTitle(val title: String, val brand: String, val detail: String, val potency: String)
 
 /**
- * A product's catalog entry (maintainer, 2026-10-15): its strains as the
- * title, and below them its brand, type, own name and anything else known
- * ([details]: potency, say). With no strain, its own name is the title; with
- * neither, its brand, then its type.
+ * A product's catalog card (maintainer, 2026-10-15 and 22): its strains as
+ * the title and its brand in the corner; below, its type and own name, and
+ * its [potency]. With no strain, its own name is the title; with neither,
+ * its brand, then its type.
  */
-fun productTitle(name: String, strains: List<String>, brand: String?, form: String?, details: List<String> = emptyList()): ProductTitle {
+fun productTitle(name: String, strains: List<String>, brand: String?, form: String?, potency: List<String> = emptyList()): ProductTitle {
     val ownName = name.trim()
     val strainText = strains.filter { it.isNotBlank() }.joinToString(" / ")
     val b = brand?.trim().orEmpty()
     val f = form?.trim().orEmpty()
     val title = strainText.ifEmpty { ownName }.ifEmpty { b }.ifEmpty { f }
-    val below = listOf(b, f, ownName).filter { it.isNotEmpty() && it != title } + details
-    return ProductTitle(title, below.distinct().joinToString(" · "))
+    val detail = listOf(f, ownName).filter { it.isNotEmpty() && it != title }.distinct().joinToString(" · ")
+    return ProductTitle(title, b.takeIf { it != title }.orEmpty(), detail, potency.joinToString(" · "))
 }

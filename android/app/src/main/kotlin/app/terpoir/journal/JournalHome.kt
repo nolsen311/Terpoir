@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -63,8 +64,11 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.terpoir.R
 import app.terpoir.alerts.AlertNeed
 import app.terpoir.alerts.CheckIns
@@ -81,11 +85,11 @@ import app.terpoir.core.Vocabulary
 import app.terpoir.location.CurrentLocation
 import app.terpoir.location.LocationAccess
 import app.terpoir.privacy.PrivacySettings
+import app.terpoir.privacy.PrivacyToggle
 import app.terpoir.privacy.SettingsGroup
 import app.terpoir.privacy.SettingsRow
 import app.terpoir.ui.theme.AppearanceSettings
 import app.terpoir.ui.theme.CardTones
-import app.terpoir.privacy.PrivacyToggle
 import kotlinx.coroutines.launch
 
 /** Where the user is inside the unlocked app. */
@@ -606,12 +610,21 @@ private fun CatalogLists(
     var brands by remember { mutableStateOf<List<Entry<BrandData>>>(emptyList()) }
     var spots by remember { mutableStateOf<List<Entry<SpotData>>>(emptyList()) }
     var subtypeNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    // All read first, then shown together: products shown before their
+    // strains were titled and sorted by their own names, and when the strains
+    // came the list kept the top card in view wherever it moved, often to the
+    // bottom.
     LaunchedEffect(revision) {
-        products = repo.products()
-        strains = repo.strains()
-        brands = repo.brands()
-        spots = repo.spots()
-        subtypeNames = repo.tags(SUBTYPE_CATEGORY).associate { it.id to it.data.name }
+        val p = repo.products()
+        val st = repo.strains()
+        val b = repo.brands()
+        val sp = repo.spots()
+        val subtypes = repo.tags(SUBTYPE_CATEGORY).associate { it.id to it.data.name }
+        products = p
+        strains = st
+        brands = b
+        spots = sp
+        subtypeNames = subtypes
     }
     // A product shows without its brand when brands are hidden.
     val brandNames = if (tracking.shows(DataPoint.BRAND)) brands.associate { it.id to it.data.name } else emptyMap()
@@ -620,7 +633,7 @@ private fun CatalogLists(
     @Composable
     fun amount(milli: Long, unit: String?): String =
         if (unit == "percent") "${formatMilli(milli)}%" else listOfNotNull(formatMilli(milli), unit?.let { label(it) }).joinToString(" ")
-    // Each product titled by its strains, with brand, type, name and potency below.
+    // Each product titled by its strains, brand in the corner, and type, name and potency below.
     val productRows = products.map { p ->
         val d = p.data
         val potency = if (!showPotency) {
@@ -686,7 +699,7 @@ private fun CatalogLists(
             ) {
                 when (catalogs[page]) {
                     Catalog.PRODUCTS -> items(productRows, key = { it.first }) { (id, row) ->
-                        CatalogRow(row.title, row.subtitle) { onOpen(Screen.Product(id)) }
+                        ProductRow(row) { onOpen(Screen.Product(id)) }
                     }
                     Catalog.STRAINS -> items(strains, key = { it.id }) { s ->
                         CatalogRow(s.data.name, s.data.strainType?.let { label(it) }.orEmpty()) { onOpen(Screen.Strain(s.id)) }
@@ -912,6 +925,60 @@ private fun CatalogRow(title: String, detail: String, onClick: () -> Unit) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             if (detail.isNotEmpty()) Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/**
+ * A product in the catalog (maintainer, 2026-10-22, prototype C): the strain
+ * in the serif title face with the brand in the top corner; below, its type
+ * and name, with potency at the other end.
+ */
+@Composable
+private fun ProductRow(row: ProductTitle, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = CardTones.raised),
+        border = CardTones.border,
+    ) {
+        Column(modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    row.title,
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, lineHeight = 28.sp),
+                    modifier = Modifier.weight(1f).alignByBaseline(),
+                )
+                if (row.brand.isNotEmpty()) {
+                    Text(
+                        row.brand,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.End,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = 160.dp).alignByBaseline(),
+                    )
+                }
+            }
+            if (row.detail.isNotEmpty() || row.potency.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        row.detail,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f).alignByBaseline(),
+                    )
+                    if (row.potency.isNotEmpty()) {
+                        Text(
+                            row.potency,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.alignByBaseline(),
+                        )
+                    }
+                }
+            }
         }
     }
 }

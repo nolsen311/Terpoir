@@ -36,12 +36,13 @@ class ProductLabelTest {
     @Test
     fun theCatalogTitlesAProductByItsStrain() {
         assertEquals(
-            ProductTitle("Blue Dream", "Fire Bros · Vape cart · Block Berry · THC 85%"),
-            productTitle("Block Berry", listOf("Blue Dream"), "Fire Bros", "Vape cart", listOf("THC 85%")),
+            ProductTitle("Blue Dream", "Fire Bros", "Vape cart · Block Berry", "THC 85% · CBD 1%"),
+            productTitle("Block Berry", listOf("Blue Dream"), "Fire Bros", "Vape cart", listOf("THC 85%", "CBD 1%")),
         )
-        // No strain: its own name, then brand, then type, as the title.
-        assertEquals(ProductTitle("Block Berry", "Fire Bros · Flower"), productTitle("Block Berry", emptyList(), "Fire Bros", "Flower"))
-        assertEquals(ProductTitle("Fire Bros", "Flower"), productTitle("", emptyList(), "Fire Bros", "Flower"))
-        assertEquals(ProductTitle("Flower", ""), productTitle("", emptyList(), null, "Flower"))
+        // No strain: its own name, then brand, then type, as the title; the
+        // brand isn't repeated in the corner.
+        assertEquals(ProductTitle("Block Berry", "Fire Bros", "Flower", ""), productTitle("Block Berry", emptyList(), "Fire Bros", "Flower"))
+        assertEquals(ProductTitle("Fire Bros", "", "Flower", ""), productTitle("", emptyList(), "Fire Bros", "Flower"))
+        assertEquals(ProductTitle("Flower", "", "", ""), productTitle("", emptyList(), null, "Flower"))
     }
 }
