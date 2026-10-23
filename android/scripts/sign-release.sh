@@ -105,8 +105,19 @@ out="$work/signed/terpoir-$flavor-$version.apk"
 zipalign -c -P 16 4 "$in" >/dev/null || die "$in is not aligned"
 echo "Signing $(basename "$out") (touch the YubiKey if it blinks)"
 # Java 17+ keeps the PKCS#11 provider's class to its module unless told.
+# v3 only (minSdk 30) and the build's own alignment kept, so the signed APK
+# is CI's build plus an APK Signing Block, which F-Droid can copy onto its
+# own build: apksigner otherwise re-aligns entries, and its v1 (JAR) files
+# don't survive the copy (docs/design-decisions.md, "Reproducible builds").
 apksigner -J-add-exports=jdk.crypto.cryptoki/sun.security.pkcs11=ALL-UNNAMED \
-    sign "${pkcs11[@]}" --ks-key-alias "$app_alias" --v4-signing-enabled false --in "$in" --out "$out"
+    sign "${pkcs11[@]}" --ks-key-alias "$app_alias" \
+    --v1-signing-enabled false --v2-signing-enabled false --v4-signing-enabled false \
+    --alignment-preserved --in "$in" --out "$out"
+# The entries come first, unchanged, up to where the unsigned central
+# directory began (its offset is in the end record's last 6 bytes, as no
+# comment follows); the signing block goes after them.
+entries=$(od -An -tu4 -j $(( $(wc -c < "$in") - 6 )) -N4 "$in" | tr -d ' ')
+cmp -s -n "$entries" "$in" "$out" || die "$out is not the unsigned build plus a signature"
 apksigner verify --verbose --print-certs "$out" > "$work/$flavor-verify.txt"
 # "Signer #1 certificate ..." or, for v3-only APKs, "V3.0 Signer: certificate ...".
 cert=$(sed -n 's/^.*[Ss]igner.* certificate SHA-256 digest: //p' "$work/$flavor-verify.txt" | head -n 1)

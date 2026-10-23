@@ -246,9 +246,15 @@ The steps, for doing them separately:
 
 - **Signature schemes:** minSdk is 30, so `apksigner` signs with APK
   Signature Scheme v3 only. v1/v2 aren't needed, and v4 (`.idsig` files,
-  for incremental installs) is turned off.
+  for incremental installs) is turned off. All three are turned off
+  explicitly: left to its defaults, `apksigner` 37 still wrote v1 (JAR)
+  files into 0.9.0, which F-Droid's signature copy doesn't reproduce.
 - **Signature only:** the signed APK is CI's unsigned APK plus the
   signature, so F-Droid can check its own build against it.
+  `--alignment-preserved` keeps the build's own entry alignment (by
+  default `apksigner` re-aligns entries, as it did for 0.9.0), and the
+  script stops if the signed APK's entries differ in any byte from the
+  unsigned build's.
 - **Tested:** the script was run end to end against SoftHSM, a software
   PKCS#11 token holding keys under the YubiKey's slot labels: signing,
   verification, and refusing a certificate that doesn't match the pin.

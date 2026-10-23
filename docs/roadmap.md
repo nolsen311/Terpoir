@@ -320,9 +320,14 @@ without it.
             `fdroid lint` and `fdroid scanner`, and `fdroid build` gives an
             APK byte-identical to `release.yml`'s build of the same commit
             from another checkout.
-      - [ ] `fdroid build` of the 0.9.0 tag matches the signed release
-            through `Binaries`, then the `fdroiddata` merge request at
-            1.0.0.
+      - [ ] `fdroid build` of a tag matches the signed release through
+            `Binaries`, then the `fdroiddata` merge request at 1.0.0.
+            0.9.0 can't (2026-10-23): F-Droid's build matches CI's
+            unsigned APK byte for byte, but `sign-release.sh` let
+            `apksigner` re-align entries and add v1 files, so the signed
+            APK isn't CI's build plus a signature. Fixed for the next
+            release (v3 only, `--alignment-preserved`, checked by the
+            script).
 - [ ] Trademark Statement of Use after launch.
 - [ ] Register the FOSS build's signing certificate for Android developer
       verification (Play Console, Android developer verification,
