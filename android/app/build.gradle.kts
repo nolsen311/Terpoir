@@ -106,6 +106,13 @@ android {
         disable += "UseKtx"
     }
 
+    testOptions {
+        // StoreScreenshots (Robolectric) draws the app's own resources; only
+        // for its runs (see the end of this file), so other unit tests stay
+        // as they were.
+        unitTests.isIncludeAndroidResources = providers.gradleProperty("terpoir.screenshots").isPresent
+    }
+
     androidResources {
         // The foss app's OCR model is read through a file descriptor (and
         // copied once), which needs it stored uncompressed.
@@ -164,6 +171,11 @@ dependencies {
     "playImplementation"(libs.play.services.maps)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    testImplementation(libs.androidx.compose.ui.test.manifest)
+    testImplementation(libs.jna)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
 }
@@ -660,5 +672,35 @@ androidComponents {
                 tasks.named("check") { dependsOn(bundleCheck) }
             }
         }
+    }
+}
+
+// Store screenshots (fastlane/metadata/android/en-US/images/phoneScreenshots):
+// `-Pterpoir.screenshots=<dir>` runs StoreScreenshots, which is left out
+// otherwise, against the core built for this computer (the library
+// generateCoreBindings builds), and writes the PNGs to <dir>.
+// Robolectric runs offline on the Android framework jar Gradle fetched
+// (and checked against verification-metadata.xml), never downloading its own.
+val screenshotsDir = providers.gradleProperty("terpoir.screenshots")
+val robolectricAndroid: Configuration by configurations.creating
+dependencies { robolectricAndroid(libs.robolectric.android.all) { isTransitive = false } }
+val robolectricJars by tasks.registering(Sync::class) {
+    from(robolectricAndroid)
+    into(layout.buildDirectory.dir("robolectric"))
+}
+tasks.withType<Test>().configureEach {
+    if (screenshotsDir.isPresent) {
+        dependsOn(generateCoreBindings, robolectricJars)
+        systemProperty("robolectric.offline", "true")
+        // Robolectric reaches into file descriptors on JDK 17+.
+        jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED")
+        systemProperty("robolectric.dependency.dir", layout.buildDirectory.dir("robolectric").get().asFile.absolutePath)
+        systemProperty("terpoir.screenshots", file(screenshotsDir.get()).absolutePath)
+        systemProperty("jna.library.path", rustCoreDir.dir("target/debug").asFile.absolutePath)
+        outputs.upToDateWhen { false }
+    } else {
+        // Robolectric starts the app before a test could skip itself.
+        filter.excludeTestsMatching("app.terpoir.StoreScreenshots")
+        filter.isFailOnNoMatchingTests = false
     }
 }

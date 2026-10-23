@@ -320,6 +320,9 @@ without it.
             `fdroid lint` and `fdroid scanner`, and `fdroid build` gives an
             APK byte-identical to `release.yml`'s build of the same commit
             from another checkout.
+      - [x] Phone screenshots for the listing, drawn from the real screens
+            (`StoreScreenshots`, Robolectric; `android/fdroid/README.md`,
+            2026-10-23).
       - [ ] `fdroid build` of a tag matches the signed release through
             `Binaries`, then the `fdroiddata` merge request at 1.0.0.
             0.9.0 can't (2026-10-23): F-Droid's build matches CI's

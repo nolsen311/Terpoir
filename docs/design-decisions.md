@@ -521,6 +521,7 @@ Making a new note should take one tap from outside the app. Every entry point op
 - **1.4.3:** no encouraging consumption. The app records and reflects; playful copy may joke about sharing the app, never "consume more."
 - **2.3.8:** store metadata (icon, screenshots, previews) must be all-ages appropriate even though the app is 18+. No explicit drug imagery; consistent with discreet branding.
 - **App icon (maintainer, 2026-10-13):** an open journal with amber bubbles rising from its spine: the notebook, and terpenes, which are mostly liquid at room temperature. It replaces the placeholder leaf, which read as anatomical. Colours: background `#2E4A3B`, pages `#E8E2D0`, bubbles `#D9A441`. The spine is a gap, not a line, so the one-colour themed icon keeps both pages. The Play icon and feature graphic are rendered from the same shapes (`android/release/store/render.py`).
+- **Store screenshots (2026-10-23, for F-Droid first):** drawn from the real screens, never mocked up: `StoreScreenshots` runs the app on the JVM with Robolectric over a demo journal (made-up brands and shop, common strain names, two weeks of sessions) opened on the real core, and writes them to the fastlane listing (`android/fdroid/README.md`). Text and the app's own UI only, so they meet 2.3.8's all-ages rule. Robolectric and Compose's test library are test-only, run on demand, and never shipped; Gradle fetches and verifies the Android framework jar Robolectric runs on, which then runs offline.
 - **2.3.6:** honest age-rating answers (see Age gating).
 
 ### Google Play
