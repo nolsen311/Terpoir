@@ -26,6 +26,25 @@ builds the way `release.yml` does, so the two match:
   `foss` build's differences: Tesseract built in, the optional online map,
   nothing from Google. `changelogs/<versionCode>.txt` holds the version's
   Play notes; `release.yml` stops a tag without it.
+  `images/phoneScreenshots/` are drawn from the real screens (below).
+
+## Screenshots
+
+`StoreScreenshots` (`android/app/src/testFoss/`) draws the store
+screenshots from the app's own screens with Robolectric, on the JVM, over a
+demo journal (`DemoJournal.kt`: made-up brands and shop, two weeks of
+sessions) opened on the core built for the computer running it. Nothing is
+mocked up: the journal, Insights and the Privacy Center are the real code
+and the real core. Regenerate them after a visible change:
+
+```bash
+cd android
+./gradlew -Pterpoir.screenshots=../fastlane/metadata/android/en-US/images/phoneScreenshots \
+    :app:testFossDebugUnitTest --tests app.terpoir.StoreScreenshots
+```
+
+The dates in them are relative to the day they are drawn. Without the
+property, Gradle leaves the class out of the unit tests.
 
 ## The build
 
