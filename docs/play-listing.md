@@ -573,6 +573,14 @@ them; the other activities belong to Google's libraries.
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.9.0** (294 characters):
+    Headline: Built so anyone can check it
+    Summary: text recognition built from source, with nothing written to the system log ; every release lists what it is built from ; download checksums on terpoir.app ; the groundwork for F-Droid
+    ```
+    <en-US>
+    Ready for F-Droid, and easier to check. Text recognition is now built from its source code with its logging taken out, so it no longer writes status lines to your phone's system log. Every release now lists what it is built from, and the checksums of its downloads are published on terpoir.app.
+    </en-US>
+    ```
   - **0.8.1** (439 characters):
     Headline: Archive the products you're done with
     Summary: archive finished products, out of the list and the pickers until you buy them again ; product cards lead with the strain ; the Products list opens at the top ; no extra copies of Terpoir after sharing a page back
