@@ -19,17 +19,17 @@ camerax = "1.6.2"
 zxing = "3.5.4"
 tesseract4android = "4.9.0"
 play-feature-delivery = "2.1.0"
-play-asset-delivery = "2.2.2"
+play-asset-delivery = "2.3.0"
 play-mlkit-text-recognition = "19.0.1"
 play-services-location = "21.4.0"
 play-services-maps = "20.1.0"
-maplibre = "13.6.1"
+maplibre = "13.7.1"
 okhttp = "5.5.0"
 androidx-test-runner = "1.7.0"
 androidx-test-ext-junit = "1.3.0"
 robolectric = "4.17"
 # The Android 16 framework Robolectric 4.17 runs StoreScreenshots on.
-robolectric-android-all = "16-robolectric-13921718-i7"
+robolectric-android-all = "17-robolectric-15733970-i7"
 
 [libraries]
 # Hosts the Compose UI in an Activity. Apache-2.0; no network, no telemetry.
