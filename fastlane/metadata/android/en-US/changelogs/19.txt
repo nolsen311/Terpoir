@@ -1,0 +1,1 @@
+Find a spot's location by searching for its address or a business by name. It's off until you turn it on: a search goes out only when you tap Search, to OpenStreetMap and your phone's address lookup, never with your location, and only the place you pick is kept. Also a security update for one of the encryption libraries Terpoir uses, and an updated map.
