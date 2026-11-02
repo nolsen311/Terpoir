@@ -231,6 +231,26 @@ fun buildPrivacyCenter(
                 settings.onlineMap = true
             },
         ),
+        // Every build. On lets the spot editor search for an address or a
+        // business (Photon, and the phone's geocoder where it has one). The
+        // search gateway refuses every request while it is off. Only the
+        // coordinates of a picked result are kept, with the spot, so off has
+        // nothing to clean up.
+        PrivacyToggle(
+            id = ADDRESS_SEARCH,
+            group = PrivacyGroup.LOCATION,
+            card = PrivacyCard(
+                title = R.string.address_search,
+                whatItDoes = R.string.address_search_does,
+                whatLeaves = R.string.address_search_leaves,
+                whoCanSee = R.string.address_search_who,
+                howToUndo = R.string.address_search_undo,
+            ),
+            privateState = false,
+            isOn = { settings.addressSearch },
+            onAction = { settings.addressSearch = true },
+            offAction = { settings.addressSearch = false },
+        ),
         // On lets Re-up Spots opt in (spot editor) and registers their fences
         // with the next refresh, once the journal asks for the permissions.
         // Off removes the prompt fences and any pending state.
@@ -442,6 +462,9 @@ fun buildPrivacyCenter(
 /** The online map's toggle ID, for the spot editor to find it. */
 const val ONLINE_MAP = "online_map"
 
+/** Address search's toggle ID, for the spot editor to find it. */
+const val ADDRESS_SEARCH = "address_search"
+
 /** The folder sync toggle's ID. */
 const val FOLDER_SYNC = "folder_sync"
 
@@ -464,6 +487,7 @@ val YOLO_TOGGLES = setOf(
     // Location: everything but "Notify me".
     "show_nearby_spots",
     ONLINE_MAP,
+    ADDRESS_SEARCH,
     "purchase_prompts",
     // Notifications.
     "alert_names",
