@@ -255,6 +255,17 @@ abstract class CargoNdkBuild : DefaultTask() {
                 }
                 time.toString().trim()
             }
+            // Cargo doesn't rerun OpenSSL's build script when only the date
+            // changes, so a target directory left by a build of another
+            // commit would keep that commit's date. Start over when it differs.
+            val target = fixed.resolve("target")
+            val stamp = target.resolve(".source-date-epoch")
+            val epoch = env.getValue("SOURCE_DATE_EPOCH")
+            if (!stamp.isFile || stamp.readText() != epoch) {
+                target.deleteRecursively()
+                target.mkdirs()
+                stamp.writeText(epoch)
+            }
         }
         execOperations.exec {
             workingDir = core

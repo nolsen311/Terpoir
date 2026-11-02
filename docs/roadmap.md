@@ -324,7 +324,10 @@ without it.
             (`StoreScreenshots`, Robolectric; `android/fdroid/README.md`,
             2026-10-23).
       - [ ] `fdroid build` of a tag matches the signed release through
-            `Binaries`, then the `fdroiddata` merge request at 1.0.0.
+            `Binaries`, then the `fdroiddata` merge request, with 0.10.0
+            (moved from 1.0.0 by the maintainer, 2026-11-02, so F-Droid
+            releases go out alongside Play's; `android/fdroid/README.md`,
+            "Submitting").
             0.9.0 can't (2026-10-23): F-Droid's build matches CI's
             unsigned APK byte for byte, but `sign-release.sh` let
             `apksigner` re-align entries and add v1 files, so the signed
@@ -365,7 +368,7 @@ requirement rather than on features.
 | 0.8.0 | Strain lookups you drive (maintainer, 2026-10-21 and 22): "Look up on the web" (saved sites opened in the browser, its own toggle) and sharing a strain's page back to fill the strain. Online sources inside the app moved to a later release, numbered once a source agrees (maintainer, 2026-10-22): they wait on the sources' replies and the maintainer's choice. Like 0.6.2 to 0.7.0, internal testing until Google approves the background-location declaration. |
 | 0.8.1 | Archiving and fixes (maintainer, 2026-10-22), ahead of the F-Droid groundwork, which stays 0.9.0: archiving products that are done (out of the Products list's main section and the pickers, back on a new purchase); product cards with the strain as the title and the brand in the corner (picked from prototypes); the Products list opening at the top; one Terpoir task when a page is shared back from the browser. Like 0.6.2 to 0.8.0, internal testing until Google approves the background-location declaration. |
 | 0.9.0 | F-Droid groundwork, a release of its own (maintainer, 2026-10-17): OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app, and the F-Droid recipe (`android/fdroid/`). Moved from 0.7.0 (maintainer, 2026-10-15), then from 0.8.0 (2026-10-17). |
-| 1.0.0 | Public launch: Play production access, F-Droid submission, "Get Terpoir" with real links and fingerprints. |
+| 1.0.0 | Public launch: Play production access, "Get Terpoir" with real links and fingerprints. F-Droid publishes from 0.10.0 (maintainer, 2026-11-02). |
 | 1.x | WebDAV / S3 sync; direct device pairing; scan recognition "growing over time" (backlog); personal gear; lock-screen capture. Order to be set after 1.0. |
 | 2.0 | iOS. |
 
