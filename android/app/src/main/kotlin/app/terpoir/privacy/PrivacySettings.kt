@@ -114,6 +114,14 @@ class PrivacySettings(context: Context) {
         get() = prefs.getBoolean(KEY_ONLINE_MAP, false)
         set(value) = prefs.edit().putBoolean(KEY_ONLINE_MAP, value).apply()
 
+    /**
+     * Address search for a spot's location. Off by default: the search
+     * services see what is searched for and the IP address.
+     */
+    var addressSearch: Boolean
+        get() = prefs.getBoolean(KEY_ADDRESS_SEARCH, false)
+        set(value) = prefs.edit().putBoolean(KEY_ADDRESS_SEARCH, value).apply()
+
     /** Whose map the online map shows. OpenFreeMap unless the user picks another. */
     var mapProvider: MapProvider
         get() = MapProvider.fromId(prefs.getString(KEY_MAP_PROVIDER, null))
@@ -207,6 +215,7 @@ class PrivacySettings(context: Context) {
         const val KEY_ALERT_DETAILS = "alert_details"
         const val KEY_CHECK_INS = "follow_up_check_ins"
         const val KEY_ONLINE_MAP = "online_map"
+        const val KEY_ADDRESS_SEARCH = "address_search"
         const val KEY_MAP_PROVIDER = "map_provider"
         const val KEY_MAPTILER_KEY_SAVED = "maptiler_key_saved"
         const val KEY_SYMPTOMS = "targeted_symptoms"

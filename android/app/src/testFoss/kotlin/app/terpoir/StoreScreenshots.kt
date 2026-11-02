@@ -115,6 +115,7 @@ class StoreScreenshots {
                         alerts = app.spotAlerts,
                         checkIns = app.checkIns,
                         mapToggle = null,
+                        searchToggle = null,
                         checkNearby = false,
                         checkInSession = null,
                         onCheckInOpened = {},

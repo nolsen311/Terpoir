@@ -36,6 +36,7 @@ mod insights;
 mod journal;
 mod keys;
 mod lookup;
+mod places;
 mod plaintext;
 mod records;
 mod scan;
@@ -64,6 +65,7 @@ pub use keys::{
 pub use lookup::{
     LookupSiteData, lookup_address, lookup_template_from_example, lookup_template_valid,
 };
+pub use places::{PlaceData, parse_place_search};
 pub use plaintext::ExportFile;
 pub use records::{
     BrandData, CannabinoidAmountData, IdentifierData, LocalTimeData, PackageSizeData, ProductData,

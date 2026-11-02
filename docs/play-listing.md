@@ -174,7 +174,7 @@ No account or sign-in. Everything is on the device.
 3. Back up or skip the recovery key, then go through the Privacy Center
    tour. All features are then available.
 
-Optional features (online map, Google text recognition, folder sync) are
+Optional features (online map, address search, Google text recognition, folder sync) are
 off by default and are turned on in the Privacy Center (shield tab). No
 test credentials are needed.
 ```
@@ -209,7 +209,7 @@ test credentials are needed.
 | Users can interact or exchange content | No | No accounts, chat or feed. Share cards go through the system share sheet, to whichever app the user picks. |
 | Shares user's location with other users | No | Locations stay in the encrypted journal. |
 | Digital purchases | No | None in this release. |
-| Unrestricted internet or web browsing | No | No browser. The optional online map loads only map tiles. |
+| Unrestricted internet or web browsing | No | No browser. The optional online map loads only map tiles; the optional address search sends only the search the user types. |
 
 **Expected result:** drug references usually rate around Teen / PEGI 16.
 That is below the design doc's "Mature". The 18+ target audience above
@@ -240,7 +240,8 @@ are on
 ### The form
 
 **Does your app collect or share any of the required user data types?**
-Yes: only through the optional Google features above.
+Yes: only through the optional Google features above and the optional
+address search.
 
 **Is all of the user data collected by your app encrypted in transit?**
 Yes, which Google allows only if it holds for every SDK. ML Kit states HTTPS. The Maps SDK and the Play Store talk to Google
@@ -276,6 +277,7 @@ parties.
 | App info and performance: Other app performance data | Yes | No | Optional | Analytics | ML Kit (API configuration, sizes, event types, error codes) |
 | Device or other IDs | Yes | No | Optional | Analytics | Maps SDK identifier; ML Kit device and per-installation identifiers |
 | App activity: App interactions | Yes | No | Optional | Analytics | Maps SDK map interaction events |
+| App activity: In-app search history | Yes | No | Optional | App functionality | Address search: the text the user searches for, sent to Photon (komoot) and the phone's geocoder when they tap Search (from the release that adds it) |
 
 Everything else is **not collected**:
 - **Location:** spot locations stay in the encrypted journal. The Maps SDK
@@ -285,7 +287,7 @@ Everything else is **not collected**:
 - **Personal info, financial info:** price fields stay on the phone.
 - **Health and fitness, messages, photos and videos, audio** (on-device
   speech recognition), **files and docs, calendar, contacts, web browsing.**
-- **App activity other than app interactions:** in-app search history,
+- **App activity other than app interactions and search history:**
   installed apps, other user-generated content, other actions.
 
 **Security practices:** data encrypted in transit, Yes. No independent
