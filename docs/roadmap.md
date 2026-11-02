@@ -368,6 +368,7 @@ requirement rather than on features.
 | 0.8.0 | Strain lookups you drive (maintainer, 2026-10-21 and 22): "Look up on the web" (saved sites opened in the browser, its own toggle) and sharing a strain's page back to fill the strain. Online sources inside the app moved to a later release, numbered once a source agrees (maintainer, 2026-10-22): they wait on the sources' replies and the maintainer's choice. Like 0.6.2 to 0.7.0, internal testing until Google approves the background-location declaration. |
 | 0.8.1 | Archiving and fixes (maintainer, 2026-10-22), ahead of the F-Droid groundwork, which stays 0.9.0: archiving products that are done (out of the Products list's main section and the pickers, back on a new purchase); product cards with the strain as the title and the brand in the corner (picked from prototypes); the Products list opening at the top; one Terpoir task when a page is shared back from the browser. Like 0.6.2 to 0.8.0, internal testing until Google approves the background-location declaration. |
 | 0.9.0 | F-Droid groundwork, a release of its own (maintainer, 2026-10-17): OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app, and the F-Droid recipe (`android/fdroid/`). Moved from 0.7.0 (maintainer, 2026-10-15), then from 0.8.0 (2026-10-17). |
+| 0.10.0 | Address search for spots (maintainer, 2026-11-02): find a spot's location by address or business name, through OpenStreetMap search (Photon) and the phone's geocoder, behind an opt-in toggle; only the picked coordinates are kept. Also the first release on F-Droid, alongside Play (maintainer, 2026-11-02). |
 | 1.0.0 | Public launch: Play production access, "Get Terpoir" with real links and fingerprints. F-Droid publishes from 0.10.0 (maintainer, 2026-11-02). |
 | 1.x | WebDAV / S3 sync; direct device pairing; scan recognition "growing over time" (backlog); personal gear; lock-screen capture. Order to be set after 1.0. |
 | 2.0 | iOS. |
@@ -533,6 +534,27 @@ requirement rather than on features.
 ## Backlog (not yet scheduled)
 
 Ideas the maintainer wants kept, to be designed and scheduled later.
+
+- [ ] Disclosures as information badges (maintainer, 2026-11-02; minor,
+      but important for usability): settings pages show each toggle's full
+      disclosure text today, which makes them long and busy. Replace the
+      always-open text with eye-catching information badges (for example
+      "Sends data", "Uses location", "Stays on this phone") that reveal
+      the card's details on tap, so the pages are clean but the risk is
+      still visible at a glance. Must keep:
+      - the plain-language card for every leaky feature (CLAUDE.md): its
+        four parts (what it does, what leaves the phone, who can see it,
+        how to undo) stay one tap away, and turning a feature on still
+        shows the whole card before the on-action runs, as the Privacy
+        Center and the spot editor do today;
+      - badges that say something on their own (the kind of exposure,
+        never just an "i"), readable by screen readers and in both themes
+        at WCAG AA;
+      - Google Play's prominent disclosures (background location and the
+        camera and microphone screens) as they are: required, separate
+        screens before the permission prompt.
+      To design: the badge set and colours, where they sit (toggle rows,
+      group summaries), and whether YOLO Mode's preset card lists them.
 
 - [ ] Scan recognition "growing over time" (backlogged by the maintainer,
       2026-10-21, from 0.7.0): when a receipt line is linked to a product

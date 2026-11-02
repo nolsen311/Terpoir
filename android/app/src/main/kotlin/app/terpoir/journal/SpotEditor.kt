@@ -43,6 +43,8 @@ import app.terpoir.location.Fix
 import app.terpoir.map.MapPicker
 import app.terpoir.map.MapProvider
 import app.terpoir.map.OnlineMap
+import app.terpoir.places.PlaceSearch
+import app.terpoir.places.PlaceSearchScreen
 import app.terpoir.privacy.PrivacySettings
 import app.terpoir.privacy.PrivacyToggle
 import app.terpoir.report.ReportButton
@@ -56,7 +58,11 @@ val SPOT_PURPOSES = listOf("blaze", "munch", "re_up", "chill")
 
 private const val SPOT_PURPOSE_CATEGORY = "spot_purpose"
 
-/** "Spot N": the first number no saved "Spot N" uses (no place names, ever). */
+/** Whether [name] is one Terpoir gave ("Spot N"), not the user's own. */
+fun isDefaultSpotName(name: String, prefix: String): Boolean =
+    name.isBlank() || name.trim().removePrefix("$prefix ").let { it != name.trim() && it.toIntOrNull() != null }
+
+/** "Spot N": the first number no saved "Spot N" uses (never a place name). */
 fun nextSpotName(existing: List<String>, prefix: String): String {
     val used = existing.mapNotNull { name -> name.takeIf { it.startsWith("$prefix ") }?.removePrefix("$prefix ")?.toIntOrNull() }.toSet()
     return "$prefix ${generateSequence(1) { it + 1 }.first { it !in used }}"
@@ -64,10 +70,12 @@ fun nextSpotName(existing: List<String>, prefix: String): String {
 
 /**
  * Creates or edits a spot: a name the user picks (a neutral "Spot N" by
- * default; never looked up from an address), what it's for, and optional
- * coordinates, approximate unless the user asks for precise, or picked on
- * the online map ([mapToggle], with the provider in [settings]). Fields not shown
- * here (geofence radius, purchase prompts) are kept as saved.
+ * default; never looked up from its location), what it's for, and optional
+ * coordinates, approximate unless the user asks for precise, picked on the
+ * online map ([mapToggle], with the provider in [settings]) or found by
+ * address search ([searchToggle]), whose pick also suggests the name while
+ * it is still the default. Fields not shown here (geofence radius, purchase
+ * prompts) are kept as saved.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -75,6 +83,7 @@ fun SpotEditor(
     repo: JournalRepository,
     id: String?,
     mapToggle: PrivacyToggle?,
+    searchToggle: PrivacyToggle?,
     settings: PrivacySettings,
     promptsOn: Boolean,
     onDone: () -> Unit,
@@ -94,6 +103,8 @@ fun SpotEditor(
     var picking by remember { mutableStateOf<Pair<MapProvider, String?>?>(null) }
     var purchasePrompts by remember { mutableStateOf(false) }
     var askMap by remember { mutableStateOf(false) }
+    var searchingPlace by remember { mutableStateOf(false) }
+    var askSearch by remember { mutableStateOf(false) }
     val defaultPrefix = stringResource(R.string.spot_default_prefix)
 
     fun locate() {
@@ -147,6 +158,21 @@ fun SpotEditor(
             }
             picking = provider to style
         }
+    }
+
+    if (searchingPlace && searchToggle != null && searchToggle.isOn()) {
+        val search = remember { PlaceSearch(context) { searchToggle.isOn() } }
+        PlaceSearchScreen(
+            search = search,
+            onPick = { place ->
+                fix = Fix(place.latE7, place.lonE7, place.accuracyM.toInt())
+                // Only a name Terpoir gave it: a name the user chose stays.
+                if (isDefaultSpotName(name, defaultPrefix)) name = place.name
+                searchingPlace = false
+            },
+            onClose = { searchingPlace = false },
+        )
+        return
     }
 
     val shown = picking
@@ -242,6 +268,15 @@ fun SpotEditor(
                     onClick = { if (mapToggle.isOn()) openMap(mapToggle) else askMap = true },
                 )
             }
+            if (searchToggle != null) {
+                IconAction(
+                    icon = R.drawable.ic_search,
+                    label = stringResource(R.string.spot_location_search_short),
+                    description = stringResource(R.string.spot_location_search),
+                    enabled = !locating,
+                    onClick = { if (searchToggle.isOn()) searchingPlace = true else askSearch = true },
+                )
+            }
         }
         if (current != null) TextButton(onClick = { fix = null }) { Text(stringResource(R.string.spot_location_clear)) }
         if (locating) Text(stringResource(R.string.spot_locating))
@@ -287,6 +322,33 @@ fun SpotEditor(
             },
             dismissButton = {
                 TextButton(onClick = { askMap = false }) { Text(stringResource(R.string.privacy_keep)) }
+            },
+        )
+    }
+
+    // Off by default, like the map: turning it on from here shows its card first.
+    if (askSearch && searchToggle != null) {
+        AlertDialog(
+            onDismissRequest = { askSearch = false },
+            title = { Text(stringResource(searchToggle.card.title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(searchToggle.card.whatItDoes))
+                    Text(stringResource(searchToggle.card.whatLeaves))
+                    Text(stringResource(searchToggle.card.whoCanSee))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    askSearch = false
+                    scope.launch {
+                        searchToggle.set(true)
+                        searchingPlace = true
+                    }
+                }) { Text(stringResource(R.string.place_search_turn_on)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { askSearch = false }) { Text(stringResource(R.string.privacy_keep)) }
             },
         )
     }

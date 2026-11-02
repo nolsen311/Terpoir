@@ -120,7 +120,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - **"Show me"** is a Privacy Center toggle, off by default. With it on, opening the journal takes one fix and shows a banner for the nearest saved spot, with "Log a session here", which pre-attaches the spot. Without location permission it offers to ask. The fix is not kept. Off has nothing to clean up. **Swipe to dismiss (maintainer, 2026-10-15):** the journal's location cards (this banner, its permission card, and "Notify me"'s setup card) can be swiped away. Dismissing a spot's banner hides that spot only. Dismissals are held in memory, never written anywhere, so the cards return after the next unlock. Screen readers get a "Dismiss" action instead of the swipe.
   - **Icon actions (maintainer, 2026-10-17):** location actions are compact icon buttons with a one-word label under each, not full-width text buttons. The "Show me" banner is one row: "You're near …" with "Session" and, at a Re-up Spot, "Purchase" beside it, leaving room for up to four actions in one card. The spot editor's location choices ("Approximate", "Precise", "Map") sit side by side in the same style. Screen readers hear the full action ("Log a session here", "Use precise location").
   - **Sessions** can be attached to a spot in the session editor.
-  - Address lookup stays out (it would send coordinates to the OS geocoder); it remains a future opt-in.
+  - Reverse lookup (coordinates to an address) stays out: it would send coordinates to the OS geocoder. Searching by address or name is the opt-in "Address search" (below).
 - **Geofence alerts and notification tiers (decided 2026-10-11, revised the same day):** alerts are discreet by default ("Did you hit a spot?", never a spot, purpose or product). The maintainer chose full tiers: Named shows the spot's name, Rich adds the average rating, session count and last product. Both are opt-in, and both read a small **notification cache** outside the encrypted journal, as "Lock-state tradeoff" below describes. This replaces the earlier decision that every tier stays discreet until unlock. The lock screen always gets the discreet version (Android private visibility with a redacted public version).
 - **Android implementation, part 2 (decided): "Notify me".**
   - **Toggle:** "Notify me at my spots" (Location, off by default). It needs precise location, location "all the time" and, on Android 13+, notifications. The journal asks for them one at a time, only after the toggle is on. Its off-action removes every geofence, deletes the notification cache and the quiet period, and clears a showing alert.
@@ -142,7 +142,7 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - **Chill Spot:** scenic or outdoor places worth returning to.
   - Custom types allowed; the app never suggests relational labels (home, friend's house, work).
 - Rationale: relational labels reveal a residence and a social graph; purpose types are more useful for insights anyway.
-- **No automatic place names.** Reverse geocoding sends coordinates to Google or Apple via the OS geocoder. Spots get user-chosen names with a neutral default ("Spot 7"). Address lookup is an opt-in Privacy Center toggle with that disclosure.
+- **No automatic place names.** Reverse geocoding sends coordinates to Google or Apple via the OS geocoder. Spots get user-chosen names with a neutral default ("Spot 7"). Searching by address or business name is the opt-in "Address search" toggle (below); a result the user picks may replace the default name, never one the user chose.
 - Playful type names stay inside the app. Discreet-tier notifications and the discreet-icon mode use neutral wording ("a saved spot").
 - **Coordinates are optional on every spot.** A Re-up Spot can be just a name (from a receipt or typed in); plenty of users won't want shop locations stored at all.
 
@@ -239,6 +239,20 @@ A mobile app for cannabis consumers to journal experiences with strains, product
   - **Notes:** the main button on the Journal tab is "New note". It listens at once in voice mode and saves a standalone stream snippet. "New session" is the smaller button beside it. Notes show in the journal timeline with sessions, newest first.
   - **First-use card:** the first time the button is used, the user picks "Speak" or "Type". Either is a choice; neither is pre-selected. The card states on-device processing, that keyboards see typing, and that people nearby can hear.
   - **Permissions:** `RECORD_AUDIO`, asked on the first spoken note. A `<queries>` entry lets the app see whether a recognition service exists.
+
+### Address search (decided 2026-11-02, maintainer)
+- **Find a spot's location by searching** for an address or a business name, as well as from the phone's location or the online map. The maintainer asked for it ("address lookup or business search"), behind a toggle and a disclosure.
+- **Toggle:** "Address search" (Location, off by default; in YOLO Mode). Turning it on from the spot editor's Search action shows its card first, as the map does. Off stops every search. Only the coordinates (and accuracy) of the result the user picks are kept, with the spot, so the off-action has nothing else to clean up; no address is stored (maintainer: coordinates only).
+- **Where searches go (maintainer: the OS geocoder plus OpenStreetMap, not Google Places):** each search goes, together, to
+  - **Photon** (`photon.komoot.io`), komoot's public OpenStreetMap search, on every build. Its terms: fair use, extensive use throttled, no availability guarantee. No key or account.
+  - **The phone's geocoder** (`android.location.Geocoder`), where the phone has one: Google's, through Play services, on most phones; none on many de-Googled phones, which then search OpenStreetMap only.
+  - **Not Google Places:** it would be billed to the project per search and reverse the Maps cost decision (follow-ups, "Google Maps costs"), or need each user's own key.
+  - **Not Nominatim** (`nominatim.openstreetmap.org`): its usage policy (read 2026-11-02) requires that apps "can switch the service at our request at any time … without requiring a software update", ideally through a proxy. That needs remote configuration or a project-run endpoint, which Terpoir never has. It also caps all of an app's users together at one request a second.
+- **What is sent:** the text the user typed, when the user taps Search (never while typing, and never twice for one tap), with the IP address. Never the phone's location (no "near me" bias), and nothing from the journal. Photon gets the app's plain User-Agent, `Terpoir`.
+- **Card:** what you type and your IP address go to OpenStreetMap search (komoot) and to the phone's address lookup (Google's on most phones); searching for a shop's name tells them you were looking for it.
+- **Results:** the core reads Photon's GeoJSON (`parse_place_search`): a business's name or the street address, the town, region and country, and an accuracy from the place's outline (half its diagonal, 10 m to 50 km; 25 m for an address or a business without one, 2 km for a town). Duplicates are dropped and at most 10 shown, then up to 5 from the phone's geocoder. Photon matches names and addresses, not kinds of business ("dispensary" finds nothing), so a shop is searched by its name. Attribution: "Search data © OpenStreetMap contributors (ODbL), via Photon by komoot".
+- **The gateway** (`SearchGateway`), as the map's: Photon's only HTTP client. Before any connection it refuses every request unless the toggle is on and the request goes over HTTPS to `photon.komoot.io`. No redirects, no cache, no cookies.
+- **Play data safety:** the search text is "App activity: In-app search history", collected, optional, for app functionality; not shared, as a user-initiated action behind the card (`docs/play-listing.md`).
 
 ### Privacy Center entries
 - **Keyboard** (iOS options above). Off-action: future typing only; card links to keyboard dictionary reset.
@@ -873,7 +887,7 @@ Scans get better at recognising what the user buys by using what the journal alr
 - **Tag suggestions** (choose tier). Off-action: discard unconfirmed suggestions; optionally delete the downloaded model.
 - **Insights.** Off-action: delete computed insights and cached statistics; journal and confirmed tags remain.
 - **Targeted symptoms.** Off-action: hide or delete.
-- **Address lookup for spots.** Off-action: remove stored addresses.
+- **Address search** (Location). Off-action: stop sending searches; nothing else is stored (only the picked result's coordinates, with the spot).
 - **Follow-up check-ins.** Off-action: cancel pending check-ins.
 - **Purchase prompts.** Off-action: remove purchase-prompt geofences; clear pending state.
 - **Open lab-results (COA) links.** Off-action: stop opening them; nothing stored to clean up.

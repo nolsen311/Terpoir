@@ -79,6 +79,7 @@ import app.terpoir.onboarding.OnboardingStep
 import app.terpoir.onboarding.RecoveryBackup
 import app.terpoir.onboarding.RecoveryKeyBackup
 import app.terpoir.onboarding.RestoreScreen
+import app.terpoir.privacy.ADDRESS_SEARCH
 import app.terpoir.privacy.FOLDER_SYNC
 import app.terpoir.privacy.ONLINE_MAP
 import app.terpoir.privacy.PrivacyCenterScreen
@@ -394,6 +395,7 @@ class MainActivity : ComponentActivity() {
                     app.spotAlerts,
                     app.checkIns,
                     mapToggle = app.privacyCenter.toggles.firstOrNull { it.id == ONLINE_MAP },
+                    searchToggle = app.privacyCenter.toggles.firstOrNull { it.id == ADDRESS_SEARCH },
                     checkNearby = nearbyRequested,
                     checkInSession = if (checkInRequested) app.checkIns.pending() else null,
                     onCheckInOpened = {

@@ -5,6 +5,8 @@
 package app.terpoir.journal
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SpotNamesTest {
@@ -15,5 +17,15 @@ class SpotNamesTest {
         assertEquals("Spot 2", nextSpotName(listOf("Spot 1", "Spot 3"), "Spot"))
         // Names that only look similar don't count.
         assertEquals("Spot 1", nextSpotName(listOf("Spotted 1", "Spot one", "Spot 1x"), "Spot"))
+    }
+
+    @Test
+    fun onlyTerpoirsOwnNamesCountAsDefault() {
+        // An address search's pick replaces these...
+        for (name in listOf("Spot 1", "Spot 12", " Spot 3 ", "", "  ")) assertTrue(name, isDefaultSpotName(name, "Spot"))
+        // ...and never a name the user chose.
+        for (name in listOf("Beach", "Spot", "Spot one", "Spot 1x", "My Spot 2", "Spotted 1")) {
+            assertFalse(name, isDefaultSpotName(name, "Spot"))
+        }
     }
 }
