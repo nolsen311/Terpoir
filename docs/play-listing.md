@@ -575,6 +575,14 @@ them; the other activities belong to Google's libraries.
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.10.0** (355 characters):
+    Headline: Find a spot by address or name
+    Summary: find a spot's location by address or business name ; off until you turn it on, and your location is never sent ; a security update for an encryption library ; an updated map
+    ```
+    <en-US>
+    Find a spot's location by searching for its address or a business by name. It's off until you turn it on: a search goes out only when you tap Search, to OpenStreetMap and your phone's address lookup, never with your location, and only the place you pick is kept. Also a security update for one of the encryption libraries Terpoir uses, and an updated map.
+    </en-US>
+    ```
   - **0.9.0** (294 characters):
     Headline: Built so anyone can check it
     Summary: text recognition built from source, with nothing written to the system log ; every release lists what it is built from ; download checksums on terpoir.app ; the groundwork for F-Droid
