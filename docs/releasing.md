@@ -225,6 +225,10 @@ The steps, for doing them separately:
    android/scripts/play-upload.sh v0.1.0
    ```
    Then start the rollout in the Play Console, while releases are drafts.
+   **F-Droid** needs nothing: once the app is in `fdroiddata`, F-Droid's
+   bot picks up the tag, builds it, and publishes the signed APK when its
+   build matches, usually within a few days (`android/fdroid/README.md`,
+   "Each release"). If it doesn't appear, check F-Droid's build status.
 7. **Compatibility fixtures:** generate a database, an export and sync
    blobs with the new tag's own code (in a separate checkout with its own
    `CARGO_TARGET_DIR`) and check them in under

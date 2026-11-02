@@ -10,7 +10,8 @@ builds the way `release.yml` does, so the two match:
 
 - `app.terpoir.yml`: the recipe, in the canonical form `fdroid rewritemeta`
   writes (so no comments; the notes are here). It goes to `fdroiddata` as
-  `metadata/app.terpoir.yml` when the app is submitted (1.0.0).
+  `metadata/app.terpoir.yml` when the app is submitted (with 0.10.0,
+  "Submitting" below).
 - `setup.sh` (prebuild): installs rustup 1.29.1 (checked against its
   SHA-256), the toolchain `core/rust-toolchain.toml` pins with the two
   Android targets, the `cargo-ndk` version CI pins
@@ -66,12 +67,58 @@ Whether the OCR source tarballs come in as `srclibs` instead of being
 downloaded by `build.sh` is for F-Droid's reviewers; `OCR_DOWNLOADS` supports
 either.
 
-## Updating it
+## Submitting
+
+Once a release signed by `sign-release.sh` (v3 only, alignment preserved)
+is published and `fdroid build` of its tag matches it through `Binaries`
+("Testing it"):
+
+1. The version's PR (or a follow-up) points the recipe's build entry and
+   `CurrentVersion`/`CurrentVersionCode` at that release.
+2. On GitLab, fork [fdroiddata](https://gitlab.com/fdroid/fdroiddata), add
+   this recipe as `metadata/app.terpoir.yml`, and open a merge request with
+   the "App inclusion" template. Its description can say:
+
+   > Terpoir: a private, encrypted cannabis journal for adults where it is
+   > legal. GPL-3.0-or-later, no account, no server, no trackers; every
+   > network feature is opt-in (an OpenStreetMap map from OpenFreeMap, or
+   > MapTiler with the user's own key; OpenStreetMap address search through
+   > Photon). I'm the developer.
+   >
+   > Reproducible: F-Droid's build matches the signed APK on GitHub
+   > Releases (`Binaries`, `AllowedAPKSigningKeys`), checked locally with
+   > `fdroid build`. The Rust core is built with a pinned toolchain
+   > (`android/fdroid/setup.sh`), and the Tesseract OCR libraries from
+   > pinned, hash-checked source tarballs (`android/ocr-native/build.sh`);
+   > they can come in as srclibs instead if you prefer. `scandelete` removes
+   > encrypted test fixtures the build doesn't read.
+   >
+   > Anti-features: none expected. The map is optional; OpenFreeMap is free
+   > software, and MapTiler is used only with the user's own key.
+
+3. Answer reviewers' questions; the likely ones are srclibs for the OCR
+   tarballs, the rustup download in prebuild, and the anti-features
+   (`docs/follow-ups.md`, "F-Droid anti-features for the map").
+
+## Each release
 
 `AutoUpdateMode: Version` and `UpdateCheckMode: Tags` let F-Droid's bot add
-each `vX.Y.Z` tag's build to `fdroiddata` by itself. Change the recipe here
-when the build changes (a new step, a new OCR AAR version), and the same
-change goes to `fdroiddata` by merge request.
+each `vX.Y.Z` tag's build to `fdroiddata` by itself, copying the last build
+entry. F-Droid then builds it, compares it with the signed APK on GitHub
+Releases and, when they match, publishes that APK, usually within a few days
+of the tag. Nothing else is needed per release, as long as:
+
+- the release is signed with `sign-release.sh` (any other signing breaks the
+  match);
+- the version PR adds `fastlane/metadata/android/en-US/changelogs/<code>.txt`
+  (`release.yml` requires it);
+- the build steps don't change. When they do (a new step, a new OCR AAR
+  version), change the recipe here and send the same change to
+  `fdroiddata` by merge request before the tag.
+
+A build that fails or doesn't match shows on F-Droid's build status pages
+and in `fdroiddata`'s pipeline; the published version then stays at the last
+one that matched.
 
 ## Testing it
 
