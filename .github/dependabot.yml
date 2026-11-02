@@ -47,5 +47,14 @@ updates:
     groups:
       gradle:
         patterns: ["*"]
+    ignore:
+      # Stays on 2.2.x: 2.3.0 adds WorkManager, with its own permissions
+      # (android/gradle/libs.versions.toml).
+      - dependency-name: "com.google.android.play:asset-delivery"
+        versions: [">=2.3.0"]
+      # The Android framework jar StoreScreenshots runs on must match the
+      # SDK level the test pins for Robolectric; it changes by hand,
+      # together with Robolectric.
+      - dependency-name: "org.robolectric:android-all-instrumented"
     commit-message:
       prefix: "deps"
