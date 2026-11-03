@@ -144,8 +144,12 @@ pushes, signs the tag, waits for CI, runs `sign-release.sh --upload` (PIN
 once, a touch per signature), asks before publishing on GitHub, asks
 before opening the pull request that publishes the hashes on terpoir.app
 (step 5), and asks before sending the bundle to Google Play. It is safe to
-re-run after an interruption. Set `TERPOIR_UPLOAD_SLOT=82` (and
-`TERPOIR_SSH_KEY`) in the environment as for `sign-release.sh`. It writes
+re-run after an interruption. Set `TERPOIR_UPLOAD_SLOT=82` in the
+environment, as for `sign-release.sh`; without it the script asks before
+going on, since the bundle then can't go to Play (0.10.0 was first signed
+without it). `SHA256SUMS` is signed with git's `user.signingkey`, the
+tag's key, unless `TERPOIR_SSH_KEY` names another; without either it asks
+too, since `publish-hashes.sh` needs the signature. It writes
 signed builds under `~/terpoir-releases` (`TERPOIR_WORK_DIR`). Nothing is
 signed in CI: it only chains the steps by hand.
 

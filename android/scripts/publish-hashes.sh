@@ -39,8 +39,12 @@ if $pr; then
     git fetch -q origin main
     branch="site-hashes-${*// /-}"
     tree=$(mktemp -d)
+    # A run that stops before pushing leaves no branch behind, so it can
+    # simply be run again.
+    git -C "$root" branch -q -D "$branch" 2>/dev/null || true
     git worktree add -q -b "$branch" "$tree" origin/main
-    trap 'git -C "$root" worktree remove --force "$tree"' EXIT
+    pushed=false
+    trap 'git -C "$root" worktree remove --force "$tree"; $pushed || git -C "$root" branch -q -D "$branch" 2>/dev/null || true' EXIT
     cd "$tree"
 fi
 signers=android/release/allowed_signers
@@ -82,6 +86,7 @@ if $pr; then
 The signed SHA256SUMS of $* (signature checked against
 android/release/allowed_signers), published by publish-hashes.sh."
     git push -q -u origin "$branch"
+    pushed=true
     gh pr create --repo "$repo" --base main --head "$branch" \
         --title "Release hashes on terpoir.app: $*" \
         --body "The signed \`SHA256SUMS\` of $*, verified against \`android/release/allowed_signers\` and copied to \`site/releases/\`, with \`terpoir.app/releases/\` regenerated. Made by \`android/scripts/publish-hashes.sh\`."
