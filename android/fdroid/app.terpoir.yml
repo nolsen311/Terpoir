@@ -18,7 +18,7 @@ Binaries: https://github.com/nolsen311/Terpoir/releases/download/v%v/terpoir-fos
 Builds:
   - versionName: 0.10.0
     versionCode: 19
-    commit: v0.10.0
+    commit: 7b8a080ce29f2b32509e47337c6b2a56d24eb61e
     subdir: android/app
     sudo:
       - apt-get update

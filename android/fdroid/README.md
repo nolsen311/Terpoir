@@ -74,10 +74,13 @@ is published and `fdroid build` of its tag matches it through `Binaries`
 ("Testing it"):
 
 1. The version's PR (or a follow-up) points the recipe's build entry and
-   `CurrentVersion`/`CurrentVersionCode` at that release.
-2. On GitLab, fork [fdroiddata](https://gitlab.com/fdroid/fdroiddata), add
-   this recipe as `metadata/app.terpoir.yml`, and open a merge request with
-   the "App inclusion" template. Its description can say:
+   `CurrentVersion`/`CurrentVersionCode` at that release. `fdroiddata`
+   wants the build's `commit` as the tag commit's full hash
+   (`git rev-parse 'vX.Y.Z^{commit}'`), not the tag name.
+2. On GitLab, fork [fdroiddata](https://gitlab.com/fdroid/fdroiddata)
+   (the fork must be public), add this recipe as `metadata/app.terpoir.yml`
+   on a new branch, and open a merge request titled "New app: Terpoir" with
+   the "Default" template. Its description can say:
 
    > Terpoir: a private, encrypted cannabis journal for adults where it is
    > legal. GPL-3.0-or-later, no account, no server, no trackers; every

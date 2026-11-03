@@ -328,6 +328,10 @@ without it.
             (moved from 1.0.0 by the maintainer, 2026-11-02, so F-Droid
             releases go out alongside Play's; `android/fdroid/README.md`,
             "Submitting").
+            0.10.0's matches (2026-11-03): `fdroid build app.terpoir:19`
+            of `7b8a080` verified against the signed release with the
+            allowed signer; the recipe pins that full hash. Left: the
+            merge request.
             0.9.0 can't (2026-10-23): F-Droid's build matches CI's
             unsigned APK byte for byte, but `sign-release.sh` let
             `apksigner` re-align entries and add v1 files, so the signed
