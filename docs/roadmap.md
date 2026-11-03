@@ -560,6 +560,23 @@ Ideas the maintainer wants kept, to be designed and scheduled later.
       To design: the badge set and colours, where they sit (toggle rows,
       group summaries), and whether YOLO Mode's preset card lists them.
 
+- [ ] Per-ABI APKs for F-Droid and GitHub Releases (maintainer,
+      2026-11-03; size, raised by `fdroiddata`'s submission checklist):
+      the foss APK is about 65 MB, 55 MB of it native libraries, about
+      27 MB for arm64-v8a and 28 MB for x86_64, so an arm64-only APK would
+      be about 37 MB. Splitting needs, together:
+      - an ABI split in the foss build with a version code per ABI (for
+        example `versionCode * 10 + n`), so F-Droid and Android tell the
+        APKs apart and updates stay in order;
+      - `release.yml`, `sign-release.sh`, `SHA256SUMS` and the site's
+        hashes covering one signed APK per ABI, each still the unsigned
+        build plus a v3 signature;
+      - the recipe: one build entry per ABI, with `Binaries` matching each
+        APK's name and the matching `abi`/version code;
+      - checks that the reproducible job compares every APK.
+      The Play bundle is already split by Play and doesn't change. The
+      fdroiddata merge request said this is planned for a later release.
+
 - [ ] Scan recognition "growing over time" (backlogged by the maintainer,
       2026-10-21, from 0.7.0): when a receipt line is linked to a product
       and the rest of the line is already explained, remember which words
