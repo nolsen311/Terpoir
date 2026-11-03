@@ -22,6 +22,7 @@
 # Settings (environment): the ones sign-release.sh and play-upload.sh take,
 # plus
 #   TERPOIR_REPO      default nolsen311/Terpoir
+#   TERPOIR_SSH_KEY   default: git's user.signingkey (the tag's key)
 #   TERPOIR_WORK_DIR  where signed builds are written
 #                     (default ~/terpoir-releases, outside the repository)
 
@@ -52,6 +53,30 @@ gh auth status >/dev/null 2>&1 || die "gh is not logged in (gh auth login)"
 echo "Fetching origin/main (touch the YubiKey if it blinks)"
 git -C "$root" fetch --quiet origin main || die "git fetch origin main failed"
 main_sha=$(git -C "$root" rev-parse origin/main)
+
+# Before anything is tagged: what sign-release.sh needs to sign every file.
+# SHA256SUMS is signed with the key that signs the tag (git's
+# user.signingkey, which allowed_signers trusts for files too) unless
+# TERPOIR_SSH_KEY names another; publish-hashes.sh needs that signature.
+if [ -z "${TERPOIR_SSH_KEY:-}" ]; then
+    key=$(git -C "$root" config --get user.signingkey || true)
+    key=${key/#\~/$HOME}
+    [[ "$key" == *.pub && -f "${key%.pub}" ]] && key=${key%.pub}
+    [ -f "$key" ] && export TERPOIR_SSH_KEY=$key
+fi
+if [ -n "${TERPOIR_SSH_KEY:-}" ]; then
+    echo "SHA256SUMS will be signed with $TERPOIR_SSH_KEY"
+else
+    confirm "No SSH key for SHA256SUMS (TERPOIR_SSH_KEY, or git's user.signingkey as a file): it won't be signed, and publish-hashes.sh can't publish it. Continue anyway?" \
+        || die "stopped; set TERPOIR_SSH_KEY and run again"
+fi
+# The Play bundle is signed only when the upload key's slot is named.
+if [ -n "${TERPOIR_UPLOAD_SLOT:-}" ]; then
+    echo "The Play bundle will be signed with the upload key in slot $TERPOIR_UPLOAD_SLOT"
+else
+    confirm "TERPOIR_UPLOAD_SLOT isn't set: the Play bundle won't be signed and can't go to Google Play. Continue anyway?" \
+        || die "stopped; set TERPOIR_UPLOAD_SLOT (docs/releasing.md) and run again"
+fi
 
 # 1. The tag.
 if git -C "$root" ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
