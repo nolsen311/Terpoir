@@ -39,6 +39,8 @@ an item by moving it to "Resolved" with the decision and date.
 | `www.wikidata.org`, `query.wikidata.org` | Wikidata's strain coverage and properties, and its CC0 terms | Not checked; CC0 stated from general knowledge, marked unverified. | Allow the domains before Wikidata is chosen as a catalog source. |
 | `vdb.openthc.org` | OpenTHC VDB's data size, currency and data licence | Its GPL-3.0 site code on GitHub (`openthc/vdb`); the data licence is unstated there. | Allow the domain, or ask OpenTHC directly, before shipping its names. |
 | `huggingface.co`, `cannlytics.com` | Cannlytics' dataset cards and data licence | Its MIT code on GitHub (`cannlytics/cannlytics`); data licence unstated. | Allow the domains if Cannlytics' terpene statistics are wanted later. |
+| `packages.debian.org`, `deb.debian.org` | Debian's `rustup` package, which F-Droid's review asked the recipe to install: its file layout (is `rustup` on the PATH, so `setup.sh` skips its download) | Read Ubuntu 24.04's `rustup` package (1.26.0, packaged from Debian's) through the session's apt mirror: `rustup` and its `cargo`/`rustc` proxies are in `/usr/bin`. Not tested on Debian; the next `fdroiddata` pipeline is the test. | Allow the domains to check Debian's own package, or accept Ubuntu's as evidence. |
+| `cdn.artifacts.gitlab-static.net` | GitLab CI job logs (fdroiddata merge request pipelines) | None; the maintainer reads them on GitLab. | Allow the domain before the next F-Droid submission, so Claude can read failing jobs. |
 
 ### Resolved
 

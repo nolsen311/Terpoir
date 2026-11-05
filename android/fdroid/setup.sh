@@ -5,8 +5,9 @@
 #
 # Prepares a machine with the Android SDK, such as F-Droid's build server,
 # to build the foss release the way release.yml does (android/fdroid/
-# README.md): rustup (pinned, its download checked against a SHA-256), the
-# Rust toolchain core/rust-toolchain.toml pins with the Android targets,
+# README.md): rustup (F-Droid's recipe installs Debian's; elsewhere, if
+# missing, a pinned download checked against a SHA-256), the Rust
+# toolchain core/rust-toolchain.toml pins with the Android targets,
 # cargo-ndk (the version CI pins, built with --locked), and the SDK
 # packages the OCR libraries need (android/ocr-native/build.sh). Installs
 # nothing that is already there. Then `source android/fdroid/env.sh`.
