@@ -10,10 +10,12 @@ builds the way `release.yml` does, so the two match:
 
 - `app.terpoir.yml`: the recipe, in the canonical form `fdroid rewritemeta`
   writes (so no comments; the notes are here). It goes to `fdroiddata` as
-  `metadata/app.terpoir.yml` when the app is submitted (with 0.10.0,
-  "Submitting" below).
-- `setup.sh` (prebuild): installs rustup 1.29.1 (checked against its
-  SHA-256), the toolchain `core/rust-toolchain.toml` pins with the two
+  `metadata/app.terpoir.yml` when the app is submitted ("Submitting"
+  below). Its `sudo` installs Debian's `rustup`; the build server already
+  has JDK 21.
+- `setup.sh` (prebuild): uses the `rustup` on the PATH (Debian's, on
+  F-Droid's server) or else installs rustup 1.29.1 (checked against its
+  SHA-256), then the toolchain `core/rust-toolchain.toml` pins with the two
   Android targets, the `cargo-ndk` version CI pins
   (`.github/scripts/setup-android-core.sh`, built with `--locked`), and the
   SDK packages the OCR libraries need (`android/ocr-native/build.sh
@@ -69,6 +71,12 @@ either.
 
 ## Submitting
 
+F-Droid only includes apps that have been maintained for more than three
+months: the first merge request (0.10.0, 2026-11-03) was closed for that
+on 2026-11-05, and for not following the merge request template. Terpoir's
+first commit and first release are 2026-10-10 and 2026-10-13 (v0.1.0), so
+resubmit no earlier than **2027-01-13**, with the latest release then.
+
 Once a release signed by `sign-release.sh` (v3 only, alignment preserved)
 is published and `fdroid build` of its tag matches it through `Binaries`
 ("Testing it"):
@@ -80,7 +88,11 @@ is published and `fdroid build` of its tag matches it through `Binaries`
 2. On GitLab, fork [fdroiddata](https://gitlab.com/fdroid/fdroiddata)
    (the fork must be public), add this recipe as `metadata/app.terpoir.yml`
    on a new branch, and open a merge request titled "New app: Terpoir" with
-   the "Default" template. Its description can say:
+   the "Default" template. Follow the template as it is: keep all of its
+   text, tick every box that applies, and answer any box left unticked on
+   that line, instead of in a separate note. The file must end with a
+   newline (`fdroid rewritemeta` fails otherwise). Below the template, the
+   description can say:
 
    > Terpoir: a private, encrypted cannabis journal for adults where it is
    > legal. GPL-3.0-or-later, no account, no server, no trackers; every
@@ -100,7 +112,7 @@ is published and `fdroid build` of its tag matches it through `Binaries`
    > software, and MapTiler is used only with the user's own key.
 
 3. Answer reviewers' questions; the likely ones are srclibs for the OCR
-   tarballs, the rustup download in prebuild, and the anti-features
+   tarballs and the anti-features
    (`docs/follow-ups.md`, "F-Droid anti-features for the map").
 
 ## Each release

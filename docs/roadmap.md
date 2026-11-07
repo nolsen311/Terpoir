@@ -330,8 +330,14 @@ without it.
             "Submitting").
             0.10.0's matches (2026-11-03): `fdroid build app.terpoir:19`
             of `7b8a080` verified against the signed release with the
-            allowed signer; the recipe pins that full hash. Left: the
-            merge request.
+            allowed signer; the recipe pins that full hash.
+            Merge request (`fdroiddata` !55487, 2026-11-03) closed by
+            F-Droid on 2026-11-05: apps must have been maintained for more
+            than three months, and the template wasn't followed. Their
+            review also asked for Debian's `rustup` instead of the download
+            and no JDK install (the build server has Java 21); the recipe
+            does both. Resubmit no earlier than 2027-01-13 (three months
+            after v0.1.0) with the latest release.
             0.9.0 can't (2026-10-23): F-Droid's build matches CI's
             unsigned APK byte for byte, but `sign-release.sh` let
             `apksigner` re-align entries and add v1 files, so the signed
@@ -372,8 +378,8 @@ requirement rather than on features.
 | 0.8.0 | Strain lookups you drive (maintainer, 2026-10-21 and 22): "Look up on the web" (saved sites opened in the browser, its own toggle) and sharing a strain's page back to fill the strain. Online sources inside the app moved to a later release, numbered once a source agrees (maintainer, 2026-10-22): they wait on the sources' replies and the maintainer's choice. Like 0.6.2 to 0.7.0, internal testing until Google approves the background-location declaration. |
 | 0.8.1 | Archiving and fixes (maintainer, 2026-10-22), ahead of the F-Droid groundwork, which stays 0.9.0: archiving products that are done (out of the Products list's main section and the pickers, back on a new purchase); product cards with the strain as the title and the brand in the corner (picked from prototypes); the Products list opening at the top; one Terpoir task when a page is shared back from the browser. Like 0.6.2 to 0.8.0, internal testing until Google approves the background-location declaration. |
 | 0.9.0 | F-Droid groundwork, a release of its own (maintainer, 2026-10-17): OCR built from source in `release.yml`, path remapping, reproducible check over the whole foss APK, SBOM, hashes on terpoir.app, and the F-Droid recipe (`android/fdroid/`). Moved from 0.7.0 (maintainer, 2026-10-15), then from 0.8.0 (2026-10-17). |
-| 0.10.0 | Address search for spots (maintainer, 2026-11-02): find a spot's location by address or business name, through OpenStreetMap search (Photon) and the phone's geocoder, behind an opt-in toggle; only the picked coordinates are kept. Also the first release on F-Droid, alongside Play (maintainer, 2026-11-02). |
-| 1.0.0 | Public launch: Play production access, "Get Terpoir" with real links and fingerprints. F-Droid publishes from 0.10.0 (maintainer, 2026-11-02). |
+| 0.10.0 | Address search for spots (maintainer, 2026-11-02): find a spot's location by address or business name, through OpenStreetMap search (Photon) and the phone's geocoder, behind an opt-in toggle; only the picked coordinates are kept. Also meant as the first release on F-Droid, alongside Play (maintainer, 2026-11-02); F-Droid's three-month rule moves that to the first release from 2027-01-13. |
+| 1.0.0 | Public launch: Play production access, "Get Terpoir" with real links and fingerprints. F-Droid publishes from the first release after its three-month rule allows it (2027-01-13 at the earliest). |
 | 1.x | WebDAV / S3 sync; direct device pairing; scan recognition "growing over time" (backlog); personal gear; lock-screen capture. Order to be set after 1.0. |
 | 2.0 | iOS. |
 
