@@ -192,7 +192,7 @@ version = "0.13.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.hpke]]
-version = "0.14.1"
+version = "0.15.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.hybrid-array]]
@@ -216,7 +216,7 @@ version = "0.2.190"
 criteria = "safe-to-deploy"
 
 [[exemptions.libsqlite3-sys]]
-version = "0.38.2"
+version = "0.39.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.linux-raw-sys]]
@@ -296,7 +296,7 @@ version = "0.1.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.rusqlite]]
-version = "0.40.2"
+version = "0.41.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.rustc-hash]]
@@ -353,6 +353,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.smawk]]
 version = "0.3.3"
+criteria = "safe-to-deploy"
+
+[[exemptions.sqlcipher-src]]
+version = "419.0.6+sqlcipher-4.19.0-sqlite-3.53.4-libtomcrypt-1.18.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.sqlite-wasm-rs]]

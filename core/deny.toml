@@ -45,6 +45,17 @@ confidence-threshold = 0.93
 # The allow list is a policy, not an inventory; entries not yet used are fine.
 unused-allowed-license = "allow"
 
+# Per-crate additions, each with its reason (cargo-deny 0.20 `exceptions`).
+exceptions = [
+    # The SQLCipher amalgamation, split out of libsqlite3-sys from 0.39.
+    # "blessing" is SQLite's public-domain dedication (the same SQLite code
+    # libsqlite3-sys bundled before under "MIT"); WTFPL covers the
+    # libtomcrypt sources the crate also carries for wasm32, which our
+    # builds never compile (bundled-sqlcipher-vendored-openssl uses
+    # OpenSSL). Both are GPL-compatible.
+    { crate = "sqlcipher-src", allow = ["blessing", "WTFPL"] },
+]
+
 [licenses.private]
 ignore = true
 
