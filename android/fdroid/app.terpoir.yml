@@ -22,7 +22,7 @@ Builds:
     subdir: android/app
     sudo:
       - apt-get update
-      - apt-get install -y rustup
+      - apt-get install -y build-essential perl rustup xz-utils
     output: build/outputs/apk/foss/release/app-foss-release-unsigned.apk
     prebuild: ../fdroid/setup.sh
     scandelete:
