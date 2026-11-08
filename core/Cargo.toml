@@ -45,10 +45,10 @@ hkdf = "0.13"
 # ChaCha20-Poly1305 suites; it reuses the RustCrypto crates above and adds
 # x25519-dalek / curve25519-dalek. MIT/Apache-2.0 (dalek: BSD-3-Clause); no
 # network, no telemetry.
-hpke = { version = "0.14.1", default-features = false, features = ["alloc", "getrandom", "x25519", "chacha"] }
+hpke = { version = "0.15.1", default-features = false, features = ["alloc", "getrandom", "x25519", "chacha"] }
 # SQLCipher with OpenSSL built from source, so Android and iOS builds need no
 # system crypto library.
-rusqlite = { version = "0.40", features = ["bundled-sqlcipher-vendored-openssl"] }
+rusqlite = { version = "0.41", features = ["bundled-sqlcipher-vendored-openssl"] }
 postcard = { version = "1.1", default-features = false, features = ["alloc"] }
 proptest = { version = "1.11", default-features = false, features = ["std"] }
 secrecy = "0.10"
