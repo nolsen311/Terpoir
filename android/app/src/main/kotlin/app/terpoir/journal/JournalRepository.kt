@@ -46,6 +46,16 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
         load(RecordType.SESSION, journal::getSession).sortedByDescending { it.data.`when`.unixMs }
     }
 
+    /** The names product cards and pickers show ([ProductNames]), as "What I track" allows. */
+    suspend fun productNames(): ProductNames {
+        val tracking = tracking()
+        return ProductNames(
+            strains = if (tracking.shows(DataPoint.STRAIN)) strains().associate { it.id to it.data.name } else emptyMap(),
+            brands = if (tracking.shows(DataPoint.BRAND)) brands().associate { it.id to it.data.name } else emptyMap(),
+            subtypes = tags(SUBTYPE_CATEGORY).associate { it.id to it.data.name },
+        )
+    }
+
     /** Each product's display label (brand, then name; see [productLabel]), by ID. */
     suspend fun productLabels(): Map<String, String> {
         // A product shows without its brand when brands are hidden ("What I track").

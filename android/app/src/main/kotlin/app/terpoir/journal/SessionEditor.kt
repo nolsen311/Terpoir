@@ -110,7 +110,7 @@ fun SessionEditor(
     var initial by remember { mutableStateOf<SessionDraft?>(null) }
     var confirmDiscard by remember { mutableStateOf(false) }
     var products by remember { mutableStateOf<List<Entry<ProductData>>>(emptyList()) }
-    var productLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var productNames by remember { mutableStateOf(ProductNames()) }
     var usualMethods by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var customEffects by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
     var customSymptoms by remember { mutableStateOf<List<Entry<TagData>>>(emptyList()) }
@@ -131,7 +131,7 @@ fun SessionEditor(
 
     LaunchedEffect(id) {
         products = repo.products()
-        productLabels = repo.productLabels()
+        productNames = repo.productNames()
         usualMethods = repo.usualMethods(products)
         spots = repo.spots()
         customEffects = repo.tags(EFFECT_CATEGORY)
@@ -194,7 +194,7 @@ fun SessionEditor(
                 LineEditor(
                     line = line,
                     products = products,
-                    productLabels = productLabels,
+                    productNames = productNames,
                     usualMethods = usualMethods,
                     spotNames = spots.associate { it.id to it.data.name },
                     vocab = vocab,
@@ -388,7 +388,7 @@ fun SessionEditor(
 private fun LineEditor(
     line: LineDraft,
     products: List<Entry<ProductData>>,
-    productLabels: Map<String, String>,
+    productNames: ProductNames,
     usualMethods: Map<String, String>,
     spotNames: Map<String, String>,
     vocab: Vocabulary,
@@ -398,13 +398,14 @@ private fun LineEditor(
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val none = stringResource(R.string.session_no_product)
+            // Named and ordered as on the Products page. Archived products
+            // are left out, unless this line already has one.
+            val picks = productPicks(products.filter { !it.data.archived || it.id == line.product }, productNames)
+            val details = picks.associate { it.id to it.detail }
             Dropdown(
                 label = stringResource(R.string.session_product),
-                // Archived products are left out, unless this line already has one.
-                options = listOf<Pair<String?, String>>(null to none) +
-                    products.filter { !it.data.archived || it.id == line.product }
-                        .map { it.id to (productLabels[it.id] ?: it.data.name) }
-                        .sortedBy { it.second.lowercase() },
+                options = listOf<Pair<String?, String>>(null to none) + picks.map { it.id to it.title },
+                detail = { id -> id?.let(details::get).orEmpty() },
                 selected = line.product,
                 onSelect = { productId ->
                     val method = productId?.let(usualMethods::get) ?: line.method
