@@ -1,0 +1,93 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# The Rust core on iOS (docs/roadmap.md, "iOS", I1): builds terpoir-ffi for
+# iPhones and the simulator into an xcframework with Swift bindings
+# (ios/scripts/build-core.sh), then runs the TerpoirCore package's tests on
+# an iOS simulator. Needs macOS; the repository is public, so GitHub's
+# macOS runners cost nothing. No signing and no secrets here.
+
+name: iOS
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels that pull request's older run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  # Skips the job below on pull requests that change neither the core nor
+  # iOS (a skipped job still reports, so it can be a required check).
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.files.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Check the changed files
+        id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: .github/scripts/changes.sh '^(core/|ios/|\.github/workflows/ios\.yml)' >> "$GITHUB_OUTPUT"
+
+  ios-core:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
+    # Apple silicon, so the simulator slice is aarch64-apple-ios-sim.
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The runner's preinstalled rustup; core/rust-toolchain.toml pins the
+      # toolchain. No third-party toolchain action.
+      - name: Install toolchain
+        working-directory: core
+        run: |
+          set -euo pipefail
+          rustup toolchain install
+          rustc --version
+          xcodebuild -version
+
+      - name: Build the core for iOS
+        run: ios/scripts/build-core.sh
+
+      - name: Test on the iOS simulator
+        working-directory: ios/TerpoirCore
+        run: |
+          set -euo pipefail
+          # The first available iPhone simulator of the runner's Xcode.
+          udid=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          print(next(d["udid"] for runtime, ds in sorted(devices.items(), reverse=True)
+                     if "iOS" in runtime for d in ds if d["name"].startswith("iPhone")))')
+          echo "Simulator: $udid"
+          # Xcode names the package's scheme after it, or "<name>-Package"
+          # when it makes one per product.
+          xcodebuild -list
+          scheme=TerpoirCore
+          if xcodebuild -list | grep -q 'TerpoirCore-Package'; then scheme=TerpoirCore-Package; fi
+          xcodebuild test -scheme "$scheme" -destination "id=$udid" -quiet
