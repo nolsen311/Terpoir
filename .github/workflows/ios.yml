@@ -90,4 +90,13 @@ jobs:
           xcodebuild -list
           scheme=TerpoirCore
           if xcodebuild -list | grep -q 'TerpoirCore-Package'; then scheme=TerpoirCore-Package; fi
-          xcodebuild test -scheme "$scheme" -destination "id=$udid" -quiet
+          xcodebuild test -scheme "$scheme" -destination "id=$udid" 2>&1 | tee "$RUNNER_TEMP/test.log" \
+            | grep -E "Test (Case|Suite)|Executed|error:|TEST (SUCCEEDED|FAILED)"
+          # Green must mean the tests ran: at least the three smoke tests,
+          # none failed.
+          ran=$(sed -n 's/.*Executed \([0-9]*\) tests\{0,1\}, with 0 failures.*/\1/p' "$RUNNER_TEMP/test.log" | tail -1)
+          if [ "${ran:-0}" -lt 3 ]; then
+            echo "::error::expected at least 3 passing TerpoirCore tests, found ${ran:-none}"
+            exit 1
+          fi
+          echo "TerpoirCore tests passed: $ran"
