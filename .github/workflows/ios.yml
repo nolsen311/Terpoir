@@ -2,10 +2,11 @@
 # Copyright (C) 2026 The Terpoir Authors
 # See LICENSING.md for the additional permission under GPLv3 section 7.
 #
-# The Rust core on iOS (docs/roadmap.md, "iOS", I1): builds terpoir-ffi for
-# iPhones and the simulator into an xcframework with Swift bindings
-# (ios/scripts/build-core.sh), then runs the TerpoirCore package's tests on
-# an iOS simulator. Needs macOS; the repository is public, so GitHub's
+# The Rust core and the app on iOS (docs/roadmap.md, "iOS"): builds
+# terpoir-ffi for iPhones and the simulator into an xcframework with Swift
+# bindings (ios/scripts/build-core.sh), runs the TerpoirCore package's tests
+# on an iOS simulator, then generates the app's Xcode project from
+# ios/project.yml with XcodeGen and runs the app's tests. Needs macOS; the repository is public, so GitHub's
 # macOS runners cost nothing. No signing and no secrets here.
 
 name: iOS
@@ -74,29 +75,35 @@ jobs:
       - name: Build the core for iOS
         run: ios/scripts/build-core.sh
 
-      - name: Test on the iOS simulator
+      - name: Test the core package on the iOS simulator
         working-directory: ios/TerpoirCore
         run: |
           set -euo pipefail
-          # The first available iPhone simulator of the runner's Xcode.
-          udid=$(xcrun simctl list devices available --json | python3 -c '
-          import json, sys
-          devices = json.load(sys.stdin)["devices"]
-          print(next(d["udid"] for runtime, ds in sorted(devices.items(), reverse=True)
-                     if "iOS" in runtime for d in ds if d["name"].startswith("iPhone")))')
-          echo "Simulator: $udid"
           # Xcode names the package's scheme after it, or "<name>-Package"
           # when it makes one per product.
-          xcodebuild -list
           scheme=TerpoirCore
           if xcodebuild -list | grep -q 'TerpoirCore-Package'; then scheme=TerpoirCore-Package; fi
-          xcodebuild test -scheme "$scheme" -destination "id=$udid" 2>&1 | tee "$RUNNER_TEMP/test.log" \
-            | grep -E "Test (Case|Suite)|Executed|error:|TEST (SUCCEEDED|FAILED)"
-          # Green must mean the tests ran: at least the three smoke tests,
-          # none failed.
-          ran=$(sed -n 's/.*Executed \([0-9]*\) tests\{0,1\}, with 0 failures.*/\1/p' "$RUNNER_TEMP/test.log" | tail -1)
-          if [ "${ran:-0}" -lt 3 ]; then
-            echo "::error::expected at least 3 passing TerpoirCore tests, found ${ran:-none}"
-            exit 1
-          fi
-          echo "TerpoirCore tests passed: $ran"
+          # SmokeTests (3) and CompatFixtureTests (1).
+          ../scripts/test-on-simulator.sh 4 -scheme "$scheme"
+
+      # XcodeGen turns ios/project.yml into the Xcode project. Built from a
+      # pinned commit (2.46.0, MIT) with its own Package.resolved pins; a
+      # build tool only, never part of the app.
+      - name: Build XcodeGen
+        env:
+          XCODEGEN_COMMIT: 8445e778451c7e44237b90281bde622d764b0084 # 2.46.0
+        run: |
+          set -euo pipefail
+          src="$RUNNER_TEMP/xcodegen"
+          git init --quiet "$src"
+          git -C "$src" fetch --quiet --depth 1 https://github.com/yonaskolb/XcodeGen "$XCODEGEN_COMMIT"
+          git -C "$src" checkout --quiet FETCH_HEAD
+          (cd "$src" && swift build -c release --product xcodegen --force-resolved-versions)
+          echo "$src/.build/release" >> "$GITHUB_PATH"
+
+      - name: Test the app on the iOS simulator
+        run: |
+          set -euo pipefail
+          xcodegen generate --spec ios/project.yml
+          # AppInfoTests (1).
+          ios/scripts/test-on-simulator.sh 1 -project ios/Terpoir.xcodeproj -scheme Terpoir

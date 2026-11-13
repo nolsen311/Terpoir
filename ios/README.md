@@ -24,3 +24,19 @@ workspace's own `uniffi-bindgen`, run on a host build of the same library.
 
 CI (`.github/workflows/ios.yml`) does the same on a macOS runner and runs
 `Tests/TerpoirCoreTests` on an iOS simulator. Nothing here is signed.
+
+## The app
+
+`project.yml` describes the Xcode project; XcodeGen generates
+`Terpoir.xcodeproj` from it (never committed):
+
+```sh
+ios/scripts/build-core.sh
+xcodegen generate --spec ios/project.yml
+ios/scripts/test-on-simulator.sh 1 -project ios/Terpoir.xcodeproj -scheme Terpoir
+```
+
+`App/` is the SwiftUI app (bundle ID `app.terpoir`, iOS 17+, iPhone only
+for now), `AppTests/` its tests. Simulator builds are unsigned; signing
+happens only in the release workflow (`docs/design-decisions.md`, "Signing
+keys").
