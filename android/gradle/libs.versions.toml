@@ -6,7 +6,7 @@
 # (network access, telemetry, license) in the pull request.
 
 [versions]
-agp = "9.5.0"
+agp = "9.5.1"
 kotlin = "2.4.21"
 cyclonedx = "3.5.1"
 activity-compose = "1.13.0"
