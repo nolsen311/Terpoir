@@ -178,9 +178,10 @@ fun formatWhen(unixMs: Long, utcOffsetMin: Short): String =
         .format(Instant.ofEpochMilli(unixMs).atOffset(ZoneOffset.ofTotalSeconds(utcOffsetMin * 60)))
 
 /**
- * How a product is shown everywhere: its brand, then its own name ("Fire
- * Bros Block Berry Cart"), so the name needn't repeat the brand. A name that
- * already starts with the brand is shown as it is.
+ * How a product is named in running text (the timeline, receipts' linked
+ * lines, shares): its brand, then its own name ("Fire Bros Block Berry
+ * Cart"), so the name needn't repeat the brand. A name that already starts
+ * with the brand is shown as it is. Pickers use [productPicks] instead.
  */
 fun productLabel(name: String, brand: String?): String = productLabel(name, brand, emptyList())
 
