@@ -381,7 +381,7 @@ requirement rather than on features.
 | 0.10.0 | Address search for spots (maintainer, 2026-11-02): find a spot's location by address or business name, through OpenStreetMap search (Photon) and the phone's geocoder, behind an opt-in toggle; only the picked coordinates are kept. Also meant as the first release on F-Droid, alongside Play (maintainer, 2026-11-02); F-Droid's three-month rule moves that to the first release from 2027-01-13. |
 | 1.0.0 | Public launch: Play production access, "Get Terpoir" with real links and fingerprints. F-Droid publishes from the first release after its three-month rule allows it (2027-01-13 at the earliest). |
 | 1.x | WebDAV / S3 sync; direct device pairing; scan recognition "growing over time" (backlog); personal gear; lock-screen capture. Order to be set after 1.0. |
-| 2.0 | iOS. |
+| iOS | Core MVP (maintainer, 2026-11-13; "iOS" below): on TestFlight while Android reaches 1.0, then on the App Store after Android 1.0. Its versions follow Android's numbers for the same core. |
 
 ## Feature releases
 
@@ -533,10 +533,73 @@ requirement rather than on features.
   - [x] Timeline comparisons ("comes on faster than your other edibles"),
         once there is enough data to make them trustworthy (0.7.0).
 
+## iOS (maintainer, 2026-11-13)
+
+Moved up from Phase 5: a core MVP now, alongside Android, with Android 1.0
+still first. Swift + SwiftUI over the same Rust core (UniFFI Swift
+bindings, an xcframework); nothing in Swift that the core owns. Built on
+GitHub's macOS runners (the repository is public, so they're free); this
+work can't be built or run on Linux. Submitted as an individual; if Apple
+rejects it under guideline 5.1.1(ix), Android-only stays acceptable
+(`docs/design-decisions.md`, "App store policy").
+
+### I1. The core on Apple platforms (no Apple account needed)
+- [ ] `ios.yml` on a macOS runner (pinned image): build `terpoir-ffi` as a
+      static library for `aarch64-apple-ios` and `aarch64-apple-ios-sim`,
+      with SQLCipher and OpenSSL from source as on Android; assemble
+      `TerpoirCoreFFI.xcframework`; generate the Swift bindings with the
+      workspace's pinned `uniffi-bindgen`.
+- [ ] `ios/TerpoirCore`: a Swift package wrapping the xcframework and the
+      bindings, with XCTest on the iOS simulator: create, lock and unlock a
+      journal; the compatibility fixtures open; logging compiled out.
+- [ ] Reproducible check for the iOS static libraries (two checkouts, as
+      `android-core` does). The App Store binary itself can't match (Apple
+      re-signs it; disclosed).
+- [ ] CodeQL for Swift (needs the macOS runner).
+
+### I2. App shell
+- [ ] `ios/` app target generated from a reviewable spec (XcodeGen
+      `project.yml`, pinned, run in CI only; no committed `.xcodeproj`
+      churn), bundle ID `app.terpoir`, iOS 17+.
+- [ ] Keys: the master-key wrapping key in the Keychain,
+      `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly`, behind
+      `SecAccessControl` (biometry or passcode) so a patched app can't skip
+      the prompt; Data Protection `complete`; app data excluded from
+      backups.
+- [ ] Onboarding and recovery key, unlock (Face ID / Touch ID or
+      passcode), auto-lock, blur in the app switcher and while the screen
+      is recorded or mirrored.
+- [ ] Age gate: Declared Age Range API (read only, never stored); 18+
+      rating.
+
+### I3. Core MVP features
+- [ ] Sessions, products, strains, brands, purchases, effects and the
+      vocabulary, through the core as on Android.
+- [ ] Export and import, readable by the Android app and back.
+- [ ] Privacy Center with the toggles the MVP has (each a pair, with its
+      card); keyboard protections from `docs/design-decisions.md`.
+- [ ] Store screenshots from the real screens (simulator, demo journal).
+
+### I4. TestFlight and the App Store
+- [ ] Maintainer: enroll in the Apple Developer Program as an individual;
+      create the App Store Connect app record (`app.terpoir`), privacy
+      label "Data Not Collected", review notes for 5.1.1(ix).
+- [ ] Signing in CI (`docs/design-decisions.md`, "Signing keys", iOS):
+      a protected `app-store` environment, approval by the maintainer,
+      tags only; uploads to TestFlight. Submitting for review stays a
+      manual step in App Store Connect.
+- [ ] TestFlight internal testing, then App Store review after Android 1.0.
+
+### Later on iOS (order set after the MVP)
+Spots and location (Core Location; region monitoring rotates the nearest
+~20 spots), scanning (Vision), on-device voice (Speech), sync folders
+(Files), address search, widgets and controls, Spotlight and Siri toggles,
+alternate icons.
+
 ## Phase 5: Stretch
 
-- [ ] iOS app (Swift, UniFFI Swift bindings); submit as an individual,
-      Android-only acceptable if rejected under guideline 5.1.1(ix).
+- [ ] iOS beyond the core MVP: moved to "iOS" above (maintainer,
+      2026-11-13).
 - [ ] OS on-device and bundled LLM tagging tiers; bundled speech model.
 - [ ] Terpoir-to-Terpoir record sharing.
 - [ ] Sigstore transparency logging for releases.
