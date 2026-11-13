@@ -10,7 +10,9 @@
 #   - rust: once core/Cargo.toml exists.
 #   - java-kotlin: once android/ exists, built explicitly (debug variants of
 #     both flavors) so all Kotlin source sets are analyzed.
-#   - swift: later, with ios/ (needs a macOS runner).
+#   - swift: once ios/ exists, on a macOS runner: the Rust core is built
+#     first (untraced), then the TerpoirCore package's Swift is built for
+#     the simulator under CodeQL.
 
 name: CodeQL
 
@@ -50,7 +52,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: .github/scripts/changes.sh '^(android/|core/|\.github/)' >> "$GITHUB_OUTPUT"
+        run: .github/scripts/changes.sh '^(android/|core/|ios/|\.github/)' >> "$GITHUB_OUTPUT"
 
       - name: Detect languages present in the tree
         id: detect
@@ -63,6 +65,9 @@ jobs:
           if [ -d android ]; then
             include="${include},"'{"language":"java-kotlin","build-mode":"manual"}'
           fi
+          if [ -d ios ]; then
+            include="${include},"'{"language":"swift","build-mode":"manual","runner":"macos-15"}'
+          fi
           echo "matrix={\"include\":[${include}]}" >> "$GITHUB_OUTPUT"
 
   # Always runs, so every "analyze (<language>)" check reports: a job skipped
@@ -72,7 +77,7 @@ jobs:
   analyze:
     name: analyze (${{ matrix.language }})
     needs: languages
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner || 'ubuntu-latest' }}
     permissions:
       contents: read
       security-events: write
@@ -89,6 +94,14 @@ jobs:
         with:
           persist-credentials: false
 
+      # Before CodeQL starts tracing, so only the Swift build is traced.
+      - name: Build the core for iOS
+        if: needs.languages.outputs.run == 'true' && matrix.language == 'swift'
+        run: |
+          set -euo pipefail
+          (cd core && rustup toolchain install)
+          ios/scripts/build-core.sh
+
       - name: Initialize CodeQL
         if: needs.languages.outputs.run == 'true'
         uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
@@ -99,7 +112,7 @@ jobs:
 
       # Downloaded dependencies only; see android.yml, which saves it.
       - name: Restore dependency cache
-        if: needs.languages.outputs.run == 'true' && matrix.build-mode == 'manual'
+        if: needs.languages.outputs.run == 'true' && matrix.language == 'java-kotlin'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -112,15 +125,20 @@ jobs:
           restore-keys: deps-${{ runner.os }}-
 
       - name: Set up Rust core toolchain
-        if: needs.languages.outputs.run == 'true' && matrix.build-mode == 'manual'
+        if: needs.languages.outputs.run == 'true' && matrix.language == 'java-kotlin'
         run: .github/scripts/setup-android-core.sh
 
       - name: Build Android app
-        if: needs.languages.outputs.run == 'true' && matrix.build-mode == 'manual'
+        if: needs.languages.outputs.run == 'true' && matrix.language == 'java-kotlin'
         working-directory: android
         run: |
           export JAVA_HOME="$JAVA_HOME_21_X64"
           ./gradlew --no-daemon --no-build-cache assembleFossDebug assemblePlayDebug
+
+      - name: Build the iOS core package
+        if: needs.languages.outputs.run == 'true' && matrix.language == 'swift'
+        working-directory: ios/TerpoirCore
+        run: xcodebuild build -scheme TerpoirCore -destination 'generic/platform=iOS Simulator' -quiet
 
       - name: Analyze
         if: needs.languages.outputs.run == 'true'

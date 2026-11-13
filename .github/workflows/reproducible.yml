@@ -7,6 +7,9 @@
 # are byte-for-byte identical.
 # - reproducible: the Rust core for the host. core/scripts/reproducible-build.sh
 #   is the same recipe anyone can run to verify a published hash.
+# - ios-core-reproducible: the Rust core's static library for iPhones
+#   (aarch64-apple-ios), as ios/scripts/build-core.sh builds it, on a Mac.
+#   The App Store binary itself can't be matched (Apple re-signs it).
 # - android-core: the Rust core for Android, as release builds and F-Droid
 #   build it (`-Pterpoir.reproducible`), the second time with a different
 #   Cargo home, as another machine would have.
@@ -116,6 +119,49 @@ jobs:
           fi
           echo "### Reproducible core library" >> "$GITHUB_STEP_SUMMARY"
           echo "\`libterpoir_ffi.so\` (x86_64-unknown-linux-gnu): \`$first\`" >> "$GITHUB_STEP_SUMMARY"
+
+  ios-core-reproducible:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: first
+          persist-credentials: false
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: elsewhere/second-checkout
+          persist-credentials: false
+
+      - name: First build
+        working-directory: first
+        run: |
+          set -euo pipefail
+          core/scripts/reproducible-build.sh aarch64-apple-ios | tail -n 1 > "$RUNNER_TEMP/first.sha256"
+          rm -rf /tmp/terpoir-reproducible
+
+      - name: Second build
+        working-directory: elsewhere/second-checkout/core
+        run: |
+          set -euo pipefail
+          scripts/reproducible-build.sh aarch64-apple-ios | tail -n 1 > "$RUNNER_TEMP/second.sha256"
+
+      - name: Compare
+        run: |
+          set -euo pipefail
+          first=$(cat "$RUNNER_TEMP/first.sha256")
+          second=$(cat "$RUNNER_TEMP/second.sha256")
+          echo "first:  $first"
+          echo "second: $second"
+          if [ "$first" != "$second" ]; then
+            echo "::error::The iOS core library is not reproducible: the two builds differ."
+            exit 1
+          fi
+          echo "### Reproducible iOS core library" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`libterpoir_ffi.a\` (aarch64-apple-ios): \`$first\`" >> "$GITHUB_STEP_SUMMARY"
 
   android-core:
     needs: changes

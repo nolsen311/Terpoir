@@ -4,3 +4,4 @@
 /TerpoirCore/Sources/TerpoirCore/TerpoirCore.swift
 /TerpoirCore/.build/
 /TerpoirCore/.swiftpm/
+/TerpoirCore/Tests/TerpoirCoreTests/Fixtures/

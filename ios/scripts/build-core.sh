@@ -52,4 +52,12 @@ for target in "${targets[@]}"; do
 done
 xcodebuild -create-xcframework "${args[@]}" -output "$package/TerpoirCoreFFI.xcframework"
 cp "$work/bindings/TerpoirCore.swift" "$package/Sources/TerpoirCore/TerpoirCore.swift"
+# The compatibility fixtures, for the tests (CompatFixtureTests): the
+# release databases and exports, without the generator's source.
+fixtures="$package/Tests/TerpoirCoreTests/Fixtures"
+rm -rf "$fixtures"
+mkdir -p "$fixtures"
+for dir in crates/terpoir-ffi/tests/fixtures/v*; do
+    [ -d "$dir" ] && cp -R "$dir" "$fixtures/"
+done
 echo "Built TerpoirCoreFFI.xcframework and TerpoirCore.swift"

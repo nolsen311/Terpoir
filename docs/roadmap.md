@@ -544,18 +544,22 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
 (`docs/design-decisions.md`, "App store policy").
 
 ### I1. The core on Apple platforms (no Apple account needed)
-- [ ] `ios.yml` on a macOS runner (pinned image): build `terpoir-ffi` as a
+- [x] `ios.yml` on a macOS runner (pinned image): build `terpoir-ffi` as a
       static library for `aarch64-apple-ios` and `aarch64-apple-ios-sim`,
       with SQLCipher and OpenSSL from source as on Android; assemble
       `TerpoirCoreFFI.xcframework`; generate the Swift bindings with the
-      workspace's pinned `uniffi-bindgen`.
-- [ ] `ios/TerpoirCore`: a Swift package wrapping the xcframework and the
+      workspace's pinned `uniffi-bindgen`. (2026-11-13, `ios/scripts/build-core.sh`, macos-15.)
+- [x] `ios/TerpoirCore`: a Swift package wrapping the xcframework and the
       bindings, with XCTest on the iOS simulator: create, lock and unlock a
       journal; the compatibility fixtures open; logging compiled out.
-- [ ] Reproducible check for the iOS static libraries (two checkouts, as
+      (2026-11-13: `SmokeTests`, and `CompatFixtureTests` opens every
+      release's database and restores its export; SQLCipher's logging is
+      compiled out by `core/.cargo/config.toml` on every target.)
+- [x] Reproducible check for the iOS static libraries (two checkouts, as
       `android-core` does). The App Store binary itself can't match (Apple
-      re-signs it; disclosed).
-- [ ] CodeQL for Swift (needs the macOS runner).
+      re-signs it; disclosed). (2026-11-13: `ios-core-reproducible`, two
+      checkouts, `core/scripts/reproducible-build.sh aarch64-apple-ios`.)
+- [x] CodeQL for Swift (needs the macOS runner). (2026-11-13.)
 
 ### I2. App shell
 - [ ] `ios/` app target generated from a reviewable spec (XcodeGen

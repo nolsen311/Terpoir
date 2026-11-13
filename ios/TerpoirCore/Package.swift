@@ -17,6 +17,13 @@ let package = Package(
     targets: [
         .binaryTarget(name: "TerpoirCoreFFI", path: "TerpoirCoreFFI.xcframework"),
         .target(name: "TerpoirCore", dependencies: ["TerpoirCoreFFI"], path: "Sources/TerpoirCore"),
-        .testTarget(name: "TerpoirCoreTests", dependencies: ["TerpoirCore"], path: "Tests/TerpoirCoreTests"),
+        // Fixtures/ is the core's compatibility fixtures, copied in by
+        // ios/scripts/build-core.sh.
+        .testTarget(
+            name: "TerpoirCoreTests",
+            dependencies: ["TerpoirCore"],
+            path: "Tests/TerpoirCoreTests",
+            resources: [.copy("Fixtures")]
+        ),
     ]
 )

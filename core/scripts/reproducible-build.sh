@@ -6,7 +6,11 @@
 # Builds the core library reproducibly and prints its SHA-256. Anyone can
 # run this on the same commit, from any directory, and get the same hash.
 #
-# Usage, from anywhere in a checkout:  core/scripts/reproducible-build.sh
+# Usage, from anywhere in a checkout:  core/scripts/reproducible-build.sh [target]
+#
+# With no target, the host's shared library (libterpoir_ffi.so on Linux).
+# With an iOS target (aarch64-apple-ios, aarch64-apple-ios-sim, on a Mac
+# with Xcode), the static library the iOS app links (libterpoir_ffi.a).
 #
 # How:
 # - The committed source (git archive, so local changes and untracked
@@ -44,6 +48,23 @@ export CARGO_TARGET_DIR="$work/target"
 export CARGO_INCREMENTAL=0
 unset RUSTFLAGS CFLAGS CXXFLAGS RUSTUP_TOOLCHAIN
 
+target=${1:-}
+if [ -n "$target" ]; then
+    rustup target add --toolchain "$toolchain" "$target" >/dev/null
+    case "$target" in
+        # As ios/scripts/build-core.sh builds it.
+        *-apple-ios*) export IPHONEOS_DEPLOYMENT_TARGET=17.0; library="$target/release/libterpoir_ffi.a" ;;
+        *) echo "reproducible-build.sh: unsupported target $target" >&2; exit 1 ;;
+    esac
+    set -- --target "$target"
+else
+    library=release/libterpoir_ffi.so
+    set --
+fi
 cd "$work/src/core"
-"$cargo_bin" build --release --locked -p terpoir-ffi
-sha256sum "$CARGO_TARGET_DIR/release/libterpoir_ffi.so" | cut -d' ' -f1
+"$cargo_bin" build --release --locked -p terpoir-ffi "$@"
+if command -v sha256sum >/dev/null; then
+    sha256sum "$CARGO_TARGET_DIR/$library" | cut -d' ' -f1
+else
+    shasum -a 256 "$CARGO_TARGET_DIR/$library" | cut -d' ' -f1
+fi
