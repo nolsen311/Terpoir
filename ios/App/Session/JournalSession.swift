@@ -27,6 +27,16 @@ final class JournalSession: ObservableObject {
 
     @Published private(set) var state: State
 
+    var hasJournal: Bool {
+        if case .noJournal = state { return false }
+        return true
+    }
+
+    var isUnlocked: Bool {
+        if case .unlocked = state { return true }
+        return false
+    }
+
     private let files: JournalFiles
     private let vault: MasterKeyVault
 
@@ -52,9 +62,11 @@ final class JournalSession: ObservableObject {
     }
 
     /// Unlocks with the vault, which asks the OS to authenticate the user
-    /// through `context` (Face ID, Touch ID or the passcode).
-    func unlock(context: LAContext) throws {
-        var masterKey = try vault.masterKey(context: context)
+    /// through `context` (Face ID, Touch ID or the passcode). The prompt
+    /// blocks its thread, so the vault is asked off the main thread.
+    func unlock(context: LAContext) async throws {
+        let vault = self.vault
+        var masterKey = try await Task.detached { try vault.masterKey(context: context) }.value
         defer { masterKey.resetBytes(in: 0..<masterKey.count) }
         try open(masterKey: masterKey)
     }

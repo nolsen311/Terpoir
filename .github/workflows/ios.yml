@@ -105,5 +105,6 @@ jobs:
         run: |
           set -euo pipefail
           xcodegen generate --spec ios/project.yml
-          # AppInfoTests (1), MasterKeyVaultTests (5), JournalSessionTests (5).
-          ios/scripts/test-on-simulator.sh 11 -project ios/Terpoir.xcodeproj -scheme Terpoir
+          # AppInfoTests (1), MasterKeyVaultTests (5), JournalSessionTests (5),
+          # OnboardingTests (3).
+          ios/scripts/test-on-simulator.sh 14 -project ios/Terpoir.xcodeproj -scheme Terpoir

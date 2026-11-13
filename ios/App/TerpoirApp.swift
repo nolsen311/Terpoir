@@ -18,7 +18,7 @@ struct TerpoirApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
         }
     }
 }

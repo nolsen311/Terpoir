@@ -567,24 +567,30 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
       churn), bundle ID `app.terpoir`, iOS 17+. (2026-11-13: XcodeGen
       2.46.0 built from its pinned commit; a placeholder screen that
       reaches the core, tested in CI.)
-- [ ] Keys: the master-key wrapping key in the Keychain,
+- [x] Keys: the master-key wrapping key in the Keychain,
       `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly`, behind
       `SecAccessControl` (biometry or passcode) so a patched app can't skip
       the prompt; Data Protection `complete`; app data excluded from
       backups.
-      (2026-11-13, in progress: `MasterKeyVault` wraps the master key with
+      (2026-11-13: `MasterKeyVault` wraps the master key with
       a Secure Enclave key (a Keychain key on the simulator) usable only
       after Face ID, Touch ID or the passcode, or current biometrics only;
       the wrapped key has Complete data protection and is excluded from
       backups. The journal's files (`JournalFiles`: database, attachments,
       wrapped keys) have Complete protection and are excluded from backups;
-      `JournalSession` creates, locks and unlocks through the vault. Next:
-      onboarding using it.)
+      `JournalSession` creates, locks and unlocks through the vault, and
+      onboarding uses it.)
 - [ ] Onboarding and recovery key, unlock (Face ID / Touch ID or
       passcode), auto-lock, blur in the app switcher and while the screen
       is recorded or mirrored.
+      (2026-11-13, in progress: age, create, the recovery key with a typed
+      check or a confirmed skip, the lock screen, locking whenever the app
+      leaves the screen, and a cover in the app switcher and while the
+      screen is captured, with Android's wording. Left: restoring an
+      existing journal, and auto-lock choices like Android's.)
 - [ ] Age gate: Declared Age Range API (read only, never stored); 18+
-      rating.
+      rating. (Self-attestation is in onboarding; Apple's signal needs the
+      Apple Developer account and its entitlement.)
 
 ### I3. Core MVP features
 - [ ] Sessions, products, strains, brands, purchases, effects and the
