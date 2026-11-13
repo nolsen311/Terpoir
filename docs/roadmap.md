@@ -595,6 +595,12 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
 ### I3. Core MVP features
 - [ ] Sessions, products, strains, brands, purchases, effects and the
       vocabulary, through the core as on Android.
+      (2026-11-13, in progress: Sessions and Products lists (cards titled
+      and ordered as on Android), and editors for a product (name, type,
+      brand, strains) and a session (when, one product with method and
+      dose, core effects, rating, would repeat), keeping fields they don't
+      show. Left: purchases, strain and brand screens, moods, timeline,
+      symptoms, spots, notes, and Android's written labels.)
 - [ ] Export and import, readable by the Android app and back.
 - [ ] Privacy Center with the toggles the MVP has (each a pair, with its
       card); keyboard protections from `docs/design-decisions.md`.
