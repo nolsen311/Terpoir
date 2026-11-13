@@ -1,0 +1,6 @@
+# Build products of ios/scripts/build-core.sh.
+/build/
+/TerpoirCore/TerpoirCoreFFI.xcframework/
+/TerpoirCore/Sources/TerpoirCore/TerpoirCore.swift
+/TerpoirCore/.build/
+/TerpoirCore/.swiftpm/
