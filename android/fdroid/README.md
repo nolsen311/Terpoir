@@ -11,8 +11,8 @@ builds the way `release.yml` does, so the two match:
 - `app.terpoir.yml`: the recipe, in the canonical form `fdroid rewritemeta`
   writes (so no comments; the notes are here). It goes to `fdroiddata` as
   `metadata/app.terpoir.yml` when the app is submitted ("Submitting"
-  below). Its `sudo` installs Debian's `rustup`; the build server already
-  has JDK 21.
+  below). Its `sudo` installs the host tools the build needs ("The
+  build"); the build server already has JDK 21.
 - `setup.sh` (prebuild): uses the `rustup` on the PATH (Debian's, on
   F-Droid's server) or else installs rustup 1.29.1 (checked against its
   SHA-256), then the toolchain `core/rust-toolchain.toml` pins with the two
@@ -51,9 +51,15 @@ property, Gradle leaves the class out of the unit tests.
 
 ## The build
 
-- `sudo` installs JDK 21. F-Droid's build server (Debian trixie) already
-  defaults to it; installing it by name keeps the build on 21 if that
-  default moves, and `env.sh` selects it.
+- `sudo` installs what F-Droid's build image (`buildserver-trixie`, Debian
+  trixie) lacks: it has a JDK 21, git, curl, patch and unzip, but no C
+  compiler. `build-essential` gives the host `cc` that Rust build scripts
+  and proc macros link with (and `cargo install cargo-ndk`); `perl` and
+  `make` build the vendored OpenSSL; `xz-utils` unpacks the OCR sources;
+  `rustup` is Debian's, as F-Droid's review asked (2026-11-05). `env.sh`
+  selects JDK 21. A local `fdroid build` doesn't run `sudo` and uses the
+  machine's own tools, so it can't catch a missing package; the fork
+  pipeline in "Testing it" can.
 - `scandelete` removes the compatibility fixtures
   (`core/crates/terpoir-ffi/tests/fixtures`), encrypted test data the
   scanner reports as binaries. The release build doesn't read them.
@@ -157,3 +163,10 @@ as `gradle`, as on its build server. Until a release is built from the
 same commit, `Binaries` points at an older APK and the final comparison
 fails; compare `build/app.terpoir/android/app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk`
 with `release.yml`'s build instead (2026-10-22: byte-identical).
+
+To test on F-Droid's own build image (which a local `fdroid build` can't
+stand in for: it skips `sudo`), push the recipe to a branch of your
+`fdroiddata` fork that has **no open merge request**. Its CI then runs the
+whole check, `fdroid build` included, on `buildserver-trixie`, without
+anything going to F-Droid's reviewers. The 0.10.0 merge request failed
+there (2026-11-03) on a missing `cc`, which a local build couldn't show.
