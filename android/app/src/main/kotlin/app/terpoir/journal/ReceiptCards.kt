@@ -220,7 +220,8 @@ internal class ItemCardContext(
     /** The card's size, with what a pack's amount covers decided. */
     val size: (ItemDraft) -> PackageSizeData?,
     val productLabel: (String) -> String,
-    val products: List<Pair<String, String>>,
+    /** Products to link by hand, named and ordered as on the Products page. */
+    val products: List<ProductPick>,
     val showPrice: Boolean,
     val showBrand: Boolean,
     val showStrain: Boolean,
@@ -490,7 +491,9 @@ private fun ProductChoice(item: ItemDraft, context: ItemCardContext, onUndoMatch
     if (context.products.isNotEmpty()) {
         Dropdown(
             label = stringResource(R.string.receipt_other_product),
-            options = listOf<Pair<String?, String>>(null to stringResource(R.string.receipt_new_product)) + context.products,
+            options = listOf<Pair<String?, String>>(null to stringResource(R.string.receipt_new_product)) +
+                context.products.map { it.id to it.title },
+            detail = { id -> context.products.firstOrNull { it.id == id }?.detail.orEmpty() },
             selected = null,
             onSelect = { id -> if (id != null) item.product = id },
             modifier = Modifier.fillMaxWidth(),

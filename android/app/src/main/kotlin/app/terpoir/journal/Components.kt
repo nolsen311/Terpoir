@@ -305,11 +305,15 @@ fun <T> Dropdown(
     selected: T,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
+    // A second, smaller line under an option (a product's brand and kind).
+    detail: (T) -> String = { "" },
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = modifier) {
         OutlinedTextField(
-            value = options.firstOrNull { it.first == selected }?.second.orEmpty(),
+            value = options.firstOrNull { it.first == selected }
+                ?.let { (value, text) -> listOf(text, detail(value)).filter { it.isNotEmpty() }.joinToString(" · ") }
+                .orEmpty(),
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
@@ -318,7 +322,17 @@ fun <T> Dropdown(
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             for ((value, text) in options) {
-                DropdownMenuItem(text = { Text(text) }, onClick = {
+                val more = detail(value)
+                DropdownMenuItem(text = {
+                    if (more.isEmpty()) {
+                        Text(text)
+                    } else {
+                        Column {
+                            Text(text)
+                            Text(more, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }, onClick = {
                     onSelect(value)
                     expanded = false
                 })

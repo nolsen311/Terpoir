@@ -7,6 +7,7 @@ package app.terpoir.journal
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import app.terpoir.R
+import app.terpoir.core.ProductData
 import app.terpoir.core.TagRefData
 import java.time.Instant
 import java.time.ZoneOffset
@@ -177,9 +178,10 @@ fun formatWhen(unixMs: Long, utcOffsetMin: Short): String =
         .format(Instant.ofEpochMilli(unixMs).atOffset(ZoneOffset.ofTotalSeconds(utcOffsetMin * 60)))
 
 /**
- * How a product is shown everywhere: its brand, then its own name ("Fire
- * Bros Block Berry Cart"), so the name needn't repeat the brand. A name that
- * already starts with the brand is shown as it is.
+ * How a product is named in running text (the timeline, receipts' linked
+ * lines, shares): its brand, then its own name ("Fire Bros Block Berry
+ * Cart"), so the name needn't repeat the brand. A name that already starts
+ * with the brand is shown as it is. Pickers use [productPicks] instead.
  */
 fun productLabel(name: String, brand: String?): String = productLabel(name, brand, emptyList())
 
@@ -220,3 +222,54 @@ fun productTitle(name: String, strains: List<String>, brand: String?, form: Stri
     val detail = listOf(f, ownName).filter { it.isNotEmpty() && it != title }.distinct().joinToString(" · ")
     return ProductTitle(title, b.takeIf { it != title }.orEmpty(), detail, potency.joinToString(" · "))
 }
+
+/**
+ * The names a product's card is built from, as "What I track" shows them
+ * (hidden brands and strains are left out): strain, brand and custom
+ * subtype names by ID.
+ */
+data class ProductNames(
+    val strains: Map<String, String> = emptyMap(),
+    val brands: Map<String, String> = emptyMap(),
+    val subtypes: Map<String, String> = emptyMap(),
+)
+
+/** A product's kind on its card: its subtype ("Bubble hash") says more than its type ("Concentrate"). */
+@Composable
+fun productKind(product: ProductData, names: ProductNames): String? = when (val st = product.subtype) {
+    is TagRefData.Builtin -> label(st.slug)
+    is TagRefData.Custom -> names.subtypes[st.id]
+    null -> null
+} ?: product.form?.let { label(it) }
+
+/** A product's catalog card ([productTitle]) from its [names]. */
+@Composable
+fun productCard(product: ProductData, names: ProductNames, potency: List<String> = emptyList()): ProductTitle =
+    productTitle(
+        product.name,
+        product.strains.mapNotNull(names.strains::get),
+        product.brand?.let(names.brands::get),
+        productKind(product, names),
+        potency,
+    )
+
+/**
+ * A product to pick (maintainer, 2026-11-13): named as its card on the
+ * Products page names it, [title] (its strains), with its brand and kind
+ * in [detail], so the same product looks the same in both places.
+ */
+data class ProductPick(val id: String, val title: String, val detail: String) {
+    /** On one line, for a picker's closed field. */
+    val line: String get() = listOf(title, detail).filter { it.isNotEmpty() }.joinToString(" · ")
+}
+
+/** [products] to pick from, in the Products page's order (by card title). */
+@Composable
+fun productPicks(products: List<Entry<ProductData>>, names: ProductNames): List<ProductPick> =
+    picksOf(products.map { it.id to productCard(it.data, names) })
+
+/** Picks from products' cards (ID, card), in the Products page's order; ties by brand and kind. */
+fun picksOf(cards: List<Pair<String, ProductTitle>>): List<ProductPick> =
+    cards.map { (id, card) ->
+        ProductPick(id, card.title, listOf(card.brand, card.detail).filter { it.isNotEmpty() }.joinToString(" · "))
+    }.sortedWith(compareBy({ it.title.lowercase() }, { it.detail.lowercase() }))

@@ -137,6 +137,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
     val undone = remember { mutableStateListOf<Pair<String, String>>() }
     var products by remember { mutableStateOf<List<Entry<ProductData>>>(emptyList()) }
     var productLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var productNames by remember { mutableStateOf(ProductNames()) }
     var spots by remember { mutableStateOf<List<Entry<SpotData>>>(emptyList()) }
     var invalid by remember { mutableStateOf(false) }
     // Two products that learned one line: which is kept, and the other.
@@ -358,6 +359,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                         val read = scan.scanner.readReceipt(shot)
                         products = repo.products()
                         productLabels = repo.productLabels()
+                        productNames = repo.productNames()
                         spots = repo.spots()
                         photo = read.image
                         val found = read.rows
@@ -595,7 +597,7 @@ fun ReceiptScreen(repo: JournalRepository, scan: ScanServices, onDone: () -> Uni
                 size = ::sizeOf,
                 productLabel = { id -> productLabels[id] ?: products.firstOrNull { it.id == id }?.data?.name.orEmpty() },
                 // Picking by hand leaves archived products out; scans still match them.
-                products = products.filter { !it.data.archived }.map { it.id to (productLabels[it.id] ?: it.data.name) }.sortedBy { it.second.lowercase() },
+                products = productPicks(products.filter { !it.data.archived }, productNames),
                 showPrice = showPrice,
                 showBrand = showBrand,
                 showStrain = showStrain,

@@ -659,13 +659,7 @@ private fun CatalogLists(
                 d.cbdMilli?.let { stringResource(R.string.catalog_cbd, amount(it, d.cbdUnit)) },
             )
         }
-        // Its kind ("Bubble hash") says more than its type ("Concentrate").
-        val kind = when (val st = d.subtype) {
-            is TagRefData.Builtin -> label(st.slug)
-            is TagRefData.Custom -> subtypeNames[st.id]
-            null -> null
-        } ?: d.form?.let { label(it) }
-        Triple(p.id, productTitle(d.name, d.strains.mapNotNull(strainNames::get), d.brand?.let(brandNames::get), kind, potency), d.archived)
+        Triple(p.id, productCard(d, ProductNames(strainNames, brandNames, subtypeNames), potency), d.archived)
     }.sortedBy { it.second.title.lowercase() }
     val (archivedRows, activeRows) = productRows.partition { it.third }
     // The lists swipe sideways (maintainer, 2026-10-15). The buttons above
