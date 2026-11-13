@@ -562,9 +562,11 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
 - [x] CodeQL for Swift (needs the macOS runner). (2026-11-13.)
 
 ### I2. App shell
-- [ ] `ios/` app target generated from a reviewable spec (XcodeGen
+- [x] `ios/` app target generated from a reviewable spec (XcodeGen
       `project.yml`, pinned, run in CI only; no committed `.xcodeproj`
-      churn), bundle ID `app.terpoir`, iOS 17+.
+      churn), bundle ID `app.terpoir`, iOS 17+. (2026-11-13: XcodeGen
+      2.46.0 built from its pinned commit; a placeholder screen that
+      reaches the core, tested in CI.)
 - [ ] Keys: the master-key wrapping key in the Keychain,
       `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly`, behind
       `SecAccessControl` (biometry or passcode) so a patched app can't skip

@@ -5,3 +5,5 @@
 /TerpoirCore/.build/
 /TerpoirCore/.swiftpm/
 /TerpoirCore/Tests/TerpoirCoreTests/Fixtures/
+/Terpoir.xcodeproj/
+/App/Info.plist
