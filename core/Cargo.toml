@@ -48,7 +48,7 @@ hkdf = "0.13"
 hpke = { version = "0.15.0", default-features = false, features = ["alloc", "getrandom", "x25519", "chacha"] }
 # SQLCipher with OpenSSL built from source, so Android and iOS builds need no
 # system crypto library.
-rusqlite = { version = "0.41", features = ["bundled-sqlcipher-vendored-openssl"] }
+rusqlite = { version = "0.42", features = ["bundled-sqlcipher-vendored-openssl"] }
 postcard = { version = "1.1", default-features = false, features = ["alloc"] }
 proptest = { version = "1.11", default-features = false, features = ["std"] }
 secrecy = "0.10"
