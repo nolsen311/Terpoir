@@ -21,8 +21,9 @@ print(next(d["udid"] for runtime, ds in sorted(devices.items(), reverse=True)
            if "iOS" in runtime for d in ds if d["name"].startswith("iPhone")))')
 echo "Simulator: $udid"
 log=$(mktemp)
-# Simulator builds need no signing.
-xcodebuild test "$@" -destination "id=$udid" CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$log" \
+# Ad-hoc signing ("-"): no certificate or Apple account, but the app keeps
+# the entitlements the simulator's Keychain needs (MasterKeyVaultTests).
+xcodebuild test "$@" -destination "id=$udid" CODE_SIGN_IDENTITY=- 2>&1 | tee "$log" \
     | grep -E "Test (Case|Suite)|Executed|error:|TEST (SUCCEEDED|FAILED)"
 ran=$(sed -n 's/.*Executed \([0-9]*\) tests\{0,1\}, with 0 failures.*/\1/p' "$log" | tail -1)
 rm -f "$log"

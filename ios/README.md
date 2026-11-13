@@ -37,6 +37,7 @@ ios/scripts/test-on-simulator.sh 1 -project ios/Terpoir.xcodeproj -scheme Terpoi
 ```
 
 `App/` is the SwiftUI app (bundle ID `app.terpoir`, iOS 17+, iPhone only
-for now), `AppTests/` its tests. Simulator builds are unsigned; signing
+for now), `AppTests/` its tests. Simulator builds are signed ad hoc (no
+certificate or account); real signing
 happens only in the release workflow (`docs/design-decisions.md`, "Signing
 keys").
