@@ -576,7 +576,10 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
       a Secure Enclave key (a Keychain key on the simulator) usable only
       after Face ID, Touch ID or the passcode, or current biometrics only;
       the wrapped key has Complete data protection and is excluded from
-      backups. Next: the journal's own files, and onboarding using it.)
+      backups. The journal's files (`JournalFiles`: database, attachments,
+      wrapped keys) have Complete protection and are excluded from backups;
+      `JournalSession` creates, locks and unlocks through the vault. Next:
+      onboarding using it.)
 - [ ] Onboarding and recovery key, unlock (Face ID / Touch ID or
       passcode), auto-lock, blur in the app switcher and while the screen
       is recorded or mirrored.
