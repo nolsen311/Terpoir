@@ -10,8 +10,8 @@
 set -euo pipefail
 
 # AppInfoTests (1), MasterKeyVaultTests (5), JournalSessionTests (5),
-# OnboardingTests (3).
-MIN_TESTS=14
+# OnboardingTests (3), LabelTests (2), JournalRepositoryTests (2).
+MIN_TESTS=18
 
 cd "$(dirname "$0")/.."
 xcodegen generate --spec project.yml

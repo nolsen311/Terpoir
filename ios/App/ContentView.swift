@@ -57,8 +57,8 @@ struct RootView: View {
                 flagChanges += 1
             }
         case .backup, .done:
-            if session.isUnlocked {
-                JournalHome(onLock: session.lock)
+            if case let .unlocked(journal) = session.state {
+                JournalHome(journal: journal, onLock: session.lock)
             } else {
                 LockView(error: error, onUnlock: unlock)
             }
@@ -91,21 +91,6 @@ struct RootView: View {
                 self.error = "The journal couldn't be opened. Nothing was changed; try again."
             }
         }
-    }
-}
-
-/// A placeholder for the journal itself (docs/roadmap.md, "iOS", I3).
-struct JournalHome: View {
-    let onLock: () -> Void
-
-    var body: some View {
-        VStack(spacing: 12) {
-            Text("Terpoir").font(.largeTitle.bold())
-            Text("Your journal is open.")
-            Text(AppInfo.coreLine).font(.footnote).foregroundStyle(.secondary)
-            Button("Lock", action: onLock)
-        }
-        .padding()
     }
 }
 
