@@ -11,8 +11,11 @@
 #   - java-kotlin: once android/ exists, built explicitly (debug variants of
 #     both flavors) so all Kotlin source sets are analyzed.
 #   - swift: once ios/ exists, on a macOS runner: the Rust core is built
-#     first (untraced), then the TerpoirCore package's Swift is built for
-#     the simulator under CodeQL.
+#     first (untraced, from ios.yml's build cache), then the TerpoirCore
+#     package's Swift is built for the simulator under CodeQL. On pull
+#     requests only when ios/ or core/ changes (maintainer, 2026-11-14:
+#     the slowest check, on scarce macOS runners); always on main and
+#     weekly.
 
 name: CodeQL
 
@@ -54,8 +57,19 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: .github/scripts/changes.sh '^(android/|core/|ios/|\.github/)' >> "$GITHUB_OUTPUT"
 
+      # Swift runs on macOS runners, which are few: only for changes to the
+      # Swift code or the core it wraps.
+      - name: Check the changed files (Swift)
+        id: swift
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: .github/scripts/changes.sh '^(core/|ios/|\.github/workflows/codeql\.yml)' | sed 's/^run=/swift=/' >> "$GITHUB_OUTPUT"
+
       - name: Detect languages present in the tree
         id: detect
+        env:
+          SWIFT: ${{ steps.swift.outputs.swift }}
         run: |
           set -euo pipefail
           include='{"language":"actions","build-mode":"none"}'
@@ -65,7 +79,7 @@ jobs:
           if [ -d android ]; then
             include="${include},"'{"language":"java-kotlin","build-mode":"manual"}'
           fi
-          if [ -d ios ]; then
+          if [ -d ios ] && [ "$SWIFT" = true ]; then
             include="${include},"'{"language":"swift","build-mode":"manual","runner":"macos-15"}'
           fi
           echo "matrix={\"include\":[${include}]}" >> "$GITHUB_OUTPUT"
@@ -94,13 +108,32 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install the Rust toolchain
+        id: toolchain
+        if: needs.languages.outputs.run == 'true' && matrix.language == 'swift'
+        working-directory: core
+        run: |
+          set -euo pipefail
+          rustup toolchain install
+          echo "xcode=$(xcodebuild -version | head -1 | tr -cd 'A-Za-z0-9.')" >> "$GITHUB_OUTPUT"
+
+      # ios.yml saves it on main; restore only here.
+      - name: Restore the iOS core build
+        if: needs.languages.outputs.run == 'true' && matrix.language == 'swift'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/src
+            core/target
+          key: rust-ios-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.xcode }}-${{ hashFiles('core/Cargo.lock', 'core/rust-toolchain.toml', 'core/.cargo/config.toml', 'ios/scripts/build-core.sh') }}
+          restore-keys: rust-ios-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.xcode }}-
+
       # Before CodeQL starts tracing, so only the Swift build is traced.
       - name: Build the core for iOS
         if: needs.languages.outputs.run == 'true' && matrix.language == 'swift'
-        run: |
-          set -euo pipefail
-          (cd core && rustup toolchain install)
-          ios/scripts/build-core.sh
+        run: ios/scripts/build-core.sh
 
       - name: Initialize CodeQL
         if: needs.languages.outputs.run == 'true'

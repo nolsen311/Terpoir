@@ -9,6 +9,9 @@
 #   is the same recipe anyone can run to verify a published hash.
 # - ios-core-reproducible: the Rust core's static library for iPhones
 #   (aarch64-apple-ios), as ios/scripts/build-core.sh builds it, on a Mac.
+#   On pull requests only when core/ or this workflow changes (maintainer,
+#   2026-11-14: macOS runners are few); always on main and weekly. Never
+#   from a cache: it checks a clean build.
 #   The App Store binary itself can't be matched (Apple re-signs it).
 # - android-core: the Rust core for Android, as release builds and F-Droid
 #   build it (`-Pterpoir.reproducible`), the second time with a different
@@ -54,6 +57,7 @@ jobs:
     outputs:
       run: ${{ steps.files.outputs.run }}
       build: ${{ steps.build.outputs.build }}
+      ios: ${{ steps.ios.outputs.ios }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -66,6 +70,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: .github/scripts/changes.sh '^(core/|\.github/)' >> "$GITHUB_OUTPUT"
+
+      # What can change the iOS core library: the core (its build script
+      # included) and this workflow. macOS runners are few (maintainer,
+      # 2026-11-14).
+      - name: Check the changed files (iOS core)
+        id: ios
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          .github/scripts/changes.sh '^(core/|\.github/workflows/reproducible\.yml)' \
+            | sed 's/^run=/ios=/' >> "$GITHUB_OUTPUT"
 
       # What can change how the app is built: the build scripts, Gradle's
       # files, ProGuard rules, the OCR recipe, the core and CI itself.
@@ -122,7 +138,7 @@ jobs:
 
   ios-core-reproducible:
     needs: changes
-    if: needs.changes.outputs.run == 'true'
+    if: needs.changes.outputs.ios == 'true'
     runs-on: macos-15
     timeout-minutes: 60
     steps:
