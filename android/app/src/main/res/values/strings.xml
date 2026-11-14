@@ -654,6 +654,10 @@
     <string name="product_receipt_names_hint">A receipt line printed exactly like one of these links to this product on its own.</string>
     <string name="product_receipt_name_forget">Forget \"%1$s\"</string>
     <string name="product_purchases">Purchases</string>
+    <string name="purchase_log">Log a purchase</string>
+    <string name="purchase_price_optional">Price (optional)</string>
+    <string name="purchase_price_invalid">That price isn\'t an amount in that currency.</string>
+    <string name="purchase_shop_name_needed">Give the shop a name.</string>
     <string name="product_known_title">Already in your products</string>
     <string name="product_known_body">That code belongs to %1$s. Open it instead?</string>
     <string name="product_known_open">Open it</string>
