@@ -80,9 +80,11 @@ struct PurchaseEditor: View {
                 priceMinorUnits: minor, priceCurrency: minor == nil ? nil : code,
                 quantity: UInt32(quantity)
             )
+            // Noon that day, as Android dates receipts and logged purchases.
+            let noon = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: when) ?? when
             let time = LocalTimeData(
-                unixMs: Int64(when.timeIntervalSince1970 * 1000),
-                utcOffsetMin: Int16(TimeZone.current.secondsFromGMT(for: when) / 60)
+                unixMs: Int64(noon.timeIntervalSince1970 * 1000),
+                utcOffsetMin: Int16(TimeZone.current.secondsFromGMT(for: noon) / 60)
             )
             try repo.savePurchase(id: nil, PurchaseData(when: time, spot: spot, lines: [line]))
             dismiss()
