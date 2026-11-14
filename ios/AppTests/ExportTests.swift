@@ -76,6 +76,9 @@ final class ExportTests: XCTestCase {
     func testAnotherJournalsExportIsRefused() throws {
         let one = phone()
         _ = try one.create(protection: .unprotectedForTests)
+        // A record to export: an empty journal's export has nothing in it
+        // to refuse.
+        try repo(one).saveBrand(id: nil, BrandData(name: "Acme"))
         let file = try repo(one).exportArchive(masterWrappedByRecovery: one.masterWrappedByRecovery())
         let two = phone()
         _ = try two.create(protection: .unprotectedForTests)
