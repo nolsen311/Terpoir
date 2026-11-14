@@ -602,6 +602,11 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
       show. Left: purchases, strain and brand screens, moods, timeline,
       symptoms, spots, notes, and Android's written labels.)
 - [ ] Export and import, readable by the Android app and back.
+      (2026-11-14, in progress: "Your data" exports the encrypted archive
+      (`terpoir-<date>.terpoir`, as Android names it) and imports one of
+      this journal; onboarding restores from an export with its recovery
+      key. Left: the unencrypted plain-files export, and checking a file
+      from the Android app on a device.)
 - [ ] Privacy Center with the toggles the MVP has (each a pair, with its
       card); keyboard protections from `docs/design-decisions.md`.
 - [ ] Store screenshots from the real screens (simulator, demo journal).

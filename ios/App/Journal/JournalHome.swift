@@ -11,10 +11,12 @@ import TerpoirCore
 struct JournalHome: View {
     @StateObject private var repo: JournalRepository
     let onLock: () -> Void
+    let masterWrappedByRecovery: @MainActor () throws -> Data
 
-    init(journal: Journal, onLock: @escaping () -> Void) {
+    init(journal: Journal, onLock: @escaping () -> Void, masterWrappedByRecovery: @escaping @MainActor () throws -> Data) {
         _repo = StateObject(wrappedValue: JournalRepository(journal: journal))
         self.onLock = onLock
+        self.masterWrappedByRecovery = masterWrappedByRecovery
     }
 
     var body: some View {
@@ -23,6 +25,8 @@ struct JournalHome: View {
                 .tabItem { Label("Sessions", systemImage: "list.bullet") }
             NavigationStack { ProductsList(repo: repo, onLock: onLock) }
                 .tabItem { Label("Products", systemImage: "leaf") }
+            NavigationStack { DataView(repo: repo, masterWrappedByRecovery: masterWrappedByRecovery) }
+                .tabItem { Label("Your data", systemImage: "externaldrive") }
         }
     }
 }
