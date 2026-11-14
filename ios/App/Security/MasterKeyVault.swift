@@ -22,7 +22,7 @@ import Security
 ///
 /// This type only wraps and unwraps bytes; the master key itself is created
 /// and used by the Rust core.
-final class MasterKeyVault {
+final class MasterKeyVault: @unchecked Sendable { // Immutable after init.
     /// Who may use the wrapping key.
     enum Protection {
         /// Face ID, Touch ID or the device passcode (the default).

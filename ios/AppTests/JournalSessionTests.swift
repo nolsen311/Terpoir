@@ -40,7 +40,7 @@ final class JournalSessionTests: XCTestCase {
         guard case .noJournal = session.state else { return XCTFail("expected noJournal") }
     }
 
-    func testCreateLockAndUnlockKeepTheEntries() throws {
+    func testCreateLockAndUnlockKeepTheEntries() async throws {
         let session = JournalSession(files: files, vault: vault)
         _ = try session.create(protection: .unprotectedForTests)
         let id = try journal(session).saveBrand(id: nil, brand: BrandData(name: "Acme"), nowMs: 1)
@@ -50,7 +50,7 @@ final class JournalSessionTests: XCTestCase {
         // As after the app restarts: a journal exists, locked.
         let again = JournalSession(files: files, vault: vault)
         guard case .locked = again.state else { return XCTFail("expected locked after restart") }
-        try again.unlock(context: LAContext())
+        try await again.unlock(context: LAContext())
         XCTAssertEqual(try journal(again).getBrand(id: id), BrandData(name: "Acme"))
     }
 
