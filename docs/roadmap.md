@@ -600,7 +600,8 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
       brand, strains) and a session (when, one product with method and
       dose, core effects, rating, would repeat), keeping fields they don't
       show. Left: purchases, strain and brand screens, moods, timeline,
-      symptoms, spots, notes, and Android's written labels.)
+      symptoms, spots and notes. Android's written labels: done 2026-11-14,
+      generated from Android's by `ios/scripts/labels-from-android.py`.)
 - [ ] Export and import, readable by the Android app and back.
       (2026-11-14, in progress: "Your data" exports the encrypted archive
       (`terpoir-<date>.terpoir`, as Android names it) and imports one of

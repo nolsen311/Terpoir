@@ -8,9 +8,20 @@ import XCTest
 @testable import Terpoir
 
 final class LabelTests: XCTestCase {
-    func testASlugReadsAsWords() {
+    func testSlugsHaveAndroidsLabels() {
         XCTAssertEqual(label("vape_cart"), "Vape cart")
-        XCTAssertEqual(label("flower"), "Flower")
+        XCTAssertEqual(label("beverage"), "Drink")
+        XCTAssertEqual(label("alpha_pinene"), "α-Pinene")
+    }
+
+    func testAnUnknownSlugReadsAsWords() {
+        XCTAssertEqual(label("brand_new_thing"), "Brand new thing")
+    }
+
+    func testEveryVocabularySlugHasALabel() {
+        let vocab = vocabulary()
+        let slugs = vocab.coreEffects + vocab.methods + vocab.forms + vocab.doseUnits
+        XCTAssertEqual(slugs.filter { vocabularyLabels[$0] == nil }, [])
     }
 
     func testProductTitlesFollowTheCards() {

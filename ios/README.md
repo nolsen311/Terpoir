@@ -43,3 +43,8 @@ keys").
 Each test script holds the minimum number of tests that must run and pass
 (green always means they ran); raise it when you add tests. Changes under
 `ios/` alone run only the iOS checks.
+
+The names shown for the core's vocabulary (effects, methods, forms...) are
+the Android app's: `App/Journal/VocabularyLabels.swift` is generated from
+Android's label table and strings by `scripts/labels-from-android.py`.
+After changing them on Android, run it again; `test-app.sh` checks it.
