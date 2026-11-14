@@ -114,6 +114,8 @@ fun ProductEditor(
     var shops by remember { mutableStateOf<List<String>>(emptyList()) }
     var reUpSpots by remember { mutableStateOf<List<Entry<SpotData>>>(emptyList()) }
     var purchases by remember { mutableStateOf<List<Entry<PurchaseData>>>(emptyList()) }
+    var allSpots by remember { mutableStateOf<List<Entry<SpotData>>>(emptyList()) }
+    var loggingPurchase by remember { mutableStateOf(false) }
     var spotNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var brands by remember { mutableStateOf<List<Entry<BrandData>>>(emptyList()) }
     var allStrains by remember { mutableStateOf<List<Entry<StrainData>>>(emptyList()) }
@@ -160,6 +162,7 @@ fun ProductEditor(
             receiptNames = p.receiptNames
         }
         val spots = repo.spots()
+        allSpots = spots
         spotNames = spots.associate { it.id to it.data.name }
         reUpSpots = spots.filter { s -> s.data.purposes.any { it == TagRefData.Builtin("re_up") } || s.id in shops }
         if (id != null) purchases = repo.purchasesOf(id)
@@ -525,7 +528,9 @@ fun ProductEditor(
             }
         }
 
-        if (purchases.isNotEmpty() && tracking.shows(DataPoint.PURCHASES)) {
+        // Shown for a saved product, with "Log a purchase" even before the
+        // first one (maintainer, 2026-11-14: parity with iOS).
+        if (id != null && tracking.shows(DataPoint.PURCHASES)) {
             SectionTitle(stringResource(R.string.product_purchases))
             val showPrice = tracking.shows(DataPoint.PRICE_AND_SHOP)
             for (purchase in purchases) {
@@ -536,6 +541,24 @@ fun ProductEditor(
                     listOfNotNull(formatWhen(purchase.data.`when`.unixMs, purchase.data.`when`.utcOffsetMin), where, price)
                         .joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            OutlinedButton(onClick = { loggingPurchase = true }) { Text(stringResource(R.string.purchase_log)) }
+            if (loggingPurchase) {
+                LogPurchaseDialog(
+                    repo = repo,
+                    product = id,
+                    shops = allSpots,
+                    showShopAndPrice = showPrice,
+                    onDismiss = { loggingPurchase = false },
+                    onSaved = {
+                        loggingPurchase = false
+                        scope.launch {
+                            allSpots = repo.spots()
+                            spotNames = allSpots.associate { it.id to it.data.name }
+                            purchases = repo.purchasesOf(id)
+                        }
+                    },
                 )
             }
         }

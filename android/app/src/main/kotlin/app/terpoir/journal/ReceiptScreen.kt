@@ -85,7 +85,7 @@ internal fun parsePrice(text: String, currency: String): Long? {
     return if (milli % divisor == 0L) milli / divisor else null
 }
 
-private fun localCurrency(): String =
+internal fun localCurrency(): String =
     runCatching { Currency.getInstance(Locale.getDefault()).currencyCode }.getOrNull() ?: "USD"
 
 /** The camera, reading, the review, and the camera again for the rest of a long receipt. */
