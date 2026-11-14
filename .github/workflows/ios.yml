@@ -65,15 +65,44 @@ jobs:
       # The runner's preinstalled rustup; core/rust-toolchain.toml pins the
       # toolchain. No third-party toolchain action.
       - name: Install toolchain
+        id: toolchain
         working-directory: core
         run: |
           set -euo pipefail
           rustup toolchain install
           rustc --version
           xcodebuild -version
+          echo "xcode=$(xcodebuild -version | head -1 | tr -cd 'A-Za-z0-9.')" >> "$GITHUB_OUTPUT"
+
+      # The compiled core and its dependencies (OpenSSL, SQLCipher...), so
+      # only what changed is rebuilt (maintainer, 2026-11-14). Saved only on
+      # main (below), so a pull request can never seed it; Cargo checks
+      # every crate against Cargo.lock either way.
+      - name: Restore the iOS core build
+        id: rust-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/src
+            core/target
+          key: rust-ios-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.xcode }}-${{ hashFiles('core/Cargo.lock', 'core/rust-toolchain.toml', 'core/.cargo/config.toml', 'ios/scripts/build-core.sh') }}
+          restore-keys: rust-ios-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.xcode }}-
 
       - name: Build the core for iOS
         run: ios/scripts/build-core.sh
+
+      - name: Save the iOS core build
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/src
+            core/target
+          key: rust-ios-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.xcode }}-${{ hashFiles('core/Cargo.lock', 'core/rust-toolchain.toml', 'core/.cargo/config.toml', 'ios/scripts/build-core.sh') }}
 
       - name: Test the core package on the iOS simulator
         working-directory: ios/TerpoirCore
@@ -88,8 +117,17 @@ jobs:
 
       # XcodeGen turns ios/project.yml into the Xcode project. Built from a
       # pinned commit (2.46.0, MIT) with its own Package.resolved pins; a
-      # build tool only, never part of the app.
+      # build tool only, never part of the app. The built tool is cached by
+      # that commit, saved only on main.
+      - name: Restore XcodeGen
+        id: xcodegen-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/xcodegen
+          key: xcodegen-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.xcode }}-8445e778451c7e44237b90281bde622d764b0084
+
       - name: Build XcodeGen
+        if: steps.xcodegen-cache.outputs.cache-hit != 'true'
         env:
           XCODEGEN_COMMIT: 8445e778451c7e44237b90281bde622d764b0084 # 2.46.0
         run: |
@@ -99,7 +137,22 @@ jobs:
           git -C "$src" fetch --quiet --depth 1 https://github.com/yonaskolb/XcodeGen "$XCODEGEN_COMMIT"
           git -C "$src" checkout --quiet FETCH_HEAD
           (cd "$src" && swift build -c release --product xcodegen --force-resolved-versions)
-          echo "$src/.build/release" >> "$GITHUB_PATH"
+          # The tool and its resource bundles (setting presets), side by side.
+          mkdir -p ~/xcodegen
+          cp "$src/.build/release/xcodegen" ~/xcodegen/
+          for bundle in "$src/.build/release/"*.bundle; do
+            if [ -e "$bundle" ]; then cp -R "$bundle" ~/xcodegen/; fi
+          done
+
+      - name: Save XcodeGen
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.xcodegen-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/xcodegen
+          key: xcodegen-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.xcode }}-8445e778451c7e44237b90281bde622d764b0084
+
+      - name: Put XcodeGen on the PATH
+        run: echo "$HOME/xcodegen" >> "$GITHUB_PATH"
 
       - name: Test the app on the iOS simulator
         run: |
