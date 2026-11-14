@@ -61,7 +61,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: .github/scripts/changes.sh '^(core/|\.github/)' >> "$GITHUB_OUTPUT"
+        run: .github/scripts/changes.sh '^(core/|\.github/(workflows/supply-chain\.yml|scripts/))' >> "$GITHUB_OUTPUT"
 
   cargo-deny:
     needs: changes

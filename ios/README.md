@@ -12,8 +12,7 @@ the Swift bindings UniFFI generates. Both are build products:
 
 ```sh
 ios/scripts/build-core.sh        # macOS with Xcode and rustup
-cd ios/TerpoirCore && xcodebuild test -scheme TerpoirCore \
-    -destination 'platform=iOS Simulator,name=iPhone 16'
+ios/scripts/test-package.sh      # on the first available iPhone simulator
 ```
 
 The script builds `terpoir-ffi` for `aarch64-apple-ios` and
@@ -32,8 +31,7 @@ CI (`.github/workflows/ios.yml`) does the same on a macOS runner and runs
 
 ```sh
 ios/scripts/build-core.sh
-xcodegen generate --spec ios/project.yml
-ios/scripts/test-on-simulator.sh 1 -project ios/Terpoir.xcodeproj -scheme Terpoir
+ios/scripts/test-app.sh          # runs xcodegen, then the app's tests
 ```
 
 `App/` is the SwiftUI app (bundle ID `app.terpoir`, iOS 17+, iPhone only
@@ -41,3 +39,7 @@ for now), `AppTests/` its tests. Simulator builds are signed ad hoc (no
 certificate or account); real signing
 happens only in the release workflow (`docs/design-decisions.md`, "Signing
 keys").
+
+Each test script holds the minimum number of tests that must run and pass
+(green always means they ran); raise it when you add tests. Changes under
+`ios/` alone run only the iOS checks.
