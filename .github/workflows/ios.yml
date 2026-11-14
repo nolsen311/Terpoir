@@ -104,16 +104,9 @@ jobs:
             core/target
           key: rust-ios-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.xcode }}-${{ hashFiles('core/Cargo.lock', 'core/rust-toolchain.toml', 'core/.cargo/config.toml', 'ios/scripts/build-core.sh') }}
 
+      # The minimum test counts live in these scripts, beside the tests.
       - name: Test the core package on the iOS simulator
-        working-directory: ios/TerpoirCore
-        run: |
-          set -euo pipefail
-          # Xcode names the package's scheme after it, or "<name>-Package"
-          # when it makes one per product.
-          scheme=TerpoirCore
-          if xcodebuild -list | grep -q 'TerpoirCore-Package'; then scheme=TerpoirCore-Package; fi
-          # SmokeTests (3) and CompatFixtureTests (1).
-          ../scripts/test-on-simulator.sh 4 -scheme "$scheme"
+        run: ios/scripts/test-package.sh
 
       # XcodeGen turns ios/project.yml into the Xcode project. Built from a
       # pinned commit (2.46.0, MIT) with its own Package.resolved pins; a
@@ -124,7 +117,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/xcodegen
-          key: xcodegen-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.xcode }}-8445e778451c7e44237b90281bde622d764b0084
+          key: xcodegen-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.xcode }}-8445e778451c7e44237b90281bde622d764b0084
 
       - name: Build XcodeGen
         if: steps.xcodegen-cache.outputs.cache-hit != 'true'
@@ -137,26 +130,30 @@ jobs:
           git -C "$src" fetch --quiet --depth 1 https://github.com/yonaskolb/XcodeGen "$XCODEGEN_COMMIT"
           git -C "$src" checkout --quiet FETCH_HEAD
           (cd "$src" && swift build -c release --product xcodegen --force-resolved-versions)
-          # The tool and its resource bundles (setting presets), side by side.
-          mkdir -p ~/xcodegen
-          cp "$src/.build/release/xcodegen" ~/xcodegen/
-          for bundle in "$src/.build/release/"*.bundle; do
-            if [ -e "$bundle" ]; then cp -R "$bundle" ~/xcodegen/; fi
-          done
+          # XcodeGen's install layout: the tool in bin/, its setting presets
+          # in share/xcodegen/, where it looks next to itself. Built from
+          # source it would also find them through the checkout's path,
+          # which a cached copy doesn't have, so the checkout goes and every
+          # run uses the layout the cache holds.
+          mkdir -p ~/xcodegen/bin ~/xcodegen/share/xcodegen
+          cp "$src/.build/release/xcodegen" ~/xcodegen/bin/
+          cp -R "$src/SettingPresets" ~/xcodegen/share/xcodegen/
+          rm -rf "$src"
 
       - name: Save XcodeGen
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.xcodegen-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/xcodegen
-          key: xcodegen-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.xcode }}-8445e778451c7e44237b90281bde622d764b0084
+          key: xcodegen-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.xcode }}-8445e778451c7e44237b90281bde622d764b0084
 
       - name: Put XcodeGen on the PATH
-        run: echo "$HOME/xcodegen" >> "$GITHUB_PATH"
-
-      - name: Test the app on the iOS simulator
         run: |
           set -euo pipefail
-          xcodegen generate --spec ios/project.yml
-          # AppInfoTests (1) and MasterKeyVaultTests (5).
-          ios/scripts/test-on-simulator.sh 6 -project ios/Terpoir.xcodeproj -scheme Terpoir
+          # A copy without its presets makes projects with empty product
+          # names; fail here instead.
+          test -f ~/xcodegen/share/xcodegen/SettingPresets/base.yml
+          echo "$HOME/xcodegen/bin" >> "$GITHUB_PATH"
+
+      - name: Test the app on the iOS simulator
+        run: ios/scripts/test-app.sh

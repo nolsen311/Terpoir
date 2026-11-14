@@ -49,7 +49,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: .github/scripts/changes.sh '^(android/|core/|\.github/)' >> "$GITHUB_OUTPUT"
+        run: .github/scripts/changes.sh '^(android/|core/|\.github/(workflows/android\.yml|scripts/))' >> "$GITHUB_OUTPUT"
 
   android:
     needs: changes

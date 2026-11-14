@@ -43,44 +43,49 @@ jobs:
       pull-requests: read
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
-      run: ${{ steps.files.outputs.run }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      # Pull requests that change no code or workflows skip the analysis.
+      # Pull requests analyze only the languages whose code (or this
+      # workflow, or the shared scripts) they change (maintainer,
+      # 2026-11-14). Every language still reports, so the required
+      # "analyze (<language>)" checks never wait.
       - name: Check the changed files
         id: files
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: .github/scripts/changes.sh '^(android/|core/|ios/|\.github/)' >> "$GITHUB_OUTPUT"
-
-      # Swift runs on macOS runners, which are few: only for changes to the
-      # Swift code or the core it wraps.
-      - name: Check the changed files (Swift)
-        id: swift
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: .github/scripts/changes.sh '^(core/|ios/|\.github/workflows/codeql\.yml)' | sed 's/^run=/swift=/' >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          own='\.github/(workflows/codeql\.yml|scripts/)'
+          check() { .github/scripts/changes.sh "$2" | sed "s/^run=/$1=/" >> "$GITHUB_OUTPUT"; }
+          check actions '^\.github/'
+          check rust "^(core/|$own)"
+          check kotlin "^(android/|core/|$own)"
+          # Swift runs on macOS runners, which are few.
+          check swift "^(core/|ios/|$own)"
 
       - name: Detect languages present in the tree
         id: detect
         env:
-          SWIFT: ${{ steps.swift.outputs.swift }}
+          ACTIONS: ${{ steps.files.outputs.actions }}
+          RUST: ${{ steps.files.outputs.rust }}
+          KOTLIN: ${{ steps.files.outputs.kotlin }}
+          SWIFT: ${{ steps.files.outputs.swift }}
         run: |
           set -euo pipefail
-          include='{"language":"actions","build-mode":"none"}'
+          include='{"language":"actions","build-mode":"none","run":"'"$ACTIONS"'"}'
           if [ -f core/Cargo.toml ]; then
-            include="${include},"'{"language":"rust","build-mode":"none"}'
+            include="${include},"'{"language":"rust","build-mode":"none","run":"'"$RUST"'"}'
           fi
           if [ -d android ]; then
-            include="${include},"'{"language":"java-kotlin","build-mode":"manual"}'
+            include="${include},"'{"language":"java-kotlin","build-mode":"manual","run":"'"$KOTLIN"'"}'
           fi
+          # Not a required check, so it is left out rather than skipped.
           if [ -d ios ] && [ "$SWIFT" = true ]; then
-            include="${include},"'{"language":"swift","build-mode":"manual","runner":"macos-15"}'
+            include="${include},"'{"language":"swift","build-mode":"manual","runner":"macos-15","run":"true"}'
           fi
           echo "matrix={\"include\":[${include}]}" >> "$GITHUB_OUTPUT"
 
@@ -100,17 +105,17 @@ jobs:
       matrix: ${{ fromJSON(needs.languages.outputs.matrix) }}
     steps:
       - name: Nothing to analyze
-        if: needs.languages.outputs.run != 'true'
-        run: echo "No code or workflow changes in this pull request; analysis skipped."
+        if: matrix.run != 'true'
+        run: echo "No changes to ${{ matrix.language }} code in this pull request; analysis skipped."
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.languages.outputs.run == 'true'
+        if: matrix.run == 'true'
         with:
           persist-credentials: false
 
       - name: Install the Rust toolchain
         id: toolchain
-        if: needs.languages.outputs.run == 'true' && matrix.language == 'swift'
+        if: matrix.run == 'true' && matrix.language == 'swift'
         working-directory: core
         run: |
           set -euo pipefail
@@ -119,7 +124,7 @@ jobs:
 
       # ios.yml saves it on main; restore only here.
       - name: Restore the iOS core build
-        if: needs.languages.outputs.run == 'true' && matrix.language == 'swift'
+        if: matrix.run == 'true' && matrix.language == 'swift'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -132,11 +137,11 @@ jobs:
 
       # Before CodeQL starts tracing, so only the Swift build is traced.
       - name: Build the core for iOS
-        if: needs.languages.outputs.run == 'true' && matrix.language == 'swift'
+        if: matrix.run == 'true' && matrix.language == 'swift'
         run: ios/scripts/build-core.sh
 
       - name: Initialize CodeQL
-        if: needs.languages.outputs.run == 'true'
+        if: matrix.run == 'true'
         uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           languages: ${{ matrix.language }}
@@ -145,7 +150,7 @@ jobs:
 
       # Downloaded dependencies only; see android.yml, which saves it.
       - name: Restore dependency cache
-        if: needs.languages.outputs.run == 'true' && matrix.language == 'java-kotlin'
+        if: matrix.run == 'true' && matrix.language == 'java-kotlin'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -158,23 +163,23 @@ jobs:
           restore-keys: deps-${{ runner.os }}-
 
       - name: Set up Rust core toolchain
-        if: needs.languages.outputs.run == 'true' && matrix.language == 'java-kotlin'
+        if: matrix.run == 'true' && matrix.language == 'java-kotlin'
         run: .github/scripts/setup-android-core.sh
 
       - name: Build Android app
-        if: needs.languages.outputs.run == 'true' && matrix.language == 'java-kotlin'
+        if: matrix.run == 'true' && matrix.language == 'java-kotlin'
         working-directory: android
         run: |
           export JAVA_HOME="$JAVA_HOME_21_X64"
           ./gradlew --no-daemon --no-build-cache assembleFossDebug assemblePlayDebug
 
       - name: Build the iOS core package
-        if: needs.languages.outputs.run == 'true' && matrix.language == 'swift'
+        if: matrix.run == 'true' && matrix.language == 'swift'
         working-directory: ios/TerpoirCore
         run: xcodebuild build -scheme TerpoirCore -destination 'generic/platform=iOS Simulator' -quiet
 
       - name: Analyze
-        if: needs.languages.outputs.run == 'true'
+        if: matrix.run == 'true'
         uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           category: "/language:${{ matrix.language }}"
