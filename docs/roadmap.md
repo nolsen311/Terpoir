@@ -567,25 +567,40 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
       churn), bundle ID `app.terpoir`, iOS 17+. (2026-11-13: XcodeGen
       2.46.0 built from its pinned commit; a placeholder screen that
       reaches the core, tested in CI.)
-- [ ] Keys: the master-key wrapping key in the Keychain,
+- [x] Keys: the master-key wrapping key in the Keychain,
       `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly`, behind
       `SecAccessControl` (biometry or passcode) so a patched app can't skip
       the prompt; Data Protection `complete`; app data excluded from
       backups.
-      (2026-11-13, in progress: `MasterKeyVault` wraps the master key with
+      (2026-11-13: `MasterKeyVault` wraps the master key with
       a Secure Enclave key (a Keychain key on the simulator) usable only
       after Face ID, Touch ID or the passcode, or current biometrics only;
       the wrapped key has Complete data protection and is excluded from
-      backups. Next: the journal's own files, and onboarding using it.)
+      backups. The journal's files (`JournalFiles`: database, attachments,
+      wrapped keys) have Complete protection and are excluded from backups;
+      `JournalSession` creates, locks and unlocks through the vault, and
+      onboarding uses it.)
 - [ ] Onboarding and recovery key, unlock (Face ID / Touch ID or
       passcode), auto-lock, blur in the app switcher and while the screen
       is recorded or mirrored.
+      (2026-11-13, in progress: age, create, the recovery key with a typed
+      check or a confirmed skip, the lock screen, locking whenever the app
+      leaves the screen, and a cover in the app switcher and while the
+      screen is captured, with Android's wording. Left: restoring an
+      existing journal, and auto-lock choices like Android's.)
 - [ ] Age gate: Declared Age Range API (read only, never stored); 18+
-      rating.
+      rating. (Self-attestation is in onboarding; Apple's signal needs the
+      Apple Developer account and its entitlement.)
 
 ### I3. Core MVP features
 - [ ] Sessions, products, strains, brands, purchases, effects and the
       vocabulary, through the core as on Android.
+      (2026-11-13, in progress: Sessions and Products lists (cards titled
+      and ordered as on Android), and editors for a product (name, type,
+      brand, strains) and a session (when, one product with method and
+      dose, core effects, rating, would repeat), keeping fields they don't
+      show. Left: purchases, strain and brand screens, moods, timeline,
+      symptoms, spots, notes, and Android's written labels.)
 - [ ] Export and import, readable by the Android app and back.
 - [ ] Privacy Center with the toggles the MVP has (each a pair, with its
       card); keyboard protections from `docs/design-decisions.md`.
