@@ -4,10 +4,12 @@
 
 import Foundation
 
-/// A vocabulary slug as words ("vape_cart" → "Vape cart"). Android has a
-/// written label for each; until iOS has the same table, the slug reads
-/// well enough.
+/// A vocabulary slug's display name, as the Android app shows it
+/// (`vocabularyLabels`, generated from Android's). A slug this version
+/// doesn't know (from a newer app) reads as words ("new_thing" → "New
+/// thing").
 func label(_ slug: String) -> String {
+    if let known = vocabularyLabels[slug] { return known }
     let words = slug.replacingOccurrences(of: "_", with: " ")
     return words.prefix(1).uppercased() + words.dropFirst()
 }

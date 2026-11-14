@@ -10,10 +10,12 @@
 set -euo pipefail
 
 # AppInfoTests (1), MasterKeyVaultTests (5), JournalSessionTests (5),
-# OnboardingTests (3), LabelTests (2), JournalRepositoryTests (2),
+# OnboardingTests (3), LabelTests (4), JournalRepositoryTests (2),
 # ExportTests (4).
-MIN_TESTS=22
+MIN_TESTS=24
 
 cd "$(dirname "$0")/.."
+# The vocabulary labels match the Android app's.
+python3 -I scripts/labels-from-android.py --check
 xcodegen generate --spec project.yml
 scripts/test-on-simulator.sh "$MIN_TESTS" -project Terpoir.xcodeproj -scheme Terpoir
