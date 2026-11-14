@@ -81,6 +81,26 @@ final class JournalRepository: ObservableObject {
         }
     }
 
+    /// The whole journal as an encrypted export; only the recovery key
+    /// opens it.
+    func exportArchive(masterWrappedByRecovery: Data) throws -> Data {
+        try journal.exportArchive(masterWrappedByRecovery: masterWrappedByRecovery)
+    }
+
+    /// An export file was from a newer app version; nothing was imported.
+    struct NewerAppNeeded: Error {}
+
+    /// Merges an export of this same journal into it (as on Android);
+    /// returns how many records were added or updated.
+    func importArchive(_ bytes: Data) throws -> UInt64 {
+        let archive = try readExportArchive(archive: bytes)
+        // Checked before anything changes, so a file from a newer app is
+        // refused whole rather than imported partly.
+        if try journal.checkExportArchive(archive: archive).newerFormatBlobs > 0 { throw NewerAppNeeded() }
+        defer { revision += 1 }
+        return try archive.blobs.reduce(0) { $0 + (try journal.importSyncBlob(bytes: $1, nowMs: now)).records }
+    }
+
     func delete(_ id: String) throws {
         defer { revision += 1 }
         _ = try journal.deleteRecord(id: id)

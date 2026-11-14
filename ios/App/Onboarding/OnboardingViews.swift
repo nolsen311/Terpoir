@@ -30,6 +30,7 @@ struct AgeView: View {
 
 struct CreateView: View {
     let onCreate: () -> Void
+    let onRestore: () -> Void
     let error: String?
 
     var body: some View {
@@ -41,6 +42,7 @@ struct CreateView: View {
                 Text(error).foregroundStyle(.red)
             }
             Button("Start a new journal", action: onCreate).buttonStyle(.borderedProminent)
+            Button("I have a journal", action: onRestore)
         }
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)

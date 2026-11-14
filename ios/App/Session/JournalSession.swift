@@ -61,6 +61,46 @@ final class JournalSession: ObservableObject {
         return keys.recoveryKey
     }
 
+    /// Why a restore was refused.
+    enum RestoreError: Error, Equatable {
+        /// The export holds records only a newer app version can read.
+        case newerAppNeeded
+    }
+
+    /// Restores a journal from an encrypted export on this (new) device
+    /// (as on Android): the core checks the archive and unwraps its master
+    /// key with the typed `recoveryKey`, the master key goes into the vault
+    /// with `protection`, and every record is imported. Returns how many
+    /// records were restored. Nothing is kept if it fails.
+    func restore(recoveryKey: String, archive: ExportArchive, protection: MasterKeyVault.Protection) throws -> UInt64 {
+        // Checked before anything changes, so a file from a newer app is
+        // refused whole rather than restored partly.
+        if try checkExportArchive(recoveryKey: recoveryKey, archive: archive).newerFormatBlobs > 0 {
+            throw RestoreError.newerAppNeeded
+        }
+        var keys = try keysForRestore(recoveryKey: recoveryKey, masterWrappedByRecovery: archive.masterWrappedByRecovery)
+        defer { keys.masterKey.resetBytes(in: 0..<keys.masterKey.count) }
+        do {
+            try files.prepare()
+            try files.write(archive.masterWrappedByRecovery, to: files.masterWrappedByRecovery)
+            try files.write(keys.wrappedDatabaseKey, to: files.wrappedDatabaseKey)
+            try vault.store(masterKey: keys.masterKey, protection: protection)
+            try open(masterKey: keys.masterKey)
+            guard case let .unlocked(journal) = state else { throw CoreError.Locked(message: "") }
+            let now = UInt64(Date().timeIntervalSince1970 * 1000)
+            return try archive.blobs.reduce(0) { $0 + (try journal.importSyncBlob(bytes: $1, nowMs: now)).records }
+        } catch {
+            reset()
+            throw error
+        }
+    }
+
+    /// The master key wrapped by the recovery key, as stored on this
+    /// device; an export carries it so only the recovery key opens it.
+    func masterWrappedByRecovery() throws -> Data {
+        try Data(contentsOf: files.masterWrappedByRecovery)
+    }
+
     /// Unlocks with the vault, which asks the OS to authenticate the user
     /// through `context` (Face ID, Touch ID or the passcode). The prompt
     /// blocks its thread, so the vault is asked off the main thread.

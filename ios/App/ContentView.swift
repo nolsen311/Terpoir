@@ -21,6 +21,7 @@ struct RootView: View {
     /// Bumped when a flag changes, so the step is worked out again.
     @State private var flagChanges = 0
     @State private var captured = UIScreen.main.isCaptured
+    @State private var restoring = false
 
     var body: some View {
         ZStack {
@@ -48,8 +49,10 @@ struct RootView: View {
                 flags.ageGatePassed = true
                 flagChanges += 1
             }
+        case .create where restoring:
+            RestoreView(onRestore: restore) { restoring = false }
         case .create:
-            CreateView(onCreate: create, error: error)
+            CreateView(onCreate: create, onRestore: { error = nil; restoring = true }, error: error)
         case .backup where session.isUnlocked:
             BackupView(recoveryKey: recoveryKey, check: session.checkRecoveryKey) {
                 flags.backupPending = false
@@ -58,7 +61,7 @@ struct RootView: View {
             }
         case .backup, .done:
             if case let .unlocked(journal) = session.state {
-                JournalHome(journal: journal, onLock: session.lock)
+                JournalHome(journal: journal, onLock: session.lock, masterWrappedByRecovery: session.masterWrappedByRecovery)
             } else {
                 LockView(error: error, onUnlock: unlock)
             }
@@ -77,6 +80,28 @@ struct RootView: View {
         } catch {
             session.reset()
             self.error = "The journal couldn't be created. Nothing was kept; try again."
+        }
+    }
+
+    /// Restores from an export; returns why it failed, or nil.
+    private func restore(recoveryKey: String, archive: ExportArchive) -> String? {
+        do {
+            _ = try session.restore(recoveryKey: recoveryKey, archive: archive, protection: .userPresence)
+            // The user has the recovery key: they just typed it.
+            flags.backupPending = false
+            restoring = false
+            flagChanges += 1
+            return nil
+        } catch JournalSession.RestoreError.newerAppNeeded {
+            return "This was made by a newer version of Terpoir. Update the app, then try again. Nothing was changed."
+        } catch CoreError.RecoveryKeyLength, CoreError.RecoveryKeyCharacter, CoreError.RecoveryKeyChecksum {
+            return "That doesn't look like a whole recovery key. Check your copy for a typo."
+        } catch CoreError.WrongKey {
+            return "That recovery key doesn't open this export."
+        } catch MasterKeyVault.VaultError.noPasscode {
+            return "Set up a passcode on this iPhone first. Terpoir uses it to protect your journal."
+        } catch {
+            return "The journal couldn't be restored. Nothing was kept; try again."
         }
     }
 
