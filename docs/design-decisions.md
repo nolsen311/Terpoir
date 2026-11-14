@@ -20,6 +20,8 @@ A mobile app for cannabis consumers to journal experiences with strains, product
 
 ## Platforms and architecture
 - Native apps on both Android and iOS. **Android first, iOS second.**
+- **Feature parity (maintainer, 2026-11-14):** each platform has every feature the other has. A feature added on one app is added on the other (in the same change, or in a pull request opened alongside it, linked from both), so neither grows features the other lacks. While iOS catches up to Android, the gap is the build order in `docs/roadmap.md` ("iOS"), not an exception. A feature deliberately left out of one platform, or that differs in kind, needs a decision logged here under "Platform exceptions" below.
+  - **Platform exceptions** (each with the maintainer's decision and date): none yet besides those already recorded where they apply, such as Google Maps on Play builds only, Play-only on-demand text recognition, and features the platforms themselves don't offer (iOS can't block screenshots or rename the app).
 - **Shared core in Rust**, exposed to both platforms via UniFFI (Kotlin and Swift bindings). The core owns encryption, the data model, sync, and merge logic. Platform code handles only UI and OS integration. One implementation to audit.
   - Rationale: mature, audited crypto libraries; `zeroize` for wiping key material from memory (not reliably possible on the JVM); production-grade CRDT libraries available if ever needed.
   - Android UI: Kotlin + Jetpack Compose. Build via cargo-ndk; iOS via xcframework.
