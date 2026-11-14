@@ -69,7 +69,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: .github/scripts/changes.sh '^(core/|\.github/)' >> "$GITHUB_OUTPUT"
+        run: .github/scripts/changes.sh '^(core/|\.github/(workflows/reproducible\.yml|scripts/))' >> "$GITHUB_OUTPUT"
 
       # What can change the iOS core library: the core (its build script
       # included) and this workflow. macOS runners are few (maintainer,
@@ -91,7 +91,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          .github/scripts/changes.sh '^(core/|\.github/|android/[^/]+$|android/gradle/|android/ocr-native/|android/[^/]+/(build\.gradle\.kts|proguard-rules\.pro)$)' \
+          .github/scripts/changes.sh '^(core/|\.github/(workflows/reproducible\.yml|scripts/)|android/[^/]+$|android/gradle/|android/ocr-native/|android/[^/]+/(build\.gradle\.kts|proguard-rules\.pro)$)' \
             | sed 's/^run=/build=/' >> "$GITHUB_OUTPUT"
 
   reproducible:
