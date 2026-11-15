@@ -101,6 +101,38 @@ final class JournalRepository: ObservableObject {
         return try archive.blobs.reduce(0) { $0 + (try journal.importSyncBlob(bytes: $1, nowMs: now)).records }
     }
 
+    /// Purchases that include `product`, newest first (as Android's
+    /// `purchasesOf`).
+    func purchases(of product: String) -> [Entry<PurchaseData>] {
+        all(.purchase) { try self.journal.getPurchase(id: $0) }
+            .filter { $0.data.lines.contains { $0.product == product } }
+            .sorted { $0.data.when.unixMs > $1.data.when.unixMs }
+    }
+
+    @discardableResult
+    func savePurchase(id: String?, _ data: PurchaseData) throws -> String {
+        defer { revision += 1 }
+        return try journal.savePurchase(id: id, purchase: data, nowMs: now)
+    }
+
+    /// By name.
+    func spots() -> [Entry<SpotData>] {
+        all(.spot) { try self.journal.getSpot(id: $0) }
+            .sorted { $0.data.name.localizedCaseInsensitiveCompare($1.data.name) == .orderedAscending }
+    }
+
+    /// A shop known only by its name: a spot with Android's "Re-up" purpose
+    /// and no location (as a receipt's new shop is saved on Android).
+    @discardableResult
+    func saveShop(named name: String) throws -> String {
+        defer { revision += 1 }
+        let shop = SpotData(
+            name: name, purposes: [.builtin(slug: "re_up")], latE7: nil, lonE7: nil,
+            accuracyM: nil, radiusM: nil, purchasePrompts: false
+        )
+        return try journal.saveSpot(id: nil, spot: shop, nowMs: now)
+    }
+
     func delete(_ id: String) throws {
         defer { revision += 1 }
         _ = try journal.deleteRecord(id: id)

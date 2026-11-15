@@ -20,6 +20,7 @@ struct ProductEditor: View {
     @State private var strains = ""
     @State private var error: String?
     @State private var confirmDelete = false
+    @State private var loggingPurchase = false
 
     var body: some View {
         Form {
@@ -35,7 +36,14 @@ struct ProductEditor: View {
             if let error {
                 Text(error).foregroundStyle(.red)
             }
-            if id != nil {
+            if let id {
+                let shops = Dictionary(uniqueKeysWithValues: repo.spots().map { ($0.id, $0.data.name) })
+                Section("Purchases") {
+                    ForEach(repo.purchases(of: id), id: \.id) { purchase in
+                        Text(purchaseLine(purchase.data, product: id, shops: shops))
+                    }
+                    Button("Log a purchase") { loggingPurchase = true }
+                }
                 Button("Delete product", role: .destructive) { confirmDelete = true }
             }
         }
@@ -49,6 +57,11 @@ struct ProductEditor: View {
             Button("Delete", role: .destructive) {
                 if let id { try? repo.delete(id) }
                 dismiss()
+            }
+        }
+        .sheet(isPresented: $loggingPurchase) {
+            if let id {
+                NavigationStack { PurchaseEditor(repo: repo, product: id) }
             }
         }
         .onAppear(perform: load)
