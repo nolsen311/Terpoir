@@ -44,6 +44,9 @@ struct DataView: View {
                 Text(message)
             }
             Section {
+                NavigationLink("App lock") { AutoLockView() }
+            }
+            Section {
                 NavigationLink("What I track") { WhatITrackView(repo: repo) }
             } footer: {
                 Text("Choose which details your journal keeps. Applies on every device you sync with.")

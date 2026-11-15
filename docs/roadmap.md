@@ -580,14 +580,16 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
       wrapped keys) have Complete protection and are excluded from backups;
       `JournalSession` creates, locks and unlocks through the vault, and
       onboarding uses it.)
-- [ ] Onboarding and recovery key, unlock (Face ID / Touch ID or
+- [x] Onboarding and recovery key, unlock (Face ID / Touch ID or
       passcode), auto-lock, blur in the app switcher and while the screen
       is recorded or mirrored.
-      (2026-11-13, in progress: age, create, the recovery key with a typed
-      check or a confirmed skip, the lock screen, locking whenever the app
-      leaves the screen, and a cover in the app switcher and while the
-      screen is captured, with Android's wording. Left: restoring an
-      existing journal, and auto-lock choices like Android's.)
+      (Done 2026-11-15: age, create, the recovery key with a typed check or
+      a confirmed skip, the lock screen, and a cover in the app switcher
+      and while the screen is captured, with Android's wording; restoring
+      an existing journal (2026-11-14); and auto-lock choices under "Your
+      data", "As soon as I leave Terpoir" or 1, 5 (the default) or 15
+      minutes, with no "When my phone locks" (Platform exceptions,
+      2026-11-15).)
 - [ ] Age gate: Declared Age Range API (read only, never stored); 18+
       rating. (Self-attestation is in onboarding; Apple's signal needs the
       Apple Developer account and its entitlement.)
