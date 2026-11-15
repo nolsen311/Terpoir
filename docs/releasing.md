@@ -46,9 +46,9 @@ never reaches CI or the repository.
    ykman piv certificates generate --subject "CN=Terpoir upload key" --valid-days 10000 82 upload.pub.pem
    ykman piv certificates export 82 upload.pem   # for the Play Console
    ```
-   Then set `TERPOIR_UPLOAD_SLOT=82` when signing. (The first release used
-   slot `9d` for the upload key instead; any slot works, as long as
-   `TERPOIR_UPLOAD_SLOT` names it.)
+   Then set `TERPOIR_UPLOAD_SLOT=82` when signing. (Any slot works, as
+   long as `TERPOIR_UPLOAD_SLOT` names it. The maintainer's upload key is
+   in slot `9d`, so the commands below use that.)
 
 ## Checking the YubiKeys
 
@@ -144,7 +144,7 @@ pushes, signs the tag, waits for CI, runs `sign-release.sh --upload` (PIN
 once, a touch per signature), asks before publishing on GitHub, asks
 before opening the pull request that publishes the hashes on terpoir.app
 (step 5), and asks before sending the bundle to Google Play. It is safe to
-re-run after an interruption. Set `TERPOIR_UPLOAD_SLOT=82` in the
+re-run after an interruption. Set `TERPOIR_UPLOAD_SLOT=9d` (the upload key's slot) in the
 environment, as for `sign-release.sh`; without it the script asks before
 going on, since the bundle then can't go to Play (0.10.0 was first signed
 without it). `SHA256SUMS` is signed with git's `user.signingkey`, the
