@@ -128,57 +128,135 @@ struct SessionRow: View {
 
 // MARK: - Products
 
+/// The Products tab's lists, as Android's catalog switcher (Spots come later).
+enum Catalog: String, CaseIterable, Identifiable {
+    case products = "Products", strains = "Strains", brands = "Brands"
+    var id: Self { self }
+}
+
 struct ProductsList: View {
     @ObservedObject var repo: JournalRepository
     let onLock: () -> Void
+    @State private var catalog = Catalog.products
     @State private var editing: EditTarget?
 
     var body: some View {
         let _ = repo.revision
+        List {
+            Picker("Show", selection: $catalog) {
+                ForEach(Catalog.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+            switch catalog {
+            case .products: productRows
+            case .strains: strainRows
+            case .brands: brandRows
+            }
+        }
+        .navigationTitle(catalog.rawValue)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) { LockButton(onLock: onLock) }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { editing = EditTarget(id: nil, catalog: catalog) } label: { Image(systemName: "plus") }
+                    .accessibilityLabel(newLabel)
+            }
+        }
+        .sheet(item: $editing) { target in
+            NavigationStack {
+                switch target.catalog {
+                case .products: ProductEditor(repo: repo, id: target.id)
+                case .strains: StrainEditor(repo: repo, id: target.id)
+                case .brands: BrandEditor(repo: repo, id: target.id)
+                }
+            }
+        }
+    }
+
+    private var newLabel: String {
+        switch catalog {
+        case .products: return "New product"
+        case .strains: return "New strain"
+        case .brands: return "New brand"
+        }
+    }
+
+    @MainActor @ViewBuilder private var productRows: some View {
         let names = CatalogNames(repo)
         // The Products page's order: by card title (maintainer, 2026-11-13).
         let products = repo.products()
             .filter { !$0.data.archived }
             .map { ($0, names.title($0.data)) }
             .sorted { $0.1.title.localizedCaseInsensitiveCompare($1.1.title) == .orderedAscending }
-        List {
-            if products.isEmpty {
-                Text("No products yet. Tap + to add one.").foregroundStyle(.secondary)
-            }
-            ForEach(products, id: \.0.id) { item in
-                let (entry, title) = item
-                Button { editing = EditTarget(id: entry.id) } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(title.title).font(.headline)
-                            Spacer()
-                            if !title.brand.isEmpty {
-                                Text(title.brand).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                        if !title.detail.isEmpty {
-                            Text(title.detail).font(.subheadline).foregroundStyle(.secondary)
+        if products.isEmpty {
+            Text("No products yet. Tap + to add one.").foregroundStyle(.secondary)
+        }
+        ForEach(products, id: \.0.id) { item in
+            let (entry, title) = item
+            Button { editing = EditTarget(id: entry.id, catalog: .products) } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(title.title).font(.headline)
+                        Spacer()
+                        if !title.brand.isEmpty {
+                            Text(title.brand).font(.caption).foregroundStyle(.secondary)
                         }
                     }
+                    if !title.detail.isEmpty {
+                        Text(title.detail).font(.subheadline).foregroundStyle(.secondary)
+                    }
                 }
-                .foregroundStyle(.primary)
+            }
+            .foregroundStyle(.primary)
+        }
+    }
+
+    @MainActor @ViewBuilder private var strainRows: some View {
+        let strains = repo.strains()
+        if strains.isEmpty {
+            Text("No strains yet. Tap + to add one.").foregroundStyle(.secondary)
+        }
+        ForEach(strains, id: \.id) { strain in
+            CatalogRow(name: strain.data.name, detail: strain.data.strainType.map(label) ?? "") {
+                editing = EditTarget(id: strain.id, catalog: .strains)
             }
         }
-        .navigationTitle("Products")
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) { LockButton(onLock: onLock) }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { editing = EditTarget(id: nil) } label: { Image(systemName: "plus") }
-                    .accessibilityLabel("New product")
+    }
+
+    @MainActor @ViewBuilder private var brandRows: some View {
+        let brands = repo.brands()
+        if brands.isEmpty {
+            Text("No brands yet. Tap + to add one.").foregroundStyle(.secondary)
+        }
+        ForEach(brands, id: \.id) { brand in
+            CatalogRow(name: brand.data.name, detail: "") {
+                editing = EditTarget(id: brand.id, catalog: .brands)
             }
         }
-        .sheet(item: $editing) { target in
-            NavigationStack { ProductEditor(repo: repo, id: target.id) }
+    }
+}
+
+/// A strain or brand in its list: the name, and a detail on the right.
+struct CatalogRow: View {
+    let name: String
+    let detail: String
+    let open: () -> Void
+
+    var body: some View {
+        Button(action: open) {
+            HStack {
+                Text(name)
+                Spacer()
+                if !detail.isEmpty { Text(detail).foregroundStyle(.secondary) }
+            }
         }
+        .foregroundStyle(.primary)
     }
 }
 
 /// What an editor sheet opens: a record by ID, or a new one (nil).
 struct EditTarget: Identifiable {
     let id: String?
+    var catalog = Catalog.products
 }

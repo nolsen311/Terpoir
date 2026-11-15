@@ -50,8 +50,18 @@ final class JournalRepository: ObservableObject {
         all(.strain) { try self.journal.getStrain(id: $0) }.sorted { $0.data.name.localizedCaseInsensitiveCompare($1.data.name) == .orderedAscending }
     }
 
+    /// Custom tags of one category (`terpene`, `effect`...), by name (as
+    /// Android's `tags`).
+    func tags(category: String) -> [Entry<TagData>] {
+        all(.tag) { try self.journal.getTag(id: $0) }
+            .filter { $0.data.category == category }
+            .sorted { $0.data.name.localizedCaseInsensitiveCompare($1.data.name) == .orderedAscending }
+    }
+
     func session(_ id: String) -> SessionData? { try? journal.getSession(id: id) }
     func product(_ id: String) -> ProductData? { try? journal.getProduct(id: id) }
+    func strain(_ id: String) -> StrainData? { try? journal.getStrain(id: id) }
+    func brand(_ id: String) -> BrandData? { try? journal.getBrand(id: id) }
 
     @discardableResult
     func saveSession(id: String?, _ data: SessionData) throws -> String {
@@ -69,6 +79,18 @@ final class JournalRepository: ObservableObject {
     func saveBrand(id: String?, _ data: BrandData) throws -> String {
         defer { revision += 1 }
         return try journal.saveBrand(id: id, brand: data, nowMs: now)
+    }
+
+    @discardableResult
+    func saveTag(id: String?, _ data: TagData) throws -> String {
+        defer { revision += 1 }
+        return try journal.saveTag(id: id, tag: data, nowMs: now)
+    }
+
+    @discardableResult
+    func saveStrain(id: String?, _ data: StrainData) throws -> String {
+        defer { revision += 1 }
+        return try journal.saveStrain(id: id, strain: data, nowMs: now)
     }
 
     /// Strain IDs for `names`: existing strains by the core's name matching,

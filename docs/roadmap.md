@@ -603,8 +603,13 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
       (when · shop · price, as on Android), and logging one by hand (a new
       shop is a Re-up Spot); from receipts comes with scanning. Android's
       written labels: done 2026-11-14, generated from Android's by
-      `ios/scripts/labels-from-android.py`. Left: strain and brand screens,
-      moods, timeline, symptoms, spots and notes.)
+      `ios/scripts/labels-from-android.py`. Strains and brands (2026-11-15):
+      their lists beside Products, as Android's catalog switcher, and
+      editors at Android's default "Terpenes" step (type, terpenes,
+      lineage, breeder); the "Detailed" step's fields are kept as saved
+      until "What I track" lands. Not yet on iOS: the offline strain
+      catalog's suggestions and "Look up on the web". Left: moods,
+      timeline, symptoms, spots and notes.)
 - [ ] Export and import, readable by the Android app and back.
       (2026-11-14, in progress: "Your data" exports the encrypted archive
       (`terpoir-<date>.terpoir`, as Android names it) and imports one of
