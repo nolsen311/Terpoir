@@ -7,8 +7,9 @@ import TerpoirCore
 
 /// A session: when, what was had (one product, method and dose), going in
 /// (intention, solo or with others, mood before), effects, the timeline,
-/// mood after, a rating and whether you'd have it again. Fields it doesn't
-/// show yet (symptoms, spot...) and fields hidden in "What I track" are
+/// targeted symptoms (while the Privacy Center shows them), mood after, a
+/// rating and whether you'd have it again. Fields it doesn't show yet
+/// (spot, attachments...) and fields hidden in "What I track" are
 /// kept as they are.
 struct SessionEditor: View {
     @ObservedObject var repo: JournalRepository
@@ -32,6 +33,9 @@ struct SessionEditor: View {
     /// level, 0 to 5.
     @State private var timeline: [UInt32: UInt8] = [:]
     @State private var timelineUpdatedMs: Int64?
+    /// Targeted symptom to result slug (`helped`, `did_not_help`, `not_rated`).
+    @State private var symptoms: [TagRefData: String] = [:]
+    @AppStorage(JournalToggles.symptomsKey) private var showSymptoms = false
     @State private var error: String?
     @State private var confirmDelete = false
 
@@ -100,6 +104,11 @@ struct SessionEditor: View {
                     ))
                 }
             }
+            // Hidden unless turned on in the Privacy Center; while hidden,
+            // saved symptoms are kept unchanged.
+            if showSymptoms {
+                SymptomsSection(repo: repo, symptoms: $symptoms)
+            }
             if tracking.shows(.timeline) {
                 TimelineSection(method: method, levels: $timeline, updatedMs: $timelineUpdatedMs)
             }
@@ -160,6 +169,7 @@ struct SessionEditor: View {
         moodAfter = session.moodAfter
         timeline = Dictionary(session.timelineLevels.map { ($0.minute, $0.level) }, uniquingKeysWith: { first, _ in first })
         timelineUpdatedMs = session.timelineUpdatedMs
+        symptoms = Dictionary(session.symptoms.map { ($0.tag, $0.result) }, uniquingKeysWith: { first, _ in first })
     }
 
     private func save() {
@@ -210,6 +220,10 @@ struct SessionEditor: View {
         session.moodAfter = moodAfter
         session.timelineLevels = timeline.keys.sorted().map { TimelineLevelData(minute: $0, level: timeline[$0] ?? 0) }
         session.timelineUpdatedMs = timeline.isEmpty ? nil : timelineUpdatedMs
+        // In the order they were saved, then any new ones.
+        let savedOrder = (loaded?.symptoms ?? []).map(\.tag).filter { symptoms[$0] != nil }
+        let added = symptoms.keys.filter { !savedOrder.contains($0) }.sorted { "\($0)" < "\($1)" }
+        session.symptoms = (savedOrder + added).map { SymptomData(tag: $0, result: symptoms[$0] ?? "not_rated") }
         do {
             try repo.saveSession(id: id, session)
             dismiss()

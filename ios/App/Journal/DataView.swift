@@ -62,7 +62,7 @@ struct DataView: View {
                 Text(message)
             }
             Section {
-                NavigationLink("Privacy Center") { PrivacyCenterView() }
+                NavigationLink("Privacy Center") { PrivacyCenterView(repo: repo) }
                 NavigationLink("App lock") { AutoLockView() }
             }
             Section {

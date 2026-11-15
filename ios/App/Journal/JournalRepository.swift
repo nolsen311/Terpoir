@@ -196,6 +196,14 @@ final class JournalRepository: ObservableObject {
         return try journal.deleteDataPoint(dataPoint: point.rawValue, nowMs: now)
     }
 
+    /// Deletes every session's targeted symptoms and the user's own symptom
+    /// tags (the Privacy Center's "Delete" when turning symptoms off).
+    @discardableResult
+    func deleteSymptoms() throws -> UInt32 {
+        defer { revision += 1 }
+        return try journal.deleteSymptoms(nowMs: now)
+    }
+
     /// The method usually used for a product of this form (the core's rule).
     func usualMethod(form: String?) -> String? {
         try? journal.usualMethod(form: form, subtype: nil)

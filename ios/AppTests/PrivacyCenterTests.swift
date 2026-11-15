@@ -20,6 +20,10 @@ final class PrivacyCenterTests: XCTestCase {
         // The keys the app delegate and the fields read are the toggles'.
         XCTAssertTrue(defaults.bool(forKey: KeyboardProtection.blockKeyboardsKey))
         XCTAssertTrue(defaults.bool(forKey: KeyboardProtection.noAutocorrectKey))
+        // Symptoms are health information: hidden until turned on.
+        XCTAssertFalse(settings.isOn(JournalToggles.symptoms))
+        settings.set(JournalToggles.symptoms, on: true)
+        XCTAssertTrue(defaults.bool(forKey: JournalToggles.symptomsKey))
     }
 
     func testOnlyKeyboardsAreRefusedAndOnlyWhileBlocked() {
@@ -28,7 +32,7 @@ final class PrivacyCenterTests: XCTestCase {
     }
 
     func testEveryToggleHasItsWholeCard() {
-        let toggles = KeyboardProtection.toggles
+        let toggles = KeyboardProtection.toggles + [JournalToggles.symptoms]
         XCTAssertEqual(Set(toggles.map(\.id)).count, toggles.count)
         for toggle in toggles {
             for text in [toggle.title, toggle.does, toggle.leaves, toggle.who, toggle.undo] {
