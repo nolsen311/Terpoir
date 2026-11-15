@@ -6,9 +6,9 @@ import SwiftUI
 import TerpoirCore
 
 /// A session: when, what was had (one product, method and dose), going in
-/// (intention, solo or with others, mood before), effects, mood after, a
-/// rating and whether you'd have it again. Fields it doesn't show yet
-/// (timeline, symptoms, spot...) and fields hidden in "What I track" are
+/// (intention, solo or with others, mood before), effects, the timeline,
+/// mood after, a rating and whether you'd have it again. Fields it doesn't
+/// show yet (symptoms, spot...) and fields hidden in "What I track" are
 /// kept as they are.
 struct SessionEditor: View {
     @ObservedObject var repo: JournalRepository
@@ -28,6 +28,10 @@ struct SessionEditor: View {
     @State private var social: String?
     @State private var moodBefore: UInt8?
     @State private var moodAfter: UInt8?
+    /// The timeline's points the user set: minutes after consumption to a
+    /// level, 0 to 5.
+    @State private var timeline: [UInt32: UInt8] = [:]
+    @State private var timelineUpdatedMs: Int64?
     @State private var error: String?
     @State private var confirmDelete = false
 
@@ -96,6 +100,9 @@ struct SessionEditor: View {
                     ))
                 }
             }
+            if tracking.shows(.timeline) {
+                TimelineSection(method: method, levels: $timeline, updatedMs: $timelineUpdatedMs)
+            }
             Section("How was it?") {
                 if tracking.shows(.mood) {
                     MoodPicker(title: "Mood after", value: $moodAfter)
@@ -151,6 +158,8 @@ struct SessionEditor: View {
         social = session.social
         moodBefore = session.moodBefore
         moodAfter = session.moodAfter
+        timeline = Dictionary(session.timelineLevels.map { ($0.minute, $0.level) }, uniquingKeysWith: { first, _ in first })
+        timelineUpdatedMs = session.timelineUpdatedMs
     }
 
     private func save() {
@@ -199,6 +208,8 @@ struct SessionEditor: View {
         session.social = social
         session.moodBefore = moodBefore
         session.moodAfter = moodAfter
+        session.timelineLevels = timeline.keys.sorted().map { TimelineLevelData(minute: $0, level: timeline[$0] ?? 0) }
+        session.timelineUpdatedMs = timeline.isEmpty ? nil : timelineUpdatedMs
         do {
             try repo.saveSession(id: id, session)
             dismiss()

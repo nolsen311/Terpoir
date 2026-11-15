@@ -14,6 +14,13 @@ final class LabelTests: XCTestCase {
         XCTAssertEqual(label("alpha_pinene"), "α-Pinene")
     }
 
+    func testTimelineTimesReadAsOnAndroid() {
+        XCTAssertEqual(durationLabel(20), "20 min")
+        XCTAssertEqual(durationLabel(60), "1 h")
+        XCTAssertEqual(durationLabel(96), "1 h 36")
+        XCTAssertEqual(timelineLevelNames.count, 6)
+    }
+
     func testAnUnknownSlugReadsAsWords() {
         XCTAssertEqual(label("brand_new_thing"), "Brand new thing")
     }
@@ -96,5 +103,20 @@ final class JournalRepositoryTests: XCTestCase {
         XCTAssertEqual(read.social, vocab.social.first)
         XCTAssertEqual(read.moodBefore, 2)
         XCTAssertEqual(read.moodAfter, 4)
+    }
+
+    func testTheTimelineKeepsOnlyTheSetPoints() throws {
+        var saved = SessionData(
+            when: LocalTimeData(unixMs: 1_000, utcOffsetMin: 0), lines: [], activity: nil, intention: nil,
+            moodBefore: nil, social: nil, effects: [], onsetMin: nil, peakMin: nil, durationMin: nil,
+            moodAfter: nil, rating: nil, wouldRepeat: nil, spot: nil, symptoms: [], attachments: []
+        )
+        saved.timelineLevels = [TimelineLevelData(minute: 20, level: 2), TimelineLevelData(minute: 60, level: 4)]
+        saved.timelineUpdatedMs = 5_000
+        let id = try repo.saveSession(id: nil, saved)
+        let read = try XCTUnwrap(repo.session(id))
+        XCTAssertEqual(read.timelineLevels.map(\.minute), [20, 60])
+        XCTAssertEqual(read.timelineLevels.map(\.level), [2, 4])
+        XCTAssertFalse(timelinePlanForMethods(methods: [vocabulary().methods[0]]).pointMinutes.isEmpty)
     }
 }
