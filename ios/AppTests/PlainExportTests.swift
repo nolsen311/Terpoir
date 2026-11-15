@@ -26,22 +26,22 @@ final class PlainExportTests: XCTestCase {
         try? FileManager.default.removeItem(at: files.root)
     }
 
-    func testTheExportHasTheCoresFilesWithTheJournalInThem() throws {
+    func testTheZipHoldsTheCoresFilesWithTheJournalInThem() throws {
         try repo.saveBrand(id: nil, BrandData(name: "Kiva"))
-        let exported = try repo.exportPlaintext()
-        let names = Set(exported.map(\.name))
-        XCTAssertTrue(names.isSuperset(of: ["terpoir.json", "sessions.csv", "products.csv", "purchases.csv"]), "\(names)")
-        let json = try XCTUnwrap(exported.first { $0.name == "terpoir.json" })
-        XCTAssertTrue(String(decoding: json.bytes, as: UTF8.self).contains("Kiva"))
+        let zip = try repo.exportPlaintextZip()
+        XCTAssertEqual(zip.prefix(4), Data("PK\u{03}\u{04}".utf8))
+        let text = String(decoding: zip, as: UTF8.self)
+        for name in ["terpoir.json", "sessions.csv", "products.csv", "purchases.csv"] {
+            XCTAssertTrue(text.contains(name), name)
+        }
+        // Stored, not compressed, so the journal's text is in it as is.
+        XCTAssertTrue(text.contains("Kiva"))
     }
 
-    func testTheSavedFolderHoldsEveryFile() throws {
-        let exported = try repo.exportPlaintext()
-        let folder = PlainExportDocument.folder(exported)
-        XCTAssertTrue(folder.isDirectory)
-        XCTAssertEqual(Set(folder.fileWrappers.map { Array($0.keys) } ?? []), Set(exported.map(\.name)))
-        for file in exported {
-            XCTAssertEqual(folder.fileWrappers?[file.name]?.regularFileContents, file.bytes, file.name)
-        }
+    func testTheZipEndsWithItsDirectoryOfFourFiles() throws {
+        let zip = [UInt8](try repo.exportPlaintextZip())
+        let end = zip.count - 22
+        XCTAssertEqual(Array(zip[end..<end + 4]), [0x50, 0x4B, 0x05, 0x06])
+        XCTAssertEqual(UInt16(zip[end + 10]) | UInt16(zip[end + 11]) << 8, 4)
     }
 }

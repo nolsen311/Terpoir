@@ -109,10 +109,11 @@ final class JournalRepository: ObservableObject {
         try journal.exportArchive(masterWrappedByRecovery: masterWrappedByRecovery)
     }
 
-    /// The whole journal as readable files (`terpoir.json` and CSVs), made
-    /// by the core. Unencrypted: offered only behind a warning.
-    func exportPlaintext() throws -> [ExportFile] {
-        try journal.exportPlaintext(nowMs: now)
+    /// The whole journal as readable files (`terpoir.json` and CSVs) in
+    /// one ZIP, made by the core, the same file Android saves.
+    /// Unencrypted: offered only behind a warning.
+    func exportPlaintextZip() throws -> Data {
+        try journal.exportPlaintextZip(nowMs: now)
     }
 
     /// An export file was from a newer app version; nothing was imported.

@@ -33,8 +33,6 @@ import app.terpoir.session.HandOff
 import app.terpoir.storage.IncompleteDocument
 import app.terpoir.storage.writeNewDocument
 import java.time.LocalDate
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -82,19 +80,12 @@ fun DataCard(repo: JournalRepository, masterWrappedByRecovery: () -> ByteArray) 
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             result = try {
-                val files = repo.exportPlaintext()
-                withContext(Dispatchers.IO) {
-                    writeNewDocument(context.contentResolver, uri) { out ->
-                        ZipOutputStream(out).use { zip ->
-                            for (file in files) {
-                                zip.putNextEntry(ZipEntry(file.name))
-                                zip.write(file.bytes)
-                                zip.closeEntry()
-                                // Best effort: the plaintext lingers in memory no longer than needed.
-                                file.bytes.fill(0)
-                            }
-                        }
-                    }
+                val zip = repo.exportPlaintextZip()
+                try {
+                    withContext(Dispatchers.IO) { writeNewDocument(context.contentResolver, uri, zip) }
+                } finally {
+                    // Best effort: the plaintext lingers in memory no longer than needed.
+                    zip.fill(0)
                 }
                 DataResult.SavedPlaintext
             } catch (e: IncompleteDocument) {

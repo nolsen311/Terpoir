@@ -473,9 +473,15 @@ fn local_date_time(unix_ms: i64, utc_offset_min: i16) -> (String, String) {
     (iso_date(day), time)
 }
 
-/// Days since 1970-01-01 as `YYYY-MM-DD` (proleptic Gregorian; Howard
-/// Hinnant's `civil_from_days`).
+/// Days since 1970-01-01 as `YYYY-MM-DD`.
 fn iso_date(days: i64) -> String {
+    let (y, m, d) = civil_from_days(days);
+    format!("{y:04}-{m:02}-{d:02}")
+}
+
+/// Days since 1970-01-01 as (year, month, day), proleptic Gregorian
+/// (Howard Hinnant's `civil_from_days`).
+pub(crate) fn civil_from_days(days: i64) -> (i64, i64, i64) {
     let z = days + 719_468;
     let era = z.div_euclid(146_097);
     let doe = z.rem_euclid(146_097);
@@ -485,7 +491,7 @@ fn iso_date(days: i64) -> String {
     let d = doy - (153 * mp + 2) / 5 + 1;
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
     let y = yoe + era * 400 + i64::from(m <= 2);
-    format!("{y:04}-{m:02}-{d:02}")
+    (y, m, d)
 }
 
 #[cfg(test)]

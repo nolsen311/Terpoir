@@ -3,12 +3,13 @@
 // See LICENSING.md for the additional permission under GPLv3 section 7.
 
 import SwiftUI
-import TerpoirCore
 import UniformTypeIdentifiers
 
 /// An export file, as the system's save sheet writes it.
 struct ExportDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.data] }
+    /// Encrypted exports are plain data; the plain-files export is a ZIP.
+    static var writableContentTypes: [UTType] { [.data, .zip] }
     let data: Data
 
     init(data: Data) { self.data = data }
@@ -19,31 +20,6 @@ struct ExportDocument: FileDocument {
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         FileWrapper(regularFileWithContents: data)
-    }
-}
-
-/// The plain-files export: a folder of the core's JSON and CSV files.
-/// Android saves the same files in one ZIP; iOS has no ZIP writer of its
-/// own, and the system's save sheet takes a folder.
-struct PlainExportDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.folder] }
-    let files: [ExportFile]
-
-    init(files: [ExportFile]) { self.files = files }
-
-    init(configuration: ReadConfiguration) throws { files = [] }
-
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper { Self.folder(files) }
-
-    /// The folder the save sheet writes: one file per export file.
-    static func folder(_ files: [ExportFile]) -> FileWrapper {
-        var wrappers: [String: FileWrapper] = [:]
-        for file in files {
-            let wrapper = FileWrapper(regularFileWithContents: file.bytes)
-            wrapper.preferredFilename = file.name
-            wrappers[file.name] = wrapper
-        }
-        return FileWrapper(directoryWithFileWrappers: wrappers)
     }
 }
 
@@ -59,7 +35,7 @@ struct DataView: View {
     @State private var importing = false
     @State private var message: String?
     @State private var warnPlaintext = false
-    @State private var plainExport: PlainExportDocument?
+    @State private var plainExport: ExportDocument?
 
     var body: some View {
         Form {
@@ -74,8 +50,8 @@ struct DataView: View {
             .fileExporter(
                 isPresented: Binding(get: { plainExport != nil }, set: { if !$0 { plainExport = nil } }),
                 document: plainExport,
-                contentType: .folder,
-                defaultFilename: "terpoir-plaintext-\(Self.today)"
+                contentType: .zip,
+                defaultFilename: "terpoir-plaintext-\(Self.today).zip"
             ) { result in
                 switch result {
                 case .success: message = "Saved, unencrypted. Keep it private and delete it when you're done."
@@ -110,7 +86,7 @@ struct DataView: View {
             Button("Export unencrypted", role: .destructive, action: exportPlaintext)
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This saves your whole journal as readable files (JSON and spreadsheet-friendly CSV, in one folder), to move it to another app or keep your own copy. Unlike everything else in Terpoir, they are not encrypted: anyone or any app that gets the files can read every session, note, product and spot in them.\n\nIf you save them in a folder that syncs to a cloud (iCloud Drive, Google Drive, Dropbox and the like), they will be uploaded. Keep them somewhere private, and delete them when you're done.")
+            Text("This saves your whole journal as readable files (JSON and spreadsheet-friendly CSV, in one ZIP), to move it to another app or keep your own copy. Unlike everything else in Terpoir, they are not encrypted: anyone or any app that gets the file can read every session, note, product and spot in it.\n\nIf you save it in a cloud-synced folder (iCloud Drive, Google Drive, Dropbox and the like), it will be uploaded. Keep it somewhere private, and delete it when you're done.")
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.data]) { result in
             guard case let .success(url) = result else { return }
@@ -137,7 +113,7 @@ struct DataView: View {
     private func exportPlaintext() {
         message = nil
         do {
-            plainExport = PlainExportDocument(files: try repo.exportPlaintext())
+            plainExport = ExportDocument(data: try repo.exportPlaintextZip())
         } catch {
             message = "The export couldn't be made. Try again."
         }

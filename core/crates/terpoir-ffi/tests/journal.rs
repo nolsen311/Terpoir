@@ -857,6 +857,42 @@ fn the_plaintext_export_has_every_record_readably() {
 }
 
 #[test]
+fn the_plaintext_zip_holds_the_same_files() {
+    let keys = create_keys().unwrap();
+    let dir = Device::new();
+    let journal = dir.open(&keys).unwrap();
+    journal
+        .save_brand(
+            None,
+            BrandData {
+                name: "Fire Bros".into(),
+            },
+            1,
+        )
+        .unwrap();
+    let files = journal.export_plaintext(10).unwrap();
+    let zip = journal.export_plaintext_zip(10).unwrap();
+
+    // Each file is stored whole, after its 30-byte local header and name.
+    let mut at = 0;
+    for file in &files {
+        assert_eq!(&zip[at..at + 4], b"PK\x03\x04");
+        let name_end = at + 30 + file.name.len();
+        assert_eq!(&zip[at + 30..name_end], file.name.as_bytes());
+        assert_eq!(&zip[name_end..name_end + file.bytes.len()], &file.bytes[..]);
+        at = name_end + file.bytes.len();
+    }
+    // Then the central directory, and the end record counting every file.
+    assert_eq!(&zip[at..at + 4], b"PK\x01\x02");
+    let end = zip.len() - 22;
+    assert_eq!(&zip[end..end + 4], b"PK\x05\x06");
+    assert_eq!(
+        usize::from(u16::from_le_bytes([zip[end + 10], zip[end + 11]])),
+        files.len()
+    );
+}
+
+#[test]
 fn sessions_keep_their_timeline_levels() {
     let keys = create_keys().unwrap();
     let dir = Device::new();

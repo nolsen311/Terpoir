@@ -5,7 +5,6 @@
 package app.terpoir.journal
 
 import app.terpoir.core.BrandData
-import app.terpoir.core.ExportFile
 import app.terpoir.core.InsightData
 import app.terpoir.core.InsightFeedback
 import app.terpoir.core.Journal
@@ -258,7 +257,8 @@ class JournalRepository(private val journal: Journal, private val clock: () -> L
     suspend fun setInsightFeedback(key: String, feedback: InsightFeedback) = io { journal.setInsightFeedback(key, feedback, now()) }
 
     /** The whole journal in plaintext (JSON and CSV files); see [DataCard]. */
-    suspend fun exportPlaintext(): List<ExportFile> = io { journal.exportPlaintext(now()) }
+    /** The plaintext export as one ZIP, made by the core (the same file the iOS app saves). */
+    suspend fun exportPlaintextZip(): ByteArray = io { journal.exportPlaintextZip(now()) }
 
     /**
      * Merges an export of this same journal (for example from before a
