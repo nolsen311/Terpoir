@@ -55,6 +55,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.terpoir
         PRODUCT_NAME: Terpoir
+        # The Apple Developer team that signs release builds (not a secret;
+        # the certificate and profile stay in the app-store environment).
+        DEVELOPMENT_TEAM: J38845GAY8
 
   TerpoirTests:
     type: bundle.unit-test
