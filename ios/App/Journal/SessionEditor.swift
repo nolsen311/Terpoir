@@ -50,13 +50,16 @@ struct SessionEditor: View {
                 Picker("Method", selection: $method) {
                     ForEach(vocab.methods, id: \.self) { Text(label($0)).tag($0) }
                 }
-                HStack {
-                    TextField("Dose", text: $dose).keyboardType(.decimalPad)
-                    Picker("Unit", selection: $doseUnit) {
-                        Text("—").tag("")
-                        ForEach(doseUnitsForMethod(method: method), id: \.self) { Text(label($0)).tag($0) }
+                // A hidden dose is saved as it was.
+                if repo.tracking().shows(.dose) {
+                    HStack {
+                        TextField("Dose", text: $dose).keyboardType(.decimalPad)
+                        Picker("Unit", selection: $doseUnit) {
+                            Text("—").tag("")
+                            ForEach(doseUnitsForMethod(method: method), id: \.self) { Text(label($0)).tag($0) }
+                        }
+                        .labelsHidden()
                     }
-                    .labelsHidden()
                 }
             }
             Section("Effects") {

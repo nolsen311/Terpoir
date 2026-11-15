@@ -33,7 +33,7 @@ final class StrainTests: XCTestCase {
         fields.terpenes = [.builtin(slug: "myrcene")]
         fields.lineage = " "
         fields.breeder = "DJ Short"
-        let id = try repo.saveStrain(id: nil, fields.data(keeping: nil))
+        let id = try repo.saveStrain(id: nil, fields.data(keeping: nil, tracking: .everything))
 
         let saved = try XCTUnwrap(repo.strain(id))
         XCTAssertEqual(saved.name, "Blue Dream")
@@ -56,7 +56,7 @@ final class StrainTests: XCTestCase {
 
         var fields = StrainFields(kept)
         fields.type = "sativa"
-        try repo.saveStrain(id: id, fields.data(keeping: kept))
+        try repo.saveStrain(id: id, fields.data(keeping: kept, tracking: .everything))
 
         let saved = try XCTUnwrap(repo.strain(id))
         XCTAssertEqual(saved.strainType, "sativa")

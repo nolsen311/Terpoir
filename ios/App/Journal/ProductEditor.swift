@@ -23,27 +23,35 @@ struct ProductEditor: View {
     @State private var loggingPurchase = false
 
     var body: some View {
+        // Hidden fields keep what was loaded, so they're saved as they were.
+        let tracking = repo.tracking()
         Form {
             TextField("Name (optional)", text: $name)
             Picker("Type", selection: $form) {
                 Text("None").tag("")
                 ForEach(vocabulary().forms, id: \.self) { Text(label($0)).tag($0) }
             }
-            TextField("Brand", text: $brand)
-                .textInputAutocapitalization(.words)
-            TextField("Strains, separated by commas", text: $strains)
-                .textInputAutocapitalization(.words)
+            if tracking.shows(.brand) {
+                TextField("Brand", text: $brand)
+                    .textInputAutocapitalization(.words)
+            }
+            if tracking.shows(.strain) {
+                TextField("Strains, separated by commas", text: $strains)
+                    .textInputAutocapitalization(.words)
+            }
             if let error {
                 Text(error).foregroundStyle(.red)
             }
-            if let id {
+            if let id, tracking.shows(.purchases) {
                 let shops = Dictionary(uniqueKeysWithValues: repo.spots().map { ($0.id, $0.data.name) })
                 Section("Purchases") {
                     ForEach(repo.purchases(of: id), id: \.id) { purchase in
-                        Text(purchaseLine(purchase.data, product: id, shops: shops))
+                        Text(purchaseLine(purchase.data, product: id, shops: shops, pricesAndShops: tracking.shows(.priceAndShop)))
                     }
                     Button("Log a purchase") { loggingPurchase = true }
                 }
+            }
+            if id != nil {
                 Button("Delete product", role: .destructive) { confirmDelete = true }
             }
         }

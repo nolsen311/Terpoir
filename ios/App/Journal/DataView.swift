@@ -43,6 +43,11 @@ struct DataView: View {
             if let message {
                 Text(message)
             }
+            Section {
+                NavigationLink("What I track") { WhatITrackView(repo: repo) }
+            } footer: {
+                Text("Choose which details your journal keeps. Applies on every device you sync with.")
+            }
         }
         .navigationTitle("Your data")
         .fileExporter(

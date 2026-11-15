@@ -606,8 +606,12 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
       `ios/scripts/labels-from-android.py`. Strains and brands (2026-11-15):
       their lists beside Products, as Android's catalog switcher, and
       editors at Android's default "Terpenes" step (type, terpenes,
-      lineage, breeder); the "Detailed" step's fields are kept as saved
-      until "What I track" lands. Not yet on iOS: the offline strain
+      lineage, breeder). "What I track" (2026-11-15): Android's screen,
+      from "Your data"; hiding keeps values or deletes them everywhere,
+      and the editors and lists leave hidden fields out, saving them as
+      they were. Its strain detail step shows the "Detailed" fields too
+      (terpene levels, parents from the journal, cannabinoids). Not yet on
+      iOS: adding a new parent by name, the offline strain
       catalog's suggestions and "Look up on the web". Left: moods,
       timeline, symptoms, spots and notes.)
 - [ ] Export and import, readable by the Android app and back.

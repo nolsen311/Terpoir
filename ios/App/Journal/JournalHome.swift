@@ -36,10 +36,12 @@ struct CatalogNames {
     let brands: [String: String]
     let strains: [String: String]
 
+    /// Hidden brands or strains are left out of titles (as on Android).
     @MainActor
     init(_ repo: JournalRepository) {
-        brands = Dictionary(uniqueKeysWithValues: repo.brands().map { ($0.id, $0.data.name) })
-        strains = Dictionary(uniqueKeysWithValues: repo.strains().map { ($0.id, $0.data.name) })
+        let tracking = repo.tracking()
+        brands = tracking.shows(.brand) ? Dictionary(uniqueKeysWithValues: repo.brands().map { ($0.id, $0.data.name) }) : [:]
+        strains = tracking.shows(.strain) ? Dictionary(uniqueKeysWithValues: repo.strains().map { ($0.id, $0.data.name) }) : [:]
     }
 
     func title(_ product: ProductData) -> ProductTitle {
@@ -144,7 +146,7 @@ struct ProductsList: View {
         let _ = repo.revision
         List {
             Picker("Show", selection: $catalog) {
-                ForEach(Catalog.allCases) { Text($0.rawValue).tag($0) }
+                ForEach(shownCatalogs) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
             .listRowBackground(Color.clear)
@@ -156,6 +158,10 @@ struct ProductsList: View {
             }
         }
         .navigationTitle(catalog.rawValue)
+        // A list whose data point was just hidden goes back to Products.
+        .onChange(of: shownCatalogs) { _, shown in
+            if !shown.contains(catalog) { catalog = .products }
+        }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) { LockButton(onLock: onLock) }
             ToolbarItem(placement: .topBarTrailing) {
@@ -170,6 +176,18 @@ struct ProductsList: View {
                 case .strains: StrainEditor(repo: repo, id: target.id)
                 case .brands: BrandEditor(repo: repo, id: target.id)
                 }
+            }
+        }
+    }
+
+    /// "What I track": hidden strains or brands lose their lists.
+    @MainActor private var shownCatalogs: [Catalog] {
+        let tracking = repo.tracking()
+        return Catalog.allCases.filter {
+            switch $0 {
+            case .products: return true
+            case .strains: return tracking.shows(.strain)
+            case .brands: return tracking.shows(.brand)
             }
         }
     }

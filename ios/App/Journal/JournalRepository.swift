@@ -160,6 +160,35 @@ final class JournalRepository: ObservableObject {
         _ = try journal.deleteRecord(id: id)
     }
 
+    /// "What I track": the data points the user has hidden, and the strain
+    /// detail step.
+    func tracking() -> Tracking {
+        Tracking(
+            hidden: Set((try? journal.hiddenDataPoints()) ?? []),
+            strainDetail: StrainDetail.of((try? journal.strainDetail()) ?? StrainDetail.terpenes.rawValue)
+        )
+    }
+
+    /// Shows or hides a data point; hiding keeps its values. The choice syncs.
+    func setTracked(_ point: DataPoint, _ tracked: Bool) throws {
+        defer { revision += 1 }
+        try journal.setDataPointTracked(dataPoint: point.rawValue, tracked: tracked, nowMs: now)
+    }
+
+    /// Sets the strain detail step; lower steps hide fields, never delete them.
+    func setStrainDetail(_ step: StrainDetail) throws {
+        defer { revision += 1 }
+        try journal.setStrainDetail(step: step.rawValue, nowMs: now)
+    }
+
+    /// Deletes a data point's values from every record; returns how many
+    /// records changed.
+    @discardableResult
+    func deleteDataPoint(_ point: DataPoint) throws -> UInt32 {
+        defer { revision += 1 }
+        return try journal.deleteDataPoint(dataPoint: point.rawValue, nowMs: now)
+    }
+
     /// The method usually used for a product of this form (the core's rule).
     func usualMethod(form: String?) -> String? {
         try? journal.usualMethod(form: form, subtype: nil)
