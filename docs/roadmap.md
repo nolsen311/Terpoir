@@ -626,21 +626,30 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
       checking a file from the Android app on a device.)
 - [ ] Privacy Center with the toggles the MVP has (each a pair, with its
       card); keyboard protections from `docs/design-decisions.md`.
+      (2026-11-15, in progress: "Privacy Center" under "Your data", with
+      the keyboard card and its two opt-in toggles, "Use only Apple's
+      keyboard in Terpoir" and "No autocorrect or predictions", each a
+      pair of actions with its card. More toggles join as their features
+      come to iOS.)
 - [ ] Store screenshots from the real screens (simulator, demo journal).
 
 ### I4. TestFlight and the App Store
 - [ ] Maintainer: enroll in the Apple Developer Program as an individual;
       create the App Store Connect app record (`app.terpoir`), privacy
       label "Data Not Collected", review notes for 5.1.1(ix).
-- [ ] Signing in CI (`docs/design-decisions.md`, "Signing keys", iOS):
+- [x] Signing in CI (`docs/design-decisions.md`, "Signing keys", iOS):
       a protected `app-store` environment, approval by the maintainer,
       tags only; uploads to TestFlight. Submitting for review stays a
       manual step in App Store Connect.
       (2026-11-15, in progress: `.github/workflows/ios-release.yml`. A v*
       tag whose version is iOS's `MARKETING_VERSION` archives the app
       unsigned in a job without secrets; the `app-store` job signs it and
-      uploads it to TestFlight. Left: the first tagged run.)
+      uploads it to TestFlight. Works: v0.10.2 was uploaded on
+      2026-11-15, after the app icon, iPhone-only and Xcode 26 fixes.)
 - [ ] TestFlight internal testing, then App Store review after Android 1.0.
+      (2026-11-15: external testing through a public TestFlight link. No
+      iPhone check yet: the maintainer tests on an iPad mini, so the
+      first iPhone runs come from external testers.)
 
 ### Later on iOS (order set after the MVP)
 Spots and location (Core Location; region monitoring rotates the nearest
