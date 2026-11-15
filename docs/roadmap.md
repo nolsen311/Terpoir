@@ -617,8 +617,10 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
       catalog's suggestions and "Look up on the web". Going in and
       moods (2026-11-15): the session editor's intention, solo or with
       others, and mood before and after, as on Android, each hidden with
-      its data point in "What I track". Left: timeline, symptoms, spots
-      and notes.)
+      its data point in "What I track". The timeline (2026-11-15): Android's
+      "Set by hand", a level for each point the core plans for the
+      method; Android's hold-and-flick indicator and guessed curve come
+      later. Left: symptoms, spots and notes.)
 - [ ] Export and import, readable by the Android app and back.
       (2026-11-14, in progress: "Your data" exports the encrypted archive
       (`terpoir-<date>.terpoir`, as Android names it) and imports one of
