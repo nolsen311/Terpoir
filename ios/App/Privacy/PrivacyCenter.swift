@@ -99,10 +99,33 @@ final class TerpoirAppDelegate: NSObject, UIApplicationDelegate {
     }
 }
 
+/// The journal's own toggles (the Privacy Center's Journal group, as on
+/// Android).
+enum JournalToggles {
+    static let symptomsKey = "privacy.targeted_symptoms"
+
+    /// Shows or hides the session editor's targeted symptoms; nothing leaves
+    /// the journal. Turned off by hand, it asks whether to keep what was
+    /// recorded (hidden) or delete it.
+    static let symptoms = PrivacyToggle(
+        id: "targeted_symptoms",
+        title: "Targeted symptoms",
+        does: "Adds a section to each session for symptoms you were hoping to ease, such as sleep or pain, and whether the session helped. This is self-tracking, never medical advice.",
+        leaves: "Nothing leaves your phone. Symptoms are stored only in your encrypted journal.",
+        who: "No one else. Symptoms are health information, so the section stays hidden until you turn it on.",
+        undo: "Turn it off here. Terpoir asks whether to keep what you recorded, hidden, or delete it.",
+        defaultOn: false,
+        onAction: {},
+        offAction: {}
+    )
+}
+
 struct PrivacyCenterView: View {
+    @ObservedObject var repo: JournalRepository
     private let settings = PrivacySettings()
     @State private var states: [String: Bool] = [:]
-    @State private var expanded: Set<String> = []
+    @State private var askingSymptomsOff = false
+    @State private var error: String?
 
     var body: some View {
         Form {
@@ -113,28 +136,66 @@ struct PrivacyCenterView: View {
                 Text("Keyboard")
             }
             ForEach(KeyboardProtection.toggles) { toggle in
-                Section {
-                    Toggle(toggle.title, isOn: Binding(
-                        get: { states[toggle.id] ?? settings.isOn(toggle) },
-                        set: { on in
-                            settings.set(toggle, on: on)
-                            states[toggle.id] = on
-                        }
-                    ))
-                    Text(toggle.does).font(.footnote)
-                    // On: always shows the rest of its card; off, on request.
-                    if (states[toggle.id] ?? settings.isOn(toggle)) || expanded.contains(toggle.id) {
-                        CardLine(label: "What leaves the phone", text: toggle.leaves)
-                        CardLine(label: "Who can see it", text: toggle.who)
-                        CardLine(label: "To undo", text: toggle.undo)
-                    } else {
-                        Button("What it shares") { expanded.insert(toggle.id) }
-                            .font(.footnote)
-                    }
-                }
+                ToggleCard(toggle: toggle, isOn: isOn(toggle)) { on in set(toggle, on) }
+            }
+            ToggleCard(toggle: JournalToggles.symptoms, isOn: isOn(JournalToggles.symptoms), header: "Journal") { on in
+                if on { set(JournalToggles.symptoms, true) } else { askingSymptomsOff = true }
+            }
+            if let error {
+                Text(error).foregroundStyle(.red)
             }
         }
         .navigationTitle("Privacy Center")
+        .confirmationDialog(
+            "Keep the symptoms you've recorded, hidden until you turn this on again, or delete them from every session?",
+            isPresented: $askingSymptomsOff,
+            titleVisibility: .visible
+        ) {
+            Button("Keep, hidden") { set(JournalToggles.symptoms, false) }
+            Button("Delete", role: .destructive) {
+                set(JournalToggles.symptoms, false)
+                do {
+                    try repo.deleteSymptoms()
+                } catch {
+                    self.error = "The symptoms couldn't be deleted. Turn it on and off again to retry."
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    private func isOn(_ toggle: PrivacyToggle) -> Bool { states[toggle.id] ?? settings.isOn(toggle) }
+
+    private func set(_ toggle: PrivacyToggle, _ on: Bool) {
+        settings.set(toggle, on: on)
+        states[toggle.id] = on
+    }
+}
+
+/// A toggle and its card: what it does always; the rest always while it's
+/// on, and on request while it's off.
+private struct ToggleCard: View {
+    let toggle: PrivacyToggle
+    let isOn: Bool
+    var header: String?
+    let change: (Bool) -> Void
+    @State private var expanded = false
+
+    var body: some View {
+        Section {
+            Toggle(toggle.title, isOn: Binding(get: { isOn }, set: change))
+            Text(toggle.does).font(.footnote)
+            if isOn || expanded {
+                CardLine(label: "What leaves the phone", text: toggle.leaves)
+                CardLine(label: "Who can see it", text: toggle.who)
+                CardLine(label: "To undo", text: toggle.undo)
+            } else {
+                Button("What it shares") { expanded = true }
+                    .font(.footnote)
+            }
+        } header: {
+            if let header { Text(header) }
+        }
     }
 }
 
