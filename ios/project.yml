@@ -24,7 +24,7 @@ packages:
 settings:
   base:
     # Versions follow Android's for the same core (docs/roadmap.md, "iOS").
-    MARKETING_VERSION: "0.10.0"
+    MARKETING_VERSION: "0.10.1"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
     # iPhone only for the MVP.

@@ -575,6 +575,14 @@ them; the other activities belong to Google's libraries.
   - **Google Maps** first appears in 0.2.1: 0.2.0 was built before the
     release Maps key existed (Terpoir-infra applied it on 2026-10-14), and
     a Play build without the key doesn't offer Google Maps.
+  - **0.10.1** (325 characters):
+    Headline: Log a purchase by hand
+    Summary: log a purchase by hand from any product ; product pickers match the Products page ; the plain-file export as one ZIP ; a security update for the encrypted database
+    ```
+    <en-US>
+    Log a purchase by hand from any product: when, where, what you paid and how many. Product pickers now name and order products the same way as the Products page. The plain-file export is now one ZIP made by Terpoir's own core, the same on every device. Also a security update for the encrypted database, and updated libraries.
+    </en-US>
+    ```
   - **0.10.0** (355 characters):
     Headline: Find a spot by address or name
     Summary: find a spot's location by address or business name ; off until you turn it on, and your location is never sent ; a security update for an encryption library ; an updated map
