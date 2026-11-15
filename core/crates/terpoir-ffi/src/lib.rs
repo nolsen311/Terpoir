@@ -42,6 +42,7 @@ mod records;
 mod scan;
 mod tracking;
 mod vocabulary;
+mod zip;
 
 pub use archive::{
     ArchiveCheck, ExportArchive, RestoredKeys, check_export_archive, keys_for_restore,

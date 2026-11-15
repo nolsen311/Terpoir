@@ -8,6 +8,8 @@ import UniformTypeIdentifiers
 /// An export file, as the system's save sheet writes it.
 struct ExportDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.data] }
+    /// Encrypted exports are plain data; the plain-files export is a ZIP.
+    static var writableContentTypes: [UTType] { [.data, .zip] }
     let data: Data
 
     init(data: Data) { self.data = data }
@@ -32,6 +34,8 @@ struct DataView: View {
     @State private var exporting: ExportDocument?
     @State private var importing = false
     @State private var message: String?
+    @State private var warnPlaintext = false
+    @State private var plainExport: ExportDocument?
 
     var body: some View {
         Form {
@@ -39,6 +43,20 @@ struct DataView: View {
                 Text("Export saves your whole journal as one encrypted file, and only your recovery key opens it, so keep the two apart. Use it to move to a new phone: choose \"I have a journal\" when setting Terpoir up there. Import merges an export of this same journal back in.")
                 Button("Export", action: export)
                 Button("Import") { importing = true }
+            }
+            Section {
+                Button("Export as plain files (unencrypted)…") { warnPlaintext = true }
+            }
+            .fileExporter(
+                isPresented: Binding(get: { plainExport != nil }, set: { if !$0 { plainExport = nil } }),
+                document: plainExport,
+                contentType: .zip,
+                defaultFilename: "terpoir-plaintext-\(Self.today).zip"
+            ) { result in
+                switch result {
+                case .success: message = "Saved, unencrypted. Keep it private and delete it when you're done."
+                case .failure: message = "The export couldn't be saved. Try another place."
+                }
             }
             if let message {
                 Text(message)
@@ -64,6 +82,12 @@ struct DataView: View {
             case .failure: message = "The export couldn't be saved. Try another place."
             }
         }
+        .alert("Export without encryption?", isPresented: $warnPlaintext) {
+            Button("Export unencrypted", role: .destructive, action: exportPlaintext)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This saves your whole journal as readable files (JSON and spreadsheet-friendly CSV, in one ZIP), to move it to another app or keep your own copy. Unlike everything else in Terpoir, they are not encrypted: anyone or any app that gets the file can read every session, note, product and spot in it.\n\nIf you save it in a cloud-synced folder (iCloud Drive, Google Drive, Dropbox and the like), it will be uploaded. Keep it somewhere private, and delete it when you're done.")
+        }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.data]) { result in
             guard case let .success(url) = result else { return }
             importFile(url)
@@ -81,6 +105,15 @@ struct DataView: View {
         message = nil
         do {
             exporting = ExportDocument(data: try repo.exportArchive(masterWrappedByRecovery: masterWrappedByRecovery()))
+        } catch {
+            message = "The export couldn't be made. Try again."
+        }
+    }
+
+    private func exportPlaintext() {
+        message = nil
+        do {
+            plainExport = ExportDocument(data: try repo.exportPlaintextZip())
         } catch {
             message = "The export couldn't be made. Try again."
         }

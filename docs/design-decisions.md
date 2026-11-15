@@ -380,7 +380,9 @@ Making a new note should take one tap from outside the app. Every entry point op
 - **Encrypted export (default):** whole journal as an archive encrypted under the recovery key; same format as export/import sync.
 - **Plaintext export (opt-in):** JSON + CSV + photos for portability, with a strong warning; saved only through the system file picker, noting that cloud-synced folders will upload it.
   - **Implementation (2026-10-12):** built in the core (`Journal::export_plaintext`). `terpoir.json` holds every record with every field, read generically from the stored documents so nothing is left out as the model grows. `sessions.csv`, `products.csv` and `purchases.csv` use names instead of record IDs. CSV cells that a spreadsheet would run as a formula get a leading `'`. JSON goes through `serde_json`, already in the dependency graph.
-  - **Android:** "Export as plain files (unencrypted)…" in the Privacy Center's data card. A warning dialog comes first; the ZIP is then saved where the user picks, and the plaintext buffers are zeroed after writing. Photos join the export once the app has photos.
+  - **The ZIP comes from the core (maintainer, 2026-11-15):** `Journal::export_plaintext_zip` returns the files as one ZIP, so both apps save the same file and neither carries its own ZIP code. Entries are stored, not compressed: the export is small text, and a stored ZIP needs no new dependency (the core writes the format's headers and its CRC-32 checksum, which isn't cryptography). The files' own copies are wiped once zipped. Python's `zipfile` reads the result and its checksums.
+  - **Android:** "Export as plain files (unencrypted)…" in the Privacy Center's data card. A warning dialog comes first; the core's ZIP is then saved where the user picks, and its buffer is zeroed after writing. Photos join the export once the app has photos.
+  - **iOS (2026-11-15):** the same button and warning in "Your data"; the core's ZIP is saved through the system's save sheet as `terpoir-plaintext-<date>.zip`.
 
 ### Import
 - From Terpoir encrypted exports. CSV import from other apps later.

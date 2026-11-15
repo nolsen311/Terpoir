@@ -17,7 +17,7 @@ use terpoir_scan::{names_in_label, names_match, normalize_name};
 use terpoir_store::Store;
 use terpoir_sync::{Clock, apply_pending, export_blobs, import_blob};
 use terpoir_tagging::CustomTag;
-use zeroize::Zeroizing;
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::insights::{self, InsightData, InsightFeedback, ShopInsightData, TimelineInsightData};
 use crate::keys::RotatedKeys;
@@ -1429,6 +1429,22 @@ impl Journal {
     /// `Locked` or `Storage`.
     pub fn export_plaintext(&self, now_ms: u64) -> Result<Vec<ExportFile>> {
         self.with(|u| plaintext::export(&*u, now_ms))
+    }
+
+    /// The plaintext export as one ZIP (`terpoir.json` and the CSV files,
+    /// stored uncompressed), so both apps save the same file. Unencrypted,
+    /// like `export_plaintext`; the files' own copies are wiped once zipped.
+    ///
+    /// # Errors
+    ///
+    /// `Locked` or `Storage`; `Internal` past ZIP's 4 GiB limit.
+    pub fn export_plaintext_zip(&self, now_ms: u64) -> Result<Vec<u8>> {
+        let mut files = self.export_plaintext(now_ms)?;
+        let zipped = crate::zip::zip(&files, now_ms);
+        for file in &mut files {
+            file.bytes.zeroize();
+        }
+        zipped
     }
 
     /// Deletes every targeted symptom: each session's symptom ratings and
