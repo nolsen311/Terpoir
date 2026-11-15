@@ -58,6 +58,12 @@ targets:
         # The Apple Developer team that signs release builds (not a secret;
         # the certificate and profile stay in the app-store environment).
         DEVELOPMENT_TEAM: J38845GAY8
+        # The app icon (App/Assets.xcassets, rendered by
+        # android/release/store/render.py --ios-icon from the launcher art).
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # iPhone only. Set here as well as for the project, because
+        # XcodeGen's iOS application preset sets iPhone and iPad per target.
+        TARGETED_DEVICE_FAMILY: "1"
 
   TerpoirTests:
     type: bundle.unit-test

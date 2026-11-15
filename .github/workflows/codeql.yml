@@ -85,7 +85,7 @@ jobs:
           fi
           # Not a required check, so it is left out rather than skipped.
           if [ -d ios ] && [ "$SWIFT" = true ]; then
-            include="${include},"'{"language":"swift","build-mode":"manual","runner":"macos-15","run":"true"}'
+            include="${include},"'{"language":"swift","build-mode":"manual","runner":"macos-26","run":"true"}'
           fi
           echo "matrix={\"include\":[${include}]}" >> "$GITHUB_OUTPUT"
 
