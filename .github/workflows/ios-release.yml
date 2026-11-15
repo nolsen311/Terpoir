@@ -1,0 +1,203 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-Terpoir-AppStore-exception
+# Copyright (C) 2026 The Terpoir Authors
+# See LICENSING.md for the additional permission under GPLv3 section 7.
+#
+# iOS release builds to TestFlight (docs/design-decisions.md, "Signing
+# keys", iOS; docs/roadmap.md, I4). A v* tag on main whose version is iOS's
+# MARKETING_VERSION (ios/project.yml) builds the app unsigned, from source
+# and without caches, in a job that holds no secrets. The signing job then
+# runs in the protected app-store environment, which only v* tags reach and
+# the maintainer approves each time: it signs with the distribution
+# certificate and profile, and uploads to TestFlight with an App Store
+# Connect key that can upload but not submit. Submitting for review stays a
+# manual step in App Store Connect. A tag for a version iOS isn't at (an
+# Android-only release) builds nothing.
+
+name: iOS release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 90
+    outputs:
+      upload: ${{ steps.tag.outputs.upload }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Check the tag
+        id: tag
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+            || { echo "::error::Release tags must point at a commit on main."; exit 1; }
+          version=$(sed -n 's/^ *MARKETING_VERSION: "\(.*\)"$/\1/p' ios/project.yml)
+          if [ "v$version" = "$GITHUB_REF_NAME" ]; then
+            echo "upload=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::iOS is at $version, not $GITHUB_REF_NAME: nothing to build for TestFlight."
+            echo "upload=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install toolchain
+        if: steps.tag.outputs.upload == 'true'
+        working-directory: core
+        run: |
+          set -euo pipefail
+          rustup toolchain install
+          rustc --version
+          xcodebuild -version
+
+      # From source, without restoring any cache.
+      - name: Build the core for iOS
+        if: steps.tag.outputs.upload == 'true'
+        run: ios/scripts/build-core.sh
+
+      - name: Build XcodeGen
+        if: steps.tag.outputs.upload == 'true'
+        env:
+          XCODEGEN_COMMIT: 8445e778451c7e44237b90281bde622d764b0084 # 2.46.0
+        run: |
+          set -euo pipefail
+          src="$RUNNER_TEMP/xcodegen"
+          git init --quiet "$src"
+          git -C "$src" fetch --quiet --depth 1 https://github.com/yonaskolb/XcodeGen "$XCODEGEN_COMMIT"
+          git -C "$src" checkout --quiet FETCH_HEAD
+          (cd "$src" && swift build -c release --product xcodegen --force-resolved-versions)
+          mkdir -p ~/xcodegen/bin ~/xcodegen/share/xcodegen
+          cp "$src/.build/release/xcodegen" ~/xcodegen/bin/
+          cp -R "$src/SettingPresets" ~/xcodegen/share/xcodegen/
+          rm -rf "$src"
+          echo "$HOME/xcodegen/bin" >> "$GITHUB_PATH"
+
+      # Unsigned: the signing job signs it. The build number is this
+      # workflow's run number, so every upload's is higher than the last.
+      - name: Archive the app
+        if: steps.tag.outputs.upload == 'true'
+        working-directory: ios
+        run: |
+          set -euo pipefail
+          xcodegen generate --spec project.yml
+          xcodebuild archive \
+            -project Terpoir.xcodeproj -scheme Terpoir -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Terpoir.xcarchive" \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+          tar -C "$RUNNER_TEMP" -czf "$RUNNER_TEMP/Terpoir.xcarchive.tgz" Terpoir.xcarchive
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.tag.outputs.upload == 'true'
+        with:
+          name: ios-archive
+          path: ${{ runner.temp }}/Terpoir.xcarchive.tgz
+          retention-days: 7
+          if-no-files-found: error
+
+  testflight:
+    needs: build
+    if: needs.build.outputs.upload == 'true'
+    runs-on: macos-15
+    timeout-minutes: 30
+    # Only v* tags reach it, and the maintainer approves each run.
+    environment: app-store
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ios-archive
+          path: ${{ runner.temp }}
+
+      - name: Install the certificate and profile
+        env:
+          P12_BASE64: ${{ secrets.APPLE_DIST_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.APPLE_DIST_P12_PASSWORD }}
+          PROFILE_BASE64: ${{ secrets.APPLE_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          tar -C "$RUNNER_TEMP" -xzf "$RUNNER_TEMP/Terpoir.xcarchive.tgz"
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password=$(openssl rand -hex 24)
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 1800 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          printf '%s' "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/dist.p12"
+          security import "$RUNNER_TEMP/dist.p12" -k "$keychain" -P "$P12_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$RUNNER_TEMP/dist.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+
+          profile="$RUNNER_TEMP/profile.mobileprovision"
+          printf '%s' "$PROFILE_BASE64" | base64 --decode > "$profile"
+          security cms -D -i "$profile" > "$RUNNER_TEMP/profile.plist"
+          uuid=$(plutil -extract UUID raw "$RUNNER_TEMP/profile.plist")
+          name=$(plutil -extract Name raw "$RUNNER_TEMP/profile.plist")
+          team=$(plutil -extract TeamIdentifier.0 raw "$RUNNER_TEMP/profile.plist")
+          app=$(plutil -extract Entitlements.application-identifier raw "$RUNNER_TEMP/profile.plist")
+          if [ "$app" != "$team.app.terpoir" ]; then
+            echo "::error::The profile is for $app, not $team.app.terpoir."
+            exit 1
+          fi
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$profile" ~/Library/MobileDevice/Provisioning\ Profiles/"$uuid".mobileprovision
+          rm -f "$profile"
+          echo "PROFILE_NAME=$name" >> "$GITHUB_ENV"
+          echo "TEAM_ID=$team" >> "$GITHUB_ENV"
+
+      # Signs and uploads in one step. Symbols aren't sent: Apple's crash
+      # reports aren't used.
+      - name: Sign and upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s' "$ASC_KEY_P8_BASE64" | base64 --decode > "$key"
+          python3 -I - "$RUNNER_TEMP/ExportOptions.plist" <<'PY'
+          import os, plistlib, sys
+          options = {
+              "method": "app-store-connect",
+              "destination": "upload",
+              "signingStyle": "manual",
+              "signingCertificate": "Apple Distribution",
+              "teamID": os.environ["TEAM_ID"],
+              "provisioningProfiles": {"app.terpoir": os.environ["PROFILE_NAME"]},
+              "uploadSymbols": False,
+              "manageAppVersionAndBuildNumber": False,
+          }
+          with open(sys.argv[1], "wb") as f:
+              plistlib.dump(options, f)
+          PY
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Terpoir.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -authenticationKeyPath "$key" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Remove the signing material
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP"/AuthKey_*.p8 "$RUNNER_TEMP/dist.p12" "$RUNNER_TEMP/profile.mobileprovision"
+          rm -f ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision

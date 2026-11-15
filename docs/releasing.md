@@ -240,6 +240,28 @@ The steps, for doing them separately:
    directory's `README.md` describes. `cargo test` then checks that every
    later version still opens them. Not done by `release.sh`.
 
+## iOS (TestFlight)
+
+`.github/workflows/ios-release.yml` runs on the same `v*` tags. It builds
+for TestFlight only when the tag's version is iOS's `MARKETING_VERSION` in
+`ios/project.yml`; for any other tag it builds nothing.
+
+1. Bump `MARKETING_VERSION` in `ios/project.yml` in the version PR when the
+   release includes iOS. The build number is the workflow's run number.
+2. Push the tag as for Android. The `build` job archives the app unsigned
+   and holds no secrets.
+3. Approve the `testflight` job (the `app-store` environment). It signs
+   with the distribution certificate and profile, and uploads to
+   TestFlight with the App Store Connect key, which can upload but not
+   submit.
+4. In App Store Connect, answer the build's export compliance questions,
+   then add it to internal testing. Submitting for review stays manual.
+
+The certificate, its password, the profile and the API key are secrets of
+the `app-store` environment only (`docs/design-decisions.md`, "Signing
+keys"). The certificate and profile expire after a year: make new ones as
+in the first setup and replace the secrets.
+
 ## Notes
 
 - **Crash stack traces:** release builds are shrunk and obfuscated by R8,
