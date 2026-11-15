@@ -25,22 +25,27 @@ struct PurchaseEditor: View {
 
     var body: some View {
         let shops = repo.spots()
+        // "What I track": prices and shops can be off; purchases are then
+        // just what was bought and when.
+        let pricesAndShops = repo.tracking().shows(.priceAndShop)
         Form {
             DatePicker("When", selection: $when, displayedComponents: .date)
-            Picker("Shop", selection: $shop) {
-                Text("Not saying").tag("")
-                ForEach(shops, id: \.id) { Text($0.data.name).tag($0.id) }
-                Text("New shop…").tag(Self.newShopTag)
-            }
-            if shop == Self.newShopTag {
-                TextField("Shop name", text: $newShop).textInputAutocapitalization(.words)
-            }
-            HStack {
-                TextField("Price (optional)", text: $price).keyboardType(.decimalPad)
-                TextField("Currency", text: $currency)
-                    .textInputAutocapitalization(.characters)
-                    .autocorrectionDisabled()
-                    .frame(width: 64)
+            if pricesAndShops {
+                Picker("Shop", selection: $shop) {
+                    Text("Not saying").tag("")
+                    ForEach(shops, id: \.id) { Text($0.data.name).tag($0.id) }
+                    Text("New shop…").tag(Self.newShopTag)
+                }
+                if shop == Self.newShopTag {
+                    TextField("Shop name", text: $newShop).textInputAutocapitalization(.words)
+                }
+                HStack {
+                    TextField("Price (optional)", text: $price).keyboardType(.decimalPad)
+                    TextField("Currency", text: $currency)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        .frame(width: 64)
+                }
             }
             Stepper("How many: \(quantity)", value: $quantity, in: 1...99)
             if let error {
@@ -94,12 +99,14 @@ struct PurchaseEditor: View {
     }
 }
 
-/// A purchase as the product editor lists it (as Android): when, where, price.
-func purchaseLine(_ purchase: PurchaseData, product: String, shops: [String: String]) -> String {
+/// A purchase as the product editor lists it (as Android): when, where,
+/// price; without the shop and price while those aren't tracked.
+func purchaseLine(_ purchase: PurchaseData, product: String, shops: [String: String], pricesAndShops: Bool = true) -> String {
     let line = purchase.lines.first { $0.product == product }
     let price = line?.priceMinorUnits.map { formatPrice($0, currencyCode: line?.priceCurrency) }
     let quantity = (line?.quantity ?? 1) > 1 ? "×\(line?.quantity ?? 1)" : nil
     let date = Date(timeIntervalSince1970: Double(purchase.when.unixMs) / 1000)
         .formatted(date: .abbreviated, time: .omitted)
-    return [date, purchase.spot.flatMap { shops[$0] }, quantity, price].compactMap { $0 }.joined(separator: " · ")
+    let shop = purchase.spot.flatMap { shops[$0] }
+    return [date, pricesAndShops ? shop : nil, quantity, pricesAndShops ? price : nil].compactMap { $0 }.joined(separator: " · ")
 }
