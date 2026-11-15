@@ -5,7 +5,7 @@ you tried, how much, and how it felt, then look back and see what works for
 *you*, without handing that record to anyone else. Terpoir sells nothing,
 recommends nothing, and never tells you to use more.
 
-> **Status:** Android is released (0.10.1): on GitHub Releases and in
+> **Status:** Android is released (0.10.2): on GitHub Releases and in
 > closed testing on Google Play, with F-Droid submission planned for 2027.
 > The iOS app is in development, with its first build going to TestFlight.
 > See [docs/roadmap.md](docs/roadmap.md).
@@ -97,7 +97,7 @@ ssh-keygen -Y verify -f android/release/allowed_signers \
     -I 64344+nolsen311@users.noreply.github.com -n file \
     -s SHA256SUMS.sig < SHA256SUMS
 sha256sum -c SHA256SUMS
-git -c gpg.ssh.allowedSignersFile=android/release/allowed_signers verify-tag v0.10.1
+git -c gpg.ssh.allowedSignersFile=android/release/allowed_signers verify-tag v0.10.2
 ```
 
 Every release's signed `SHA256SUMS` is also on
