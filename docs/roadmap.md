@@ -622,8 +622,11 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
       method; Android's hold-and-flick indicator and guessed curve come
       later. Targeted symptoms (2026-11-15): the Privacy Center's toggle
       (off by default; turning it off keeps them hidden or deletes them
-      everywhere) and the session editor's section, as on Android. Left:
-      spots and notes.)
+      everywhere) and the session editor's section, as on Android. Notes
+      (2026-11-15): typed notes in the Sessions timeline with the core's
+      keyword tag suggestions (each quoting its words, to add or refuse)
+      and a tag picker; voice notes and notes on a session come later.
+      Left: spots.)
 - [ ] Export and import, readable by the Android app and back.
       (2026-11-14, in progress: "Your data" exports the encrypted archive
       (`terpoir-<date>.terpoir`, as Android names it) and imports one of

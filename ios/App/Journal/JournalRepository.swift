@@ -59,6 +59,25 @@ final class JournalRepository: ObservableObject {
     }
 
     func session(_ id: String) -> SessionData? { try? journal.getSession(id: id) }
+    func snippet(_ id: String) -> SnippetData? { try? journal.getSnippet(id: id) }
+
+    /// Notes not on a session, newest first (as Android's `standaloneSnippets`).
+    func standaloneNotes() -> [Entry<SnippetData>] {
+        all(.snippet) { try self.journal.getSnippet(id: $0) }
+            .filter { $0.data.session == nil }
+            .sorted { $0.data.at.unixMs > $1.data.at.unixMs }
+    }
+
+    @discardableResult
+    func saveNote(id: String?, _ data: SnippetData) throws -> String {
+        defer { revision += 1 }
+        return try journal.saveSnippet(id: id, snippet: data, nowMs: now)
+    }
+
+    /// Keyword tag suggestions for `text`, matched on the device by the core.
+    func suggestTags(_ text: String) -> [TagSuggestion] {
+        (try? journal.suggestTags(text: text)) ?? []
+    }
     func product(_ id: String) -> ProductData? { try? journal.getProduct(id: id) }
     func strain(_ id: String) -> StrainData? { try? journal.getStrain(id: id) }
     func brand(_ id: String) -> BrandData? { try? journal.getBrand(id: id) }
