@@ -13,8 +13,8 @@ set -euo pipefail
 # OnboardingTests (3), LabelTests (5), JournalRepositoryTests (4),
 # ExportTests (4), PriceTests (3), PurchaseTests (3), StrainTests (4),
 # TrackingTests (5), AutoLockTests (5), PlainExportTests (2),
-# PrivacyCenterTests (3), SymptomTests (2).
-MIN_TESTS=54
+# PrivacyCenterTests (3), SymptomTests (2), NoteTests (3).
+MIN_TESTS=57
 
 cd "$(dirname "$0")/.."
 # The vocabulary labels match the Android app's.

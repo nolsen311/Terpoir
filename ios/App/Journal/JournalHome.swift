@@ -73,29 +73,83 @@ struct SessionsList: View {
         let _ = repo.revision
         let names = CatalogNames(repo)
         let products = Dictionary(uniqueKeysWithValues: repo.products().map { ($0.id, $0.data) })
-        let sessions = repo.sessions()
+        // One timeline, as on Android: sessions and standalone notes, newest first.
+        let timeline: [TimelineItem] = (
+            repo.sessions().map { TimelineItem.session($0) } + repo.standaloneNotes().map { TimelineItem.note($0) }
+        ).sorted { $0.unixMs > $1.unixMs }
         List {
-            if sessions.isEmpty {
-                Text("No sessions yet. Tap + to log one.").foregroundStyle(.secondary)
+            if timeline.isEmpty {
+                Text("Nothing yet. Tap + to log a session or write a note.").foregroundStyle(.secondary)
             }
-            ForEach(sessions, id: \.id) { entry in
-                Button { editing = EditTarget(id: entry.id) } label: {
-                    SessionRow(session: entry.data, products: products, names: names)
+            ForEach(timeline) { item in
+                switch item {
+                case let .session(entry):
+                    Button { editing = EditTarget(id: entry.id) } label: {
+                        SessionRow(session: entry.data, products: products, names: names)
+                    }
+                    .foregroundStyle(.primary)
+                case let .note(entry):
+                    Button { editing = EditTarget(id: entry.id, note: true) } label: {
+                        NoteRow(note: entry.data)
+                    }
+                    .foregroundStyle(.primary)
                 }
-                .foregroundStyle(.primary)
             }
         }
         .navigationTitle("Sessions")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) { LockButton(onLock: onLock) }
             ToolbarItem(placement: .topBarTrailing) {
-                Button { editing = EditTarget(id: nil) } label: { Image(systemName: "plus") }
-                    .accessibilityLabel("New session")
+                Menu {
+                    Button("New session") { editing = EditTarget(id: nil) }
+                    Button("New note") { editing = EditTarget(id: nil, note: true) }
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("New entry")
             }
         }
         .sheet(item: $editing) { target in
-            NavigationStack { SessionEditor(repo: repo, id: target.id) }
+            NavigationStack {
+                if target.note {
+                    NoteEditor(repo: repo, id: target.id)
+                } else {
+                    SessionEditor(repo: repo, id: target.id)
+                }
+            }
         }
+    }
+}
+
+/// A session or a standalone note in the journal's timeline.
+enum TimelineItem: Identifiable {
+    case session(Entry<SessionData>)
+    case note(Entry<SnippetData>)
+
+    var id: String {
+        switch self {
+        case let .session(entry): return entry.id
+        case let .note(entry): return entry.id
+        }
+    }
+
+    var unixMs: Int64 {
+        switch self {
+        case let .session(entry): return entry.data.when.unixMs
+        case let .note(entry): return entry.data.at.unixMs
+        }
+    }
+}
+
+struct NoteRow: View {
+    let note: SnippetData
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(SessionRow.when(note.at)).font(.headline)
+            Text(note.text).font(.subheadline).lineLimit(2)
+        }
+        .accessibilityLabel("Note, \(SessionRow.when(note.at)): \(note.text)")
     }
 }
 
@@ -277,4 +331,6 @@ struct CatalogRow: View {
 struct EditTarget: Identifiable {
     let id: String?
     var catalog = Catalog.products
+    /// Opens a note rather than a session.
+    var note = false
 }
