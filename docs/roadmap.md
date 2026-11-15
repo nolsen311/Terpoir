@@ -636,6 +636,10 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
       a protected `app-store` environment, approval by the maintainer,
       tags only; uploads to TestFlight. Submitting for review stays a
       manual step in App Store Connect.
+      (2026-11-15, in progress: `.github/workflows/ios-release.yml`. A v*
+      tag whose version is iOS's `MARKETING_VERSION` archives the app
+      unsigned in a job without secrets; the `app-store` job signs it and
+      uploads it to TestFlight. Left: the first tagged run.)
 - [ ] TestFlight internal testing, then App Store review after Android 1.0.
 
 ### Later on iOS (order set after the MVP)
