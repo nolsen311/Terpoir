@@ -5,9 +5,11 @@
 import SwiftUI
 import TerpoirCore
 
-/// A session: when, what was had (one product, method and dose), effects,
-/// a rating and whether you'd have it again. Fields it doesn't show yet
-/// (moods, timeline, symptoms, spot...) are kept as they are.
+/// A session: when, what was had (one product, method and dose), going in
+/// (intention, solo or with others, mood before), effects, mood after, a
+/// rating and whether you'd have it again. Fields it doesn't show yet
+/// (timeline, symptoms, spot...) and fields hidden in "What I track" are
+/// kept as they are.
 struct SessionEditor: View {
     @ObservedObject var repo: JournalRepository
     let id: String?
@@ -22,6 +24,10 @@ struct SessionEditor: View {
     @State private var effects: Set<String> = []
     @State private var rating = 0
     @State private var wouldRepeat: Bool?
+    @State private var intention: String?
+    @State private var social: String?
+    @State private var moodBefore: UInt8?
+    @State private var moodAfter: UInt8?
     @State private var error: String?
     @State private var confirmDelete = false
 
@@ -33,6 +39,7 @@ struct SessionEditor: View {
             .filter { !$0.data.archived || $0.id == product }
             .map { ($0.id, names.title($0.data)) }
             .sorted { $0.1.title.localizedCaseInsensitiveCompare($1.1.title) == .orderedAscending }
+        let tracking = repo.tracking()
         Form {
             DatePicker("When", selection: $when)
             Section("What you had") {
@@ -62,6 +69,25 @@ struct SessionEditor: View {
                     }
                 }
             }
+            if tracking.shows(.intention) || tracking.shows(.social) || tracking.shows(.mood) {
+                Section("Going in") {
+                    if tracking.shows(.intention) {
+                        Picker("Intention", selection: $intention) {
+                            Text("None").tag(String?.none)
+                            ForEach(vocab.intentions, id: \.self) { Text(label($0)).tag(Optional($0)) }
+                        }
+                    }
+                    if tracking.shows(.social) {
+                        Picker("Who with", selection: $social) {
+                            Text("Not saying").tag(String?.none)
+                            ForEach(vocab.social, id: \.self) { Text(label($0)).tag(Optional($0)) }
+                        }
+                    }
+                    if tracking.shows(.mood) {
+                        MoodPicker(title: "Mood before", value: $moodBefore)
+                    }
+                }
+            }
             Section("Effects") {
                 ForEach(vocab.coreEffects, id: \.self) { effect in
                     Toggle(label(effect), isOn: Binding(
@@ -71,6 +97,9 @@ struct SessionEditor: View {
                 }
             }
             Section("How was it?") {
+                if tracking.shows(.mood) {
+                    MoodPicker(title: "Mood after", value: $moodAfter)
+                }
                 Stepper(rating == 0 ? "No rating" : String(repeating: "★", count: rating), value: $rating, in: 0...5)
                     .accessibilityValue(rating == 0 ? "No rating" : "\(rating) of 5")
                 Picker("Have it again?", selection: $wouldRepeat) {
@@ -118,6 +147,10 @@ struct SessionEditor: View {
         })
         rating = Int(session.rating ?? 0)
         wouldRepeat = session.wouldRepeat
+        intention = session.intention
+        social = session.social
+        moodBefore = session.moodBefore
+        moodAfter = session.moodAfter
     }
 
     private func save() {
@@ -161,6 +194,11 @@ struct SessionEditor: View {
         }
         session.rating = rating == 0 ? nil : UInt8(rating)
         session.wouldRepeat = wouldRepeat
+        // Hidden fields hold what was loaded, so they're saved unchanged.
+        session.intention = intention
+        session.social = social
+        session.moodBefore = moodBefore
+        session.moodAfter = moodAfter
         do {
             try repo.saveSession(id: id, session)
             dismiss()
@@ -172,5 +210,30 @@ struct SessionEditor: View {
     static func amount(_ milli: Int64) -> String {
         let value = Double(milli) / 1000
         return value == value.rounded() ? String(Int64(value)) : String(value)
+    }
+}
+
+/// A mood from 1 (low) to 5 (great), as Android's scale, or none.
+struct MoodPicker: View {
+    let title: String
+    @Binding var value: UInt8?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+            Picker(title, selection: $value) {
+                Text("–").tag(UInt8?.none)
+                ForEach(UInt8(1)...UInt8(5), id: \.self) { Text("\($0)").tag(Optional($0)) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            HStack {
+                Text("Low")
+                Spacer()
+                Text("Great")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
     }
 }
