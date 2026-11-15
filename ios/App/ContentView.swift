@@ -8,8 +8,9 @@ import TerpoirCore
 import UIKit
 
 /// The app's top level: first-run setup, the lock screen, or the journal.
-/// The journal locks whenever the app goes to the background, and nothing
-/// of it shows in the app switcher or a screen recording.
+/// The journal locks by the auto-lock choice after the app leaves the
+/// screen (AutoLock.swift), and at once if the phone locks while it runs;
+/// nothing of it shows in the app switcher or a screen recording.
 struct RootView: View {
     @StateObject private var session = JournalSession()
     @Environment(\.scenePhase) private var phase
@@ -22,6 +23,9 @@ struct RootView: View {
     @State private var flagChanges = 0
     @State private var captured = UIScreen.main.isCaptured
     @State private var restoring = false
+    /// When the app went to the background, on AutoLockPolicy's clock.
+    @State private var backgroundedAt: UInt64?
+    private let lockSettings = LockSettings()
 
     var body: some View {
         ZStack {
@@ -31,9 +35,26 @@ struct RootView: View {
             }
         }
         .onChange(of: phase) { _, newPhase in
-            if newPhase == .background {
-                session.lock()
+            let policy = AutoLockPolicy(timeout: lockSettings.timeout)
+            switch newPhase {
+            case .background:
+                if policy.lockOnBackground {
+                    session.lock()
+                } else if backgroundedAt == nil {
+                    backgroundedAt = AutoLockPolicy.now()
+                }
+            case .active:
+                if policy.lockOnReturn(backgroundedAt: backgroundedAt, now: AutoLockPolicy.now(), deviceLocked: false) {
+                    session.lock()
+                }
+                backgroundedAt = nil
+            default:
+                break
             }
+        }
+        // The phone locking while the app runs locks the journal at once.
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataWillBecomeUnavailableNotification)) { _ in
+            session.lock()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIScreen.capturedDidChangeNotification)) { _ in
             captured = UIScreen.main.isCaptured
