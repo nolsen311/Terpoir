@@ -3,6 +3,7 @@
 // See LICENSING.md for the additional permission under GPLv3 section 7.
 
 import SwiftUI
+import TerpoirCore
 import UniformTypeIdentifiers
 
 /// An export file, as the system's save sheet writes it.
@@ -21,6 +22,31 @@ struct ExportDocument: FileDocument {
     }
 }
 
+/// The plain-files export: a folder of the core's JSON and CSV files.
+/// Android saves the same files in one ZIP; iOS has no ZIP writer of its
+/// own, and the system's save sheet takes a folder.
+struct PlainExportDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.folder] }
+    let files: [ExportFile]
+
+    init(files: [ExportFile]) { self.files = files }
+
+    init(configuration: ReadConfiguration) throws { files = [] }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper { Self.folder(files) }
+
+    /// The folder the save sheet writes: one file per export file.
+    static func folder(_ files: [ExportFile]) -> FileWrapper {
+        var wrappers: [String: FileWrapper] = [:]
+        for file in files {
+            let wrapper = FileWrapper(regularFileWithContents: file.bytes)
+            wrapper.preferredFilename = file.name
+            wrappers[file.name] = wrapper
+        }
+        return FileWrapper(directoryWithFileWrappers: wrappers)
+    }
+}
+
 /// Export and import (as Android's "Your data" card): the whole journal as
 /// one encrypted file only the recovery key opens, and merging such a file
 /// of this same journal back in. Both are the user's own action, through
@@ -32,6 +58,8 @@ struct DataView: View {
     @State private var exporting: ExportDocument?
     @State private var importing = false
     @State private var message: String?
+    @State private var warnPlaintext = false
+    @State private var plainExport: PlainExportDocument?
 
     var body: some View {
         Form {
@@ -39,6 +67,20 @@ struct DataView: View {
                 Text("Export saves your whole journal as one encrypted file, and only your recovery key opens it, so keep the two apart. Use it to move to a new phone: choose \"I have a journal\" when setting Terpoir up there. Import merges an export of this same journal back in.")
                 Button("Export", action: export)
                 Button("Import") { importing = true }
+            }
+            Section {
+                Button("Export as plain files (unencrypted)…") { warnPlaintext = true }
+            }
+            .fileExporter(
+                isPresented: Binding(get: { plainExport != nil }, set: { if !$0 { plainExport = nil } }),
+                document: plainExport,
+                contentType: .folder,
+                defaultFilename: "terpoir-plaintext-\(Self.today)"
+            ) { result in
+                switch result {
+                case .success: message = "Saved, unencrypted. Keep it private and delete it when you're done."
+                case .failure: message = "The export couldn't be saved. Try another place."
+                }
             }
             if let message {
                 Text(message)
@@ -64,6 +106,12 @@ struct DataView: View {
             case .failure: message = "The export couldn't be saved. Try another place."
             }
         }
+        .alert("Export without encryption?", isPresented: $warnPlaintext) {
+            Button("Export unencrypted", role: .destructive, action: exportPlaintext)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This saves your whole journal as readable files (JSON and spreadsheet-friendly CSV, in one folder), to move it to another app or keep your own copy. Unlike everything else in Terpoir, they are not encrypted: anyone or any app that gets the files can read every session, note, product and spot in them.\n\nIf you save them in a folder that syncs to a cloud (iCloud Drive, Google Drive, Dropbox and the like), they will be uploaded. Keep them somewhere private, and delete them when you're done.")
+        }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.data]) { result in
             guard case let .success(url) = result else { return }
             importFile(url)
@@ -81,6 +129,15 @@ struct DataView: View {
         message = nil
         do {
             exporting = ExportDocument(data: try repo.exportArchive(masterWrappedByRecovery: masterWrappedByRecovery()))
+        } catch {
+            message = "The export couldn't be made. Try again."
+        }
+    }
+
+    private func exportPlaintext() {
+        message = nil
+        do {
+            plainExport = PlainExportDocument(files: try repo.exportPlaintext())
         } catch {
             message = "The export couldn't be made. Try again."
         }
