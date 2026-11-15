@@ -614,8 +614,11 @@ rejects it under guideline 5.1.1(ix), Android-only stays acceptable
       they were. Its strain detail step shows the "Detailed" fields too
       (terpene levels, parents from the journal, cannabinoids). Not yet on
       iOS: adding a new parent by name, the offline strain
-      catalog's suggestions and "Look up on the web". Left: moods,
-      timeline, symptoms, spots and notes.)
+      catalog's suggestions and "Look up on the web". Going in and
+      moods (2026-11-15): the session editor's intention, solo or with
+      others, and mood before and after, as on Android, each hidden with
+      its data point in "What I track". Left: timeline, symptoms, spots
+      and notes.)
 - [ ] Export and import, readable by the Android app and back.
       (2026-11-14, in progress: "Your data" exports the encrypted archive
       (`terpoir-<date>.terpoir`, as Android names it) and imports one of

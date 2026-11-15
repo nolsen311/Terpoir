@@ -20,7 +20,7 @@ final class LabelTests: XCTestCase {
 
     func testEveryVocabularySlugHasALabel() {
         let vocab = vocabulary()
-        let slugs = vocab.coreEffects + vocab.methods + vocab.forms + vocab.doseUnits
+        let slugs = vocab.coreEffects + vocab.methods + vocab.forms + vocab.doseUnits + vocab.intentions + vocab.social
         XCTAssertEqual(slugs.filter { vocabularyLabels[$0] == nil }, [])
     }
 
@@ -80,5 +80,21 @@ final class JournalRepositoryTests: XCTestCase {
         XCTAssertEqual(repo.sessions().map(\.id), [newer, older])
         try repo.delete(older)
         XCTAssertEqual(repo.sessions().map(\.id), [newer])
+    }
+
+    func testGoingInAndMoodsAreKept() throws {
+        let vocab = vocabulary()
+        let saved = SessionData(
+            when: LocalTimeData(unixMs: 1_000, utcOffsetMin: 0), lines: [], activity: nil,
+            intention: vocab.intentions.first, moodBefore: 2, social: vocab.social.first, effects: [],
+            onsetMin: nil, peakMin: nil, durationMin: nil, moodAfter: 4, rating: nil,
+            wouldRepeat: nil, spot: nil, symptoms: [], attachments: []
+        )
+        let id = try repo.saveSession(id: nil, saved)
+        let read = try XCTUnwrap(repo.session(id))
+        XCTAssertEqual(read.intention, vocab.intentions.first)
+        XCTAssertEqual(read.social, vocab.social.first)
+        XCTAssertEqual(read.moodBefore, 2)
+        XCTAssertEqual(read.moodAfter, 4)
     }
 }
