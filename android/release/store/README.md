@@ -14,6 +14,10 @@
   tagline in Work Sans has its own line below. Both fonts are bundled
   (OFL). Everything is kept away from the edges, which Play can crop.
 
+The iOS app icon, `ios/App/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`,
+is the same art at 1024 × 1024 (`render.py --ios-icon <path>`); iOS
+applies its own mask.
+
 Both are rendered by `render.py` (Pillow) from the same vector and fonts,
 so they change with the icon artwork. All-ages: no drug imagery
 (`docs/design-decisions.md`, "App store policy").

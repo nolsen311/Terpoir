@@ -32,7 +32,7 @@ env:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 90
     outputs:
       upload: ${{ steps.tag.outputs.upload }}
@@ -114,7 +114,7 @@ jobs:
   testflight:
     needs: build
     if: needs.build.outputs.upload == 'true'
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 30
     # Only v* tags reach it, and the maintainer approves each run.
     environment: app-store

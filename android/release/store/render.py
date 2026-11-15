@@ -51,14 +51,15 @@ def art(draw, scale, dx, dy):
         x, y = cx * scale + dx, cy * scale + dy
         draw.ellipse((x - r * scale, y - r * scale, x + r * scale, y + r * scale), fill=AMBER)
 
-def icon(path):
+def icon(path, px=512):
     # What a launcher shows of the adaptive icon: the middle 72 of the 108
-    # units, full bleed (Play applies its own mask).
-    size = 512 * SS
+    # units, full bleed (Play and iOS apply their own masks). Opaque RGB,
+    # as the App Store requires.
+    size = px * SS
     img = Image.new("RGBA", (size, size), BG)
     scale = size / 72
     art(ImageDraw.Draw(img), scale, -18 * scale, -18 * scale)
-    img.resize((512, 512), Image.LANCZOS).convert("RGB").save(path, optimize=True)
+    img.resize((px, px), Image.LANCZOS).convert("RGB").save(path, optimize=True)
 
 TAGLINE = "A private journal, kept on your phone"
 
@@ -132,7 +133,10 @@ def card(path, version, headline, title_font, body_font):
 
 
 if __name__ == "__main__":
-    if sys.argv[1] == "--card":
+    if sys.argv[1] == "--ios-icon":
+        # The iOS app icon: one 1024 x 1024 image; Xcode makes the others.
+        icon(sys.argv[2], 1024)
+    elif sys.argv[1] == "--card":
         card(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6])
     else:
         out = sys.argv[1]
