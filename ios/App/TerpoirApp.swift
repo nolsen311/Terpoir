@@ -11,6 +11,11 @@ import TerpoirCore
 
 @main
 struct TerpoirApp: App {
+    // Refuses third-party keyboards while that Privacy Center toggle is on.
+    @UIApplicationDelegateAdaptor(TerpoirAppDelegate.self) private var appDelegate
+    // "No autocorrect or predictions", applied to every field below.
+    @AppStorage(KeyboardProtection.noAutocorrectKey) private var noAutocorrect = false
+
     init() {
         // The core's panic hook, which never reports panic messages.
         TerpoirCore.`init`()
@@ -19,6 +24,7 @@ struct TerpoirApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .autocorrectionDisabled(noAutocorrect)
         }
     }
 }
