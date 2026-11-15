@@ -1,0 +1,1 @@
+Log a purchase by hand from any product: when, where, what you paid and how many. Product pickers now name and order products the same way as the Products page. The plain-file export is now one ZIP made by Terpoir's own core, the same on every device. Also a security update for the encrypted database, and updated libraries.
